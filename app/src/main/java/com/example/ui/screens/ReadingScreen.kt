@@ -1,0 +1,3553 @@
+package com.example.ui.screens
+
+import android.net.Uri
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Quiz
+import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.CompositionLocalProvider
+import com.example.ui.components.BidiText
+import com.example.data.local.AiHistoryEntity
+import com.example.data.local.CorrectionNotebookEntity
+import com.example.data.local.EntryEntity
+import com.example.data.local.GrammarExerciseItem
+import com.example.data.local.GrammarLessonEntity
+import com.example.data.local.ReadingProgressEntity
+import com.example.data.local.ReadingQuestionItem
+import com.example.data.local.ReadingSentenceItem
+import com.example.data.local.ReadingTextEntity
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.School
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+
+private val readingJson = Json {
+    ignoreUnknownKeys = true
+    isLenient = true
+    coerceInputValues = true
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReadingScreen(
+    texts: List<ReadingTextEntity>,
+    progressList: List<ReadingProgressEntity>,
+    selectedText: ReadingTextEntity?,
+    chatHistory: List<AiHistoryEntity>,
+    openQuestionHistory: List<AiHistoryEntity>,
+    grammarLessons: List<GrammarLessonEntity> = emptyList(),
+    onSelectText: (ReadingTextEntity?) -> Unit,
+    onSaveProgress: (textId: String, completed: Int, total: Int, score: Int, isDone: Boolean) -> Unit,
+    onOpenGrammarLesson: (GrammarLessonEntity) -> Unit = {},
+    onSaveCorrectionSentence: ((textId: String, lessonId: String, lessonTitle: String, original: String, corrected: String, expAr: String, alt: String, status: String) -> Unit)? = null,
+    onCheckCorrectionWithAi: (suspend (CorrectionNotebookEntity) -> Result<Unit>)? = null,
+    onNavigateToNotebook: () -> Unit = {},
+    onLookupWordLocally: suspend (String) -> List<EntryEntity>,
+    onSaveWordFavorite: suspend (deckId: String, word: String, isFavorite: Boolean) -> Unit,
+    onGetWordFavoriteStatus: suspend (deckId: String, word: String) -> Boolean,
+    onGetSavedTargetWords: suspend (limit: Int) -> List<String>,
+    onExplainWordInContext: suspend (textId: String, sentenceIndex: Int, sentenceEn: String, word: String) -> Result<String>,
+    onSavePastedText: suspend (title: String, rawText: String, topic: String, level: String) -> Result<ReadingTextEntity>,
+    onTranslateAndMakeQuestionsForPastedText: suspend (ReadingTextEntity) -> Result<Unit>,
+    onCreateNewReadingTextWithAi: suspend (level: String, topic: String, length: String, targetWords: List<String>) -> Result<String>,
+    onSimplifyReadingText: suspend (ReadingTextEntity) -> Result<String>,
+    onAskAiAboutText: suspend (text: ReadingTextEntity, question: String) -> Result<String>,
+    onFeedbackOnOpenQuestion: suspend (text: ReadingTextEntity, prompt: String, answer: String) -> Result<String>,
+    onDeleteText: (String) -> Unit,
+    onSyncAssets: ((Result<Int>) -> Unit) -> Unit,
+    onImportJsonUris: (List<Uri>, (Result<Int>) -> Unit) -> Unit,
+    onImportJsonText: suspend (String) -> Result<Int>,
+    onSpeakSentence: (String) -> Unit,
+    onStopAudio: () -> Unit,
+    ttsSpeechRate: Float = 0.95f,
+    modifier: Modifier = Modifier
+) {
+    if (selectedText != null) {
+        ReadingDetailScreen(
+            text = selectedText,
+            progress = progressList.firstOrNull { it.textId == selectedText.id },
+            chatHistory = chatHistory,
+            openQuestionHistory = openQuestionHistory,
+            grammarLessons = grammarLessons,
+            onBack = {
+                onStopAudio()
+                onSelectText(null)
+            },
+            onSaveProgress = { completed, total, score, isDone ->
+                onSaveProgress(selectedText.id, completed, total, score, isDone)
+            },
+            onOpenGrammarLesson = onOpenGrammarLesson,
+            onSaveCorrectionSentence = onSaveCorrectionSentence,
+            onCheckCorrectionWithAi = onCheckCorrectionWithAi,
+            onNavigateToNotebook = onNavigateToNotebook,
+            onLookupWordLocally = onLookupWordLocally,
+            onSaveWordFavorite = onSaveWordFavorite,
+            onGetWordFavoriteStatus = onGetWordFavoriteStatus,
+            onExplainWordInContext = { sIdx, sEn, word ->
+                onExplainWordInContext(selectedText.id, sIdx, sEn, word)
+            },
+            onTranslateAndMakeQuestions = {
+                onTranslateAndMakeQuestionsForPastedText(selectedText)
+            },
+            onSimplifyText = {
+                onSimplifyReadingText(selectedText)
+            },
+            onAskAi = { q ->
+                onAskAiAboutText(selectedText, q)
+            },
+            onFeedbackOnOpenQuestion = { prompt, answer ->
+                onFeedbackOnOpenQuestion(selectedText, prompt, answer)
+            },
+            onDeleteText = {
+                onDeleteText(selectedText.id)
+            },
+            onSpeakSentence = onSpeakSentence,
+            onStopAudio = onStopAudio,
+            ttsSpeechRate = ttsSpeechRate,
+            modifier = modifier
+        )
+    } else {
+        ReadingListScreen(
+            texts = texts,
+            progressList = progressList,
+            onSelectText = onSelectText,
+            onCreateWithAi = onCreateNewReadingTextWithAi,
+            onSavePastedText = onSavePastedText,
+            onGetSavedTargetWords = onGetSavedTargetWords,
+            onSyncAssets = onSyncAssets,
+            onImportJsonUris = onImportJsonUris,
+            onImportJsonText = onImportJsonText,
+            onNavigateToNotebook = onNavigateToNotebook,
+            modifier = modifier
+        )
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// 1. READING LIST SCREEN
+// -------------------------------------------------------------------------------------------------
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReadingListScreen(
+    texts: List<ReadingTextEntity>,
+    progressList: List<ReadingProgressEntity>,
+    onSelectText: (ReadingTextEntity) -> Unit,
+    onCreateWithAi: suspend (level: String, topic: String, length: String, targetWords: List<String>) -> Result<String>,
+    onSavePastedText: suspend (title: String, rawText: String, topic: String, level: String) -> Result<ReadingTextEntity>,
+    onGetSavedTargetWords: suspend (limit: Int) -> List<String>,
+    onSyncAssets: ((Result<Int>) -> Unit) -> Unit,
+    onImportJsonUris: (List<Uri>, (Result<Int>) -> Unit) -> Unit,
+    onImportJsonText: suspend (String) -> Result<Int>,
+    onNavigateToNotebook: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    var selectedLevelFilter by remember { mutableStateOf("ALL") }
+    var selectedTopicFilter by remember { mutableStateOf("ALL") }
+    var searchQuery by remember { mutableStateOf("") }
+    var showAddDialog by remember { mutableStateOf(false) }
+    var initialAddTab by remember { mutableIntStateOf(0) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            onImportJsonUris(uris) { res ->
+                scope.launch {
+                    if (res.isSuccess) {
+                        snackbarHostState.showSnackbar("Successfully imported ${res.getOrDefault(0)} texts")
+                    } else {
+                        snackbarHostState.showSnackbar("Import failed: ${res.exceptionOrNull()?.message}")
+                    }
+                }
+            }
+        }
+    }
+
+    val levels = remember { listOf("ALL", "A1", "A2", "B1", "B2", "C1") }
+    val levelCounts = remember(texts) {
+        val map = mutableMapOf<String, Int>()
+        map["ALL"] = texts.size
+        texts.forEach { t ->
+            val lvl = t.level.uppercase()
+            map[lvl] = (map[lvl] ?: 0) + 1
+        }
+        map
+    }
+
+    val topics = remember(texts, selectedLevelFilter) {
+        val base = if (selectedLevelFilter == "ALL") texts else texts.filter { it.level.equals(selectedLevelFilter, ignoreCase = true) }
+        listOf("ALL") + base.map { it.topic }.filter { it.isNotBlank() }.distinct()
+    }
+
+    LaunchedEffect(topics) {
+        if (selectedTopicFilter != "ALL" && topics.none { it.equals(selectedTopicFilter, ignoreCase = true) }) {
+            selectedTopicFilter = "ALL"
+        }
+    }
+
+    val filteredTexts = remember(texts, selectedLevelFilter, selectedTopicFilter, searchQuery) {
+        val q = searchQuery.trim().lowercase()
+        texts.filter { item ->
+            val matchesLevel = selectedLevelFilter == "ALL" || item.level.equals(selectedLevelFilter, ignoreCase = true)
+            val matchesTopic = selectedTopicFilter == "ALL" || item.topic.equals(selectedTopicFilter, ignoreCase = true)
+            val matchesQuery = q.isEmpty() ||
+                item.titleEn.lowercase().contains(q) ||
+                item.titleAr.lowercase().contains(q) ||
+                item.topic.lowercase().contains(q)
+            matchesLevel && matchesTopic && matchesQuery
+        }
+    }
+
+    val completedCount = remember(progressList) {
+        progressList.count { it.isCompleted }
+    }
+
+    Scaffold(
+        modifier = modifier.testTag("reading_list_screen"),
+        containerColor = Color(0xFF0E0F13),
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(top = 12.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // 1. Compact Header, Action Pills, Search & Filter Controls
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Row 1: Stats Summary + Sync Button (Never squished!)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "${filteredTexts.size} of ${texts.size} Passages • $completedCount Completed",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFFE5C158),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "Tap any word while reading for instant meaning & audio",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF9CA3AF),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        IconButton(
+                            onClick = {
+                                initialAddTab = 3
+                                showAddDialog = true
+                            },
+                            modifier = Modifier
+                                .size(34.dp)
+                                .testTag("reading_sync_assets_icon")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Sync Assets",
+                                tint = Color(0xFFE5C158),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    // Row 2: Dedicated Full-Width Action Pills Row (Notebook | Paste | Import | AI Text)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Correction Notebook Pill
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFF17181E),
+                            border = BorderStroke(1.dp, Color(0xFFE5C158).copy(alpha = 0.35f)),
+                            modifier = Modifier
+                                .weight(1.05f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { onNavigateToNotebook() }
+                                .testTag("reading_open_notebook_button")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Correction Notebook",
+                                    tint = Color(0xFFE5C158),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = "Notebook",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFF3F4F6),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        // Paste Text Pill
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFF17181E),
+                            border = BorderStroke(1.dp, Color(0xFF262834)),
+                            modifier = Modifier
+                                .weight(0.95f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable {
+                                    initialAddTab = 1
+                                    showAddDialog = true
+                                }
+                                .testTag("reading_quick_paste_button")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ContentPaste,
+                                    contentDescription = "Paste Text",
+                                    tint = Color(0xFFE5C158),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = "Paste",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFFF3F4F6),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        // Import JSON Pill
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFF17181E),
+                            border = BorderStroke(1.dp, Color(0xFF262834)),
+                            modifier = Modifier
+                                .weight(0.95f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable {
+                                    initialAddTab = 2
+                                    showAddDialog = true
+                                }
+                                .testTag("reading_import_json_icon")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.UploadFile,
+                                    contentDescription = "Import JSON",
+                                    tint = Color(0xFFE5C158),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = "Import",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFFF3F4F6),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        // AI Passage Pill (Primary Gold)
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFFE5C158).copy(alpha = 0.16f),
+                            border = BorderStroke(1.dp, Color(0xFFE5C158)),
+                            modifier = Modifier
+                                .weight(1.05f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable {
+                                    initialAddTab = 0
+                                    showAddDialog = true
+                                }
+                                .testTag("reading_add_fab")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AutoAwesome,
+                                    contentDescription = "Create with AI",
+                                    tint = Color(0xFFE5C158),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = "AI Text",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFE5C158),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+
+                    // Row 3: Search Bar
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = {
+                            Text(
+                                "Search passages by title or topic...",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF6B7280)
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search",
+                                tint = Color(0xFFE5C158),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(
+                                    onClick = { searchQuery = "" },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Clear search",
+                                        tint = Color(0xFF9CA3AF),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFFF3F4F6)),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("reading_search_input")
+                    )
+
+                    // Row 4: CEFR Level Filter Pills (All, A1, A2, B1, B2, C1)
+                    LazyRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("reading_level_filter_row"),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        items(levels) { level ->
+                            val isSelected = selectedLevelFilter == level
+                            val count = levelCounts[level] ?: 0
+                            val labelText = if (level == "ALL") "All ($count)" else "$level ($count)"
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (isSelected) Color(0xFFE5C158) else Color(0xFF17181E),
+                                border = BorderStroke(
+                                    width = 1.dp,
+                                    color = if (isSelected) Color(0xFFE5C158) else Color(0xFF262834)
+                                ),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .clickable { selectedLevelFilter = level }
+                                    .testTag("reading_filter_level_$level")
+                            ) {
+                                Text(
+                                    text = labelText,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) Color(0xFF111216) else Color(0xFFD1D5DB),
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Row 5: Topic Filter Chips
+                    if (topics.size > 2) {
+                        LazyRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("reading_topic_filter_row"),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            items(topics) { topic ->
+                                val isSelected = selectedTopicFilter.equals(topic, ignoreCase = true)
+                                val displayTopic = if (topic == "ALL") "All Topics" else topic.replaceFirstChar { it.uppercase() }
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isSelected) Color(0xFF262834) else Color(0xFF14151B),
+                                    border = BorderStroke(
+                                        width = 1.dp,
+                                        color = if (isSelected) Color(0xFFE5C158).copy(alpha = 0.65f) else Color(0xFF232530)
+                                    ),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { selectedTopicFilter = topic }
+                                        .testTag("reading_filter_topic_$topic")
+                                ) {
+                                    Text(
+                                        text = displayTopic,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                        color = if (isSelected) Color(0xFFE5C158) else Color(0xFF9CA3AF),
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. List of Reading Texts
+            if (filteredTexts.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 40.dp, horizontal = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                                contentDescription = null,
+                                modifier = Modifier.size(56.dp),
+                                tint = Color(0xFF6B7280)
+                            )
+                            Spacer(Modifier.height(14.dp))
+                            Text(
+                                text = if (texts.isEmpty()) "No reading passages found" else "No passages match your filters",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFF3F4F6)
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = if (texts.isEmpty()) {
+                                    "Add a new text with AI, paste your own, or re-sync sample passages."
+                                } else {
+                                    "Try switching the CEFR level pill or clearing your search query."
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color(0xFF9CA3AF),
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(Modifier.height(16.dp))
+                            if (texts.isEmpty()) {
+                                Button(
+                                    onClick = {
+                                        onSyncAssets { res ->
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("Synced ${res.getOrDefault(0)} texts from assets")
+                                            }
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFE5C158),
+                                        contentColor = Color(0xFF111216)
+                                    )
+                                ) {
+                                    Icon(Icons.Default.Refresh, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Sync Sample Texts", fontWeight = FontWeight.Bold)
+                                }
+                            } else {
+                                OutlinedButton(
+                                    onClick = {
+                                        selectedLevelFilter = "ALL"
+                                        selectedTopicFilter = "ALL"
+                                        searchQuery = ""
+                                    },
+                                    border = BorderStroke(1.dp, Color(0xFFE5C158))
+                                ) {
+                                    Text("Reset Filters", color = Color(0xFFE5C158))
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                items(filteredTexts, key = { it.id }) { textEntity ->
+                    val prog = progressList.firstOrNull { it.textId == textEntity.id }
+                    ReadingTextCard(
+                        text = textEntity,
+                        progress = prog,
+                        onClick = { onSelectText(textEntity) }
+                    )
+                }
+            }
+        }
+    }
+
+    if (showAddDialog) {
+        AddReadingTextDialog(
+            initialTab = initialAddTab,
+            onDismiss = { showAddDialog = false },
+            onCreateWithAi = onCreateWithAi,
+            onSavePastedText = onSavePastedText,
+            onGetSavedTargetWords = onGetSavedTargetWords,
+            onPickJsonFiles = {
+                filePickerLauncher.launch(
+                    arrayOf(
+                        "application/json",
+                        "text/json",
+                        "text/plain",
+                        "*/*"
+                    )
+                )
+                showAddDialog = false
+            },
+            onImportJsonText = onImportJsonText,
+            onSyncAssets = {
+                onSyncAssets { res ->
+                    scope.launch {
+                        if (res.isSuccess) {
+                            snackbarHostState.showSnackbar("Synced ${res.getOrDefault(0)} texts from assets")
+                        } else {
+                            snackbarHostState.showSnackbar("Sync failed: ${res.exceptionOrNull()?.message}")
+                        }
+                    }
+                }
+                showAddDialog = false
+            },
+            onSuccessMessage = { msg ->
+                scope.launch { snackbarHostState.showSnackbar(msg) }
+            }
+        )
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// READING TEXT CARD
+// -------------------------------------------------------------------------------------------------
+
+@Composable
+fun ReadingTextCard(
+    text: ReadingTextEntity,
+    progress: ReadingProgressEntity?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val sentencesCount = remember(text.sentencesJson) {
+        try {
+            readingJson.decodeFromString<List<ReadingSentenceItem>>(text.sentencesJson).size
+        } catch (_: Exception) { 0 }
+    }
+    val questionsCount = remember(text.questionsJson) {
+        try {
+            readingJson.decodeFromString<List<ReadingQuestionItem>>(text.questionsJson).size
+        } catch (_: Exception) { 0 }
+    }
+
+    val sourceBadgeText = when (text.source.lowercase()) {
+        "ai" -> "AI Generated"
+        "user" -> "My Text"
+        "file" -> "Imported"
+        else -> "Curated"
+    }
+
+    val isDone = progress?.isCompleted == true
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .testTag("reading_card_${text.id}"),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF17181E)
+        ),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (isDone) Color(0xFF34D399).copy(alpha = 0.45f) else Color(0xFF262834)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            // Badges row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        color = Color(0xFFE5C158).copy(alpha = 0.16f),
+                        border = BorderStroke(1.dp, Color(0xFFE5C158).copy(alpha = 0.45f)),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            text = text.level.uppercase(),
+                            color = Color(0xFFE5C158),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+
+                    if (text.topic.isNotBlank()) {
+                        Surface(
+                            color = Color(0xFF22242E),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = text.topic.replaceFirstChar { it.uppercase() },
+                                color = Color(0xFFD1D5DB),
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    Surface(
+                        color = Color(0xFF1E2029),
+                        border = BorderStroke(1.dp, Color(0xFF2B2E3B)),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            text = sourceBadgeText,
+                            color = Color(0xFF9CA3AF),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+
+                if (isDone) {
+                    Surface(
+                        color = Color(0xFF34D399).copy(alpha = 0.14f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "Completed",
+                                tint = Color(0xFF34D399),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = "${progress?.bestScore ?: 0}/$questionsCount",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF34D399)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // Title English
+            Text(
+                text = text.titleEn,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFF3F4F6)
+            )
+
+            // Title Arabic
+            if (text.titleAr.isNotBlank()) {
+                Spacer(Modifier.height(2.dp))
+                BidiText(
+                    text = text.titleAr,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF9CA3AF)
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Footer info
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "$sentencesCount sentences • $questionsCount quiz questions",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF9CA3AF)
+                )
+
+                Text(
+                    text = "Read & Practice →",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFFE5C158),
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// 2. READING DETAIL SCREEN (The Text Screen)
+// -------------------------------------------------------------------------------------------------
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReadingDetailScreen(
+    text: ReadingTextEntity,
+    progress: ReadingProgressEntity?,
+    chatHistory: List<AiHistoryEntity>,
+    openQuestionHistory: List<AiHistoryEntity>,
+    grammarLessons: List<GrammarLessonEntity> = emptyList(),
+    onBack: () -> Unit,
+    onSaveProgress: (completed: Int, total: Int, score: Int, isDone: Boolean) -> Unit,
+    onOpenGrammarLesson: (GrammarLessonEntity) -> Unit = {},
+    onSaveCorrectionSentence: ((textId: String, lessonId: String, lessonTitle: String, original: String, corrected: String, expAr: String, alt: String, status: String) -> Unit)? = null,
+    onCheckCorrectionWithAi: (suspend (CorrectionNotebookEntity) -> Result<Unit>)? = null,
+    onNavigateToNotebook: () -> Unit = {},
+    onLookupWordLocally: suspend (String) -> List<EntryEntity>,
+    onSaveWordFavorite: suspend (deckId: String, word: String, isFavorite: Boolean) -> Unit,
+    onGetWordFavoriteStatus: suspend (deckId: String, word: String) -> Boolean,
+    onExplainWordInContext: suspend (sentenceIndex: Int, sentenceEn: String, word: String) -> Result<String>,
+    onTranslateAndMakeQuestions: suspend () -> Result<Unit>,
+    onSimplifyText: suspend () -> Result<String>,
+    onAskAi: suspend (String) -> Result<String>,
+    onFeedbackOnOpenQuestion: suspend (prompt: String, answer: String) -> Result<String>,
+    onDeleteText: () -> Unit,
+    onSpeakSentence: (String) -> Unit,
+    onStopAudio: () -> Unit,
+    ttsSpeechRate: Float,
+    modifier: Modifier = Modifier
+) {
+    BackHandler { onBack() }
+
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    val sentences = remember(text.sentencesJson) {
+        try {
+            readingJson.decodeFromString<List<ReadingSentenceItem>>(text.sentencesJson)
+        } catch (_: Exception) { emptyList() }
+    }
+
+    val questions = remember(text.questionsJson) {
+        try {
+            readingJson.decodeFromString<List<ReadingQuestionItem>>(text.questionsJson)
+        } catch (_: Exception) { emptyList() }
+    }
+
+    val targetWords = remember(text.targetWordsJson) {
+        try {
+            readingJson.decodeFromString<List<String>>(text.targetWordsJson)
+                .map { it.lowercase().trim() }
+                .toSet()
+        } catch (_: Exception) { emptySet() }
+    }
+
+    // Per-sentence translation visibility map
+    val sentenceTranslationVisibility = remember { mutableStateMapOf<Int, Boolean>() }
+    var areAllTranslationsVisible by remember { mutableStateOf(false) }
+
+    // Audio reading states
+    var isReadingAudioActive by remember { mutableStateOf(false) }
+    var currentReadingSentenceIndex by remember { mutableIntStateOf(-1) }
+    var readingAudioJob by remember { mutableStateOf<Job?>(null) }
+
+    // Word Lookup bottom sheet
+    var lookupWordTarget by remember { mutableStateOf<Pair<Int, String>?>(null) } // (sentenceIndex, word)
+
+    // Grammar Highlight & Bottom Sheet states
+    var activeGrammarSentence by remember { mutableStateOf<Pair<ReadingSentenceItem, GrammarLessonEntity?>?>(null) }
+    var activePracticeLesson by remember { mutableStateOf<GrammarLessonEntity?>(null) }
+
+    // AI Chat bottom sheet
+    var showChatSheet by remember { mutableStateOf(false) }
+
+    // Simplifying & Generating states
+    var isSimplifying by remember { mutableStateOf(false) }
+    var isGeneratingQuestionsForPasted by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+
+    // Questions / Quiz state
+    val userAnswers = remember { mutableStateMapOf<Int, Int>() } // questionIndex -> selectedOptionIndex
+    var openQuestionAnswer by remember { mutableStateOf("") }
+    var isSubmittingOpenQuestion by remember { mutableStateOf(false) }
+    var openQuestionFeedback by remember { mutableStateOf<String?>(null) }
+
+    fun toggleAllTranslations() {
+        val next = !areAllTranslationsVisible
+        areAllTranslationsVisible = next
+        sentences.indices.forEach { idx ->
+            sentenceTranslationVisibility[idx] = next
+        }
+    }
+
+    fun startFullTextAudio() {
+        if (sentences.isEmpty()) return
+        onStopAudio()
+        isReadingAudioActive = true
+        currentReadingSentenceIndex = 0
+
+        readingAudioJob?.cancel()
+        readingAudioJob = scope.launch {
+            for (idx in sentences.indices) {
+                if (!isReadingAudioActive) break
+                currentReadingSentenceIndex = idx
+                val sentence = sentences[idx].en
+                onSpeakSentence(sentence)
+                // Estimate sentence reading duration based on word count & rate
+                val wordCount = sentence.split("\\s+".toRegex()).size
+                val estDurationMs = ((wordCount * 450L) / ttsSpeechRate.coerceAtLeast(0.5f)).toLong() + 900L
+                delay(estDurationMs)
+            }
+            isReadingAudioActive = false
+            currentReadingSentenceIndex = -1
+        }
+    }
+
+    fun stopFullTextAudio() {
+        readingAudioJob?.cancel()
+        readingAudioJob = null
+        isReadingAudioActive = false
+        currentReadingSentenceIndex = -1
+        onStopAudio()
+    }
+
+    Scaffold(
+        modifier = modifier.testTag("reading_detail_screen"),
+        containerColor = Color(0xFF0E0F13),
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Header Info & Controls Card
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFF17181E)
+                    ),
+                    border = BorderStroke(1.dp, Color(0xFF262834)),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    onClick = onBack,
+                                    color = Color(0xFF22242E),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.testTag("reading_detail_back_button")
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.ArrowBack,
+                                            contentDescription = "Back",
+                                            tint = Color(0xFFD1D5DB),
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Text(
+                                            text = "Passages",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color(0xFFD1D5DB),
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                                Surface(
+                                    color = Color(0xFFE5C158).copy(alpha = 0.16f),
+                                    border = BorderStroke(1.dp, Color(0xFFE5C158).copy(alpha = 0.45f)),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = text.level.uppercase(),
+                                        color = Color(0xFFE5C158),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
+                                if (targetWords.isNotEmpty()) {
+                                    Surface(
+                                        color = Color(0xFFE5C158).copy(alpha = 0.14f),
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        Text(
+                                            text = "${targetWords.size} Gold Words",
+                                            color = Color(0xFFE5C158),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                IconButton(
+                                    onClick = onNavigateToNotebook,
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .testTag("reading_detail_open_notebook_button")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Correction Notebook",
+                                        tint = Color(0xFFE5C158),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = { showChatSheet = true },
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .testTag("reading_ask_ai_chat_button")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = "Ask AI about this text",
+                                        tint = Color(0xFFE5C158),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+
+                                if (text.source == "user" || text.source == "ai") {
+                                    IconButton(
+                                        onClick = { showDeleteConfirmDialog = true },
+                                        modifier = Modifier
+                                            .size(34.dp)
+                                            .testTag("reading_delete_text_button")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Delete Text",
+                                            tint = Color(0xFFF87171),
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(Modifier.height(12.dp))
+
+                        // Audio + Translation Controls Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Listen button
+                            Button(
+                                onClick = {
+                                    if (isReadingAudioActive) stopFullTextAudio()
+                                    else startFullTextAudio()
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isReadingAudioActive) MaterialTheme.colorScheme.errorContainer
+                                    else MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = if (isReadingAudioActive) MaterialTheme.colorScheme.onErrorContainer
+                                    else MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("reading_listen_audio_button")
+                            ) {
+                                Icon(
+                                    imageVector = if (isReadingAudioActive) Icons.Default.Stop else Icons.Default.Headphones,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(if (isReadingAudioActive) "Stop Audio" else "Listen All")
+                            }
+
+                            // Translation Toggle All
+                            OutlinedButton(
+                                onClick = { toggleAllTranslations() },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("reading_toggle_all_translations_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Translate,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(if (areAllTranslationsVisible) "Hide Arabic" else "Show Arabic")
+                            }
+                        }
+
+                        // Secondary actions: Simplify
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "💡 Tip: Tap any word to view instant local meaning & audio",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            TextButton(
+                                onClick = {
+                                    isSimplifying = true
+                                    scope.launch {
+                                        val res = onSimplifyText()
+                                        isSimplifying = false
+                                        if (res.isSuccess) {
+                                            snackbarHostState.showSnackbar("Created simplified version at lower CEFR level!")
+                                        } else {
+                                            snackbarHostState.showSnackbar("Simplify failed: ${res.exceptionOrNull()?.message}")
+                                        }
+                                    }
+                                },
+                                enabled = !isSimplifying,
+                                modifier = Modifier.testTag("reading_simplify_button")
+                            ) {
+                                if (isSimplifying) {
+                                    CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                                    Spacer(Modifier.width(4.dp))
+                                } else {
+                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(14.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                }
+                                Text("Simplify", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Pasted Text: Generate questions banner if needed
+            if (text.source == "user" && questions.isEmpty()) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Your Pasted Text (My Text)",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "Sentence lookup is ready offline. Tap below to have AI translate every sentence and generate 5 comprehension questions.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                            Spacer(Modifier.height(10.dp))
+                            Button(
+                                onClick = {
+                                    isGeneratingQuestionsForPasted = true
+                                    scope.launch {
+                                        val res = onTranslateAndMakeQuestions()
+                                        isGeneratingQuestionsForPasted = false
+                                        if (res.isSuccess) {
+                                            snackbarHostState.showSnackbar("Translated & generated 5 quiz questions!")
+                                        } else {
+                                            snackbarHostState.showSnackbar("Failed: ${res.exceptionOrNull()?.message}")
+                                        }
+                                    }
+                                },
+                                enabled = !isGeneratingQuestionsForPasted,
+                                modifier = Modifier.testTag("reading_translate_make_questions_button")
+                            ) {
+                                if (isGeneratingQuestionsForPasted) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Translating & Generating...")
+                                } else {
+                                    Icon(Icons.Default.AutoAwesome, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Translate & Make 5 Questions")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // PASSAGE BODY: Sentences with interactive word chips & translation toggle
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        sentences.forEachIndexed { sIndex, sentenceItem ->
+                            val isHighlighted = isReadingAudioActive && currentReadingSentenceIndex == sIndex
+                            val isArabicVisible = sentenceTranslationVisibility[sIndex] ?: areAllTranslationsVisible
+
+                            ReadingSentenceBlock(
+                                sentenceIndex = sIndex,
+                                sentence = sentenceItem,
+                                isHighlighted = isHighlighted,
+                                isArabicVisible = isArabicVisible,
+                                targetWords = targetWords,
+                                onToggleArabic = {
+                                    sentenceTranslationVisibility[sIndex] = !(sentenceTranslationVisibility[sIndex] ?: areAllTranslationsVisible)
+                                },
+                                onWordClicked = { word ->
+                                    lookupWordTarget = Pair(sIndex, word)
+                                },
+                                onSpeakSentence = {
+                                    onSpeakSentence(sentenceItem.en)
+                                },
+                                onGrammarClicked = {
+                                    activeGrammarSentence = Pair(
+                                        sentenceItem,
+                                        grammarLessons.firstOrNull { it.id == sentenceItem.grammarId }
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 5 COMPREHENSION QUESTIONS SECTION
+            if (questions.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Comprehension Questions (${questions.size})",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+
+                itemsIndexed(questions) { qIndex, question ->
+                    val selectedOption = userAnswers[qIndex]
+                    ReadingQuestionCard(
+                        index = qIndex,
+                        question = question,
+                        selectedOptionIndex = selectedOption,
+                        onSelectOption = { optIdx ->
+                            if (userAnswers[qIndex] == null) {
+                                userAnswers[qIndex] = optIdx
+                                // Calculate score and save progress
+                                val completedCount = userAnswers.size
+                                val correctCount = questions.indices.count { idx ->
+                                    userAnswers[idx] == questions[idx].answerIndex
+                                }
+                                val isDone = completedCount >= questions.size
+                                onSaveProgress(
+                                    completedCount,
+                                    questions.size,
+                                    correctCount,
+                                    isDone
+                                )
+                            }
+                        }
+                    )
+                }
+
+                // QUIZ RESULT BANNER
+                if (userAnswers.size == questions.size) {
+                    item {
+                        val score = questions.indices.count { idx ->
+                            userAnswers[idx] == questions[idx].answerIndex
+                        }
+                        QuizCompletionCard(
+                            score = score,
+                            total = questions.size,
+                            onRetake = {
+                                userAnswers.clear()
+                            }
+                        )
+                    }
+
+                    // YOUR TURN SECTION (Grammar application)
+                    item {
+                        YourTurnGrammarCard(
+                            text = text,
+                            grammarLessons = grammarLessons,
+                            onSaveSentenceOffline = { orig, lessonId, lessonTitle ->
+                                onSaveCorrectionSentence?.invoke(text.id, lessonId, lessonTitle, orig, "", "", "", "not_checked")
+                            },
+                            onCheckSentenceWithAi = onCheckCorrectionWithAi
+                        )
+                    }
+                }
+            }
+
+            // OPEN QUESTION AT THE END (e.g. Summarize the text)
+            item {
+                OpenQuestionCard(
+                    text = text,
+                    answerText = openQuestionAnswer,
+                    onAnswerChange = { openQuestionAnswer = it },
+                    isSubmitting = isSubmittingOpenQuestion,
+                    feedback = openQuestionFeedback,
+                    history = openQuestionHistory,
+                    onSubmitAnswer = { prompt, ans ->
+                        isSubmittingOpenQuestion = true
+                        scope.launch {
+                            val res = onFeedbackOnOpenQuestion(prompt, ans)
+                            isSubmittingOpenQuestion = false
+                            if (res.isSuccess) {
+                                openQuestionFeedback = res.getOrNull()
+                            } else {
+                                snackbarHostState.showSnackbar("AI feedback error: ${res.exceptionOrNull()?.message}")
+                            }
+                        }
+                    }
+                )
+            }
+        }
+    }
+
+    // WORD LOOKUP BOTTOM SHEET
+    lookupWordTarget?.let { (sentenceIndex, word) ->
+        val currentSentenceEn = sentences.getOrNull(sentenceIndex)?.en ?: ""
+        WordLookupBottomSheet(
+            word = word,
+            sentenceIndex = sentenceIndex,
+            sentenceEn = currentSentenceEn,
+            onDismiss = { lookupWordTarget = null },
+            onLookupWordLocally = onLookupWordLocally,
+            onSaveWordFavorite = onSaveWordFavorite,
+            onGetWordFavoriteStatus = onGetWordFavoriteStatus,
+            onExplainWordInContext = onExplainWordInContext,
+            onSpeakWord = { onSpeakSentence(it) }
+        )
+    }
+
+    // GRAMMAR IN THIS SENTENCE BOTTOM SHEET
+    activeGrammarSentence?.let { (sentenceItem, lesson) ->
+        GrammarSentenceBottomSheet(
+            sentence = sentenceItem,
+            lesson = lesson,
+            onDismiss = { activeGrammarSentence = null },
+            onOpenFullLesson = {
+                activeGrammarSentence = null
+                if (lesson != null) onOpenGrammarLesson(lesson)
+            },
+            onPractiseThis = {
+                val targetLesson = lesson
+                activeGrammarSentence = null
+                activePracticeLesson = targetLesson
+            }
+        )
+    }
+
+    // OFFLINE GRAMMAR PRACTICE DIALOG (2-3 exercises from lesson)
+    activePracticeLesson?.let { lesson ->
+        OfflineGrammarPracticeDialog(
+            lesson = lesson,
+            onDismiss = { activePracticeLesson = null }
+        )
+    }
+
+    // AI CHAT ABOUT TEXT BOTTOM SHEET
+    if (showChatSheet) {
+        ReadingChatBottomSheet(
+            text = text,
+            chatHistory = chatHistory,
+            onDismiss = { showChatSheet = false },
+            onSendMessage = onAskAi
+        )
+    }
+
+    // DELETE CONFIRMATION DIALOG
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text("Delete Reading Text") },
+            text = { Text("Are you sure you want to delete \"${text.titleEn}\"? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirmDialog = false
+                        onDeleteText()
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// READING SENTENCE BLOCK (Words clickable + Sentence audio + Arabic toggle)
+// -------------------------------------------------------------------------------------------------
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ReadingSentenceBlock(
+    sentenceIndex: Int,
+    sentence: ReadingSentenceItem,
+    isHighlighted: Boolean,
+    isArabicVisible: Boolean,
+    targetWords: Set<String>,
+    onToggleArabic: () -> Unit,
+    onWordClicked: (String) -> Unit,
+    onSpeakSentence: () -> Unit,
+    onGrammarClicked: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    val hasGrammar = !sentence.grammarId.isNullOrBlank()
+
+    val targetBg = when {
+        isHighlighted -> Color(0xFFE5C158).copy(alpha = 0.16f)
+        hasGrammar -> Color(0xFFE5C158).copy(alpha = 0.08f)
+        else -> Color.Transparent
+    }
+
+    val backgroundColor by animateColorAsState(
+        targetValue = targetBg,
+        label = "sentence_bg"
+    )
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(backgroundColor)
+            .then(
+                if (hasGrammar) {
+                    Modifier.border(
+                        BorderStroke(1.dp, Color(0xFFE5C158).copy(alpha = 0.45f)),
+                        RoundedCornerShape(10.dp)
+                    )
+                } else {
+                    Modifier
+                }
+            )
+            .padding(8.dp)
+            .testTag("reading_sentence_$sentenceIndex")
+    ) {
+        // Grammar Header Badge if linked
+        if (hasGrammar) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = Color(0xFFE5C158).copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, Color(0xFFE5C158).copy(alpha = 0.45f)),
+                    modifier = Modifier
+                        .clickable { onGrammarClicked?.invoke() }
+                        .testTag("sentence_grammar_chip_$sentenceIndex")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.School,
+                            contentDescription = null,
+                            tint = Color(0xFFE5C158),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = "Grammar: ${sentence.grammarId}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFE5C158),
+                            fontSize = 11.sp
+                        )
+                        Spacer(Modifier.width(2.dp))
+                        Text(
+                            text = "• Tap for rule",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFFD1D5DB),
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        // English Words Flow
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top
+        ) {
+            // Speaker icon to play this individual sentence
+            IconButton(
+                onClick = onSpeakSentence,
+                modifier = Modifier
+                    .size(32.dp)
+                    .testTag("sentence_speak_${sentenceIndex}")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.VolumeUp,
+                    contentDescription = "Speak sentence",
+                    tint = if (isHighlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Spacer(Modifier.width(4.dp))
+
+            // Flow of clickable words
+            FlowRow(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                val rawTokens = sentence.en.split(" ")
+                for (token in rawTokens) {
+                    if (token.isBlank()) continue
+                    val cleanWord = token.replace(Regex("^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$"), "")
+                    val isTarget = cleanWord.isNotBlank() && targetWords.contains(cleanWord.lowercase())
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(
+                                if (isTarget) Color(0xFFFFD54F) else Color.Transparent
+                            )
+                            .clickable {
+                                if (cleanWord.isNotBlank()) onWordClicked(cleanWord)
+                            }
+                            .padding(horizontal = 2.dp, vertical = 1.dp)
+                    ) {
+                        Text(
+                            text = token,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontSize = 17.sp,
+                            fontWeight = if (isTarget) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isTarget) Color(0xFF3E2723) else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+
+            // Arabic toggle button for this sentence
+            if (sentence.ar.isNotBlank()) {
+                IconButton(
+                    onClick = onToggleArabic,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Translate,
+                        contentDescription = "Toggle translation",
+                        tint = if (isArabicVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+
+        // Arabic Translation line
+        AnimatedVisibility(
+            visible = isArabicVisible && sentence.ar.isNotBlank(),
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            BidiText(
+                text = sentence.ar,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 36.dp, top = 4.dp, bottom = 4.dp)
+            )
+        }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// GRAMMAR IN THIS SENTENCE BOTTOM SHEET
+// -------------------------------------------------------------------------------------------------
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GrammarSentenceBottomSheet(
+    sentence: ReadingSentenceItem,
+    lesson: GrammarLessonEntity?,
+    onDismiss: () -> Unit,
+    onOpenFullLesson: () -> Unit,
+    onPractiseThis: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+        modifier = Modifier.testTag("grammar_sentence_bottom_sheet")
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0xFFFFD54F).copy(alpha = 0.25f),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.School, contentDescription = null, tint = Color(0xFFB78103))
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "Grammar in this sentence",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "القاعدة النحوية في هذه الجملة",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = "Close")
+                }
+            }
+
+            HorizontalDivider()
+
+            // Lesson Title
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = lesson?.titleEn ?: "Grammar Rule (${sentence.grammarId ?: ""})",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        if (lesson != null) {
+                            Surface(shape = RoundedCornerShape(4.dp), color = Color(0xFFFFD54F).copy(alpha = 0.2f)) {
+                                Text(
+                                    text = lesson.level,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFB78103),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+                    if (lesson?.titleAr?.isNotBlank() == true) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = lesson.titleAr,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            // Short part of explanation_ar (first 3 lines)
+            val shortExplanation = remember(lesson?.explanationAr) {
+                lesson?.explanationAr?.lines()?.filter { it.isNotBlank() }?.take(3)?.joinToString("\n") ?: ""
+            }
+            if (shortExplanation.isNotBlank()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Lightbulb, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = "ملخص القاعدة (Explanation):",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        BidiText(
+                            text = shortExplanation,
+                            style = MaterialTheme.typography.bodyMedium,
+                            lineHeight = 22.sp
+                        )
+                    }
+                }
+            }
+
+            // Sentence with translation
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, Color(0xFFFFD54F).copy(alpha = 0.6f)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(
+                        text = "Sentence in text • الجملة في السياق:",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFB78103)
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = sentence.en,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            textDirection = TextDirection.Ltr,
+                            textAlign = TextAlign.Left
+                        ),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    if (sentence.ar.isNotBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        BidiText(
+                            text = sentence.ar,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            // Two buttons: "Open full lesson" and "Practise this" (2-3 exercises offline)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Button(
+                    onClick = onOpenFullLesson,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("open_full_lesson_button")
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Open full lesson")
+                }
+
+                OutlinedButton(
+                    onClick = onPractiseThis,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("practise_this_lesson_button")
+                ) {
+                    Icon(Icons.Default.Quiz, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Practise this")
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// OFFLINE GRAMMAR PRACTICE DIALOG (2-3 exercises from lesson)
+// -------------------------------------------------------------------------------------------------
+
+@Composable
+fun OfflineGrammarPracticeDialog(
+    lesson: GrammarLessonEntity,
+    onDismiss: () -> Unit
+) {
+    val jsonHelper = remember { Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true } }
+    val exercises = remember(lesson.exercisesJson) {
+        try {
+            jsonHelper.decodeFromString<List<GrammarExerciseItem>>(lesson.exercisesJson).take(3)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    val userAnswers = remember { mutableStateMapOf<Int, String>() }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Quiz, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Text("Practise: ${lesson.titleEn}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("تمارين تطبيقية للقاعدة (بدون إنترنت)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        },
+        text = {
+            if (exercises.isEmpty()) {
+                Text("No exercises available for this lesson.")
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    exercises.forEachIndexed { index, exercise ->
+                        val selected = userAnswers[index]
+                        val isAnswered = selected != null
+                        val isCorrect = selected?.equals(exercise.answer, ignoreCase = true) == true
+
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    text = "Exercise ${index + 1}: ${exercise.prompt}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(Modifier.height(8.dp))
+
+                                exercise.options.forEach { option ->
+                                    val isOptionSelected = selected == option
+                                    val isOptionCorrect = option.equals(exercise.answer, ignoreCase = true)
+
+                                    val containerColor = when {
+                                        !isAnswered -> MaterialTheme.colorScheme.surface
+                                        isOptionCorrect -> Color(0xFF2E7D32).copy(alpha = 0.15f)
+                                        isOptionSelected && !isOptionCorrect -> Color(0xFFC62828).copy(alpha = 0.15f)
+                                        else -> MaterialTheme.colorScheme.surface
+                                    }
+
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = containerColor,
+                                        border = BorderStroke(
+                                            1.dp,
+                                            if (isAnswered && isOptionCorrect) Color(0xFF2E7D32)
+                                            else if (isAnswered && isOptionSelected && !isOptionCorrect) Color(0xFFC62828)
+                                            else MaterialTheme.colorScheme.outlineVariant
+                                        ),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 3.dp)
+                                            .clickable(enabled = !isAnswered) {
+                                                userAnswers[index] = option
+                                            }
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = option,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = if (isOptionSelected) FontWeight.Bold else FontWeight.Normal,
+                                                color = if (isAnswered && isOptionCorrect) Color(0xFF2E7D32)
+                                                else if (isAnswered && isOptionSelected && !isOptionCorrect) Color(0xFFC62828)
+                                                else MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (isAnswered) {
+                                    Spacer(Modifier.height(6.dp))
+                                    Surface(
+                                        color = if (isCorrect) Color(0xFF2E7D32).copy(alpha = 0.1f) else Color(0xFFC62828).copy(alpha = 0.1f),
+                                        shape = RoundedCornerShape(6.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Column(modifier = Modifier.padding(8.dp)) {
+                                            Text(
+                                                text = if (isCorrect) "✓ Correct! ممتاز" else "✗ Incorrect! الإجابة الصحيحة: ${exercise.answer}",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFC62828)
+                                            )
+                                            if (exercise.explanationAr.isNotBlank()) {
+                                                Spacer(Modifier.height(2.dp))
+                                                BidiText(
+                                                    text = exercise.explanationAr,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Done")
+            }
+        }
+    )
+}
+
+// -------------------------------------------------------------------------------------------------
+// YOUR TURN GRAMMAR CARD (Write sentence using structure about a new situation)
+// -------------------------------------------------------------------------------------------------
+
+@Composable
+fun YourTurnGrammarCard(
+    text: ReadingTextEntity,
+    grammarLessons: List<GrammarLessonEntity>,
+    onSaveSentenceOffline: (original: String, lessonId: String, lessonTitle: String) -> Unit,
+    onCheckSentenceWithAi: (suspend (CorrectionNotebookEntity) -> Result<Unit>)?,
+    modifier: Modifier = Modifier
+) {
+    val jsonHelper = remember { Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true } }
+    val grammarIds = remember(text.grammarIdsJson) {
+        try {
+            jsonHelper.decodeFromString<List<String>>(text.grammarIdsJson)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+    val primaryLessonId = grammarIds.firstOrNull() ?: "g054"
+    val targetLesson = remember(primaryLessonId, grammarLessons) {
+        grammarLessons.firstOrNull { it.id == primaryLessonId }
+    }
+    val lessonTitle = targetLesson?.titleEn ?: "Third Conditional"
+    val lessonTitleAr = targetLesson?.titleAr ?: "الشرط الثالث"
+
+    var userSentence by remember { mutableStateOf("") }
+    var savedOffline by remember { mutableStateOf(false) }
+    var isCheckingAi by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val situationPrompt = remember(text.id) {
+        when (text.id) {
+            "r054" -> "You planned to attend an important interview, but you woke up late and missed the early train."
+            else -> "You planned an important event, but something unexpected happened in the past."
+        }
+    }
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("your_turn_card"),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.5.dp, Color(0xFFFFD54F))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    shape = CircleShape,
+                    color = Color(0xFFFFD54F),
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFF3E2723), modifier = Modifier.size(18.dp))
+                    }
+                }
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = "Your Turn • دورك الآن",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFB78103)
+                    )
+                    Text(
+                        text = "طبّق القاعدة في جملة من إنشائك عن موقف جديد",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // Target structure box
+            Surface(
+                color = Color(0xFFFFD54F).copy(alpha = 0.15f),
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(1.dp, Color(0xFFFFD54F).copy(alpha = 0.4f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = "Target Structure: $lessonTitle ($lessonTitleAr)",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF3E2723)
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Situation: $situationPrompt",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            OutlinedTextField(
+                value = userSentence,
+                onValueChange = {
+                    userSentence = it
+                    savedOffline = false
+                    errorMessage = null
+                },
+                label = { Text("Write your sentence here") },
+                placeholder = { Text("e.g., If I had set two alarms, I would have caught the train.") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("your_turn_sentence_input"),
+                minLines = 2
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Offline save button
+                OutlinedButton(
+                    onClick = {
+                        if (userSentence.isNotBlank()) {
+                            onSaveSentenceOffline(userSentence.trim(), primaryLessonId, "$lessonTitle ($lessonTitleAr)")
+                            savedOffline = true
+                        }
+                    },
+                    enabled = userSentence.isNotBlank(),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("your_turn_save_offline_button")
+                ) {
+                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(if (savedOffline) "Saved!" else "Save to Notebook")
+                }
+
+                // Check with AI button
+                Button(
+                    onClick = {
+                        if (userSentence.isNotBlank() && onCheckSentenceWithAi != null) {
+                            val dummyEntry = CorrectionNotebookEntity(
+                                id = 0L,
+                                textId = text.id,
+                                grammarLessonId = primaryLessonId,
+                                grammarLessonTitle = "$lessonTitle ($lessonTitleAr)",
+                                originalSentence = userSentence.trim(),
+                                status = "not_checked"
+                            )
+                            isCheckingAi = true
+                            errorMessage = null
+                            CoroutineScope(Dispatchers.Main).launch {
+                                val res = onCheckSentenceWithAi(dummyEntry)
+                                isCheckingAi = false
+                                if (res.isSuccess) {
+                                    onSaveSentenceOffline(userSentence.trim(), primaryLessonId, "$lessonTitle ($lessonTitleAr)")
+                                    savedOffline = true
+                                } else {
+                                    errorMessage = res.exceptionOrNull()?.message ?: "Check failed"
+                                }
+                            }
+                        }
+                    },
+                    enabled = userSentence.isNotBlank() && !isCheckingAi,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD54F), contentColor = Color(0xFF3E2723)),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("your_turn_check_ai_button")
+                ) {
+                    if (isCheckingAi) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color(0xFF3E2723), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Checking...")
+                    } else {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Check my sentence", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            if (savedOffline) {
+                Surface(
+                    color = Color(0xFF2E7D32).copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Saved to Correction Notebook with status: 'not checked'. You can review it anytime offline!",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF2E7D32)
+                        )
+                    }
+                }
+            }
+
+            if (errorMessage != null) {
+                Text(
+                    text = "AI Check note: $errorMessage (Sentence saved offline)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// 3. WORD LOOKUP BOTTOM SHEET (Local DB lookup + Ask AI in context)
+// -------------------------------------------------------------------------------------------------
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun WordLookupBottomSheet(
+    word: String,
+    sentenceIndex: Int,
+    sentenceEn: String,
+    onDismiss: () -> Unit,
+    onLookupWordLocally: suspend (String) -> List<EntryEntity>,
+    onSaveWordFavorite: suspend (deckId: String, word: String, isFavorite: Boolean) -> Unit,
+    onGetWordFavoriteStatus: suspend (deckId: String, word: String) -> Boolean,
+    onExplainWordInContext: suspend (sentenceIndex: Int, sentenceEn: String, word: String) -> Result<String>,
+    onSpeakWord: (String) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+
+    var localEntries by remember { mutableStateOf<List<EntryEntity>?>(null) }
+    var isLoadingLocal by remember { mutableStateOf(true) }
+    var isFavorite by remember { mutableStateOf(false) }
+
+    // AI Context Explanation
+    var aiExplanation by remember { mutableStateOf<String?>(null) }
+    var isLoadingAi by remember { mutableStateOf(false) }
+    var aiError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(word) {
+        isLoadingLocal = true
+        val matches = onLookupWordLocally(word)
+        localEntries = matches
+        isLoadingLocal = false
+
+        val primaryDeck = matches.firstOrNull()?.deck ?: "oxford5000"
+        isFavorite = onGetWordFavoriteStatus(primaryDeck, word)
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        modifier = Modifier.testTag("reading_word_lookup_sheet")
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            // Header: Word + Audio + Favorite + Close
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = word,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    IconButton(
+                        onClick = { onSpeakWord(word) },
+                        modifier = Modifier.testTag("word_sheet_speak_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.VolumeUp,
+                            contentDescription = "Speak",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = {
+                            val next = !isFavorite
+                            isFavorite = next
+                            scope.launch {
+                                val deckId = localEntries?.firstOrNull()?.deck ?: "oxford5000"
+                                onSaveWordFavorite(deckId, word, next)
+                            }
+                        },
+                        modifier = Modifier.testTag("word_sheet_favorite_button")
+                    ) {
+                        Icon(
+                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = "Favorite",
+                            tint = if (isFavorite) Color.Red else MaterialTheme.colorScheme.outline
+                        )
+                    }
+
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
+                    }
+                }
+            }
+
+            // IPA & POS if found
+            val primary = localEntries?.firstOrNull()
+            if (primary != null) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                ) {
+                    if (primary.ipa.isNotBlank()) {
+                        Text(
+                            text = "/${primary.ipa}/",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                    if (primary.pos.isNotBlank()) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = primary.pos,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                    if (primary.level.isNotBlank()) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = primary.level.uppercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // LOCAL DATABASE RESULTS
+            if (isLoadingLocal) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                }
+            } else if (!localEntries.isNullOrEmpty()) {
+                val entries = localEntries!!
+                Text(
+                    text = "Local Word Books Meaning",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                // Group entries by deck
+                entries.forEach { entry ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                BidiText(
+                                    text = entry.arabic.ifBlank { "—" },
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = entry.deck,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                            }
+
+                            if (entry.definitionEn.isNotBlank()) {
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = entry.definitionEn,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+
+                            if (entry.examplesEn.isNotBlank()) {
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = "• ${entry.examplesEn}",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        textDirection = TextDirection.Ltr,
+                                        textAlign = TextAlign.Left
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                // NOT FOUND IN LOCAL BOOKS CARD
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.HelpOutline,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = "Not in my word books",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "هذه الكلمة غير موجودة في كتب الكلمات المحلية.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // ASK AI (Meaning in this sentence context)
+            Text(
+                text = "Meaning in this Sentence (Context)",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "\"$sentenceEn\"",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+
+            if (aiExplanation != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        BidiText(
+                            text = aiExplanation!!,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            } else {
+                if (isLoadingAi) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Consulting Gemini AI...", style = MaterialTheme.typography.bodyMedium)
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            isLoadingAi = true
+                            aiError = null
+                            scope.launch {
+                                val res = onExplainWordInContext(sentenceIndex, sentenceEn, word)
+                                isLoadingAi = false
+                                if (res.isSuccess) {
+                                    aiExplanation = res.getOrNull()
+                                } else {
+                                    aiError = res.exceptionOrNull()?.message ?: "AI failed"
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp)
+                            .testTag("word_ask_ai_context_button")
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Ask AI for Meaning in Context")
+                    }
+
+                    aiError?.let { err ->
+                        Text(
+                            text = err,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// 4. READING QUESTION CARD (Instant feedback & Arabic explanation)
+// -------------------------------------------------------------------------------------------------
+
+@Composable
+fun ReadingQuestionCard(
+    index: Int,
+    question: ReadingQuestionItem,
+    selectedOptionIndex: Int?,
+    onSelectOption: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isAnswered = selectedOptionIndex != null
+    val isCorrect = selectedOptionIndex == question.answerIndex
+
+    OutlinedCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("reading_question_$index"),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(
+            1.dp,
+            if (isAnswered) {
+                if (isCorrect) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
+            } else MaterialTheme.colorScheme.outlineVariant
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Prompt
+            Row(verticalAlignment = Alignment.Top) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = CircleShape,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "${index + 1}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = question.prompt,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            // Options
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                question.options.forEachIndexed { optIndex, optionText ->
+                    val isSelected = selectedOptionIndex == optIndex
+                    val isRightAnswer = optIndex == question.answerIndex
+
+                    val (containerColor, contentColor, borderColor) = when {
+                        !isAnswered -> Triple(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                            MaterialTheme.colorScheme.onSurface,
+                            MaterialTheme.colorScheme.outlineVariant
+                        )
+                        isSelected && isRightAnswer -> Triple(
+                            Color(0xFFE8F5E9),
+                            Color(0xFF1B5E20),
+                            Color(0xFF2E7D32)
+                        )
+                        isSelected && !isRightAnswer -> Triple(
+                            Color(0xFFFFEBEE),
+                            Color(0xFFB71C1C),
+                            Color(0xFFD32F2F)
+                        )
+                        isRightAnswer -> Triple(
+                            Color(0xFFE8F5E9),
+                            Color(0xFF1B5E20),
+                            Color(0xFF2E7D32)
+                        )
+                        else -> Triple(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            Color.Transparent
+                        )
+                    }
+
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !isAnswered) {
+                                onSelectOption(optIndex)
+                            }
+                            .testTag("q_${index}_opt_${optIndex}"),
+                        shape = RoundedCornerShape(10.dp),
+                        color = containerColor,
+                        border = BorderStroke(1.dp, borderColor)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${('A'.code + optIndex).toChar()}.",
+                                fontWeight = FontWeight.Bold,
+                                color = contentColor,
+                                modifier = Modifier.width(24.dp)
+                            )
+                            Text(
+                                text = optionText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = contentColor,
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            if (isAnswered) {
+                                if (isRightAnswer) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Correct",
+                                        tint = Color(0xFF2E7D32),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                } else if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Wrong",
+                                        tint = Color(0xFFD32F2F),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Arabic Explanation Banner
+            if (isAnswered && question.explanationAr.isNotBlank()) {
+                Spacer(Modifier.height(12.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isCorrect) Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lightbulb,
+                            contentDescription = null,
+                            tint = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFE65100),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        BidiText(
+                            text = question.explanationAr,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (isCorrect) Color(0xFF1B5E20) else Color(0xFFE65100)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// QUIZ COMPLETION CARD
+// -------------------------------------------------------------------------------------------------
+
+@Composable
+fun QuizCompletionCard(
+    score: Int,
+    total: Int,
+    onRetake: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("reading_quiz_completion_card"),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Quiz Completed! / اكتمل الاختبار",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "Score: $score / $total (${(score * 100) / total}%)",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            Spacer(Modifier.height(14.dp))
+            OutlinedButton(
+                onClick = onRetake,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+            ) {
+                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Retake Quiz / إعادة الاختبار")
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// 5. OPEN QUESTION CARD (Summarize in 2 sentences with Gemini Feedback)
+// -------------------------------------------------------------------------------------------------
+
+@Composable
+fun OpenQuestionCard(
+    text: ReadingTextEntity,
+    answerText: String,
+    onAnswerChange: (String) -> Unit,
+    isSubmitting: Boolean,
+    feedback: String?,
+    history: List<AiHistoryEntity>,
+    onSubmitAnswer: (prompt: String, answer: String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val prompt = "Summarize the key idea of this passage in 2-3 sentences."
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("reading_open_question_card"),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Reading Response & Summary",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = prompt,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = answerText,
+                onValueChange = onAnswerChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("reading_open_answer_input"),
+                placeholder = { Text("Write your summary in English here...") },
+                minLines = 3,
+                maxLines = 6
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            Button(
+                onClick = {
+                    if (answerText.isNotBlank()) {
+                        onSubmitAnswer(prompt, answerText.trim())
+                    }
+                },
+                enabled = answerText.isNotBlank() && !isSubmitting,
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .testTag("reading_submit_open_answer_button")
+            ) {
+                if (isSubmitting) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Getting AI Review...")
+                } else {
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Get AI Feedback")
+                }
+            }
+
+            // AI Feedback result
+            feedback?.let { fb ->
+                Spacer(Modifier.height(12.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(
+                            text = "Teacher Review / تقييم المعلم الذكي:",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = fb,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// 6. READING CHAT BOTTOM SHEET (Ask AI about this text)
+// -------------------------------------------------------------------------------------------------
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReadingChatBottomSheet(
+    text: ReadingTextEntity,
+    chatHistory: List<AiHistoryEntity>,
+    onDismiss: () -> Unit,
+    onSendMessage: suspend (String) -> Result<String>
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var inputQuery by remember { mutableStateOf("") }
+    var isSending by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(chatHistory.size) {
+        if (chatHistory.isNotEmpty()) {
+            listState.animateScrollToItem(chatHistory.size - 1)
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        modifier = Modifier.testTag("reading_chat_bottom_sheet")
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Ask AI About This Text",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "اسأل عن أي جملة أو معنى أو فكرة في النص",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = "Close")
+                }
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // Chat Messages List
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .height(340.dp)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (chatHistory.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Ask anything about \"${text.titleEn}\"!\n(e.g., \"What does sentence 2 mean?\" or \"Explain the grammar in paragraph 1\")",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                } else {
+                    items(chatHistory) { msg ->
+                        val isUser = msg.role == "user"
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isUser) MaterialTheme.colorScheme.primaryContainer
+                                else MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.fillMaxWidth(0.85f)
+                            ) {
+                                BidiText(
+                                    text = msg.text,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(12.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Input Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = inputQuery,
+                    onValueChange = { inputQuery = it },
+                    placeholder = { Text("Ask a question in Arabic or English...") },
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("reading_chat_input"),
+                    maxLines = 3
+                )
+                Spacer(Modifier.width(8.dp))
+                IconButton(
+                    onClick = {
+                        val q = inputQuery.trim()
+                        if (q.isNotBlank() && !isSending) {
+                            inputQuery = ""
+                            isSending = true
+                            scope.launch {
+                                onSendMessage(q)
+                                isSending = false
+                            }
+                        }
+                    },
+                    enabled = inputQuery.isNotBlank() && !isSending,
+                    modifier = Modifier.testTag("reading_chat_send_button")
+                ) {
+                    if (isSending) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// 7. ADD & IMPORT READING TEXTS DIALOG (4 Tabs: AI, Paste, Import JSON, Sync)
+// -------------------------------------------------------------------------------------------------
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun AddReadingTextDialog(
+    initialTab: Int = 0,
+    onDismiss: () -> Unit,
+    onCreateWithAi: suspend (level: String, topic: String, length: String, targetWords: List<String>) -> Result<String>,
+    onSavePastedText: suspend (title: String, rawText: String, topic: String, level: String) -> Result<ReadingTextEntity>,
+    onGetSavedTargetWords: suspend (limit: Int) -> List<String>,
+    onPickJsonFiles: () -> Unit,
+    onImportJsonText: suspend (String) -> Result<Int>,
+    onSyncAssets: () -> Unit,
+    onSuccessMessage: (String) -> Unit
+) {
+    var selectedTab by remember { mutableIntStateOf(initialTab) }
+    val tabs = remember { listOf("Create with AI", "Paste Text", "Import JSON", "Sync Assets") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Add Reading Texts",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                ScrollableTabRow(
+                    selectedTabIndex = selectedTab,
+                    edgePadding = 0.dp
+                ) {
+                    tabs.forEachIndexed { index, tabTitle ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            text = { Text(tabTitle, maxLines = 1) }
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                when (selectedTab) {
+                    0 -> TabCreateWithAi(
+                        onDismiss = onDismiss,
+                        onCreateWithAi = onCreateWithAi,
+                        onGetSavedTargetWords = onGetSavedTargetWords,
+                        onSuccessMessage = onSuccessMessage
+                    )
+                    1 -> TabPasteMyText(
+                        onDismiss = onDismiss,
+                        onSavePastedText = onSavePastedText,
+                        onSuccessMessage = onSuccessMessage
+                    )
+                    2 -> TabImportJson(
+                        onDismiss = onDismiss,
+                        onPickJsonFiles = onPickJsonFiles,
+                        onImportJsonText = onImportJsonText,
+                        onSuccessMessage = onSuccessMessage
+                    )
+                    3 -> TabSyncAssets(
+                        onDismiss = onDismiss,
+                        onSyncAssets = onSyncAssets
+                    )
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
+}
+
+@Composable
+fun TabCreateWithAi(
+    onDismiss: () -> Unit,
+    onCreateWithAi: suspend (level: String, topic: String, length: String, targetWords: List<String>) -> Result<String>,
+    onGetSavedTargetWords: suspend (limit: Int) -> List<String>,
+    onSuccessMessage: (String) -> Unit
+) {
+    var selectedLevel by remember { mutableStateOf("B1") }
+    var topic by remember { mutableStateOf("Travel & Cultures") }
+    var length by remember { mutableStateOf("medium") } // short, medium, long
+    var useSavedWords by remember { mutableStateOf(true) }
+    var customTargetWords by remember { mutableStateOf("") }
+    var isGenerating by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    val levels = listOf("A1", "A2", "B1", "B2", "C1", "C2")
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("CEFR Level:", style = MaterialTheme.typography.labelMedium)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(levels) { lvl ->
+                FilterChip(
+                    selected = selectedLevel == lvl,
+                    onClick = { selectedLevel = lvl },
+                    label = { Text(lvl) }
+                )
+            }
+        }
+
+        OutlinedTextField(
+            value = topic,
+            onValueChange = { topic = it },
+            label = { Text("Topic (e.g. Travel, Job Interview, Science)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Text("Story Length:", style = MaterialTheme.typography.labelMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = length == "short",
+                onClick = { length = "short" },
+                label = { Text("Short (5-6)") }
+            )
+            FilterChip(
+                selected = length == "medium",
+                onClick = { length = "medium" },
+                label = { Text("Medium (8-10)") }
+            )
+            FilterChip(
+                selected = length == "long",
+                onClick = { length = "long" },
+                label = { Text("Long (12-15)") }
+            )
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(top = 4.dp)
+        ) {
+            FilterChip(
+                selected = useSavedWords,
+                onClick = { useSavedWords = !useSavedWords },
+                label = { Text("Incorporate my saved / favorite words") }
+            )
+        }
+
+        OutlinedTextField(
+            value = customTargetWords,
+            onValueChange = { customTargetWords = it },
+            label = { Text("Optional extra target words (comma-separated)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        errorMessage?.let {
+            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
+
+        Button(
+            onClick = {
+                isGenerating = true
+                errorMessage = null
+                scope.launch {
+                    val targetList = mutableListOf<String>()
+                    if (useSavedWords) {
+                        targetList.addAll(onGetSavedTargetWords(10))
+                    }
+                    if (customTargetWords.isNotBlank()) {
+                        targetList.addAll(customTargetWords.split(",").map { it.trim() }.filter { it.isNotBlank() })
+                    }
+
+                    val res = onCreateWithAi(selectedLevel, topic, length, targetList.distinct())
+                    isGenerating = false
+                    if (res.isSuccess) {
+                        onSuccessMessage("Successfully generated reading passage with AI!")
+                        onDismiss()
+                    } else {
+                        errorMessage = res.exceptionOrNull()?.message ?: "AI generation failed"
+                    }
+                }
+            },
+            enabled = topic.isNotBlank() && !isGenerating,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            if (isGenerating) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(8.dp))
+                Text("Generating Reading Story...")
+            } else {
+                Icon(Icons.Default.AutoAwesome, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Generate Reading Passage")
+            }
+        }
+    }
+}
+
+@Composable
+fun TabPasteMyText(
+    onDismiss: () -> Unit,
+    onSavePastedText: suspend (title: String, rawText: String, topic: String, level: String) -> Result<ReadingTextEntity>,
+    onSuccessMessage: (String) -> Unit
+) {
+    var title by remember { mutableStateOf("") }
+    var pastedContent by remember { mutableStateOf("") }
+    var topic by remember { mutableStateOf("General") }
+    var level by remember { mutableStateOf("B1") }
+    var isSaving by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = "Paste any English text or article. It will be split into sentences with full local dictionary word lookups.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        OutlinedTextField(
+            value = title,
+            onValueChange = { title = it },
+            label = { Text("Title (Optional)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = pastedContent,
+            onValueChange = { pastedContent = it },
+            label = { Text("English Passage Text *") },
+            placeholder = { Text("Paste your article, story, or paragraph here...") },
+            minLines = 5,
+            maxLines = 10,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        errorMessage?.let {
+            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
+
+        Button(
+            onClick = {
+                isSaving = true
+                errorMessage = null
+                scope.launch {
+                    val res = onSavePastedText(title, pastedContent, topic, level)
+                    isSaving = false
+                    if (res.isSuccess) {
+                        onSuccessMessage("Saved pasted text successfully!")
+                        onDismiss()
+                    } else {
+                        errorMessage = res.exceptionOrNull()?.message ?: "Failed to save text"
+                    }
+                }
+            },
+            enabled = pastedContent.isNotBlank() && !isSaving,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            if (isSaving) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            } else {
+                Icon(Icons.Default.ContentPaste, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Save and Open Text")
+            }
+        }
+    }
+}
+
+@Composable
+fun TabImportJson(
+    onDismiss: () -> Unit,
+    onPickJsonFiles: () -> Unit,
+    onImportJsonText: suspend (String) -> Result<Int>,
+    onSuccessMessage: (String) -> Unit
+) {
+    var jsonText by remember { mutableStateOf("") }
+    var isImporting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Button(
+            onClick = onPickJsonFiles,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.UploadFile, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Select JSON File From Storage")
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+        Text(
+            text = "Or paste JSON directly:",
+            style = MaterialTheme.typography.labelMedium
+        )
+
+        OutlinedTextField(
+            value = jsonText,
+            onValueChange = { jsonText = it },
+            placeholder = { Text("[{\"id\":\"r001\",\"level\":\"B1\",\"topic\":\"Travel\",\"title_en\":\"...\",\"title_ar\":\"...\",\"sentences\":[...],\"questions\":[...]}]") },
+            minLines = 4,
+            maxLines = 8,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        error?.let {
+            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
+
+        Button(
+            onClick = {
+                isImporting = true
+                error = null
+                scope.launch {
+                    val res = onImportJsonText(jsonText)
+                    isImporting = false
+                    if (res.isSuccess) {
+                        onSuccessMessage("Imported ${res.getOrDefault(0)} texts!")
+                        onDismiss()
+                    } else {
+                        error = res.exceptionOrNull()?.message ?: "Import error"
+                    }
+                }
+            },
+            enabled = jsonText.isNotBlank() && !isImporting,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            if (isImporting) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            } else {
+                Text("Import JSON Text")
+            }
+        }
+    }
+}
+
+@Composable
+fun TabSyncAssets(
+    onDismiss: () -> Unit,
+    onSyncAssets: () -> Unit
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = Icons.Default.Refresh,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(40.dp)
+        )
+        Text(
+            text = "Sync Reading Texts from Assets",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = "This reloads reading_texts.json from the app's assets and upserts texts by ID. Your quiz scores and reading progress are always preserved.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        Button(
+            onClick = {
+                onSyncAssets()
+                onDismiss()
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.Refresh, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Sync from Assets Now")
+        }
+    }
+}

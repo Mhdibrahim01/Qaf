@@ -1,0 +1,286 @@
+[
+  {
+    "id": "r001",
+    "level": "B1",
+    "topic": "Travel",
+    "title_en": "Exploring Ancient Cairo",
+    "title_ar": "استكشاف القاهرة القديمة",
+    "sentences": [
+      {
+        "en": "Cairo is one of the oldest and most fascinating cities in the world.",
+        "ar": "القاهرة هي واحدة من أقدم وأروع المدن في العالم."
+      },
+      {
+        "en": "Visitors can wander through historic alleyways filled with the aroma of spices and traditional perfumes.",
+        "ar": "يمكن للزوار التجول في الأزقة التاريخية المليئة برائحة التوابل والعطور التقليدية."
+      },
+      {
+        "en": "Khan el-Khalili bazaar offers handmade souvenirs, colorful lamps, and authentic silver jewelry.",
+        "ar": "يقدم سوق خان الخليلي الهدايا التذكارية المصنوعة يدوياً والمصابيح الملونة والمجوهرات الفضية الأصيلة."
+      },
+      {
+        "en": "Nearby, magnificent mosques display intricate Islamic architecture and towering minarets.",
+        "ar": "بالقرب من ذلك، تعرض المساجد المهيبة عمارة إسلامية معقدة ومآذن شاهقة."
+      },
+      {
+        "en": "Tasting traditional dishes like koshari and mint tea completes the memorable journey.",
+        "ar": "إن تذوق الأطباق التقليدية مثل الكشري وشاي النعناع يكمل هذه الرحلة التي لا تُنسى."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "What makes Khan el-Khalili bazaar special according to the text?",
+        "options": [
+          "It offers handmade souvenirs, colorful lamps, and authentic jewelry",
+          "It is a modern shopping mall with electronics",
+          "It only sells books and newspapers",
+          "It is closed to foreign tourists"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "يذكر النص أن خان الخليلي يقدم هدايا تذكارية مصنوعة يدوياً ومصابيح ملونة ومجوهرات فضية أصيلة."
+      },
+      {
+        "prompt": "What fills the historic alleyways of Cairo?",
+        "options": [
+          "Loud traffic noises",
+          "Aroma of spices and traditional perfumes",
+          "Modern office buildings",
+          "Crowds of international athletes"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "يوضح النص أن الأزقة مليئة برائحة التوابل والعطور التقليدية."
+      },
+      {
+        "prompt": "Which traditional dish is mentioned as completing the journey?",
+        "options": [
+          "Pizza",
+          "Koshari",
+          "Sushi",
+          "Burgers"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "يذكر النص تذوق الكشري وشاي النعناع لإكمال الرحلة المميزة."
+      },
+      {
+        "prompt": "What architectural feature do nearby mosques display?",
+        "options": [
+          "Wooden cabins and glass roofs",
+          "Intricate Islamic architecture and towering minarets",
+          "Modern steel towers",
+          "Underground tunnels only"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "تعرض المساجد القريبة عمارة إسلامية معقدة ومآذن شاهقة."
+      },
+      {
+        "prompt": "What is the primary topic of this reading passage?",
+        "options": [
+          "A guide to desert camping",
+          "Exploring cultural and historic sights in Cairo",
+          "How to learn computer programming",
+          "Modern transportation systems"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "يتناول النص استكشاف المعالم الثقافية والتاريخية في القاهرة القديمة."
+      }
+    ],
+    "source": "sample"
+  },
+  {
+    "id": "r002",
+    "level": "A2",
+    "topic": "Daily Life",
+    "title_en": "A Busy Morning in the City",
+    "title_ar": "صباح حافل في المدينة",
+    "sentences": [
+      {
+        "en": "Every morning, the city center wakes up early with the sound of cheerful traffic.",
+        "ar": "كل صباح، يستيقظ وسط المدينة مبكراً على أصوات حركة المرور المبهجة."
+      },
+      {
+        "en": "People hurry toward the underground station carrying hot cups of coffee.",
+        "ar": "يسرع الناس نحو محطة مترو الأنفاق حاملين أكواب القهوة الساخنة."
+      },
+      {
+        "en": "Local bakeries open their doors and sell fresh bread and sweet croissants.",
+        "ar": "تفتح المخابز المحلية أبوابها وتبيع الخبز الطازج والكرواسون الحلو."
+      },
+      {
+        "en": "Bicycle riders navigate quietly through the park on their way to university.",
+        "ar": "يتنقل راكبو الدراجات بهدوء عبر الحديقة في طريقهم إلى الجامعة."
+      },
+      {
+        "en": "A new day brings fresh energy and promising opportunities for everyone.",
+        "ar": "يوم جديد يجلب طاقة متجددة وفرصاً واعدة للجميع."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "Where do people hurry toward in the morning?",
+        "options": [
+          "The underground station",
+          "The airport terminal",
+          "The cinema",
+          "The swimming pool"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "يذكر النص أن الناس يسرعون نحو محطة مترو الأنفاق."
+      },
+      {
+        "prompt": "What do local bakeries sell early in the day?",
+        "options": [
+          "Fresh bread and sweet croissants",
+          "Frozen fish and meat",
+          "Used clothes and shoes",
+          "Stationery and pens"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "تفتح المخابز لبيع الخبز الطازج والكرواسون الحلو."
+      },
+      {
+        "prompt": "How do bicycle riders travel through the park?",
+        "options": [
+          "Loudly and quickly",
+          "Quietly",
+          "In big trucks",
+          "They do not ride bicycles"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "يذكر النص أن راكبي الدراجات يتنقلون بهدوء (quietly) عبر الحديقة."
+      },
+      {
+        "prompt": "What are cyclists on their way to?",
+        "options": [
+          "The beach",
+          "University",
+          "The stadium",
+          "The hospital"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "راكبو الدراجات في طريقهم إلى الجامعة (university)."
+      },
+      {
+        "prompt": "What does a new day bring according to the passage?",
+        "options": [
+          "Cold rain and sadness",
+          "Fresh energy and promising opportunities",
+          "Cancellation of all classes",
+          "Traffic jams only"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "يجلب اليوم الجديد طاقة متجددة وفرصاً واعدة للجميع."
+      }
+    ],
+    "source": "sample"
+  },
+  {
+    "id": "r054",
+    "level": "B2",
+    "topic": "work and careers",
+    "title_en": "The Missed Interview",
+    "title_ar": "المقابلة الفائتة",
+    "grammar_ids": [
+      "g054"
+    ],
+    "sentences": [
+      {
+        "en": "Last spring, Omar was offered an interview at a large software company in Cairo.",
+        "ar": "في الربيع الماضي عُرض على عمر إجراء مقابلة في شركة برمجيات كبيرة في القاهرة."
+      },
+      {
+        "en": "He planned to take the early train, but he decided to sleep for another hour.",
+        "ar": "خطّط لأن يستقل القطار المبكر، لكنه قرر أن ينام ساعة إضافية."
+      },
+      {
+        "en": "By the time he arrived at the station, the train had already left.",
+        "ar": "عندما وصل إلى المحطة كان القطار قد غادر بالفعل."
+      },
+      {
+        "en": "If Omar had set his alarm, he would have caught that train.",
+        "ar": "لو ضبط عمر المنبّه لاستقل ذلك القطار.",
+        "grammar_id": "g054"
+      },
+      {
+        "en": "He rushed to the office by taxi, but the interview had finished ten minutes earlier.",
+        "ar": "أسرع إلى المكتب بسيارة أجرة، لكن المقابلة كانت قد انتهت قبل عشر دقائق."
+      },
+      {
+        "en": "The manager told him that she would have waited if he had called her.",
+        "ar": "قالت له المديرة إنها كانت ستنتظره لو اتصل بها.",
+        "grammar_id": "g054"
+      },
+      {
+        "en": "Omar realised that he wouldn't have lost the chance if he had been better prepared.",
+        "ar": "أدرك عمر أنه لم يكن ليخسر الفرصة لو كان أكثر استعدادًا.",
+        "grammar_id": "g054"
+      },
+      {
+        "en": "If he had known how important that day was, he would have prepared everything the night before.",
+        "ar": "لو كان يعلم مدى أهمية ذلك اليوم لجهّز كل شيء في الليلة السابقة.",
+        "grammar_id": "g054"
+      },
+      {
+        "en": "Now he checks his schedule twice and always sets two alarms.",
+        "ar": "الآن يراجع جدوله مرتين ويضبط دائمًا منبّهين."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "Why did Omar miss the interview?",
+        "options": [
+          "He got lost in the city",
+          "He slept for another hour and missed the train",
+          "The company cancelled it",
+          "He forgot the address"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "قرر عمر أن ينام ساعة إضافية ففاته القطار المبكر ثم المقابلة."
+      },
+      {
+        "prompt": "What does the sentence \"If Omar had set his alarm, he would have caught that train\" tell us?",
+        "options": [
+          "Omar set his alarm and caught the train",
+          "Omar did not set his alarm and missed the train",
+          "Omar will set his alarm tomorrow",
+          "Omar never uses an alarm"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "الشرط الثالث (if + had + V3, would have + V3) يتحدث عن شيء لم يحدث في الماضي: لم يضبط المنبّه ففاته القطار."
+      },
+      {
+        "prompt": "According to the manager, what would she have done?",
+        "options": [
+          "Cancelled the interview",
+          "Waited for Omar",
+          "Called Omar",
+          "Hired Omar immediately"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "قالت المديرة إنها كانت ستنتظره لو اتصل بها (would have waited)."
+      },
+      {
+        "prompt": "Which sentence has the same meaning as \"He wouldn't have lost the chance if he had been better prepared\"?",
+        "options": [
+          "He lost the chance because he was not well prepared.",
+          "He lost the chance although he was well prepared.",
+          "He did not lose the chance.",
+          "He will lose the chance."
+        ],
+        "answer_index": 0,
+        "explanation_ar": "الشرط الثالث يعني أن الواقع عكس ذلك: لم يكن مستعدًا جيدًا ولذلك خسر الفرصة."
+      },
+      {
+        "prompt": "What does Omar do now?",
+        "options": [
+          "He takes taxis everywhere",
+          "He sets two alarms and checks his schedule twice",
+          "He changed his job",
+          "He avoids interviews"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "في آخر جملة: يراجع جدوله مرتين ويضبط منبّهين."
+      }
+    ],
+    "source": "sample"
+  }
+]
