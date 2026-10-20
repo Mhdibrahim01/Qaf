@@ -63,8 +63,8 @@ STRICT RULES:
         if (raw.isEmpty()) return raw
 
         val withoutInlineMarkdown = raw
+            .replace(Regex("""(?<!_)__(?!_)([^\n_]+?)(?<!_)__(?!_)"""), "$1")
             .replace("**", "")
-            .replace("__", "")
             .replace("### ", "")
             .replace("## ", "")
             .replace("###", "")

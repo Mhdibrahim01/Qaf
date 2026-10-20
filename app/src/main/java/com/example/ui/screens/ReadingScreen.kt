@@ -117,7 +117,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -149,6 +152,80 @@ private val readingJson = Json {
 
 private val READING_WHITESPACE_REGEX = Regex("\\s+")
 private val READING_TOKEN_CLEAN_REGEX = Regex("^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$")
+
+private data class ReadingTokenItem(
+    val token: String,
+    val cleanWord: String,
+    val isTarget: Boolean,
+    val isGrammar: Boolean
+)
+
+private fun extractGrammarKeywords(lesson: GrammarLessonEntity?): Set<String> {
+    if (lesson == null) return emptySet()
+    val keywords = mutableSetOf<String>()
+    val title = lesson.titleEn.lowercase()
+
+    // 1. Text after colon: e.g. "Advanced linking: whereas, albeit, notwithstanding"
+    if (title.contains(":")) {
+        val afterColon = title.substringAfter(":")
+        afterColon.split(',', '/', ';').forEach { raw ->
+            raw.trim().split(" and ", " or ").forEach { word ->
+                val clean = word.trim().replace(Regex("^[^a-z0-9']+|[^a-z0-9']+$"), "")
+                if (clean.isNotBlank() && clean.length > 1) {
+                    keywords.add(clean)
+                }
+            }
+        }
+    }
+
+    // 2. Text inside parentheses: e.g. "Zero conditional and time clauses (when, as soon as, unless)"
+    val parenMatch = Regex("\\(([^)]+)\\)").find(title)
+    if (parenMatch != null) {
+        val inside = parenMatch.groupValues[1]
+        inside.split(',', '/', ';').forEach { raw ->
+            raw.trim().split(" and ", " or ").forEach { word ->
+                val clean = word.trim().replace(Regex("^[^a-z0-9']+|[^a-z0-9']+$"), "")
+                if (clean.isNotBlank() && clean.length > 1) {
+                    keywords.add(clean)
+                }
+            }
+        }
+    }
+
+    // 3. Known connector phrases in title: "with for and since", "so and such", "too and enough", "used to and would"
+    val parts = title.replace(Regex("[,:()]"), " ").split(Regex("\\s+"))
+    for (w in parts) {
+        if (w in listOf(
+                "whereas", "albeit", "notwithstanding", "although", "though",
+                "unless", "since", "until", "while", "whenever", "wherever",
+                "provided", "providing", "supposing", "either", "neither", "both",
+                "enough", "too", "would", "must", "can't", "should", "shouldn't",
+                "could", "might", "may"
+            )
+        ) {
+            keywords.add(w)
+        }
+    }
+
+    if (title.contains("for and since")) {
+        keywords.add("for")
+        keywords.add("since")
+    }
+    if (title.contains("too and enough")) {
+        keywords.add("too")
+        keywords.add("enough")
+    }
+    if (title.contains("so and such")) {
+        keywords.add("so")
+        keywords.add("such")
+    }
+    if (title.contains("can and can't")) {
+        keywords.add("can")
+        keywords.add("can't")
+    }
+
+    return keywords
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1008,7 +1085,7 @@ fun ReadingDetailScreen(
     // Grammar Highlight & Bottom Sheet states
     var activeGrammarSentence by remember { mutableStateOf<Pair<ReadingSentenceItem, GrammarLessonEntity?>?>(null) }
     var activePracticeLesson by remember { mutableStateOf<GrammarLessonEntity?>(null) }
-    var grammarHintsEnabled by remember { mutableStateOf(false) }
+    var grammarHintsEnabled by remember { mutableStateOf(true) }
     var selectedSentenceIndex by remember { mutableStateOf<Int?>(null) }
 
     // AI Chat bottom sheet
@@ -1401,6 +1478,7 @@ fun ReadingDetailScreen(
                                 isSelected = isSentenceSelected,
                                 showGrammarHints = grammarHintsEnabled || isSentenceSelected,
                                 grammarLabel = grammarTitle,
+                                linkedGrammarLesson = linkedGrammarLesson,
                                 targetWords = targetWords,
                                 onSelectSentence = {
                                     selectedSentenceIndex = if (selectedSentenceIndex == sIndex) null else sIndex
@@ -1614,6 +1692,7 @@ fun ReadingSentenceBlock(
     isSelected: Boolean = false,
     showGrammarHints: Boolean = false,
     grammarLabel: String = "Grammar Rule",
+    linkedGrammarLesson: GrammarLessonEntity? = null,
     targetWords: Set<String>,
     onSelectSentence: () -> Unit = {},
     onToggleArabic: () -> Unit,
@@ -1623,11 +1702,10 @@ fun ReadingSentenceBlock(
     modifier: Modifier = Modifier
 ) {
     val hasGrammar = !sentence.grammarId.isNullOrBlank()
-    val showGrammarBadge = hasGrammar && showGrammarHints
+    val grammarKeywords = remember(linkedGrammarLesson) { extractGrammarKeywords(linkedGrammarLesson) }
 
     val targetBg = when {
         isHighlighted -> Color(0xFFE5C158).copy(alpha = 0.16f)
-        showGrammarBadge -> Color(0xFFE5C158).copy(alpha = 0.08f)
         isSelected -> Color(0xFF262834)
         else -> Color.Transparent
     }
@@ -1643,12 +1721,7 @@ fun ReadingSentenceBlock(
             .clip(RoundedCornerShape(10.dp))
             .background(backgroundColor)
             .then(
-                if (showGrammarBadge) {
-                    Modifier.border(
-                        BorderStroke(1.dp, Color(0xFFE5C158).copy(alpha = 0.45f)),
-                        RoundedCornerShape(10.dp)
-                    )
-                } else if (isSelected) {
+                if (isSelected) {
                     Modifier.border(
                         BorderStroke(1.dp, Color(0xFF383A4A)),
                         RoundedCornerShape(10.dp)
@@ -1661,54 +1734,7 @@ fun ReadingSentenceBlock(
             .padding(8.dp)
             .testTag("reading_sentence_$sentenceIndex")
     ) {
-        // Grammar Header Badge if linked and hints enabled / tapped
-        if (showGrammarBadge) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = Color(0xFFE5C158).copy(alpha = 0.15f),
-                    border = BorderStroke(1.dp, Color(0xFFE5C158).copy(alpha = 0.45f)),
-                    modifier = Modifier
-                        .clickable { onGrammarClicked?.invoke() }
-                        .testTag("sentence_grammar_chip_$sentenceIndex")
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.School,
-                            contentDescription = null,
-                            tint = Color(0xFFE5C158),
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = grammarLabel,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFE5C158),
-                            fontSize = 11.sp
-                        )
-                        Spacer(Modifier.width(2.dp))
-                        Text(
-                            text = "• Tap rule",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFFD1D5DB),
-                            fontSize = 10.sp
-                        )
-                    }
-                }
-            }
-        }
-
-        // English Words Flow
+        // English Words Flow & Controls
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top
@@ -1730,14 +1756,17 @@ fun ReadingSentenceBlock(
 
             Spacer(Modifier.width(4.dp))
 
-            // Flow of clickable words (memoized tokenization)
-            val parsedTokens = remember(sentence.en, targetWords) {
+            // Flow of clickable words with smart in-text grammar keyword highlighting
+            val parsedTokens = remember(sentence.en, targetWords, grammarKeywords, showGrammarHints, isSelected) {
                 sentence.en.split(READING_WHITESPACE_REGEX)
                     .filter { it.isNotBlank() }
                     .map { token ->
                         val cleanWord = token.replace(READING_TOKEN_CLEAN_REGEX, "")
-                        val isTarget = cleanWord.isNotBlank() && targetWords.contains(cleanWord.lowercase())
-                        Triple(token, cleanWord, isTarget)
+                        val lowerClean = cleanWord.lowercase()
+                        val isTarget = cleanWord.isNotBlank() && targetWords.contains(lowerClean)
+                        val isGrammar = hasGrammar && (showGrammarHints || isSelected) &&
+                                lowerClean.isNotBlank() && grammarKeywords.contains(lowerClean)
+                        ReadingTokenItem(token, cleanWord, isTarget, isGrammar)
                     }
             }
             FlowRow(
@@ -1745,28 +1774,99 @@ fun ReadingSentenceBlock(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                for ((token, cleanWord, isTarget) in parsedTokens) {
+                for (item in parsedTokens) {
+                    val token = item.token
+                    val cleanWord = item.cleanWord
+                    val isTarget = item.isTarget
+                    val isGrammar = item.isGrammar
+
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(4.dp))
                             .background(
-                                if (isTarget) Color(0xFFFFD54F) else Color.Transparent
+                                when {
+                                    isTarget -> Color(0xFFFFD54F)
+                                    isGrammar -> Color(0xFFE5C158).copy(alpha = 0.20f)
+                                    else -> Color.Transparent
+                                }
+                            )
+                            .then(
+                                if (isGrammar) {
+                                    Modifier.border(
+                                        BorderStroke(1.dp, Color(0xFFE5C158).copy(alpha = 0.65f)),
+                                        RoundedCornerShape(4.dp)
+                                    )
+                                } else Modifier
                             )
                             .clickable {
-                                if (cleanWord.isNotBlank()) onWordClicked(cleanWord)
+                                if (isGrammar) {
+                                    onGrammarClicked?.invoke()
+                                } else if (cleanWord.isNotBlank()) {
+                                    onWordClicked(cleanWord)
+                                }
                             }
-                            .padding(horizontal = 2.dp, vertical = 1.dp)
+                            .padding(horizontal = if (isGrammar) 4.dp else 2.dp, vertical = 1.dp)
                     ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = token,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontSize = 18.sp,
+                                lineHeight = 28.sp,
+                                fontWeight = if (isTarget || isGrammar) FontWeight.Bold else FontWeight.Normal,
+                                color = when {
+                                    isTarget -> Color(0xFF3E2723)
+                                    isGrammar -> Color(0xFFE5C158)
+                                    else -> MaterialTheme.colorScheme.onSurface
+                                }
+                            )
+                            if (isGrammar) {
+                                Text(
+                                    text = "🎓",
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Discreet lesson indicator pill
+            if (hasGrammar && (showGrammarHints || isSelected)) {
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = Color(0xFFE5C158).copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, Color(0xFFE5C158).copy(alpha = 0.45f)),
+                    modifier = Modifier
+                        .align(Alignment.CenterVertically)
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable { onGrammarClicked?.invoke() }
+                        .testTag("sentence_grammar_chip_$sentenceIndex")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.School,
+                            contentDescription = "Grammar Rule",
+                            tint = Color(0xFFE5C158),
+                            modifier = Modifier.size(13.dp)
+                        )
                         Text(
-                            text = token,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontSize = 18.sp,
-                            lineHeight = 28.sp,
-                            fontWeight = if (isTarget) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isTarget) Color(0xFF3E2723) else MaterialTheme.colorScheme.onSurface
+                            text = "Rule",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFE5C158),
+                            fontSize = 11.sp
                         )
                     }
                 }
+                Spacer(Modifier.width(2.dp))
             }
 
             // Arabic toggle button for this sentence (High contrast)
@@ -1940,7 +2040,7 @@ fun GrammarSentenceBottomSheet(
                 }
             }
 
-            // Sentence with translation
+            // Sentence with translation and highlighted grammar keyword
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
@@ -1955,16 +2055,39 @@ fun GrammarSentenceBottomSheet(
                         color = Color(0xFFB78103)
                     )
                     Spacer(Modifier.height(6.dp))
+                    val sheetKeywords = remember(lesson) { extractGrammarKeywords(lesson) }
+                    val annotatedSentence = remember(sentence.en, sheetKeywords) {
+                        buildAnnotatedString {
+                            val tokens = sentence.en.split(READING_WHITESPACE_REGEX)
+                            tokens.forEachIndexed { idx, token ->
+                                val clean = token.replace(READING_TOKEN_CLEAN_REGEX, "").lowercase()
+                                if (clean in sheetKeywords) {
+                                    withStyle(
+                                        SpanStyle(
+                                            color = Color(0xFFE5C158),
+                                            fontWeight = FontWeight.Bold,
+                                            background = Color(0xFFE5C158).copy(alpha = 0.22f)
+                                        )
+                                    ) {
+                                        append(token)
+                                    }
+                                } else {
+                                    append(token)
+                                }
+                                if (idx < tokens.lastIndex) append(" ")
+                            }
+                        }
+                    }
                     Text(
-                        text = sentence.en,
+                        text = annotatedSentence,
                         style = MaterialTheme.typography.bodyLarge.copy(
                             textDirection = TextDirection.Ltr,
                             textAlign = TextAlign.Left
                         ),
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Medium
                     )
                     if (sentence.ar.isNotBlank()) {
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(6.dp))
                         BidiText(
                             text = sentence.ar,
                             style = MaterialTheme.typography.bodyMedium,
@@ -1974,7 +2097,7 @@ fun GrammarSentenceBottomSheet(
                 }
             }
 
-            // Two buttons: "Open full lesson" and "Practise this" (2-3 exercises offline)
+            // Direct practice button & Open full lesson
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1982,25 +2105,34 @@ fun GrammarSentenceBottomSheet(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Button(
+                    onClick = onPractiseThis,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFE5C158),
+                        contentColor = Color(0xFF1E1E2A)
+                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .weight(1.2f)
+                        .testTag("practise_this_lesson_button")
+                ) {
+                    Icon(Icons.Default.Quiz, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "Practice Rule ➔",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                OutlinedButton(
                     onClick = onOpenFullLesson,
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
                         .weight(1f)
                         .testTag("open_full_lesson_button")
                 ) {
                     Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Open full lesson")
-                }
-
-                OutlinedButton(
-                    onClick = onPractiseThis,
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("practise_this_lesson_button")
-                ) {
-                    Icon(Icons.Default.Quiz, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Practise this")
+                    Text("Full Lesson")
                 }
             }
 
@@ -2054,7 +2186,7 @@ fun OfflineGrammarPracticeDialog(
                     exercises.forEachIndexed { index, exercise ->
                         val selected = userAnswers[index]
                         val isAnswered = selected != null
-                        val isCorrect = selected?.equals(exercise.answer, ignoreCase = true) == true
+                        val isCorrect = selected != null && isGrammarAnswerCorrect(selected, exercise.answer)
 
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -2069,45 +2201,106 @@ fun OfflineGrammarPracticeDialog(
                                 )
                                 Spacer(Modifier.height(8.dp))
 
-                                exercise.options.forEach { option ->
-                                    val isOptionSelected = selected == option
-                                    val isOptionCorrect = option.equals(exercise.answer, ignoreCase = true)
+                                if (exercise.options.isNotEmpty()) {
+                                    exercise.options.forEach { option ->
+                                        val isOptionSelected = selected == option
+                                        val isOptionCorrect = isGrammarAnswerCorrect(option, exercise.answer)
 
-                                    val containerColor = when {
-                                        !isAnswered -> MaterialTheme.colorScheme.surface
-                                        isOptionCorrect -> Color(0xFF2E7D32).copy(alpha = 0.15f)
-                                        isOptionSelected && !isOptionCorrect -> Color(0xFFC62828).copy(alpha = 0.15f)
-                                        else -> MaterialTheme.colorScheme.surface
-                                    }
+                                        val containerColor = when {
+                                            !isAnswered -> MaterialTheme.colorScheme.surface
+                                            isOptionCorrect -> Color(0xFF2E7D32).copy(alpha = 0.15f)
+                                            isOptionSelected && !isOptionCorrect -> Color(0xFFC62828).copy(alpha = 0.15f)
+                                            else -> MaterialTheme.colorScheme.surface
+                                        }
 
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = containerColor,
-                                        border = BorderStroke(
-                                            1.dp,
-                                            if (isAnswered && isOptionCorrect) Color(0xFF2E7D32)
-                                            else if (isAnswered && isOptionSelected && !isOptionCorrect) Color(0xFFC62828)
-                                            else MaterialTheme.colorScheme.outlineVariant
-                                        ),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 3.dp)
-                                            .clickable(enabled = !isAnswered) {
-                                                userAnswers[index] = option
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = containerColor,
+                                            border = BorderStroke(
+                                                1.dp,
+                                                if (isAnswered && isOptionCorrect) Color(0xFF2E7D32)
+                                                else if (isAnswered && isOptionSelected && !isOptionCorrect) Color(0xFFC62828)
+                                                else MaterialTheme.colorScheme.outlineVariant
+                                            ),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 3.dp)
+                                                .clickable(enabled = !isAnswered) {
+                                                    userAnswers[index] = option
+                                                }
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = option,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = if (isOptionSelected) FontWeight.Bold else FontWeight.Normal,
+                                                    color = if (isAnswered && isOptionCorrect) Color(0xFF2E7D32)
+                                                    else if (isAnswered && isOptionSelected && !isOptionCorrect) Color(0xFFC62828)
+                                                    else MaterialTheme.colorScheme.onSurface
+                                                )
                                             }
-                                    ) {
+                                        }
+                                    }
+                                } else {
+                                    var textInput by remember(index) { mutableStateOf(selected ?: "") }
+                                    if (!isAnswered) {
                                         Row(
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Text(
-                                                text = option,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = if (isOptionSelected) FontWeight.Bold else FontWeight.Normal,
-                                                color = if (isAnswered && isOptionCorrect) Color(0xFF2E7D32)
-                                                else if (isAnswered && isOptionSelected && !isOptionCorrect) Color(0xFFC62828)
-                                                else MaterialTheme.colorScheme.onSurface
+                                            OutlinedTextField(
+                                                value = textInput,
+                                                onValueChange = { textInput = it },
+                                                placeholder = { Text("Type answer...", fontSize = 13.sp) },
+                                                singleLine = true,
+                                                modifier = Modifier.weight(1f).testTag("dialog_fill_input_$index"),
+                                                shape = RoundedCornerShape(8.dp)
                                             )
+                                            Button(
+                                                onClick = {
+                                                    if (textInput.isNotBlank()) {
+                                                        userAnswers[index] = textInput.trim()
+                                                    }
+                                                },
+                                                enabled = textInput.isNotBlank(),
+                                                shape = RoundedCornerShape(8.dp),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = Color(0xFFE5C158),
+                                                    contentColor = Color(0xFF1E1E2A)
+                                                ),
+                                                modifier = Modifier.testTag("dialog_fill_submit_$index")
+                                            ) {
+                                                Text("Check", fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                    } else {
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = if (isCorrect) Color(0xFF2E7D32).copy(alpha = 0.15f) else Color(0xFFC62828).copy(alpha = 0.15f),
+                                            border = BorderStroke(1.dp, if (isCorrect) Color(0xFF2E7D32) else Color(0xFFC62828)),
+                                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(
+                                                    text = "Your answer: $selected",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFC62828)
+                                                )
+                                                Text(
+                                                    text = if (isCorrect) "✓" else "✗",
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFC62828)
+                                                )
+                                            }
                                         }
                                     }
                                 }

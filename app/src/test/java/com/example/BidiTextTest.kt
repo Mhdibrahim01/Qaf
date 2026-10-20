@@ -209,4 +209,35 @@ class BidiTextTest {
 
         return bitmap
     }
+
+    @Test
+    fun testPreservesExerciseBlanksAndClues() {
+        val q1 = "I ____ play football well."
+        val out1 = isolateLatin(q1)
+        assertTrue("Blanks must be preserved", out1.contains("____"))
+        assertEquals("${LRI}I ____ play football well.${PDI}", out1)
+
+        val q5 = "He ____ (not / can) cook."
+        val out5 = isolateLatin(q5)
+        assertTrue("Blanks must be preserved", out5.contains("____"))
+        assertTrue("Clues must be preserved", out5.contains("(not / can)"))
+        assertEquals("${LRI}He ____ (not / can) cook.${PDI}", out5)
+
+        val markdownWithBlanks = "Rule: __bold__ and blank ____."
+        val outMarkdown = isolateLatin(markdownWithBlanks)
+        assertTrue("Bold markdown markers removed", outMarkdown.contains("bold"))
+        assertFalse("Double underscore around bold removed", outMarkdown.contains("__bold__"))
+        assertTrue("Four-underscore blank preserved", outMarkdown.contains("____"))
+    }
+
+    @Test
+    fun testGrammarAnswerMatching() {
+        assertTrue(com.example.ui.screens.isGrammarAnswerCorrect("can't", "can't"))
+        assertTrue(com.example.ui.screens.isGrammarAnswerCorrect("cannot", "can't"))
+        assertTrue(com.example.ui.screens.isGrammarAnswerCorrect("can not", "can't"))
+        assertTrue(com.example.ui.screens.isGrammarAnswerCorrect("can’t", "can't")) // curly apostrophe
+        assertTrue(com.example.ui.screens.isGrammarAnswerCorrect("can't.", "can't"))
+        assertTrue(com.example.ui.screens.isGrammarAnswerCorrect("Can't", "can't"))
+        assertFalse(com.example.ui.screens.isGrammarAnswerCorrect("could", "can't"))
+    }
 }

@@ -375,7 +375,8 @@ fun WordBooksAppShell(
                                 "grammar" -> navController.navigate(AppRoute.Grammar) { launchSingleTop = true }
                                 else -> navController.navigate(AppRoute.Plan) { launchSingleTop = true }
                             }
-                        }
+                        },
+                        onToggleTaskCompleted = wordBooksViewModel::toggleTaskCompleted
                     )
                 }
                 composable<AppRoute.WordBooks> {
@@ -428,7 +429,12 @@ fun WordBooksAppShell(
                         onPlayAudio = wordBooksViewModel::playAudio,
                         onPlayVoiceAudio = wordBooksViewModel::playWordVoiceAudio,
                         onSpeakSentenceTts = wordBooksViewModel::speakSentenceTts,
-                        onReverifyImport = { wordBooksViewModel.startImportIfNeeded(forceRecheck = true) }
+                        onReverifyImport = { wordBooksViewModel.startImportIfNeeded(forceRecheck = true) },
+                        deckStudyStates = deckStudyStates,
+                        onSetCheckpoint = wordBooksViewModel::setDeckCheckpoint,
+                        onOpenAllWords = wordBooksViewModel::openAllWords,
+                        onOpenMasteredWords = wordBooksViewModel::openMasteredWords,
+                        onOpenFavoriteWords = wordBooksViewModel::openFavoriteWords
                     )
                 }
                 composable<AppRoute.Flashcards> {

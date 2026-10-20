@@ -1422,7 +1422,7 @@ fun GrammarLessonDetailScreen(
                                             if (exercises.indices.all { isSubmitted[it] == true }) {
                                                 exercisesFinished = true
                                                 val score = exercises.indices.count { i ->
-                                                    userAnswers[i]?.trim().equals(exercises[i].answer.trim(), ignoreCase = true)
+                                                    isGrammarAnswerCorrect(userAnswers[i].orEmpty(), exercises[i].answer)
                                                 }
                                                 onSaveProgress(lesson.id, exercises.size, exercises.size, score, true)
                                             }
@@ -1479,7 +1479,7 @@ fun GrammarLessonDetailScreen(
                                                     if (exercises.indices.all { isSubmitted[it] == true }) {
                                                         exercisesFinished = true
                                                         val score = exercises.indices.count { i ->
-                                                            userAnswers[i]?.trim().equals(exercises[i].answer.trim(), ignoreCase = true)
+                                                            isGrammarAnswerCorrect(userAnswers[i].orEmpty(), exercises[i].answer)
                                                         }
                                                         onSaveProgress(lesson.id, exercises.size, exercises.size, score, true)
                                                     }
@@ -2005,6 +2005,242 @@ fun StructuredGrammarExplanation(
     }
 }
 
+/**
+ * Normalizes grammar answers by trimming, lowercasing, and normalizing apostrophes/whitespace.
+ */
+fun normalizeGrammarAnswer(input: String): String {
+    return input.trim()
+        .lowercase()
+        .replace("’", "'")
+        .replace("`", "'")
+        .replace("‘", "'")
+        .replace(Regex("""\s+"""), " ")
+}
+
+/**
+ * Smart answer matching: checks exact matches and standard English contraction equivalences
+ * (e.g. can't == cannot == can not).
+ */
+fun isGrammarAnswerCorrect(userAnswer: String, expectedAnswer: String): Boolean {
+    val u = normalizeGrammarAnswer(userAnswer)
+    val e = normalizeGrammarAnswer(expectedAnswer)
+    if (u == e) return true
+
+    fun expand(s: String): String {
+        return s
+            .replace("can't", "cannot")
+            .replace("can not", "cannot")
+            .replace("won't", "will not")
+            .replace("n't", " not")
+            .replace("'re", " are")
+            .replace("'m", " am")
+            .replace("'s", " is")
+            .replace("'ve", " have")
+            .replace("'ll", " will")
+            .replace("'d", " would")
+            .replace(Regex("""\s+"""), " ")
+            .trim()
+    }
+
+    if (expand(u) == expand(e)) return true
+    val uNoPunct = u.trimEnd('.', '?', '!')
+    val eNoPunct = e.trimEnd('.', '?', '!')
+    if (uNoPunct == eNoPunct || expand(uNoPunct) == expand(eNoPunct)) return true
+
+    return false
+}
+
+/**
+ * Enhanced Grammar Exercise Prompt Renderer:
+ * - Detects blanks (____, ___, [...]) and renders a distinct, styled blank slot pill.
+ * - Dynamically displays the user's selected/typed answer inside the blank slot.
+ * - Extracts parenthetical clues (e.g. `(not / can)` or `(bus)`) into a dedicated clue chip below the sentence.
+ * - Recovers blanks if the clue was in place of a stripped blank (e.g. `He (not / can) cook.`).
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun GrammarExercisePrompt(
+    prompt: String,
+    currentAnswer: String,
+    submitted: Boolean,
+    isCorrect: Boolean,
+    correctAnswer: String,
+    modifier: Modifier = Modifier
+) {
+    val clueRegex = Regex("""\(([^)]+)\)""")
+    val clueMatch = clueRegex.find(prompt)
+    val extractedClue = clueMatch?.groupValues?.get(1)?.trim().orEmpty()
+    val displayClue = extractedClue.removePrefix("use:").removePrefix("clue:").removePrefix("hint:").trim()
+
+    var sentenceText = if (clueMatch != null) {
+        prompt.replace(clueMatch.value, "").replace(Regex("""\s+"""), " ").trim()
+    } else {
+        prompt.trim()
+    }
+
+    val blankRegex = Regex("""_{2,}|\[_+\]|\[\.\.\.\]|\.\.\.{2,}""")
+    var blankMatch = blankRegex.find(sentenceText)
+
+    if (blankMatch == null && clueMatch != null) {
+        val clueStart = clueMatch.range.first
+        val beforeClue = prompt.substring(0, clueStart).trimEnd()
+        val afterClue = prompt.substring(clueMatch.range.last + 1).trimStart()
+        sentenceText = "$beforeClue ____ $afterClue".trim()
+        blankMatch = blankRegex.find(sentenceText)
+    }
+
+    if (blankMatch != null) {
+        val blankRange = blankMatch.range
+        val prefix = sentenceText.substring(0, blankRange.first).trim()
+        val suffix = sentenceText.substring(blankRange.last + 1).trim()
+        val prefixWords = remember(prefix) {
+            prefix.split(Regex("""\s+""")).filter { it.isNotBlank() }
+        }
+        val suffixWords = remember(suffix) {
+            suffix.split(Regex("""\s+""")).filter { it.isNotBlank() }
+        }
+
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = SurfaceElevatedDark),
+            border = BorderStroke(1.dp, BorderDark)
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically)
+                ) {
+                    for (word in prefixWords) {
+                        Text(
+                            text = word,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                textDirection = TextDirection.Ltr,
+                                textAlign = TextAlign.Left
+                            ),
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary,
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = when {
+                            submitted && isCorrect -> EmeraldAccent.copy(alpha = 0.22f)
+                            submitted && !isCorrect -> CoralAccent.copy(alpha = 0.22f)
+                            currentAnswer.isNotBlank() -> GoldAccent.copy(alpha = 0.18f)
+                            else -> BackgroundDark
+                        },
+                        border = BorderStroke(
+                            1.5.dp,
+                            when {
+                                submitted && isCorrect -> EmeraldAccent
+                                submitted && !isCorrect -> CoralAccent
+                                currentAnswer.isNotBlank() -> GoldAccent
+                                else -> GoldAccent.copy(alpha = 0.6f)
+                            }
+                        ),
+                        modifier = Modifier
+                            .align(Alignment.CenterVertically)
+                            .testTag("dynamic_blank_slot")
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            if (currentAnswer.isNotBlank()) {
+                                Text(
+                                    text = currentAnswer,
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = when {
+                                            submitted && isCorrect -> EmeraldAccent
+                                            submitted && !isCorrect -> CoralAccent
+                                            else -> GoldAccent
+                                        }
+                                    )
+                                )
+                                if (submitted) {
+                                    Text(
+                                        text = if (isCorrect) "✓" else "✗",
+                                        color = if (isCorrect) EmeraldAccent else CoralAccent,
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.titleSmall
+                                    )
+                                }
+                            } else {
+                                Text(
+                                    text = "[  ______  ]",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = GoldAccent.copy(alpha = 0.75f),
+                                        letterSpacing = 1.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    for (word in suffixWords) {
+                        Text(
+                            text = word,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                textDirection = TextDirection.Ltr,
+                                textAlign = TextAlign.Left
+                            ),
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary,
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                        )
+                    }
+                }
+
+                if (displayClue.isNotBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = GoldAccentDim,
+                        border = BorderStroke(1.dp, GoldAccentBorder)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Lightbulb,
+                                contentDescription = null,
+                                tint = GoldAccent,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text(
+                                text = "Clue: $displayClue",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = GoldAccent
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        BidiText(
+            text = prompt,
+            style = MaterialTheme.typography.titleMedium,
+            color = TextPrimary,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
 @Composable
 fun ExerciseItemView(
     index: Int,
@@ -2017,7 +2253,7 @@ fun ExerciseItemView(
     isExplainingMistake: Boolean,
     onExplainMistakeClick: () -> Unit
 ) {
-    val isCorrect = submitted && currentAnswer.trim().equals(exercise.answer.trim(), ignoreCase = true)
+    val isCorrect = submitted && isGrammarAnswerCorrect(currentAnswer, exercise.answer)
     val isWrong = submitted && !isCorrect
 
     val typeLabel = when (exercise.type.lowercase()) {
@@ -2069,11 +2305,12 @@ fun ExerciseItemView(
             }
         }
 
-        BidiText(
-            text = exercise.prompt,
-            style = MaterialTheme.typography.titleMedium,
-            color = TextPrimary,
-            fontWeight = FontWeight.SemiBold
+        GrammarExercisePrompt(
+            prompt = exercise.prompt,
+            currentAnswer = currentAnswer,
+            submitted = submitted,
+            isCorrect = isCorrect,
+            correctAnswer = exercise.answer
         )
 
         when (exercise.type.lowercase()) {
@@ -2082,6 +2319,7 @@ fun ExerciseItemView(
                     exercise.options.forEachIndexed { optIdx, option ->
                         val isSelected = currentAnswer == option
                         val optionLetter = ('A' + optIdx).toString()
+                        val optionIsCorrect = isGrammarAnswerCorrect(option, exercise.answer)
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -2090,7 +2328,7 @@ fun ExerciseItemView(
                                 .testTag("mcq_option_${index}_$option"),
                             shape = RoundedCornerShape(10.dp),
                             color = when {
-                                submitted && option == exercise.answer -> EmeraldAccent.copy(alpha = 0.18f)
+                                submitted && optionIsCorrect -> EmeraldAccent.copy(alpha = 0.18f)
                                 submitted && isSelected && isWrong -> CoralAccent.copy(alpha = 0.18f)
                                 isSelected -> GoldAccent.copy(alpha = 0.18f)
                                 else -> SurfaceElevatedDark
@@ -2098,7 +2336,7 @@ fun ExerciseItemView(
                             border = BorderStroke(
                                 1.dp,
                                 when {
-                                    submitted && option == exercise.answer -> EmeraldAccent
+                                    submitted && optionIsCorrect -> EmeraldAccent
                                     submitted && isSelected && isWrong -> CoralAccent
                                     isSelected -> GoldAccent
                                     else -> BorderDark
@@ -2115,7 +2353,7 @@ fun ExerciseItemView(
                                 Surface(
                                     shape = CircleShape,
                                     color = when {
-                                        submitted && option == exercise.answer -> EmeraldAccent
+                                        submitted && optionIsCorrect -> EmeraldAccent
                                         submitted && isSelected && isWrong -> CoralAccent
                                         isSelected -> GoldAccent
                                         else -> BackgroundDark
@@ -2127,7 +2365,7 @@ fun ExerciseItemView(
                                             text = optionLetter,
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.Bold,
-                                            color = if (isSelected || (submitted && option == exercise.answer)) BackgroundDark else TextSecondary
+                                            color = if (isSelected || (submitted && optionIsCorrect)) BackgroundDark else TextSecondary
                                         )
                                     }
                                 }

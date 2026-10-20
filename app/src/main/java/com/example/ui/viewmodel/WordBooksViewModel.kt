@@ -717,10 +717,78 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun openDetailedDefinition(deckId: String, wordText: String) {
+    fun openDetailedDefinition(deckId: String, wordText: String, cardIndex: Int = -1) {
         viewModelScope.launch {
             _detailedCard.value = repository.getWordCardWithVariants(deckId, wordText)
             loadAiDefinitionForWord(wordText, forceFetch = false)
+            if (deckId.isNotBlank() && wordText.isNotBlank()) {
+                repository.saveDeckStudyPosition(
+                    deckId = deckId,
+                    cardIndex = cardIndex,
+                    wordText = wordText,
+                    incrementStudied = false
+                )
+            }
+        }
+    }
+
+    fun setDeckCheckpoint(deckId: String, wordText: String, cardIndex: Int = 0) {
+        if (deckId.isBlank() || wordText.isBlank()) return
+        viewModelScope.launch {
+            repository.saveDeckStudyPosition(
+                deckId = deckId,
+                cardIndex = cardIndex,
+                wordText = wordText,
+                incrementStudied = false
+            )
+        }
+    }
+
+    fun openMasteredWords() {
+        _selectedDeckId.value = ""
+        _filterState.update { current ->
+            current.copy(
+                deckId = "",
+                onlyFavorites = false,
+                onlyMastered = true,
+                onlyLearning = false,
+                searchQuery = "",
+                typeFilter = "",
+                levelFilter = "",
+                posFilter = ""
+            )
+        }
+    }
+
+    fun openFavoriteWords() {
+        _selectedDeckId.value = DataImportRepository.SAVED_WORDS_DECK_ID
+        _filterState.update { current ->
+            current.copy(
+                deckId = DataImportRepository.SAVED_WORDS_DECK_ID,
+                onlyFavorites = true,
+                onlyMastered = false,
+                onlyLearning = false,
+                searchQuery = "",
+                typeFilter = "",
+                levelFilter = "",
+                posFilter = ""
+            )
+        }
+    }
+
+    fun openAllWords() {
+        _selectedDeckId.value = ""
+        _filterState.update { current ->
+            current.copy(
+                deckId = "",
+                onlyFavorites = false,
+                onlyMastered = false,
+                onlyLearning = false,
+                searchQuery = "",
+                typeFilter = "",
+                levelFilter = "",
+                posFilter = ""
+            )
         }
     }
 

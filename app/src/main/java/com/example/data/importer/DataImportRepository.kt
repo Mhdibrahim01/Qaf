@@ -336,15 +336,16 @@ class DataImportRepository(
      */
     suspend fun saveDeckStudyPosition(
         deckId: String,
-        cardIndex: Int,
+        cardIndex: Int = -1,
         wordText: String,
         incrementStudied: Boolean = false
     ): DeckStudyStateEntity = withContext(Dispatchers.IO) {
         val existing = dao.getDeckStudyState(deckId)
         val newStudiedCount = (existing?.totalStudiedInDeck ?: 0) + (if (incrementStudied) 1 else 0)
+        val resolvedIndex = if (cardIndex >= 0) cardIndex else (existing?.lastCardIndex ?: 0)
         val updated = DeckStudyStateEntity(
             deckId = deckId,
-            lastCardIndex = cardIndex.coerceAtLeast(0),
+            lastCardIndex = resolvedIndex,
             lastWordText = wordText,
             totalStudiedInDeck = newStudiedCount,
             updatedAt = System.currentTimeMillis()

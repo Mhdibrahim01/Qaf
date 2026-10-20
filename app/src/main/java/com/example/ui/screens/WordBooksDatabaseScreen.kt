@@ -29,11 +29,19 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.example.data.local.DeckStudyStateEntity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
@@ -334,8 +342,26 @@ fun WordBooksDatabaseScreen(
     onPlayVoiceAudio: (String, String, Boolean) -> Unit = { word, url, _ -> onPlayAudio(word, url) },
     onSpeakSentenceTts: (String) -> Unit = {},
     onReverifyImport: () -> Unit,
+    deckStudyStates: List<DeckStudyStateEntity> = emptyList(),
+    onSetCheckpoint: (String, String, Int) -> Unit = { _, _, _ -> },
+    onOpenAllWords: (() -> Unit)? = null,
+    onOpenMasteredWords: (() -> Unit)? = null,
+    onOpenFavoriteWords: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val handleOpenAll = onOpenAllWords ?: {
+        onSelectDeck("")
+        onStatusFilterChange("All")
+    }
+    val handleOpenMastered = onOpenMasteredWords ?: {
+        onSelectDeck("")
+        onStatusFilterChange("Mastered")
+    }
+    val handleOpenFavorites = onOpenFavoriteWords ?: {
+        onSelectDeck(DataImportRepository.SAVED_WORDS_DECK_ID)
+        onStatusFilterChange("Favorites")
+    }
+
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val isTablet = maxWidth >= 720.dp
 
@@ -363,7 +389,10 @@ fun WordBooksDatabaseScreen(
                             progressMap = progressMap,
                             currentlyPlayingWord = currentlyPlayingWord,
                             masteredCount = masteredCount,
+                            totalEntriesCount = totalEntriesCount,
                             reviewDueTodayCount = reviewDueTodayCount,
+                            deckStudyStates = deckStudyStates,
+                            onSetCheckpoint = onSetCheckpoint,
                             onBack = { onSelectDeck(null) },
                             onOpenFlashcards = {
                                 val targetDeckId = selectedDeck?.id ?: filterState.deckId
@@ -398,7 +427,10 @@ fun WordBooksDatabaseScreen(
                             onSelectDeck = onSelectDeck,
                             onOpenFlashcards = onOpenFlashcards,
                             onOpenFlashcardsForDeck = onOpenFlashcardsForDeck,
-                            onReverifyImport = onReverifyImport
+                            onReverifyImport = onReverifyImport,
+                            onOpenAllWords = handleOpenAll,
+                            onOpenMasteredWords = handleOpenMastered,
+                            onOpenFavoriteWords = handleOpenFavorites
                         )
                     }
                 }
@@ -461,7 +493,10 @@ fun WordBooksDatabaseScreen(
                         progressMap = progressMap,
                         currentlyPlayingWord = currentlyPlayingWord,
                         masteredCount = masteredCount,
+                        totalEntriesCount = totalEntriesCount,
                         reviewDueTodayCount = reviewDueTodayCount,
+                        deckStudyStates = deckStudyStates,
+                        onSetCheckpoint = onSetCheckpoint,
                         onBack = { onSelectDeck(null) },
                         onOpenFlashcards = {
                             val targetDeckId = selectedDeck?.id ?: filterState.deckId
@@ -496,7 +531,10 @@ fun WordBooksDatabaseScreen(
                         onSelectDeck = onSelectDeck,
                         onOpenFlashcards = onOpenFlashcards,
                         onOpenFlashcardsForDeck = onOpenFlashcardsForDeck,
-                        onReverifyImport = onReverifyImport
+                        onReverifyImport = onReverifyImport,
+                        onOpenAllWords = handleOpenAll,
+                        onOpenMasteredWords = handleOpenMastered,
+                        onOpenFavoriteWords = handleOpenFavorites
                     )
                 }
             }
@@ -560,6 +598,9 @@ private fun DecksLibraryGrid(
     onOpenFlashcards: () -> Unit = {},
     onOpenFlashcardsForDeck: (String) -> Unit = {},
     onReverifyImport: () -> Unit,
+    onOpenAllWords: () -> Unit = {},
+    onOpenMasteredWords: () -> Unit = {},
+    onOpenFavoriteWords: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -634,17 +675,20 @@ private fun DecksLibraryGrid(
                     BookStatTile(
                         value = formatNumber(totalEntriesCount),
                         label = "Total words",
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        onClick = onOpenAllWords
                     )
                     BookStatTile(
                         value = formatNumber(masteredCount),
                         label = "Mastered",
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        onClick = onOpenMasteredWords
                     )
                     BookStatTile(
                         value = formatNumber(favoriteCount),
                         label = "Favorites",
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        onClick = onOpenFavoriteWords
                     )
                 }
             }
@@ -704,26 +748,47 @@ private fun DecksLibraryGrid(
 private fun BookStatTile(
     value: String,
     label: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
 ) {
+    val clickableModifier = if (onClick != null) {
+        Modifier.clickable(onClick = onClick)
+    } else Modifier
+
     Surface(
-        modifier = modifier,
+        modifier = modifier
+            .clip(SquircleTileShape)
+            .then(clickableModifier),
         shape = SquircleTileShape,
         color = SurfaceDark,
-        border = BorderStroke(1.dp, BorderDark)
+        border = BorderStroke(1.dp, if (onClick != null) GoldAccent.copy(alpha = 0.35f) else BorderDark)
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(
-                text = value,
-                style = StatValueGridStyle
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = value,
+                    style = StatValueGridStyle
+                )
+                if (onClick != null) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Open $label",
+                        tint = GoldAccent.copy(alpha = 0.7f),
+                        modifier = Modifier.size(13.dp)
+                    )
+                }
+            }
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall.copy(
-                    color = TextMuted,
+                    color = if (onClick != null) GoldAccent else TextMuted,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Medium
                 ),
@@ -922,7 +987,10 @@ private fun PagedDeckWordListScreen(
     progressMap: Map<String, WordProgressEntity>,
     currentlyPlayingWord: String?,
     masteredCount: Int = 0,
+    totalEntriesCount: Int = 0,
     reviewDueTodayCount: Int = 0,
+    deckStudyStates: List<DeckStudyStateEntity> = emptyList(),
+    onSetCheckpoint: (String, String, Int) -> Unit = { _, _, _ -> },
     onBack: () -> Unit,
     onOpenFlashcards: () -> Unit = {},
     onSelectWordListTab: (Boolean) -> Unit = {},
@@ -961,6 +1029,13 @@ private fun PagedDeckWordListScreen(
     val isEmpty = pagedEntries.itemCount == 0 &&
         pagedEntries.loadState.refresh is LoadState.NotLoading
 
+    val currentDeckId = deck?.id ?: filterState.deckId
+    val currentStudyState = deckStudyStates.find { it.deckId == currentDeckId }
+    val checkpointWord = currentStudyState?.lastWordText?.trim().orEmpty()
+    val hasCheckpoint = checkpointWord.isNotBlank()
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -969,6 +1044,7 @@ private fun PagedDeckWordListScreen(
         contentAlignment = Alignment.TopCenter
     ) {
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .widthIn(max = 760.dp)
                 .fillMaxSize()
@@ -1031,13 +1107,21 @@ private fun PagedDeckWordListScreen(
                                 overflow = TextOverflow.Ellipsis
                             )
 
+                            val totalCount = if (deck != null) deck.rowCount else totalEntriesCount
+                            val studiedWords = progressMap.values.count { 
+                                (currentDeckId.isEmpty() || it.deck == currentDeckId) && (it.isMastered || it.repetitions > 0)
+                            }.coerceAtLeast(deck?.masteredCount ?: masteredCount)
+                            val leftWords = (totalCount - studiedWords).coerceAtLeast(0)
+                            val progressFraction = if (totalCount > 0) (studiedWords.toFloat() / totalCount.toFloat()).coerceIn(0f, 1f) else 0f
+                            val progressPercent = (progressFraction * 100).toInt()
+
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 modifier = Modifier.padding(top = 2.dp)
                             ) {
                                 Text(
-                                    text = "${formatNumber(deck?.rowCount ?: 0)} entries",
+                                    text = "${formatNumber(totalCount)} entries",
                                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                                     color = TextSecondary
                                 )
@@ -1050,10 +1134,86 @@ private fun PagedDeckWordListScreen(
                                     color = GoldAccent
                                 )
                                 Text(
-                                    text = "Dictionary view",
-                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                                    color = TextSecondary
+                                    text = "${formatNumber(studiedWords)} studied",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = GoldAccent
+                                    )
                                 )
+                            }
+
+                            // Studied vs Left Progress Bar Card
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                color = SurfaceElevatedDark,
+                                border = BorderStroke(1.dp, BorderDark)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(7.dp)
+                                                    .clip(CircleShape)
+                                                    .background(GoldAccent)
+                                            )
+                                            Text(
+                                                text = "${formatNumber(studiedWords)} Studied",
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = GoldAccent
+                                                )
+                                            )
+                                            Text(
+                                                text = "•",
+                                                color = TextMuted,
+                                                style = MaterialTheme.typography.labelSmall
+                                            )
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(7.dp)
+                                                    .clip(CircleShape)
+                                                    .border(1.dp, TextMuted, CircleShape)
+                                            )
+                                            Text(
+                                                text = "${formatNumber(leftWords)} Left",
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    color = TextSecondary
+                                                )
+                                            )
+                                        }
+                                        Text(
+                                            text = "$progressPercent%",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = GoldAccent
+                                            )
+                                        )
+                                    }
+                                    LinearProgressIndicator(
+                                        progress = { progressFraction },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(5.dp)
+                                            .clip(RoundedCornerShape(3.dp)),
+                                        color = GoldAccent,
+                                        trackColor = BorderDark
+                                    )
+                                }
                             }
                         }
 
@@ -1258,6 +1418,104 @@ private fun PagedDeckWordListScreen(
                 }
             }
 
+            // 4b. Checkpoint Banner
+            if (hasCheckpoint) {
+                item(key = "checkpoint_banner", contentType = "checkpoint_banner") {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                        shape = RoundedCornerShape(12.dp),
+                        color = GoldAccentDim,
+                        border = BorderStroke(1.dp, GoldAccentBorder)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = "📍",
+                                    fontSize = 18.sp
+                                )
+                                Column {
+                                    Text(
+                                        text = "LAST STUDIED CHECKPOINT",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 1.sp,
+                                            color = GoldAccent
+                                        )
+                                    )
+                                    Text(
+                                        text = "\"$checkpointWord\"",
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = TextPrimary
+                                        ),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+
+                            Button(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        var foundIdx: Int? = null
+                                        for (i in 0 until pagedEntries.itemCount) {
+                                            val item = pagedEntries.peek(i)
+                                            if (item?.text.equals(checkpointWord, ignoreCase = true)) {
+                                                foundIdx = i
+                                                break
+                                            }
+                                        }
+                                        val targetIdx = foundIdx ?: currentStudyState?.lastCardIndex?.takeIf { it in 0 until (deck?.rowCount ?: totalEntriesCount) }
+                                        if (targetIdx != null) {
+                                            if (targetIdx < pagedEntries.itemCount) {
+                                                pagedEntries[targetIdx]
+                                            }
+                                            // Item 0 = header, item 1 = checkpoint banner (this button is inside it),
+                                            // item 2+ = word list entries
+                                            listState.animateScrollToItem((targetIdx + 2).coerceAtLeast(0))
+                                        }
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = GoldAccent,
+                                    contentColor = BackgroundDark
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                modifier = Modifier.heightIn(min = 32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AutoAwesome,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = "Jump to Word",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             // 5. Word List Content
             when {
                 pagedEntries.loadState.refresh is LoadState.Loading && pagedEntries.itemCount == 0 -> {
@@ -1344,18 +1602,27 @@ private fun PagedDeckWordListScreen(
                             val prog = progressMap[cardKey]
                             val isFirst = index == 0
                             val isLast = index == itemCount - 1
+                            val isCurrentCheckpoint = hasCheckpoint && entry.text.equals(checkpointWord, ignoreCase = true)
                             WordBookEntryRow(
                                 entry = entry,
                                 isMastered = prog?.isMastered ?: false,
                                 isFavorite = prog?.isFavorite ?: false,
                                 isPlayingAudio = currentlyPlayingWord == entry.text,
                                 studiedCount = prog?.repetitions ?: 0,
+                                isCheckpoint = isCurrentCheckpoint,
                                 isFirstInCard = isFirst,
                                 isLastInCard = isLast,
-                                onPlayAudio = { onPlayAudio(entry.text, entry.audioUrl) },
+                                onPlayAudio = {
+                                    onPlayAudio(entry.text, entry.audioUrl)
+                                    onSetCheckpoint(entry.deck, entry.text, index)
+                                },
                                 onToggleMastered = { onToggleMastered(entry.deck, entry.text) },
                                 onToggleFavorite = { onToggleFavorite(entry.deck, entry.text) },
-                                onOpenDetail = { onOpenDetailedDefinition(entry.deck, entry.text) }
+                                onSetCheckpoint = { onSetCheckpoint(entry.deck, entry.text, index) },
+                                onOpenDetail = {
+                                    onOpenDetailedDefinition(entry.deck, entry.text)
+                                    onSetCheckpoint(entry.deck, entry.text, index)
+                                }
                             )
                         }
                     }
@@ -1527,11 +1794,13 @@ fun WordBookEntryRow(
     isFavorite: Boolean,
     isPlayingAudio: Boolean,
     studiedCount: Int = 0,
+    isCheckpoint: Boolean = false,
     isFirstInCard: Boolean = false,
     isLastInCard: Boolean = false,
     onPlayAudio: () -> Unit,
     onToggleMastered: () -> Unit,
     onToggleFavorite: () -> Unit,
+    onSetCheckpoint: (() -> Unit)? = null,
     onOpenDetail: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -1569,7 +1838,7 @@ fun WordBookEntryRow(
             .testTag("word_row_${entry.id}"),
         color = SurfaceDark,
         shape = rowShape,
-        border = BorderStroke(1.dp, BorderDark)
+        border = BorderStroke(if (isCheckpoint) 1.5.dp else 1.dp, if (isCheckpoint) GoldAccent else BorderDark)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
@@ -1607,7 +1876,7 @@ fun WordBookEntryRow(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
                             text = entry.text,
@@ -1632,6 +1901,39 @@ fun WordBookEntryRow(
                                         fontSize = 10.sp
                                     ),
                                     color = GoldAccent,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+
+                        if (isCheckpoint) {
+                            Surface(
+                                color = GoldAccent.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(6.dp),
+                                border = BorderStroke(1.dp, GoldAccent)
+                            ) {
+                                Text(
+                                    text = "📍 Checkpoint",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp
+                                    ),
+                                    color = GoldAccent,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        } else if (studiedCount > 0 || isMastered) {
+                            Surface(
+                                color = EmeraldAccent.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    text = "✓ Studied",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp
+                                    ),
+                                    color = EmeraldAccent,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
@@ -1676,19 +1978,40 @@ fun WordBookEntryRow(
                     }
                 }
 
-                // Right: Favorite heart icon (filled gold when favorite, outlined gray when not)
-                IconButton(
-                    onClick = onToggleFavorite,
-                    modifier = Modifier
-                        .size(36.dp)
-                        .testTag("favorite_heart_${entry.id}")
+                // Right: Checkpoint Pin Bookmark & Favorite heart icon
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Icon(
-                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = "Favorite word",
-                        tint = if (isFavorite) GoldAccent else TextMuted,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    if (onSetCheckpoint != null) {
+                        IconButton(
+                            onClick = onSetCheckpoint,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .testTag("checkpoint_pin_${entry.id}")
+                        ) {
+                            Icon(
+                                imageVector = if (isCheckpoint) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                contentDescription = if (isCheckpoint) "Current Checkpoint" else "Set as Checkpoint",
+                                tint = if (isCheckpoint) GoldAccent else TextMuted,
+                                modifier = Modifier.size(19.dp)
+                            )
+                        }
+                    }
+
+                    IconButton(
+                        onClick = onToggleFavorite,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .testTag("favorite_heart_${entry.id}")
+                    ) {
+                        Icon(
+                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = "Favorite word",
+                            tint = if (isFavorite) GoldAccent else TextMuted,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         }

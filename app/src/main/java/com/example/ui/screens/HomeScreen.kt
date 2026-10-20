@@ -131,6 +131,7 @@ fun HomeScreen(
     onOpenFlashcardsForDeck: (String) -> Unit = {},
     onOpenPlanScreen: () -> Unit = {},
     onNavigateToTask: (route: String, linkedId: String?) -> Unit = { _, _ -> onOpenPlanScreen() },
+    onToggleTaskCompleted: (date: String, taskId: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
@@ -194,7 +195,8 @@ fun HomeScreen(
                         TodayPlanCard(
                             todayChecklist = todayChecklist,
                             onOpenPlanScreen = onOpenPlanScreen,
-                            onNavigateToTask = onNavigateToTask
+                            onNavigateToTask = onNavigateToTask,
+                            onToggleTaskCompleted = onToggleTaskCompleted
                         )
 
                         WeeklyProgressSummaryCard(
@@ -236,7 +238,8 @@ fun HomeScreen(
                 TodayPlanCard(
                     todayChecklist = todayChecklist,
                     onOpenPlanScreen = onOpenPlanScreen,
-                    onNavigateToTask = onNavigateToTask
+                    onNavigateToTask = onNavigateToTask,
+                    onToggleTaskCompleted = onToggleTaskCompleted
                 )
 
                 ReviewDueSection(
@@ -375,11 +378,15 @@ private fun TodayPlanCard(
     todayChecklist: DailyChecklistEntity?,
     onOpenPlanScreen: () -> Unit,
     onNavigateToTask: (route: String, linkedId: String?) -> Unit = { _, _ -> onOpenPlanScreen() },
+    onToggleTaskCompleted: (date: String, taskId: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val totalTasks = todayChecklist?.totalCount?.takeIf { it > 0 } ?: 4
     val completedTasks = todayChecklist?.completedCount ?: 0
     val progressFraction = (completedTasks.toFloat() / totalTasks.toFloat()).coerceIn(0f, 1f)
+    val todayDateStr = remember(todayChecklist?.date) {
+        todayChecklist?.date ?: SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+    }
 
     val tasks: List<DailyTaskItem> = remember(todayChecklist?.tasksJson) {
         if (!todayChecklist?.tasksJson.isNullOrBlank()) {
@@ -506,6 +513,9 @@ private fun TodayPlanCard(
                                 else -> "plan"
                             }
                             onNavigateToTask(targetRoute, task.linkedId)
+                        },
+                        onToggleComplete = {
+                            onToggleTaskCompleted(todayDateStr, task.id)
                         }
                     )
                 }
@@ -552,6 +562,7 @@ private fun TodayPlanCard(
 private fun TaskCheckRow(
     task: DailyTaskItem,
     onClick: () -> Unit,
+    onToggleComplete: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -569,26 +580,35 @@ private fun TaskCheckRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Task check squircle
+            // Task check squircle with enlarged 44.dp touch target (clickable to toggle complete directly)
             Box(
                 modifier = Modifier
-                    .size(20.dp)
-                    .clip(SquircleCheckShape)
-                    .background(if (task.isCompleted) GoldAccent else Color.Transparent)
-                    .border(
-                        width = 1.dp,
-                        color = if (task.isCompleted) GoldAccent else Color(0xFF55555E),
-                        shape = SquircleCheckShape
-                    ),
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .clickable { onToggleComplete() }
+                    .testTag("task_checkbox_${task.id}"),
                 contentAlignment = Alignment.Center
             ) {
-                if (task.isCompleted) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Completed",
-                        tint = OnGoldDark,
-                        modifier = Modifier.size(13.dp)
-                    )
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(SquircleCheckShape)
+                        .background(if (task.isCompleted) GoldAccent else Color.Transparent)
+                        .border(
+                            width = 1.dp,
+                            color = if (task.isCompleted) GoldAccent else Color(0xFF55555E),
+                            shape = SquircleCheckShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (task.isCompleted) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Completed",
+                            tint = OnGoldDark,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                 }
             }
 
