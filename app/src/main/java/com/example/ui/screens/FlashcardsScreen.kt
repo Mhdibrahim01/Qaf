@@ -49,7 +49,6 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -186,7 +185,7 @@ fun FlashcardsScreen(
     // 5-second Auto-show answer timer (off by default; when enabled, flips card automatically after 5s)
     LaunchedEffect(activeCard?.cardKey, safeIndex, isCardFlipped, autoShowAnswer, isLoading) {
         if (autoShowAnswer && !isCardFlipped && !isLoading && activeCard != null) {
-            delay(5000L)
+            delay(5000)
             onSetCardFlipped(true)
         }
     }
