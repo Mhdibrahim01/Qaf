@@ -62,7 +62,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.data.local.DailyChecklistEntity
 import com.example.data.local.DailyTaskItem
 import com.example.data.local.PlanDailyTemplate
@@ -577,20 +579,63 @@ private fun TodayTabContent(
                             }
                         }
 
+                        val actionLabel = when (task.type) {
+                            "quiz" -> if (task.isCompleted) "Retake" else "Quiz"
+                            "flashcards" -> if (task.isCompleted) "Review" else "Start"
+                            "new_words" -> if (task.isCompleted) "Words" else "Learn"
+                            "grammar" -> if (task.isCompleted) "Lesson" else "Study"
+                            "reading" -> if (task.isCompleted) "Story" else "Read"
+                            "sentences" -> "Practice"
+                            "correction_reviews" -> "Review"
+                            else -> "Open"
+                        }
+
                         if (task.type == "quiz") {
                             Button(
                                 onClick = onStartMiniQuiz,
-                                colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = BackgroundDark),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (task.isCompleted) SurfaceElevatedDark else GoldAccent,
+                                    contentColor = if (task.isCompleted) GoldAccent else BackgroundDark
+                                ),
                                 shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.testTag("btn_start_daily_quiz")
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                modifier = Modifier
+                                    .heightIn(min = 36.dp)
+                                    .testTag("btn_start_daily_quiz")
                             ) {
-                                Text(if (task.isCompleted) "Retake" else "Take Quiz", fontWeight = FontWeight.Bold)
+                                Text(actionLabel, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                             }
                         } else if (task.linkedRoute.isNotBlank()) {
-                            IconButton(onClick = { onOpenTask(task.linkedRoute, task.linkedId) }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Go to task", tint = GoldAccent)
+                            Button(
+                                onClick = { onOpenTask(task.linkedRoute, task.linkedId) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (task.isCompleted) SurfaceElevatedDark else GoldAccent,
+                                    contentColor = if (task.isCompleted) GoldAccent else BackgroundDark
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                modifier = Modifier
+                                    .heightIn(min = 36.dp)
+                                    .testTag("btn_open_task_${task.type}")
+                            ) {
+                                Text(actionLabel, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Spacer(Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(12.dp)
+                                )
                             }
                         }
+                    }
+
+                    if (task.explanationAr.isNotBlank()) {
+                        Text(
+                            text = task.explanationAr,
+                            style = ArabicTypography.labelSmall.copy(fontSize = 11.sp),
+                            color = TextMuted,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
                     }
 
                     // Show progress bar for multi-item tasks (e.g. Flashcards, New Words, Sentences)

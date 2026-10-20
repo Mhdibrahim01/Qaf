@@ -629,6 +629,15 @@ interface WordBooksDao {
         sortOrder: String
     ): PagingSource<Int, EntryEntity>
 
+    @Query(
+        """
+        SELECT COUNT(*) FROM entries
+        WHERE (:deckId IS NULL OR :deckId = '' OR deck = :deckId)
+          AND LOWER(text) < :letterPrefix
+        """
+    )
+    suspend fun getEntryIndexBeforeLetter(deckId: String?, letterPrefix: String): Int
+
     // --- WORD DETAILS TABLE QUERIES ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWordDetail(detail: WordDetailEntity)

@@ -79,6 +79,7 @@ import com.example.ui.components.BidiText
 import com.example.ui.components.isolateLatin
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -348,6 +349,8 @@ fun WordBooksDatabaseScreen(
     onOpenAllWords: (() -> Unit)? = null,
     onOpenMasteredWords: (() -> Unit)? = null,
     onOpenFavoriteWords: (() -> Unit)? = null,
+    onOpenFilteredFlashcards: ((String, WordFilterState) -> Unit)? = null,
+    onGetLetterIndex: (suspend (String?, Char) -> Int)? = null,
     modifier: Modifier = Modifier
 ) {
     val handleOpenAll = onOpenAllWords ?: {
@@ -415,7 +418,9 @@ fun WordBooksDatabaseScreen(
                             onToggleFavorite = onToggleFavorite,
                             onToggleMastered = onToggleMastered,
                             onOpenDetailedDefinition = onOpenDetailedDefinition,
-                            onPlayAudio = onPlayAudio
+                            onPlayAudio = onPlayAudio,
+                            onOpenFilteredFlashcards = onOpenFilteredFlashcards,
+                            onGetLetterIndex = onGetLetterIndex
                         )
                     } else {
                         DecksLibraryGrid(
@@ -519,7 +524,9 @@ fun WordBooksDatabaseScreen(
                         onToggleFavorite = onToggleFavorite,
                         onToggleMastered = onToggleMastered,
                         onOpenDetailedDefinition = onOpenDetailedDefinition,
-                        onPlayAudio = onPlayAudio
+                        onPlayAudio = onPlayAudio,
+                        onOpenFilteredFlashcards = onOpenFilteredFlashcards,
+                        onGetLetterIndex = onGetLetterIndex
                     )
                 } else {
                     DecksLibraryGrid(
@@ -1007,9 +1014,12 @@ private fun PagedDeckWordListScreen(
     onToggleMastered: (String, String) -> Unit,
     onOpenDetailedDefinition: (String, String) -> Unit,
     onPlayAudio: (String, String) -> Unit,
+    onOpenFilteredFlashcards: ((String, WordFilterState) -> Unit)? = null,
+    onGetLetterIndex: (suspend (String?, Char) -> Int)? = null,
     modifier: Modifier = Modifier
 ) {
     var showSortMenu by remember { mutableStateOf(false) }
+    var showAlphabetDialog by remember { mutableStateOf(false) }
 
     val levels = listOf("All", "A1", "A2", "B1", "B2", "C1")
     val statuses = listOf("All", "Learning", "Mastered", "Favorites")
@@ -1457,8 +1467,11 @@ private fun PagedDeckWordListScreen(
                                             color = GoldAccent
                                         )
                                     )
+                                    val lastIndex = (currentStudyState?.lastCardIndex ?: 0) + 1
+                                    val totalCount = deck?.rowCount ?: totalEntriesCount
+                                    val percent = if (totalCount > 0) (lastIndex * 100 / totalCount).coerceIn(0, 100) else 0
                                     Text(
-                                        text = "\"$checkpointWord\"",
+                                        text = "\"$checkpointWord\" • Card #$lastIndex of ${formatNumber(totalCount)} ($percent%)",
                                         style = MaterialTheme.typography.bodyMedium.copy(
                                             fontWeight = FontWeight.Bold,
                                             color = TextPrimary
@@ -1506,7 +1519,7 @@ private fun PagedDeckWordListScreen(
                                 )
                                 Spacer(Modifier.width(4.dp))
                                 Text(
-                                    text = "Jump to Word",
+                                    text = "Resume →",
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontWeight = FontWeight.Bold
                                     )
@@ -1648,6 +1661,70 @@ private fun PagedDeckWordListScreen(
                     }
                 }
             }
+        }
+
+        if (showAlphabetDialog) {
+            AlertDialog(
+                onDismissRequest = { showAlphabetDialog = false },
+                containerColor = SurfaceDark,
+                shape = RoundedCornerShape(20.dp),
+                title = {
+                    Text(
+                        text = "Jump to Letter (A–Z)",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = TextPrimary
+                    )
+                },
+                text = {
+                    val alphabet = ('A'..'Z').toList()
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            text = "Tap any letter to jump instantly to words starting with that letter:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            alphabet.forEach { letter ->
+                                Surface(
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .clickable {
+                                            showAlphabetDialog = false
+                                            coroutineScope.launch {
+                                                val targetIdx = onGetLetterIndex?.invoke(currentDeckId, letter) ?: 0
+                                                if (targetIdx < pagedEntries.itemCount) {
+                                                    pagedEntries[targetIdx]
+                                                }
+                                                listState.animateScrollToItem((targetIdx + 2).coerceAtLeast(0))
+                                            }
+                                        },
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = SurfaceElevatedDark,
+                                    border = BorderStroke(1.dp, BorderDark)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = letter.toString(),
+                                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = GoldAccent
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showAlphabetDialog = false }) {
+                        Text("Close", color = TextSecondary)
+                    }
+                }
+            )
         }
     }
 }

@@ -409,6 +409,11 @@ fun WordBooksAppShell(
                             wordBooksViewModel.selectFlashcardDeck(deckId)
                             navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
                         },
+                        onOpenFilteredFlashcards = { deckId, filterState ->
+                            wordBooksViewModel.selectFilteredFlashcardDeck(deckId, filterState)
+                            navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
+                        },
+                        onGetLetterIndex = wordBooksViewModel::getLetterIndex,
                         onUpdateDeckFilterInList = wordBooksViewModel::updateDeckFilterInList,
                         onSearchQueryChange = wordBooksViewModel::updateSearchQuery,
                         onTypeFilterChange = wordBooksViewModel::updateTypeFilter,

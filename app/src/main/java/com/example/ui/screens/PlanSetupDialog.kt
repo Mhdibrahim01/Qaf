@@ -245,27 +245,44 @@ fun PlanSetupDialog(
                     }
                 }
 
-                // 4. Minutes Per Day
+                // 4. Daily Commitment & Pacing
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = "Daily Commitment",
+                        text = "Daily Commitment & Pacing",
                         style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                         color = TextPrimary
                     )
-                    Row(
+                    Text(
+                        text = "Choose your daily study time and new words target:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary
+                    )
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         minuteOptions.forEach { mins ->
+                            val wordsPace = when (mins) {
+                                15 -> "5 words"
+                                30 -> "10 words"
+                                45 -> "15 words"
+                                else -> "20 words"
+                            }
                             FilterChip(
                                 selected = selectedMinutes == mins,
                                 onClick = { selectedMinutes = mins },
-                                label = { Text("$mins min") },
+                                label = { Text("$mins min • $wordsPace", style = MaterialTheme.typography.labelSmall) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = GoldAccentDim,
                                     selectedLabelColor = GoldAccent,
                                     containerColor = SurfaceElevatedDark,
                                     labelColor = TextMuted
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = selectedMinutes == mins,
+                                    borderColor = if (selectedMinutes == mins) GoldAccent else BorderDark
                                 )
                             )
                         }

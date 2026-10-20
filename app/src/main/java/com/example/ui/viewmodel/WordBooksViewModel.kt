@@ -418,6 +418,49 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         loadFlashcardsForDeck(deckId)
     }
 
+    fun selectFilteredFlashcardDeck(deckId: String, filterState: WordFilterState) {
+        _flashcardDeckId.value = deckId
+        _isCurrentCardFlipped.value = false
+        viewModelScope.launch {
+            _isFlashcardsLoading.value = true
+            try {
+                val (allCards, _) = repository.loadFlashcardDeckCards(deckId)
+                val filteredCards = allCards.filter { card ->
+                    val matchesLevel = filterState.levelFilter.isBlank() || filterState.levelFilter.equals("All", ignoreCase = true) ||
+                        card.primaryLevel.equals(filterState.levelFilter, ignoreCase = true) ||
+                        card.posVariants.any { it.level.equals(filterState.levelFilter, ignoreCase = true) }
+
+                    val matchesPos = filterState.posFilter.isBlank() ||
+                        card.posVariants.any { it.pos.equals(filterState.posFilter, ignoreCase = true) }
+
+                    val matchesStatus = when {
+                        filterState.onlyFavorites -> card.isFavorite
+                        filterState.onlyMastered -> card.isMastered
+                        filterState.onlyLearning -> !card.isMastered
+                        else -> true
+                    }
+
+                    val q = filterState.searchQuery.trim()
+                    val matchesQuery = q.isBlank() ||
+                        card.text.contains(q, ignoreCase = true) ||
+                        card.posVariants.any { it.arabicMeaning.contains(q, ignoreCase = true) }
+
+                    matchesLevel && matchesPos && matchesStatus && matchesQuery
+                }
+                _flashcardCards.value = if (filteredCards.isNotEmpty()) filteredCards else allCards
+                _flashcardIndex.value = 0
+                _isCurrentCardFlipped.value = false
+            } finally {
+                _isFlashcardsLoading.value = false
+            }
+        }
+    }
+
+    suspend fun getLetterIndex(deckId: String?, letter: Char): Int {
+        val prefix = letter.lowercaseChar().toString()
+        return database.wordBooksDao().getEntryIndexBeforeLetter(deckId, prefix)
+    }
+
     fun loadFlashcardsForDeck(deckId: String) {
         viewModelScope.launch {
             _isFlashcardsLoading.value = true
