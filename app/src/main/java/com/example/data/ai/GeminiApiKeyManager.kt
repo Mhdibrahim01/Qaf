@@ -67,27 +67,74 @@ sealed class ApiKeyTestResult {
     data class Error(val message: String) : ApiKeyTestResult()
 }
 
+@kotlinx.serialization.Serializable
+data class ConfiguredApiKey(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val key: String,
+    val providerName: String,
+    val label: String = "",
+    val isActive: Boolean = false
+) {
+    val provider: AiKeyProvider
+        get() = try {
+            AiKeyProvider.valueOf(providerName)
+        } catch (_: Exception) {
+            GeminiApiKeyManager.detectProvider(key)
+        }
+
+    val maskedKey: String
+        get() {
+            val clean = key.trim()
+            return if (clean.length > 10) {
+                "${clean.take(6)}...${clean.takeLast(4)}"
+            } else {
+                "••••••••"
+            }
+        }
+}
+
 object GeminiApiKeyManager {
     private const val PREFS_NAME = "wordbooks_gemini_api_prefs"
     private const val KEY_CUSTOM_KEY = "custom_gemini_api_key"
     private const val KEY_ENGINE_MODE = "translation_engine_mode"
+    private const val KEY_CONFIGURED_KEYS_JSON = "configured_keys_json"
+    private const val KEY_ACTIVE_KEY_ID = "active_key_id"
+    private const val KEY_SELECTED_MODEL = "selected_model_name"
 
-    // Current active Gemini models (avoids retired 1.5/2.0 models and duplicate aliases)
+    @Volatile
+    var currentSelectedModel: String = "auto"
+
+    val POPULAR_MODEL_PRESETS = listOf(
+        "auto" to "Auto (Smart Default)",
+        "gemini-3.5-flash-lite" to "Gemini 3.5 Flash-Lite (Google)",
+        "gemini-3.5-flash" to "Gemini 3.5 Flash (Google)",
+        "gemini-3.8-flash" to "Gemini 3.8 Flash (Google)",
+        "allam-2-7b" to "Groq Allam 2 (7B Arabic)",
+        "qwen/qwen3.8-27b" to "Groq Qwen 3.8 (27B)",
+        "meta-llama/llama-3.3-70b-instruct:free" to "OpenRouter Free (Llama 3.3)",
+        "google/gemini-2.0-flash-lite:free" to "OpenRouter Free (Gemini 2.0)",
+        "gpt-4o-mini" to "OpenAI GPT-4o-mini"
+    )
+
+    // Current active Gemini models (prioritizes stable fast 3.5 & 3.8 flash endpoints)
     val ACTIVE_GEMINI_MODELS = listOf(
-        "gemini-2.5-flash",
+        "gemini-3.5-flash-lite",
         "gemini-3.5-flash",
-        "gemini-3.1-flash-lite-preview",
-        "gemini-2.5-flash-lite"
+        "gemini-3.8-flash",
+        "gemini-2.5-flash"
     )
 
     private val GROQ_MODELS = listOf(
+        "allam-2-7b",
+        "qwen/qwen3.8-27b",
         "llama-3.3-70b-versatile",
         "llama-3.1-8b-instant"
     )
 
     private val OPENROUTER_MODELS = listOf(
-        "google/gemini-2.5-flash",
         "meta-llama/llama-3.3-70b-instruct:free",
+        "google/gemini-2.0-flash-lite:free",
+        "google/gemini-2.5-flash",
         "openai/gpt-4o-mini"
     )
 
@@ -148,6 +195,125 @@ object GeminiApiKeyManager {
         _apiKeyUpdatedTrigger.value += 1
     }
 
+    fun getSelectedModel(context: Context): String {
+        val model = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_SELECTED_MODEL, "auto") ?: "auto"
+        currentSelectedModel = model
+        return model
+    }
+
+    fun setSelectedModel(context: Context, modelName: String) {
+        val clean = modelName.trim().ifBlank { "auto" }
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_SELECTED_MODEL, clean)
+            .apply()
+        currentSelectedModel = clean
+        _apiKeyUpdatedTrigger.value += 1
+    }
+
+    fun getConfiguredKeyItems(context: Context): List<ConfiguredApiKey> {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val jsonStr = prefs.getString(KEY_CONFIGURED_KEYS_JSON, null)
+        val activeId = prefs.getString(KEY_ACTIVE_KEY_ID, null)
+
+        val items: List<ConfiguredApiKey> = if (!jsonStr.isNullOrBlank()) {
+            try {
+                json.decodeFromString<List<ConfiguredApiKey>>(jsonStr)
+            } catch (_: Exception) {
+                emptyList()
+            }
+        } else {
+            // Auto-migrate legacy KEY_CUSTOM_KEY
+            val legacyRaw = prefs.getString(KEY_CUSTOM_KEY, "").orEmpty()
+            val parsed = parseKeyList(legacyRaw).filter { detectProvider(it) != AiKeyProvider.OAUTH_OR_INVALID }
+            val migrated = parsed.mapIndexed { index, k ->
+                val p = detectProvider(k)
+                ConfiguredApiKey(
+                    id = java.util.UUID.randomUUID().toString(),
+                    key = k,
+                    providerName = p.name,
+                    label = "${p.displayName} Key ${index + 1}",
+                    isActive = index == 0
+                )
+            }
+            if (migrated.isNotEmpty()) {
+                saveConfiguredKeyItems(context, migrated)
+            }
+            migrated
+        }
+
+        // Ensure active flag matches activeId or fallback to first
+        return if (items.isNotEmpty()) {
+            val targetActiveId = activeId ?: items.firstOrNull { it.isActive }?.id ?: items.first().id
+            items.map { it.copy(isActive = it.id == targetActiveId) }
+        } else {
+            emptyList()
+        }
+    }
+
+    fun saveConfiguredKeyItems(context: Context, items: List<ConfiguredApiKey>) {
+        val jsonStr = json.encodeToString(items)
+        val activeKey = items.firstOrNull { it.isActive } ?: items.firstOrNull()
+        val legacyJoined = items.joinToString(", ") { it.key }
+
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_CONFIGURED_KEYS_JSON, jsonStr)
+            .putString(KEY_ACTIVE_KEY_ID, activeKey?.id.orEmpty())
+            .putString(KEY_CUSTOM_KEY, legacyJoined)
+            .apply()
+
+        cooldownUntilMap.clear()
+        _apiKeyUpdatedTrigger.value += 1
+    }
+
+    fun addConfiguredKey(context: Context, rawKey: String, customLabel: String = ""): ConfiguredApiKey? {
+        val clean = sanitizeKey(rawKey)
+        val provider = detectProvider(clean)
+        if (clean.isBlank() || provider == AiKeyProvider.OAUTH_OR_INVALID) return null
+
+        val current = getConfiguredKeyItems(context).toMutableList()
+        val existingIndex = current.indexOfFirst { it.key == clean }
+        if (existingIndex >= 0) {
+            // Key already exists, activate it
+            setActiveKey(context, current[existingIndex].id)
+            return current[existingIndex]
+        }
+
+        val isFirst = current.isEmpty()
+        val label = if (customLabel.isNotBlank()) customLabel else "${provider.displayName} Key ${current.count { it.provider == provider } + 1}"
+        val newItem = ConfiguredApiKey(
+            id = java.util.UUID.randomUUID().toString(),
+            key = clean,
+            providerName = provider.name,
+            label = label,
+            isActive = isFirst
+        )
+        current.add(newItem)
+        saveConfiguredKeyItems(context, current)
+        return newItem
+    }
+
+    fun removeConfiguredKey(context: Context, keyId: String) {
+        val current = getConfiguredKeyItems(context).toMutableList()
+        val index = current.indexOfFirst { it.id == keyId }
+        if (index >= 0) {
+            val wasActive = current[index].isActive
+            current.removeAt(index)
+            if (wasActive && current.isNotEmpty()) {
+                current[0] = current[0].copy(isActive = true)
+            }
+            saveConfiguredKeyItems(context, current)
+        }
+    }
+
+    fun setActiveKey(context: Context, keyId: String) {
+        val current = getConfiguredKeyItems(context)
+        val updated = current.map { it.copy(isActive = it.id == keyId) }
+        saveConfiguredKeyItems(context, updated)
+    }
+
     /**
      * Returns the primary API key to use.
      */
@@ -158,14 +324,14 @@ object GeminiApiKeyManager {
 
     /**
      * Returns all valid configured keys:
-     * 1. Valid user custom keys (comma, semicolon, or newline separated) in order
-     * 2. Built-in `BuildConfig.GEMINI_API_KEY` automatically kept at the end of the pool as a fallback
-     *    so saving a custom key never breaks fallback connectivity!
+     * 1. Active key first
+     * 2. Other configured custom keys
+     * 3. Built-in `BuildConfig.GEMINI_API_KEY` automatically kept at the end of the pool as a fallback
      */
     fun getAllConfiguredKeys(context: Context): List<String> {
-        val customRaw = getCustomKey(context)
-        val customKeys = parseKeyList(customRaw)
-            .filter { detectProvider(it) != AiKeyProvider.OAUTH_OR_INVALID }
+        val items = getConfiguredKeyItems(context)
+        val activeKey = items.firstOrNull { it.isActive }?.key
+        val otherKeys = items.filter { !it.isActive }.map { it.key }
 
         val buildKey = sanitizeKey(BuildConfig.GEMINI_API_KEY)
         val validBuildKey = buildKey.isNotBlank() &&
@@ -175,7 +341,10 @@ object GeminiApiKeyManager {
             detectProvider(buildKey) != AiKeyProvider.OAUTH_OR_INVALID
 
         val combined = LinkedHashSet<String>()
-        combined.addAll(customKeys)
+        if (!activeKey.isNullOrBlank()) {
+            combined.add(activeKey)
+        }
+        combined.addAll(otherKeys)
         if (validBuildKey) {
             combined.add(buildKey)
         }
@@ -195,9 +364,7 @@ object GeminiApiKeyManager {
     }
 
     fun hasCustomKey(context: Context): Boolean {
-        val custom = parseKeyList(getCustomKey(context))
-            .filter { detectProvider(it) != AiKeyProvider.OAUTH_OR_INVALID }
-        return custom.isNotEmpty()
+        return getConfiguredKeyItems(context).isNotEmpty()
     }
 
     fun getCustomKey(context: Context): String {
@@ -206,20 +373,30 @@ object GeminiApiKeyManager {
     }
 
     fun setCustomApiKey(context: Context, key: String) {
-        val cleanedList = parseKeyList(key)
-        val normalized = cleanedList.joinToString(", ")
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_CUSTOM_KEY, normalized)
-            .apply()
-        cooldownUntilMap.clear()
-        _apiKeyUpdatedTrigger.value += 1
+        val parsed = parseKeyList(key).filter { detectProvider(it) != AiKeyProvider.OAUTH_OR_INVALID }
+        val current = getConfiguredKeyItems(context).toMutableList()
+        parsed.forEach { k ->
+            if (current.none { it.key == k }) {
+                val p = detectProvider(k)
+                current.add(
+                    ConfiguredApiKey(
+                        key = k,
+                        providerName = p.name,
+                        label = "${p.displayName} Key ${current.count { it.provider == p } + 1}",
+                        isActive = current.isEmpty()
+                    )
+                )
+            }
+        }
+        saveConfiguredKeyItems(context, current)
     }
 
     fun clearCustomApiKey(context: Context) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .remove(KEY_CUSTOM_KEY)
+            .remove(KEY_CONFIGURED_KEYS_JSON)
+            .remove(KEY_ACTIVE_KEY_ID)
             .apply()
         cooldownUntilMap.clear()
         _apiKeyUpdatedTrigger.value += 1
@@ -310,13 +487,45 @@ object GeminiApiKeyManager {
             var attemptedAnyInPass = false
             for (apiKey in validKeys) {
                 val provider = detectProvider(apiKey)
-                val models = when (provider) {
-                    AiKeyProvider.GEMINI -> if (ignoreCooldown) listOf(ACTIVE_GEMINI_MODELS.first()) else ACTIVE_GEMINI_MODELS
-                    AiKeyProvider.GROQ -> if (ignoreCooldown) listOf(GROQ_MODELS.first()) else GROQ_MODELS
-                    AiKeyProvider.OPENROUTER -> if (ignoreCooldown) listOf(OPENROUTER_MODELS.first()) else OPENROUTER_MODELS
-                    AiKeyProvider.OPENAI -> OPENAI_MODELS
-                    AiKeyProvider.OAUTH_OR_INVALID -> emptyList()
-                }
+                val activeCustomModel = currentSelectedModel.trim()
+                val models = when {
+                    activeCustomModel.isNotBlank() && activeCustomModel != "auto" -> {
+                        when (provider) {
+                            AiKeyProvider.GEMINI -> {
+                                if (activeCustomModel.startsWith("gemini-", ignoreCase = true)) {
+                                    listOf(activeCustomModel) + (if (ignoreCooldown) listOf(ACTIVE_GEMINI_MODELS.first()) else ACTIVE_GEMINI_MODELS)
+                                } else {
+                                    if (ignoreCooldown) listOf(ACTIVE_GEMINI_MODELS.first()) else ACTIVE_GEMINI_MODELS
+                                }
+                            }
+                            AiKeyProvider.GROQ -> {
+                                if (activeCustomModel.startsWith("gemini-", ignoreCase = true) || activeCustomModel.startsWith("gpt-", ignoreCase = true)) {
+                                    if (ignoreCooldown) listOf(GROQ_MODELS.first()) else GROQ_MODELS
+                                } else {
+                                    listOf(activeCustomModel) + (if (ignoreCooldown) listOf(GROQ_MODELS.first()) else GROQ_MODELS)
+                                }
+                            }
+                            AiKeyProvider.OPENAI -> {
+                                if (activeCustomModel.startsWith("gpt-", ignoreCase = true) || activeCustomModel.startsWith("o1") || activeCustomModel.startsWith("o3")) {
+                                    listOf(activeCustomModel) + OPENAI_MODELS
+                                } else {
+                                    OPENAI_MODELS
+                                }
+                            }
+                            AiKeyProvider.OPENROUTER -> {
+                                listOf(activeCustomModel) + (if (ignoreCooldown) listOf(OPENROUTER_MODELS.first()) else OPENROUTER_MODELS)
+                            }
+                            AiKeyProvider.OAUTH_OR_INVALID -> emptyList()
+                        }
+                    }
+                    else -> when (provider) {
+                        AiKeyProvider.GEMINI -> if (ignoreCooldown) listOf(ACTIVE_GEMINI_MODELS.first()) else ACTIVE_GEMINI_MODELS
+                        AiKeyProvider.GROQ -> if (ignoreCooldown) listOf(GROQ_MODELS.first()) else GROQ_MODELS
+                        AiKeyProvider.OPENROUTER -> if (ignoreCooldown) listOf(OPENROUTER_MODELS.first()) else OPENROUTER_MODELS
+                        AiKeyProvider.OPENAI -> OPENAI_MODELS
+                        AiKeyProvider.OAUTH_OR_INVALID -> emptyList()
+                    }
+                }.distinct()
 
                 for (modelName in models) {
                     if (!ignoreCooldown && isModelOnCooldown(apiKey, modelName)) {
@@ -355,8 +564,8 @@ object GeminiApiKeyManager {
                     } catch (e: GeminiHttpException) {
                         lastError = e
                         when (e.statusCode) {
-                            429 -> {
-                                // Cooldown this (key, model) for 60 seconds and immediately move to next
+                            429, 402 -> {
+                                // 429 rate limit or 402 credits exhausted: cooldown this model and immediately try next model (e.g. free models)
                                 markModelCooldown(apiKey, modelName, 60_000L)
                             }
                             404 -> {
@@ -468,11 +677,13 @@ object GeminiApiKeyManager {
         modelName: String,
         prompt: String,
         expectsJson: Boolean,
-        timeoutMs: Int
+        timeoutMs: Int,
+        maxTokens: Int = 1024
     ): String {
         val payload = buildJsonObject {
             put("model", modelName)
             put("temperature", 0.3)
+            put("max_tokens", maxTokens)
             if (expectsJson && !modelName.contains(":free")) {
                 put(
                     "response_format",
@@ -611,15 +822,21 @@ object GeminiApiKeyManager {
                 AiKeyProvider.GEMINI -> {
                     var lastCode = 0
                     var lastDetail = ""
-                    for (modelName in ACTIVE_GEMINI_MODELS) {
+                    val activeCustom = currentSelectedModel.trim()
+                    val geminiModels = if (activeCustom.isNotBlank() && activeCustom != "auto" && activeCustom.startsWith("gemini-", ignoreCase = true)) {
+                        listOf(activeCustom) + ACTIVE_GEMINI_MODELS
+                    } else {
+                        ACTIVE_GEMINI_MODELS
+                    }.distinct()
+                    for (modelName in geminiModels) {
                         val encodedKey = URLEncoder.encode(key, "UTF-8")
                         val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$encodedKey"
                         var conn: HttpURLConnection? = null
                         try {
                             conn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
                                 requestMethod = "POST"
-                                connectTimeout = 10_000
-                                readTimeout = 10_000
+                                connectTimeout = 20_000
+                                readTimeout = 20_000
                                 doOutput = true
                                 setRequestProperty("Content-Type", "application/json; charset=utf-8")
                                 setRequestProperty("x-goog-api-key", key)
@@ -644,34 +861,103 @@ object GeminiApiKeyManager {
                                     return ApiKeyTestResult.Error("Rejected ($code): $lastDetail")
                                 }
                             }
+                        } catch (timeoutEx: java.net.SocketTimeoutException) {
+                            lastDetail = "timeout on $modelName"
+                            continue
                         } finally {
                             conn?.disconnect()
                         }
                     }
                     if (lastCode == 429) {
                         ApiKeyTestResult.RateLimited("Valid key, but quota is currently rate-limited (429). Smart Auto will use Free API fallback.")
+                    } else if (lastDetail.contains("timeout", ignoreCase = true)) {
+                        ApiKeyTestResult.Error("Network timeout connecting to Gemini API. Check your internet connection or use a VPN/DNS.")
                     } else {
                         ApiKeyTestResult.Error("HTTP $lastCode: $lastDetail")
                     }
                 }
-                AiKeyProvider.GROQ, AiKeyProvider.OPENROUTER, AiKeyProvider.OPENAI -> {
-                    val (endpoint, model) = when (provider) {
-                        AiKeyProvider.GROQ -> "https://api.groq.com/openai/v1/chat/completions" to GROQ_MODELS.first()
-                        AiKeyProvider.OPENROUTER -> "https://openrouter.ai/api/v1/chat/completions" to OPENROUTER_MODELS.first()
-                        else -> "https://api.openai.com/v1/chat/completions" to OPENAI_MODELS.first()
+                AiKeyProvider.OPENROUTER -> {
+                    var lastErrorMsg = ""
+                    var verifiedModel: String? = null
+                    val activeCustom = currentSelectedModel.trim()
+                    val openRouterModels = if (activeCustom.isNotBlank() && activeCustom != "auto") {
+                        listOf(activeCustom) + OPENROUTER_MODELS
+                    } else {
+                        OPENROUTER_MODELS
+                    }.distinct()
+                    for (model in openRouterModels) {
+                        try {
+                            val text = callOpenAiCompatibleRest(
+                                endpoint = "https://openrouter.ai/api/v1/chat/completions",
+                                apiKey = key,
+                                modelName = model,
+                                prompt = "Reply with {\"ok\":true}",
+                                expectsJson = false,
+                                timeoutMs = 15_000,
+                                maxTokens = 150
+                            )
+                            if (text.isNotBlank()) {
+                                verifiedModel = model
+                                break
+                            }
+                        } catch (e: Exception) {
+                            lastErrorMsg = e.message ?: "Failed"
+                        }
                     }
+                    if (verifiedModel != null) {
+                        ApiKeyTestResult.Success("Active & verified ($verifiedModel • 200 OK)")
+                    } else {
+                        ApiKeyTestResult.Error(lastErrorMsg)
+                    }
+                }
+                AiKeyProvider.GROQ -> {
+                    var lastErrorMsg = ""
+                    var verifiedModel: String? = null
+                    val activeCustom = currentSelectedModel.trim()
+                    val groqModels = if (activeCustom.isNotBlank() && activeCustom != "auto" && !activeCustom.startsWith("gemini-", ignoreCase = true) && !activeCustom.startsWith("gpt-", ignoreCase = true)) {
+                        listOf(activeCustom) + GROQ_MODELS
+                    } else {
+                        GROQ_MODELS
+                    }.distinct()
+                    for (model in groqModels) {
+                        try {
+                            val text = callOpenAiCompatibleRest(
+                                endpoint = "https://api.groq.com/openai/v1/chat/completions",
+                                apiKey = key,
+                                modelName = model,
+                                prompt = "Reply with {\"ok\":true}",
+                                expectsJson = false,
+                                timeoutMs = 15_000,
+                                maxTokens = 150
+                            )
+                            if (text.isNotBlank()) {
+                                verifiedModel = model
+                                break
+                            }
+                        } catch (e: Exception) {
+                            lastErrorMsg = e.message ?: "Failed"
+                        }
+                    }
+                    if (verifiedModel != null) {
+                        ApiKeyTestResult.Success("Active & verified ($verifiedModel • 200 OK)")
+                    } else {
+                        ApiKeyTestResult.Error(lastErrorMsg)
+                    }
+                }
+                AiKeyProvider.OPENAI -> {
                     val text = callOpenAiCompatibleRest(
-                        endpoint = endpoint,
+                        endpoint = "https://api.openai.com/v1/chat/completions",
                         apiKey = key,
-                        modelName = model,
+                        modelName = OPENAI_MODELS.first(),
                         prompt = "Reply with {\"ok\":true}",
                         expectsJson = false,
-                        timeoutMs = 10_000
+                        timeoutMs = 15_000,
+                        maxTokens = 150
                     )
                     if (text.isNotBlank()) {
-                        ApiKeyTestResult.Success("Active & verified ($model • 200 OK)")
+                        ApiKeyTestResult.Success("Active & verified (${OPENAI_MODELS.first()} • 200 OK)")
                     } else {
-                        ApiKeyTestResult.Error("Empty response from ${provider.displayName}")
+                        ApiKeyTestResult.Error("Empty response from OpenAI")
                     }
                 }
                 AiKeyProvider.OAUTH_OR_INVALID -> ApiKeyTestResult.Error("Unsupported key format.")

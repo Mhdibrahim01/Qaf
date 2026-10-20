@@ -8,11 +8,11 @@
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose%20%26%20Material%203-4285F4.svg?logo=jetpackcompose&logoColor=white)](#)
 [![Room Database](https://img.shields.io/badge/Database-Room%20SQLite%20(Offline)-orange.svg)](#)
 [![Gemini AI](https://img.shields.io/badge/AI-Google%20Gemini%20API-blue.svg?logo=google&logoColor=white)](#)
-[![Latest Release](https://img.shields.io/github/v/release/Mhdibrahim01/Wordbooksv2?color=gold&label=Latest%20APK)](https://github.com/Mhdibrahim01/Wordbooksv2/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/Mhdibrahim01/Qaf?color=gold&label=Latest%20APK)](https://github.com/Mhdibrahim01/Qaf/releases/latest)
 
 **قاف (Qaf)** هو تطبيق أندرويد متكامل وشامل لتعلّم وإتقان اللغة الإنجليزية للمتحدثين بالعربية، يجمع بين قوة **خوارزميات التكرار المتباعد (SuperMemo SM-2)**، ومكتبة ضخمة تضم **أكثر من 21,600 بطاقة تعليمية**، وقاموس أوفلاين فوري يضم **10,317 كلمة مشروحة تفصيلياً**، مع نصوص قراءة متدرجة وقواعد تفاعلية مدعومة بالذكاء الاصطناعي.
 
-[📥 تحميل ملف الـ APK المباشر (Direct Download)](https://github.com/Mhdibrahim01/Wordbooksv2/releases/latest) • [✨ المميزات](#-المميزات-الرئيسية--key-features) • [📚 الحقائب والمجموعات](#-الحقائب-والمجموعات-المتوفرة-13-decks) • [🛠️ طريقة البناء](#-كيفية-بناء-التطبيق-تشغيليا-build--run)
+[📥 تحميل ملف الـ APK المباشر (Direct Download)](https://github.com/Mhdibrahim01/Qaf/releases/latest) • [✨ المميزات](#-المميزات-الرئيسية--key-features) • [📚 الحقائب والمجموعات](#-الحقائب-والمجموعات-المتوفرة-13-decks) • [🛠️ طريقة البناء](#-كيفية-بناء-التطبيق-تشغيليا-build--run)
 
 </div>
 
@@ -82,8 +82,8 @@
 
 ### 1. استنساخ المستودع (Clone Repository):
 ```bash
-git clone https://github.com/Mhdibrahim01/Wordbooksv2.git
-cd Wordbooksv2
+git clone https://github.com/Mhdibrahim01/Qaf.git
+cd Qaf
 ```
 
 ### 2. إعداد مفتاح الذكاء الاصطناعي (Gemini API Key - اختياري):
@@ -110,7 +110,7 @@ GEMINI_API_KEY="your_free_gemini_api_key_here"
 ## 📱 التحميل المباشر (Direct APK Download)
 
 يمكنك دائماً تنزيل أحدث ملف APK جاهز للتثبيت على هاتفك مباشرة عبر زيارة صفحة الإصدارات:
-👉 **[Releases • تحميل التطبيق](https://github.com/Mhdibrahim01/Wordbooksv2/releases)**
+👉 **[Releases • تحميل التطبيق](https://github.com/Mhdibrahim01/Qaf/releases)**
 
 ---
 
