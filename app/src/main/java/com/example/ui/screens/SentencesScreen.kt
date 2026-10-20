@@ -2146,7 +2146,7 @@ private fun highlightSentenceWordInGold(sentence: String, rawWord: String) = bui
 private fun copyTextToClipboard(context: Context, text: String) {
     runCatching {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        clipboard?.setPrimaryClip(ClipData.newPlainText("WordBooks Sentence", text))
+        clipboard?.setPrimaryClip(ClipData.newPlainText("Qaf Sentence", text))
     }
 }
 

@@ -145,10 +145,9 @@ fun WordBooksTopAppBar(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "W",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.ExtraBold,
-                                    letterSpacing = (-0.5).sp
+                                text = "ق",
+                                style = ArabicTypography.titleMedium.copy(
+                                    fontWeight = FontWeight.ExtraBold
                                 ),
                                 color = GoldAccent
                             )
@@ -311,8 +310,8 @@ fun WordBooksNavigationRail(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "W",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                text = "ق",
+                style = ArabicTypography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
                 color = GoldAccent
             )
         }

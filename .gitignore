@@ -20,3 +20,10 @@ debug.keystore
 *.jks
 *.keystore
 my-upload-key.jks
+
+# Python & IDE scratch files
+__pycache__/
+*.py[cod]
+.vscode/
+data_import_backup/
+public/

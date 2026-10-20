@@ -1,8 +1,71 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:width="66dp"
-        android:height="66dp"
-        android:drawable="@drawable/app_icon_wordbooks_1792392701118"
-        android:gravity="center" />
-</layer-list>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Inner Rounded Crest Frame strictly inside 66dp safe zone (24..84) -->
+    <path
+        android:fillColor="#FF131B2B"
+        android:pathData="M38,24L70,24C77.73,24 84,30.27 84,38L84,70C84,77.73 77.73,84 70,84L38,84C30.27,84 24,77.73 24,70L24,38C24,30.27 30.27,24 38,24Z"
+        android:strokeWidth="1.4"
+        android:strokeColor="#66F59E0B" />
+
+    <!-- Subtle Inner Gold Hairline Accent Ring -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M39,27.2L69,27.2C75.52,27.2 80.8,32.48 80.8,39L80.8,69C80.8,75.52 75.52,80.8 69,80.8L39,80.8C32.48,80.8 27.2,75.52 27.2,69L27.2,39C27.2,32.48 32.48,27.2 39,27.2Z"
+        android:strokeWidth="0.7"
+        android:strokeColor="#33FBBF24" />
+
+    <!-- Stylized Open Book Base (Warm Amber Gold #D97706 / #F59E0B) -->
+    <!-- Left Page Wing -->
+    <path
+        android:fillColor="#FFD97706"
+        android:pathData="M31,64.5C37.5,64.5 46,66.2 52.8,70.2L52.8,75.2C46,71.4 37.5,69.6 31,69.6Z" />
+    <!-- Right Page Wing -->
+    <path
+        android:fillColor="#FFF59E0B"
+        android:pathData="M77,64.5C70.5,64.5 62,66.2 55.2,70.2L55.2,75.2C62,71.4 70.5,69.6 77,69.6Z" />
+    <!-- Center Book Spine Diamond -->
+    <path
+        android:fillColor="#FFFDE68A"
+        android:pathData="M54,67.5L56.4,71.5L54,76.2L51.6,71.5Z" />
+
+    <!-- Two Golden Nuqat (Diamonds) of Arabic Letter Qaf (ق) -->
+    <!-- Left Dot -->
+    <path
+        android:fillColor="#FFFDE68A"
+        android:pathData="M48.5,29.5L52.8,33.8L48.5,38.1L44.2,33.8Z" />
+    <!-- Right Dot -->
+    <path
+        android:fillColor="#FFFBBF24"
+        android:pathData="M59.5,29.5L63.8,33.8L59.5,38.1L55.2,33.8Z" />
+
+    <!-- Sculpted Arabic Letter Qaf (ق) Loop & Sweeping Bowl -->
+    <!-- Outer Loop & Bowl in Luminous Gold Gradient -->
+    <path
+        android:fillType="evenOdd"
+        android:pathData="M62.5,39.2C67.47,39.2 71.5,43.23 71.5,48.2C71.5,57.4 63.8,64.2 51.5,64.2C40.2,64.2 33.5,58.4 33.5,49.8C33.5,46.2 34.9,43.0 37.2,40.8L42.4,44.2C40.8,45.8 40.0,47.6 40.0,49.8C40.0,54.9 44.3,58.0 51.5,58.0C58.8,58.0 63.5,54.7 64.7,49.4C63.8,49.8 62.7,50.0 61.5,50.0C56.8,50.0 53.2,46.6 53.2,42.2C53.2,40.5 56.8,39.2 62.5,39.2ZM62.2,43.4C60.1,43.4 58.6,44.6 58.6,46.1C58.6,47.6 60.1,48.7 62.2,48.7C64.3,48.7 65.8,47.6 65.8,46.1C65.8,44.6 64.3,43.4 62.2,43.4Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="34"
+                android:startY="39"
+                android:endX="72"
+                android:endY="64"
+                android:type="linear">
+                <item
+                    android:color="#FFFDE68A"
+                    android:offset="0.0" />
+                <item
+                    android:color="#FFFBBF24"
+                    android:offset="0.45" />
+                <item
+                    android:color="#FFF59E0B"
+                    android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

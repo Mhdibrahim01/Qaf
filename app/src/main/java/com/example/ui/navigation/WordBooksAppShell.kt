@@ -252,7 +252,7 @@ fun WordBooksAppShell(
     }
 
     val (topTitle, topSubtitle, topArabicTitle) = when (currentRoute) {
-        AppRoute.Home -> Triple("WordBooks", "Learning Dashboard", "الرئيسية")
+        AppRoute.Home -> Triple("Qaf", "قاف • Learning Dashboard", "الرئيسية")
         AppRoute.WordBooks -> Triple("Word Books", "Vocabulary Library & Cards", "مكتبة المفردات")
         AppRoute.Flashcards -> {
             val deckTitle = decks.find { it.id == flashcardDeckId }?.title ?: "Review"
