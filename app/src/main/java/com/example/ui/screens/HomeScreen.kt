@@ -294,7 +294,7 @@ private fun WelcomeSection(
     }
 
     val greeting = remember {
-        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        val hour = Calendar.getInstance()[Calendar.HOUR_OF_DAY]
         when (hour) {
             in 5..11 -> "Good morning"
             in 12..17 -> "Good afternoon"

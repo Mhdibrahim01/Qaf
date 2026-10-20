@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,10 +32,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
@@ -46,13 +46,11 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.QuestionAnswer
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.UploadFile
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -1133,7 +1131,7 @@ fun GrammarLessonDetailScreen(
                                                         .testTag("tts_example_button_$index")
                                                 ) {
                                                     Icon(
-                                                        imageVector = Icons.Default.VolumeUp,
+                                                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                                                         contentDescription = "Speak sentence",
                                                         tint = GoldAccent,
                                                         modifier = Modifier.size(18.dp)
@@ -1166,7 +1164,7 @@ fun GrammarLessonDetailScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        Icon(Icons.Default.MenuBook, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(18.dp))
+                                        Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(18.dp))
                                         Text(
                                             text = "Read in Context",
                                             style = MaterialTheme.typography.titleMedium,
@@ -1822,7 +1820,7 @@ fun StructuredGrammarExplanation(
         lesson.explanationAr.lines().map { it.trim() }.filter { it.isNotEmpty() }
     }
 
-    val numberedRegex = remember { Regex("""^(\d+|[١-٩])[\)\-\.]\s*(.+)$""") }
+    val numberedRegex = remember { Regex("""^(\d+|[١-٩])[)-.]\s*(.+)$""") }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -1845,7 +1843,7 @@ fun StructuredGrammarExplanation(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.MenuBook,
+                        imageVector = Icons.AutoMirrored.Filled.MenuBook,
                         contentDescription = null,
                         tint = GoldAccent,
                         modifier = Modifier.size(18.dp)
@@ -2796,7 +2794,7 @@ fun AddGrammarLessonsDialog(
     val jsonFilePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
-        if (!uris.isNullOrEmpty()) {
+        if (uris.isNotEmpty()) {
             onImportJsonUris(uris)
             onSuccessMessage("Importing ${uris.size} JSON file(s)...")
             onDismiss()

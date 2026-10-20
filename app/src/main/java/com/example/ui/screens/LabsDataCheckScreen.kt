@@ -71,7 +71,6 @@ import com.example.ui.theme.CoralAccent
 import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.GoldAccent
 import com.example.ui.theme.GoldAccentBorder
-import com.example.ui.theme.GoldAccentDim
 import com.example.ui.theme.SurfaceDark
 import com.example.ui.theme.SurfaceElevatedDark
 import com.example.ui.theme.TextMuted
@@ -128,7 +127,7 @@ fun LabsDataCheckScreen(
     modifier: Modifier = Modifier
 ) {
     val formatter = remember { NumberFormat.getIntegerInstance(Locale.US) }
-    val deckCountMap = remember(decks) { decks.associate { it.id to it.rowCount } }
+    val deckCountMap = remember(decks) { decks.associateBy({ it.id }, { it.rowCount }) }
     val statsByDeck = remember(deckArabicStats) { deckArabicStats.associateBy { it.deck } }
     val enabledStates = remember { mutableStateMapOf<String, Boolean>() }
     var suggestionText by remember { mutableStateOf("") }

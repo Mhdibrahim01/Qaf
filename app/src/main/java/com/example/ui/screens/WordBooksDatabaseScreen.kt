@@ -24,10 +24,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -366,8 +364,10 @@ fun WordBooksDatabaseScreen(
         onStatusFilterChange("Favorites")
     }
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val isTablet = maxWidth >= 720.dp
+    val configuration = LocalConfiguration.current
+    val isTablet = configuration.screenWidthDp.dp >= 720.dp
+
+    Box(modifier = modifier.fillMaxSize()) {
 
         if (isTablet) {
             Row(
