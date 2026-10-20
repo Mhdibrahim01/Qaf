@@ -263,3 +263,49 @@ fun BidiText(
         }
     }
 }
+
+/**
+ * Sanitizes mixed grammar lesson Arabic titles so that English keywords and Arabic titles
+ * are separated cleanly into pure Arabic phrases, preventing RTL/LTR bidirectional jumbling.
+ */
+fun cleanGrammarArabicTitle(rawTitleAr: String): String {
+    val trimmed = rawTitleAr.trim()
+    return when (trimmed) {
+        "القدرة: can و can't" -> "القدرة والاستطاعة"
+        "الفعل to be: am, is, are" -> "فعل الكينونة (to be)"
+        "أدوات التعريف والتنكير: a, an, the" -> "أدوات التعريف والتنكير"
+        "there is و there are" -> "التعبير عن الوجود والوفرة"
+        "حروف الجر للمكان والزمان: in, on, at" -> "حروف الجر للمكان والزمان"
+        "المعدود وغير المعدود: some و any" -> "الأسماء المعدودة وغير المعدودة"
+        "الماضي من to be: was و were" -> "الماضي من فعل الكينونة"
+        "المستقبل: will و be going to" -> "صيغ التعبير عن المستقبل"
+        "have to و don't have to و must" -> "أفعال الإلزام والضرورة"
+        "النصيحة: should و shouldn't" -> "إعطاء النصيحة والتوجيه"
+        "much و many و a lot of و a few و a little" -> "محددات الكمية والمقدار"
+        "used to و would للعادات في الماضي" -> "العادات في الماضي"
+        "wish و if only" -> "التمني والندم"
+        "too و enough" -> "أدوات الإفراط والكفاية"
+        "as ... as و the more ... the more" -> "تراكيب المقارنة المتلازمة"
+        "جمل الصلة المحددة: who, which, that" -> "جمل الصلة المحددة"
+        "أفعال الاحتمال: might, may, could, must, can't" -> "أفعال الاحتمال والاستنتاج"
+        "أدوات الكمية: both, either, neither, all, none" -> "أدوات الشمول والبدائل"
+        "أدوات الربط: although, however, because, so" -> "أدوات الربط والسببية"
+        "السببية: have/get something done" -> "صيغة السببية"
+        "would rather و had better و prefer" -> "التفضيل والنصح"
+        "used to و be used to و get used to" -> "التعبير عن العادات والتأقلم"
+        "so و such" -> "أدوات التوكيد والنتيجة"
+        "it's time وتراكيب مشابهة" -> "تراكيب التمني والوقت الحاضر"
+        else -> {
+            if (trimmed.contains(":") && trimmed.substringAfter(":").any { isLatinChar(it) }) {
+                val arabicPart = trimmed.substringBefore(":").trim()
+                if (arabicPart.isNotBlank() && hasArabicCharacters(arabicPart)) {
+                    arabicPart
+                } else {
+                    trimmed
+                }
+            } else {
+                trimmed
+            }
+        }
+    }
+}

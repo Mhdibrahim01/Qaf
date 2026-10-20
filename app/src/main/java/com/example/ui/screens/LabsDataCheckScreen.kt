@@ -260,34 +260,31 @@ fun LabsDataCheckScreen(
                             )
                         }
 
-                        // Generated decks (ielts_core: 100001+, it_industry: 200001+)
-                        val ieltsStats = statsByDeck["ielts_core"]
-                        val ieltsCount = ieltsStats?.totalRows ?: (deckCountMap["ielts_core"] ?: 0)
-                        DeckStatsVerificationRow(
-                            label = "ielts_core (IDs 100001+ • target 3,575)",
-                            actualText = formatter.format(ieltsCount),
-                            isVerified = ieltsCount > 0,
-                            fromFileCount = ieltsStats?.fromFileCount ?: 0,
-                            fromAiCount = ieltsStats?.fromAiCount ?: 0,
-                            fromUserCount = ieltsStats?.fromUserCount ?: 0,
-                            emptyCount = ieltsStats?.emptyCount ?: 0,
-                            formatter = formatter,
-                            testTag = "data_check_row_ielts_core"
+                        // Specialized generated decks (100001+ to 700001+)
+                        val specializedDecksMeta = listOf(
+                            "ielts_core" to "ielts_core (IDs 100001+ • target 3,575)",
+                            "it_industry" to "it_industry (IDs 200001+ • target 1,622)",
+                            "cefr_c1" to "cefr_c1 (IDs 300001+ • target 1,853)",
+                            "pte_academic" to "pte_academic (IDs 400001+ • target 2,651)",
+                            "business_english" to "business_english (IDs 500001+ • target 1,250)",
+                            "career_interview" to "career_interview (IDs 600001+ • target 406)",
+                            "medical_healthcare" to "medical_healthcare (IDs 700001+ • target 405)"
                         )
-
-                        val itStats = statsByDeck["it_industry"]
-                        val itCount = itStats?.totalRows ?: (deckCountMap["it_industry"] ?: 0)
-                        DeckStatsVerificationRow(
-                            label = "it_industry (IDs 200001+ • target 1,700)",
-                            actualText = formatter.format(itCount),
-                            isVerified = itCount > 0,
-                            fromFileCount = itStats?.fromFileCount ?: 0,
-                            fromAiCount = itStats?.fromAiCount ?: 0,
-                            fromUserCount = itStats?.fromUserCount ?: 0,
-                            emptyCount = itStats?.emptyCount ?: 0,
-                            formatter = formatter,
-                            testTag = "data_check_row_it_industry"
-                        )
+                        specializedDecksMeta.forEach { (deckId, labelText) ->
+                            val specStats = statsByDeck[deckId]
+                            val specCount = specStats?.totalRows ?: (deckCountMap[deckId] ?: 0)
+                            DeckStatsVerificationRow(
+                                label = labelText,
+                                actualText = formatter.format(specCount),
+                                isVerified = specCount > 0,
+                                fromFileCount = specStats?.fromFileCount ?: 0,
+                                fromAiCount = specStats?.fromAiCount ?: 0,
+                                fromUserCount = specStats?.fromUserCount ?: 0,
+                                emptyCount = specStats?.emptyCount ?: 0,
+                                formatter = formatter,
+                                testTag = "data_check_row_$deckId"
+                            )
+                        }
 
                         HorizontalDivider(color = BorderDark)
 

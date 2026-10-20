@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,6 +29,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -47,6 +49,7 @@ import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.QuestionAnswer
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.filled.VolumeUp
@@ -56,6 +59,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
@@ -77,6 +82,8 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -88,13 +95,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.ui.components.BidiText
+import com.example.ui.components.cleanGrammarArabicTitle
 import com.example.data.local.AiHistoryEntity
 import com.example.data.local.GrammarExampleItem
 import com.example.data.local.GrammarExerciseItem
@@ -283,7 +295,21 @@ fun GrammarLessonListScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Summary + Compact Action Pills Row
+                    var showOverflowMenu by remember { mutableStateOf(false) }
+                    val levelListState = rememberLazyListState()
+                    val topicListState = rememberLazyListState()
+
+                    LaunchedEffect(selectedLevelFilter) {
+                        val idx = availableLevels.indexOf(selectedLevelFilter)
+                        if (idx >= 0) levelListState.animateScrollToItem(idx)
+                    }
+
+                    LaunchedEffect(selectedTopicFilter) {
+                        val idx = availableTopics.indexOf(selectedTopicFilter)
+                        if (idx >= 0) topicListState.animateScrollToItem(idx)
+                    }
+
+                    // Header: Summary Stats + Compact Primary AI Action + Overflow Menu
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -296,7 +322,7 @@ fun GrammarLessonListScreen(
                                 color = GoldAccent
                             )
                             Text(
-                                text = "CEFR A1–C1 • Bilingual Explanations & Interactive Practice",
+                                text = "CEFR A1–C1 • Bilingual Grammar Practice",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = TextSecondary
                             )
@@ -304,133 +330,78 @@ fun GrammarLessonListScreen(
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            IconButton(
-                                onClick = onNavigateToNotebook,
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = GoldAccentDim,
+                                border = BorderStroke(1.dp, GoldAccent),
                                 modifier = Modifier
-                                    .size(36.dp)
-                                    .testTag("grammar_open_notebook_button")
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { onOpenAddLessons(2) }
+                                    .testTag("create_ai_lesson_button")
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Correction Notebook",
-                                    tint = GoldAccent,
-                                    modifier = Modifier.size(18.dp)
-                                )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = GoldAccent,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = "+ AI Lesson",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = GoldAccent
+                                    )
+                                }
                             }
-                            IconButton(
-                                onClick = onSyncAssets,
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .testTag("sync_grammar_assets_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = "Sync from assets",
-                                    tint = GoldAccent,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
 
-                    // Compact Header Action Pills: Correction Notebook | Import JSON | Create with AI
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            modifier = Modifier
-                                .weight(1.1f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable { onNavigateToNotebook() }
-                                .testTag("grammar_notebook_banner"),
-                            shape = RoundedCornerShape(10.dp),
-                            color = SurfaceDark,
-                            border = BorderStroke(1.dp, GoldAccentBorder)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = null,
-                                    tint = GoldAccent,
-                                    modifier = Modifier.size(15.dp)
-                                )
-                                Spacer(modifier = Modifier.width(5.dp))
-                                Text(
-                                    text = "Notebook",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = TextPrimary,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-
-                        Surface(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable { onOpenAddLessons(0) }
-                                .testTag("import_grammar_json_button"),
-                            shape = RoundedCornerShape(10.dp),
-                            color = SurfaceDark,
-                            border = BorderStroke(1.dp, BorderDark)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.UploadFile,
-                                    contentDescription = null,
-                                    tint = GoldAccent,
-                                    modifier = Modifier.size(15.dp)
-                                )
-                                Spacer(modifier = Modifier.width(5.dp))
-                                Text(
-                                    text = "Import",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                    color = TextPrimary,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-
-                        Surface(
-                            modifier = Modifier
-                                .weight(1.15f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable { onOpenAddLessons(2) }
-                                .testTag("create_ai_lesson_button"),
-                            shape = RoundedCornerShape(10.dp),
-                            color = GoldAccentDim,
-                            border = BorderStroke(1.dp, GoldAccent)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.AutoAwesome,
-                                    contentDescription = null,
-                                    tint = GoldAccent,
-                                    modifier = Modifier.size(15.dp)
-                                )
-                                Spacer(modifier = Modifier.width(5.dp))
-                                Text(
-                                    text = "Create AI",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = GoldAccent,
-                                    maxLines = 1
-                                )
+                            Box {
+                                IconButton(
+                                    onClick = { showOverflowMenu = true },
+                                    modifier = Modifier.size(34.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = "More Options",
+                                        tint = TextSecondary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = showOverflowMenu,
+                                    onDismissRequest = { showOverflowMenu = false },
+                                    modifier = Modifier.background(SurfaceDark)
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Correction Notebook", color = TextPrimary) },
+                                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = GoldAccent) },
+                                        onClick = {
+                                            showOverflowMenu = false
+                                            onNavigateToNotebook()
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Import JSON", color = TextPrimary) },
+                                        leadingIcon = { Icon(Icons.Default.UploadFile, contentDescription = null, tint = GoldAccent) },
+                                        onClick = {
+                                            showOverflowMenu = false
+                                            onOpenAddLessons(0)
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Sync Assets", color = TextPrimary) },
+                                        leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null, tint = GoldAccent) },
+                                        onClick = {
+                                            showOverflowMenu = false
+                                            onSyncAssets()
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -484,69 +455,34 @@ fun GrammarLessonListScreen(
                             .testTag("grammar_search_input")
                     )
 
-                    // CEFR Level Filter Pills (All, A1, A2, B1, B2, C1...)
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("grammar_level_filter_row"),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(availableLevels) { level ->
-                            val isSelected = selectedLevelFilter == level
-                            val count = if (level == "ALL") lessons.size else (levelCounts[level] ?: 0)
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = {
-                                    selectedLevelFilter = level
-                                    selectedTopicFilter = "ALL"
-                                },
-                                label = {
-                                    Text(
-                                        text = if (level == "ALL") "All ($count)" else "$level ($count)",
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                    )
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = GoldAccent,
-                                    selectedLabelColor = BackgroundDark,
-                                    containerColor = SurfaceDark,
-                                    labelColor = TextSecondary
-                                ),
-                                border = FilterChipDefaults.filterChipBorder(
-                                    enabled = true,
-                                    selected = isSelected,
-                                    borderColor = BorderDark,
-                                    selectedBorderColor = GoldAccent
-                                ),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.testTag("grammar_level_chip_$level")
-                            )
-                        }
-                    }
-
-                    // Topic Filter Chips
-                    if (availableTopics.size > 2) {
+                    // CEFR Level Filter Pills with Auto-Scroll & Edge Fade
+                    Box(modifier = Modifier.fillMaxWidth()) {
                         LazyRow(
+                            state = levelListState,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .testTag("grammar_topic_filter_row"),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                .testTag("grammar_level_filter_row"),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(end = 24.dp)
                         ) {
-                            items(availableTopics) { topic ->
-                                val isSelected = selectedTopicFilter == topic
+                            items(availableLevels) { level ->
+                                val isSelected = selectedLevelFilter == level
+                                val count = if (level == "ALL") lessons.size else (levelCounts[level] ?: 0)
                                 FilterChip(
                                     selected = isSelected,
-                                    onClick = { selectedTopicFilter = topic },
+                                    onClick = {
+                                        selectedLevelFilter = level
+                                        selectedTopicFilter = "ALL"
+                                    },
                                     label = {
                                         Text(
-                                            text = if (topic == "ALL") "All Topics" else topic,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                            text = if (level == "ALL") "All ($count)" else "$level ($count)",
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                         )
                                     },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = GoldAccentDim,
-                                        selectedLabelColor = GoldAccent,
+                                        selectedContainerColor = GoldAccent,
+                                        selectedLabelColor = BackgroundDark,
                                         containerColor = SurfaceDark,
                                         labelColor = TextSecondary
                                     ),
@@ -556,10 +492,75 @@ fun GrammarLessonListScreen(
                                         borderColor = BorderDark,
                                         selectedBorderColor = GoldAccent
                                     ),
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.testTag("grammar_topic_chip_$topic")
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.testTag("grammar_level_chip_$level")
                                 )
                             }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .width(24.dp)
+                                .height(38.dp)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(Color.Transparent, BackgroundDark)
+                                    )
+                                )
+                        )
+                    }
+
+                    // Topic Filter Chips with Auto-Scroll & Edge Fade
+                    if (availableTopics.size > 2) {
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            LazyRow(
+                                state = topicListState,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("grammar_topic_filter_row"),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                contentPadding = PaddingValues(end = 24.dp)
+                            ) {
+                                items(availableTopics) { topic ->
+                                    val isSelected = selectedTopicFilter == topic
+                                    FilterChip(
+                                        selected = isSelected,
+                                        onClick = { selectedTopicFilter = topic },
+                                        label = {
+                                            Text(
+                                                text = if (topic == "ALL") "All Topics" else topic,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                            )
+                                        },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = GoldAccentDim,
+                                            selectedLabelColor = GoldAccent,
+                                            containerColor = SurfaceDark,
+                                            labelColor = TextSecondary
+                                        ),
+                                        border = FilterChipDefaults.filterChipBorder(
+                                            enabled = true,
+                                            selected = isSelected,
+                                            borderColor = BorderDark,
+                                            selectedBorderColor = GoldAccent
+                                        ),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.testTag("grammar_topic_chip_$topic")
+                                    )
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .width(24.dp)
+                                    .height(34.dp)
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            colors = listOf(Color.Transparent, BackgroundDark)
+                                        )
+                                    )
+                            )
                         }
                     }
 
@@ -810,36 +811,38 @@ fun LessonCard(
                     fontWeight = FontWeight.Bold
                 )
                 BidiText(
-                    text = lesson.titleAr,
+                    text = cleanGrammarArabicTitle(lesson.titleAr),
                     style = ArabicTypography.bodyMedium,
                     color = TextSecondary
                 )
             }
 
-            Box(contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(
-                    progress = { if (isCompleted) 1f else percent },
-                    modifier = Modifier
-                        .size(44.dp)
-                        .testTag("lesson_progress_ring_${lesson.id}"),
-                    color = if (isCompleted) EmeraldAccent else GoldAccent,
-                    trackColor = SurfaceElevatedDark,
-                    strokeWidth = 4.dp
-                )
-                if (isCompleted) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Completed",
-                        tint = EmeraldAccent,
-                        modifier = Modifier.size(20.dp)
+            if (isCompleted || percent > 0f) {
+                Box(contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(
+                        progress = { if (isCompleted) 1f else percent },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .testTag("lesson_progress_ring_${lesson.id}"),
+                        color = if (isCompleted) EmeraldAccent else GoldAccent,
+                        trackColor = SurfaceElevatedDark,
+                        strokeWidth = 3.dp
                     )
-                } else {
-                    Text(
-                        text = if (total > 0) "${(percent * 100).toInt()}%" else "0%",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextSecondary,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    if (isCompleted) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Completed",
+                            tint = EmeraldAccent,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    } else {
+                        Text(
+                            text = "${(percent * 100).toInt()}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextSecondary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }
@@ -937,13 +940,13 @@ fun GrammarLessonDetailScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // Segmented 3-Tab Switcher
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(10.dp),
                     color = BackgroundDark,
                     border = BorderStroke(1.dp, BorderDark),
                     modifier = Modifier.weight(1f)
@@ -951,8 +954,8 @@ fun GrammarLessonDetailScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(3.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            .padding(2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         val tabs = listOf(
                             "Learn" to "grammar_tab_learn",
@@ -962,22 +965,22 @@ fun GrammarLessonDetailScreen(
                         tabs.forEachIndexed { idx, (label, tag) ->
                             val isSelected = selectedTab == idx
                             Surface(
-                                shape = RoundedCornerShape(9.dp),
+                                shape = RoundedCornerShape(8.dp),
                                 color = if (isSelected) GoldAccent else Color.Transparent,
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clip(RoundedCornerShape(9.dp))
+                                    .clip(RoundedCornerShape(8.dp))
                                     .clickable { selectedTab = idx }
                                     .testTag(tag)
                             ) {
                                 Text(
                                     text = label,
-                                    style = MaterialTheme.typography.labelMedium,
+                                    style = MaterialTheme.typography.labelSmall,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                     color = if (isSelected) BackgroundDark else TextSecondary,
                                     textAlign = TextAlign.Center,
                                     maxLines = 1,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 8.dp)
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
                                 )
                             }
                         }
@@ -986,16 +989,16 @@ fun GrammarLessonDetailScreen(
 
                 // Compact AI Tutor Pill Button
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(10.dp),
                     color = GoldAccentDim,
                     border = BorderStroke(1.dp, GoldAccent),
                     modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .clickable { showChatSheet = true }
                         .testTag("ask_ai_button")
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
@@ -1003,7 +1006,7 @@ fun GrammarLessonDetailScreen(
                             imageVector = Icons.Default.QuestionAnswer,
                             contentDescription = "Ask AI about this lesson",
                             tint = GoldAccent,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(14.dp)
                         )
                         Text(
                             text = "AI Tutor",
@@ -1021,8 +1024,8 @@ fun GrammarLessonDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(top = 14.dp, bottom = 40.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            contentPadding = PaddingValues(top = 12.dp, bottom = 40.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             when (selectedTab) {
                 0 -> {
@@ -1074,7 +1077,6 @@ fun GrammarLessonDetailScreen(
                                         Surface(
                                             shape = RoundedCornerShape(12.dp),
                                             color = SurfaceElevatedDark,
-                                            border = BorderStroke(1.dp, BorderDark),
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
                                             Row(
@@ -1108,9 +1110,7 @@ fun GrammarLessonDetailScreen(
                                                 IconButton(
                                                     onClick = { onSpeakTts(ex.en) },
                                                     modifier = Modifier
-                                                        .size(38.dp)
-                                                        .clip(CircleShape)
-                                                        .background(GoldAccentDim)
+                                                        .size(32.dp)
                                                         .testTag("tts_example_button_$index")
                                                 ) {
                                                     Icon(
@@ -1909,7 +1909,6 @@ fun StructuredGrammarExplanation(
                         Surface(
                             shape = RoundedCornerShape(10.dp),
                             color = SurfaceElevatedDark,
-                            border = BorderStroke(1.dp, BorderDark),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             BidiText(
@@ -1930,20 +1929,17 @@ fun StructuredGrammarExplanation(
                         val isCommonMistake = bodyText.contains("خطأ") || bodyText.contains("✗")
 
                         Surface(
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(10.dp),
                             color = SurfaceElevatedDark,
-                            border = BorderStroke(
-                                width = 1.dp,
-                                color = if (isCommonMistake) CoralAccent.copy(alpha = 0.45f) else BorderDark
-                            ),
+                            border = if (isCommonMistake) BorderStroke(1.dp, CoralAccent.copy(alpha = 0.5f)) else null,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp),
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.Top,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 BidiText(
                                     text = bodyText,
@@ -1959,12 +1955,12 @@ fun StructuredGrammarExplanation(
                                         1.dp,
                                         if (isCommonMistake) CoralAccent else GoldAccentBorder
                                     ),
-                                    modifier = Modifier.size(26.dp)
+                                    modifier = Modifier.size(20.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Text(
                                             text = numLabel,
-                                            style = MaterialTheme.typography.labelSmall,
+                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                                             fontWeight = FontWeight.Bold,
                                             color = if (isCommonMistake) CoralAccent else GoldAccent
                                         )
@@ -2245,36 +2241,83 @@ fun ReorderExerciseView(
     onAnswerChange: (String) -> Unit
 ) {
     val selectedWords = remember(currentAnswer) {
-        if (currentAnswer.isBlank()) mutableListOf() else currentAnswer.split(" ").toMutableList()
+        if (currentAnswer.isBlank()) mutableListOf() else currentAnswer.split(" ").filter { it.isNotBlank() }.toMutableList()
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        // Display selected sentence
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // Display selected sentence with interactive removable word chips
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp)),
-            shape = RoundedCornerShape(8.dp),
+                .clip(RoundedCornerShape(10.dp)),
+            shape = RoundedCornerShape(10.dp),
             color = SurfaceElevatedDark,
-            border = BorderStroke(1.dp, BorderDark)
+            border = BorderStroke(1.dp, if (selectedWords.isNotEmpty()) GoldAccentBorder else BorderDark)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = if (currentAnswer.isBlank()) "Tap words below in correct order..." else currentAnswer,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (currentAnswer.isBlank()) TextMuted else TextPrimary,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.weight(1f)
-                )
-                if (!submitted && currentAnswer.isNotBlank()) {
-                    IconButton(onClick = { onAnswerChange("") }, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = TextSecondary)
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (selectedWords.isEmpty()) {
+                        Text(
+                            text = "Tap words below in correct order...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextMuted,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
+                        FlowRow(
+                            modifier = Modifier.weight(1f),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            selectedWords.forEachIndexed { wordIdx, word ->
+                                Surface(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable(enabled = !submitted) {
+                                            val updated = selectedWords.toMutableList().also { it.removeAt(wordIdx) }
+                                            onAnswerChange(updated.joinToString(" "))
+                                        },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = GoldAccentDim,
+                                    border = BorderStroke(1.dp, GoldAccent)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            text = word,
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                textDirection = TextDirection.Ltr
+                                            ),
+                                            color = TextPrimary
+                                        )
+                                        if (!submitted) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "Remove $word",
+                                                tint = GoldAccent,
+                                                modifier = Modifier.size(12.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (!submitted && currentAnswer.isNotBlank()) {
+                        IconButton(onClick = { onAnswerChange("") }, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = "Clear", tint = TextSecondary)
+                        }
                     }
                 }
             }
@@ -2282,28 +2325,36 @@ fun ReorderExerciseView(
 
         // Available words to tap
         if (!submitted) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                options.forEach { word ->
-                    val isUsed = selectedWords.count { it == word } >= options.count { it == word }
-                    FilterChip(
-                        selected = isUsed,
-                        onClick = {
-                            if (!isUsed) {
-                                val newSentence = if (currentAnswer.isBlank()) word else "$currentAnswer $word"
-                                onAnswerChange(newSentence)
-                            }
-                        },
-                        label = { Text(word) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            containerColor = SurfaceElevatedDark,
-                            labelColor = TextPrimary,
-                            selectedContainerColor = BorderDark,
-                            selectedLabelColor = TextMuted
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    options.forEach { word ->
+                        val isUsed = selectedWords.count { it == word } >= options.count { it == word }
+                        FilterChip(
+                            selected = isUsed,
+                            onClick = {
+                                if (!isUsed) {
+                                    val newSentence = if (currentAnswer.isBlank()) word else "$currentAnswer $word"
+                                    onAnswerChange(newSentence)
+                                } else {
+                                    val lastIdx = selectedWords.lastIndexOf(word)
+                                    if (lastIdx >= 0) {
+                                        val updated = selectedWords.toMutableList().also { it.removeAt(lastIdx) }
+                                        onAnswerChange(updated.joinToString(" "))
+                                    }
+                                }
+                            },
+                            label = { Text(word) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = SurfaceElevatedDark,
+                                labelColor = TextPrimary,
+                                selectedContainerColor = BorderDark,
+                                selectedLabelColor = TextMuted
+                            )
                         )
-                    )
+                    }
                 }
             }
         }
@@ -2351,8 +2402,13 @@ fun LessonChatBottomSheet(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "${lesson.titleEn} (${lesson.titleAr})",
+                            text = lesson.titleEn,
                             style = MaterialTheme.typography.bodySmall,
+                            color = GoldAccent
+                        )
+                        BidiText(
+                            text = cleanGrammarArabicTitle(lesson.titleAr),
+                            style = ArabicTypography.labelSmall,
                             color = TextSecondary
                         )
                     }

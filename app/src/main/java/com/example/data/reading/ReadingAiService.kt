@@ -58,7 +58,7 @@ class ReadingAiService(
             throw IllegalStateException("Device is offline. An internet connection is required for AI features.")
         }
         if (!isApiKeyConfigured() && customAiTransport == null) {
-            throw IllegalStateException("GEMINI_API_KEY is not configured in the Secrets panel.")
+            throw IllegalStateException("GEMINI_API_KEY is not configured. Please configure an API key in settings.")
         }
     }
 

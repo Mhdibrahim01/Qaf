@@ -124,11 +124,11 @@ object GeminiApiKeyManager {
     fun detectProvider(key: String): AiKeyProvider {
         val clean = sanitizeKey(key)
         return when {
-            clean.startsWith("AIza") && clean.length >= 30 -> AiKeyProvider.GEMINI
+            (clean.startsWith("AIza") || clean.startsWith("AQ.")) && clean.length >= 25 -> AiKeyProvider.GEMINI
             clean.startsWith("gsk_") && clean.length >= 25 -> AiKeyProvider.GROQ
             clean.startsWith("sk-or-") && clean.length >= 25 -> AiKeyProvider.OPENROUTER
             clean.startsWith("sk-") && clean.length >= 25 -> AiKeyProvider.OPENAI
-            clean.startsWith("AQ.") || clean.startsWith("ya29.") -> AiKeyProvider.OAUTH_OR_INVALID
+            clean.startsWith("ya29.") -> AiKeyProvider.OAUTH_OR_INVALID
             clean.length >= 30 && clean.all { it.isLetterOrDigit() || it == '_' || it == '-' } -> AiKeyProvider.GEMINI
             else -> AiKeyProvider.OAUTH_OR_INVALID
         }

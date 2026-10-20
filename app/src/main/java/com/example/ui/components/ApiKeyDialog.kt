@@ -302,7 +302,7 @@ fun ApiKeyDialog(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                text = "Warning: Token starting with '${parsedCandidateKeys.first().take(4)}...' is not a valid API key. Gemini keys start with 'AIzaSy...' and Groq keys start with 'gsk_...'.",
+                                text = "Warning: Token starting with '${parsedCandidateKeys.first().take(4)}...' is not a valid API key. Gemini keys start with 'AIzaSy...' or 'AQ...', and Groq keys start with 'gsk_...'.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = CoralAccent,
                                 modifier = Modifier.padding(8.dp)

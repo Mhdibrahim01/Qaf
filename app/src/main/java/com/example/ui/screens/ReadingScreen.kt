@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Quiz
@@ -107,6 +108,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -342,7 +344,21 @@ fun ReadingListScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Row 1: Stats Summary + Sync Button (Never squished!)
+                    var showOverflowMenu by remember { mutableStateOf(false) }
+                    val levelListState = rememberLazyListState()
+                    val topicListState = rememberLazyListState()
+
+                    LaunchedEffect(selectedLevelFilter) {
+                        val idx = levels.indexOf(selectedLevelFilter)
+                        if (idx >= 0) levelListState.animateScrollToItem(idx)
+                    }
+
+                    LaunchedEffect(selectedTopicFilter) {
+                        val idx = topics.indexOf(selectedTopicFilter)
+                        if (idx >= 0) topicListState.animateScrollToItem(idx)
+                    }
+
+                    // Header: Stats Summary + Primary AI Action + Overflow Menu
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -358,7 +374,7 @@ fun ReadingListScreen(
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
-                                text = "Tap any word while reading for instant meaning & audio",
+                                text = "CEFR A1–C1 • Graded Bilingual Reading",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color(0xFF9CA3AF),
                                 maxLines = 1,
@@ -366,172 +382,94 @@ fun ReadingListScreen(
                             )
                         }
 
-                        IconButton(
-                            onClick = {
-                                initialAddTab = 3
-                                showAddDialog = true
-                            },
-                            modifier = Modifier
-                                .size(34.dp)
-                                .testTag("reading_sync_assets_icon")
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Sync Assets",
-                                tint = Color(0xFFE5C158),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-
-                    // Row 2: Dedicated Full-Width Action Pills Row (Notebook | Paste | Import | AI Text)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Correction Notebook Pill
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color(0xFF17181E),
-                            border = BorderStroke(1.dp, Color(0xFFE5C158).copy(alpha = 0.35f)),
-                            modifier = Modifier
-                                .weight(1.05f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable { onNavigateToNotebook() }
-                                .testTag("reading_open_notebook_button")
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFFE5C158).copy(alpha = 0.16f),
+                                border = BorderStroke(1.dp, Color(0xFFE5C158)),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        initialAddTab = 0
+                                        showAddDialog = true
+                                    }
+                                    .testTag("reading_add_fab")
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Correction Notebook",
-                                    tint = Color(0xFFE5C158),
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    text = "Notebook",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFFF3F4F6),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-
-                        // Paste Text Pill
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color(0xFF17181E),
-                            border = BorderStroke(1.dp, Color(0xFF262834)),
-                            modifier = Modifier
-                                .weight(0.95f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable {
-                                    initialAddTab = 1
-                                    showAddDialog = true
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = "Create with AI",
+                                        tint = Color(0xFFE5C158),
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = "+ AI Text",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = Color(0xFFE5C158)
+                                    )
                                 }
-                                .testTag("reading_quick_paste_button")
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.ContentPaste,
-                                    contentDescription = "Paste Text",
-                                    tint = Color(0xFFE5C158),
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    text = "Paste",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color(0xFFF3F4F6),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
                             }
-                        }
 
-                        // Import JSON Pill
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color(0xFF17181E),
-                            border = BorderStroke(1.dp, Color(0xFF262834)),
-                            modifier = Modifier
-                                .weight(0.95f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable {
-                                    initialAddTab = 2
-                                    showAddDialog = true
+                            Box {
+                                IconButton(
+                                    onClick = { showOverflowMenu = true },
+                                    modifier = Modifier.size(34.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = "More Options",
+                                        tint = Color(0xFF9CA3AF),
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
-                                .testTag("reading_import_json_icon")
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.UploadFile,
-                                    contentDescription = "Import JSON",
-                                    tint = Color(0xFFE5C158),
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    text = "Import",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color(0xFFF3F4F6),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-
-                        // AI Passage Pill (Primary Gold)
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color(0xFFE5C158).copy(alpha = 0.16f),
-                            border = BorderStroke(1.dp, Color(0xFFE5C158)),
-                            modifier = Modifier
-                                .weight(1.05f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable {
-                                    initialAddTab = 0
-                                    showAddDialog = true
+                                DropdownMenu(
+                                    expanded = showOverflowMenu,
+                                    onDismissRequest = { showOverflowMenu = false },
+                                    modifier = Modifier.background(Color(0xFF17181E))
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Correction Notebook", color = Color(0xFFF3F4F6)) },
+                                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFFE5C158)) },
+                                        onClick = {
+                                            showOverflowMenu = false
+                                            onNavigateToNotebook()
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Paste Text", color = Color(0xFFF3F4F6)) },
+                                        leadingIcon = { Icon(Icons.Default.ContentPaste, contentDescription = null, tint = Color(0xFFE5C158)) },
+                                        onClick = {
+                                            showOverflowMenu = false
+                                            initialAddTab = 1
+                                            showAddDialog = true
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Import JSON", color = Color(0xFFF3F4F6)) },
+                                        leadingIcon = { Icon(Icons.Default.UploadFile, contentDescription = null, tint = Color(0xFFE5C158)) },
+                                        onClick = {
+                                            showOverflowMenu = false
+                                            initialAddTab = 2
+                                            showAddDialog = true
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Sync Assets", color = Color(0xFFF3F4F6)) },
+                                        leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null, tint = Color(0xFFE5C158)) },
+                                        onClick = {
+                                            showOverflowMenu = false
+                                            initialAddTab = 3
+                                            showAddDialog = true
+                                        }
+                                    )
                                 }
-                                .testTag("reading_add_fab")
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.AutoAwesome,
-                                    contentDescription = "Create with AI",
-                                    tint = Color(0xFFE5C158),
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    text = "AI Text",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFFE5C158),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
                             }
                         }
                     }
@@ -578,74 +516,104 @@ fun ReadingListScreen(
                             .testTag("reading_search_input")
                     )
 
-                    // Row 4: CEFR Level Filter Pills (All, A1, A2, B1, B2, C1)
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("reading_level_filter_row"),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        items(levels) { level ->
-                            val isSelected = selectedLevelFilter == level
-                            val count = levelCounts[level] ?: 0
-                            val labelText = if (level == "ALL") "All ($count)" else "$level ($count)"
-                            Surface(
-                                shape = RoundedCornerShape(20.dp),
-                                color = if (isSelected) Color(0xFFE5C158) else Color(0xFF17181E),
-                                border = BorderStroke(
-                                    width = 1.dp,
-                                    color = if (isSelected) Color(0xFFE5C158) else Color(0xFF262834)
-                                ),
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .clickable { selectedLevelFilter = level }
-                                    .testTag("reading_filter_level_$level")
-                            ) {
-                                Text(
-                                    text = labelText,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) Color(0xFF111216) else Color(0xFFD1D5DB),
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    // Row 5: Topic Filter Chips
-                    if (topics.size > 2) {
+                    // Row 3: CEFR Level Filter Pills with Auto-Scroll & Edge Fade
+                    Box(modifier = Modifier.fillMaxWidth()) {
                         LazyRow(
+                            state = levelListState,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .testTag("reading_topic_filter_row"),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                .testTag("reading_level_filter_row"),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(end = 24.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            items(topics) { topic ->
-                                val isSelected = selectedTopicFilter.equals(topic, ignoreCase = true)
-                                val displayTopic = if (topic == "ALL") "All Topics" else topic.replaceFirstChar { it.uppercase() }
+                            items(levels) { level ->
+                                val isSelected = selectedLevelFilter == level
+                                val count = levelCounts[level] ?: 0
+                                val labelText = if (level == "ALL") "All ($count)" else "$level ($count)"
                                 Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = if (isSelected) Color(0xFF262834) else Color(0xFF14151B),
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = if (isSelected) Color(0xFFE5C158) else Color(0xFF17181E),
                                     border = BorderStroke(
                                         width = 1.dp,
-                                        color = if (isSelected) Color(0xFFE5C158).copy(alpha = 0.65f) else Color(0xFF232530)
+                                        color = if (isSelected) Color(0xFFE5C158) else Color(0xFF262834)
                                     ),
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .clickable { selectedTopicFilter = topic }
-                                        .testTag("reading_filter_topic_$topic")
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .clickable { selectedLevelFilter = level }
+                                        .testTag("reading_filter_level_$level")
                                 ) {
                                     Text(
-                                        text = displayTopic,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                        color = if (isSelected) Color(0xFFE5C158) else Color(0xFF9CA3AF),
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                        text = labelText,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) Color(0xFF111216) else Color(0xFFD1D5DB),
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
                                     )
                                 }
                             }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .width(24.dp)
+                                .height(38.dp)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(Color.Transparent, Color(0xFF0E0F13))
+                                    )
+                                )
+                        )
+                    }
+
+                    // Row 4: Topic Filter Chips with Auto-Scroll & Edge Fade
+                    if (topics.size > 2) {
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            LazyRow(
+                                state = topicListState,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("reading_topic_filter_row"),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                contentPadding = PaddingValues(end = 24.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                items(topics) { topic ->
+                                    val isSelected = selectedTopicFilter.equals(topic, ignoreCase = true)
+                                    val displayTopic = if (topic == "ALL") "All Topics" else topic.replaceFirstChar { it.uppercase() }
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isSelected) Color(0xFF262834) else Color(0xFF14151B),
+                                        border = BorderStroke(
+                                            width = 1.dp,
+                                            color = if (isSelected) Color(0xFFE5C158).copy(alpha = 0.65f) else Color(0xFF232530)
+                                        ),
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable { selectedTopicFilter = topic }
+                                            .testTag("reading_filter_topic_$topic")
+                                    ) {
+                                        Text(
+                                            text = displayTopic,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                            color = if (isSelected) Color(0xFFE5C158) else Color(0xFF9CA3AF),
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                        )
+                                    }
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .width(24.dp)
+                                    .height(34.dp)
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            colors = listOf(Color.Transparent, Color(0xFF0E0F13))
+                                        )
+                                    )
+                            )
                         }
                     }
                 }
@@ -1017,6 +985,8 @@ fun ReadingDetailScreen(
     // Grammar Highlight & Bottom Sheet states
     var activeGrammarSentence by remember { mutableStateOf<Pair<ReadingSentenceItem, GrammarLessonEntity?>?>(null) }
     var activePracticeLesson by remember { mutableStateOf<GrammarLessonEntity?>(null) }
+    var grammarHintsEnabled by remember { mutableStateOf(false) }
+    var selectedSentenceIndex by remember { mutableStateOf<Int?>(null) }
 
     // AI Chat bottom sheet
     var showChatSheet by remember { mutableStateOf(false) }
@@ -1209,7 +1179,7 @@ fun ReadingDetailScreen(
 
                         Spacer(Modifier.height(12.dp))
 
-                        // Audio + Translation Controls Row
+                        // Condensed Audio, Translation, Hints & Simplify Toolbar
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1223,21 +1193,22 @@ fun ReadingDetailScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = if (isReadingAudioActive) MaterialTheme.colorScheme.errorContainer
-                                    else MaterialTheme.colorScheme.primaryContainer,
+                                    else Color(0xFFE5C158).copy(alpha = 0.2f),
                                     contentColor = if (isReadingAudioActive) MaterialTheme.colorScheme.onErrorContainer
-                                    else MaterialTheme.colorScheme.onPrimaryContainer
+                                    else Color(0xFFE5C158)
                                 ),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .testTag("reading_listen_audio_button")
+                                    .testTag("reading_listen_audio_button"),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
                             ) {
                                 Icon(
                                     imageVector = if (isReadingAudioActive) Icons.Default.Stop else Icons.Default.Headphones,
                                     contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
-                                Spacer(Modifier.width(6.dp))
-                                Text(if (isReadingAudioActive) "Stop Audio" else "Listen All")
+                                Spacer(Modifier.width(4.dp))
+                                Text(if (isReadingAudioActive) "Stop" else "Listen", fontSize = 12.sp, maxLines = 1)
                             }
 
                             // Translation Toggle All
@@ -1245,34 +1216,45 @@ fun ReadingDetailScreen(
                                 onClick = { toggleAllTranslations() },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .testTag("reading_toggle_all_translations_button")
+                                    .testTag("reading_toggle_all_translations_button"),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = if (areAllTranslationsVisible) Color(0xFFE5C158) else Color(0xFFD1D5DB)
+                                ),
+                                border = BorderStroke(1.dp, if (areAllTranslationsVisible) Color(0xFFE5C158) else Color(0xFF262834)),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Translate,
                                     contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
-                                Spacer(Modifier.width(6.dp))
-                                Text(if (areAllTranslationsVisible) "Hide Arabic" else "Show Arabic")
+                                Spacer(Modifier.width(4.dp))
+                                Text(if (areAllTranslationsVisible) "Arabic On" else "Arabic Off", fontSize = 12.sp, maxLines = 1)
                             }
-                        }
 
-                        // Secondary actions: Simplify
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "💡 Tip: Tap any word to view instant local meaning & audio",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.weight(1f)
-                            )
+                            // Grammar Hints Toggle
+                            OutlinedButton(
+                                onClick = { grammarHintsEnabled = !grammarHintsEnabled },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("reading_toggle_grammar_hints_button"),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = if (grammarHintsEnabled) Color(0xFFE5C158) else Color(0xFF9CA3AF)
+                                ),
+                                border = BorderStroke(1.dp, if (grammarHintsEnabled) Color(0xFFE5C158) else Color(0xFF262834)),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.School,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(if (grammarHintsEnabled) "Hints On" else "Hints", fontSize = 12.sp, maxLines = 1)
+                            }
 
-                            TextButton(
+                            // Simplify
+                            OutlinedButton(
                                 onClick = {
                                     isSimplifying = true
                                     scope.launch {
@@ -1286,16 +1268,22 @@ fun ReadingDetailScreen(
                                     }
                                 },
                                 enabled = !isSimplifying,
-                                modifier = Modifier.testTag("reading_simplify_button")
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("reading_simplify_button"),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color(0xFFD1D5DB)
+                                ),
+                                border = BorderStroke(1.dp, Color(0xFF262834)),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
                             ) {
                                 if (isSimplifying) {
-                                    CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
-                                    Spacer(Modifier.width(4.dp))
+                                    CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp, color = Color(0xFFE5C158))
                                 } else {
-                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(14.dp))
-                                    Spacer(Modifier.width(4.dp))
+                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
                                 }
-                                Text("Simplify", fontSize = 12.sp)
+                                Spacer(Modifier.width(4.dp))
+                                Text("Simplify", fontSize = 12.sp, maxLines = 1)
                             }
                         }
                     }
@@ -1362,10 +1350,10 @@ fun ReadingDetailScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                        containerColor = Color(0xFF17181E)
                     ),
                     shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    border = BorderStroke(1.dp, Color(0xFF262834))
                 ) {
                     Column(
                         modifier = Modifier
@@ -1376,13 +1364,24 @@ fun ReadingDetailScreen(
                         sentences.forEachIndexed { sIndex, sentenceItem ->
                             val isHighlighted = isReadingAudioActive && currentReadingSentenceIndex == sIndex
                             val isArabicVisible = sentenceTranslationVisibility[sIndex] ?: areAllTranslationsVisible
+                            val isSentenceSelected = selectedSentenceIndex == sIndex
+                            val linkedGrammarLesson = grammarLessons.firstOrNull { it.id == sentenceItem.grammarId }
+                            val grammarTitle = linkedGrammarLesson?.let {
+                                if (it.titleEn.isNotBlank()) "${it.topic} • ${it.titleEn}" else it.topic
+                            } ?: sentenceItem.grammarId?.takeIf { !it.startsWith("g", ignoreCase = true) } ?: "Grammar Rule"
 
                             ReadingSentenceBlock(
                                 sentenceIndex = sIndex,
                                 sentence = sentenceItem,
                                 isHighlighted = isHighlighted,
                                 isArabicVisible = isArabicVisible,
+                                isSelected = isSentenceSelected,
+                                showGrammarHints = grammarHintsEnabled || isSentenceSelected,
+                                grammarLabel = grammarTitle,
                                 targetWords = targetWords,
+                                onSelectSentence = {
+                                    selectedSentenceIndex = if (selectedSentenceIndex == sIndex) null else sIndex
+                                },
                                 onToggleArabic = {
                                     sentenceTranslationVisibility[sIndex] = !(sentenceTranslationVisibility[sIndex] ?: areAllTranslationsVisible)
                                 },
@@ -1395,7 +1394,7 @@ fun ReadingDetailScreen(
                                 onGrammarClicked = {
                                     activeGrammarSentence = Pair(
                                         sentenceItem,
-                                        grammarLessons.firstOrNull { it.id == sentenceItem.grammarId }
+                                        linkedGrammarLesson
                                     )
                                 }
                             )
@@ -1585,7 +1584,11 @@ fun ReadingSentenceBlock(
     sentence: ReadingSentenceItem,
     isHighlighted: Boolean,
     isArabicVisible: Boolean,
+    isSelected: Boolean = false,
+    showGrammarHints: Boolean = false,
+    grammarLabel: String = "Grammar Rule",
     targetWords: Set<String>,
+    onSelectSentence: () -> Unit = {},
     onToggleArabic: () -> Unit,
     onWordClicked: (String) -> Unit,
     onSpeakSentence: () -> Unit,
@@ -1593,10 +1596,12 @@ fun ReadingSentenceBlock(
     modifier: Modifier = Modifier
 ) {
     val hasGrammar = !sentence.grammarId.isNullOrBlank()
+    val showGrammarBadge = hasGrammar && showGrammarHints
 
     val targetBg = when {
         isHighlighted -> Color(0xFFE5C158).copy(alpha = 0.16f)
-        hasGrammar -> Color(0xFFE5C158).copy(alpha = 0.08f)
+        showGrammarBadge -> Color(0xFFE5C158).copy(alpha = 0.08f)
+        isSelected -> Color(0xFF262834)
         else -> Color.Transparent
     }
 
@@ -1611,20 +1616,26 @@ fun ReadingSentenceBlock(
             .clip(RoundedCornerShape(10.dp))
             .background(backgroundColor)
             .then(
-                if (hasGrammar) {
+                if (showGrammarBadge) {
                     Modifier.border(
                         BorderStroke(1.dp, Color(0xFFE5C158).copy(alpha = 0.45f)),
+                        RoundedCornerShape(10.dp)
+                    )
+                } else if (isSelected) {
+                    Modifier.border(
+                        BorderStroke(1.dp, Color(0xFF383A4A)),
                         RoundedCornerShape(10.dp)
                     )
                 } else {
                     Modifier
                 }
             )
+            .clickable(onClick = onSelectSentence)
             .padding(8.dp)
             .testTag("reading_sentence_$sentenceIndex")
     ) {
-        // Grammar Header Badge if linked
-        if (hasGrammar) {
+        // Grammar Header Badge if linked and hints enabled / tapped
+        if (showGrammarBadge) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1652,7 +1663,7 @@ fun ReadingSentenceBlock(
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
-                            text = "Grammar: ${sentence.grammarId}",
+                            text = grammarLabel,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFE5C158),
@@ -1660,7 +1671,7 @@ fun ReadingSentenceBlock(
                         )
                         Spacer(Modifier.width(2.dp))
                         Text(
-                            text = "• Tap for rule",
+                            text = "• Tap rule",
                             style = MaterialTheme.typography.labelSmall,
                             color = Color(0xFFD1D5DB),
                             fontSize = 10.sp
@@ -1675,7 +1686,7 @@ fun ReadingSentenceBlock(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top
         ) {
-            // Speaker icon to play this individual sentence
+            // Speaker icon to play this individual sentence (High contrast)
             IconButton(
                 onClick = onSpeakSentence,
                 modifier = Modifier
@@ -1685,7 +1696,7 @@ fun ReadingSentenceBlock(
                 Icon(
                     imageVector = Icons.Default.VolumeUp,
                     contentDescription = "Speak sentence",
-                    tint = if (isHighlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                    tint = if (isHighlighted) Color(0xFFE5C158) else Color(0xFFD1D5DB),
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -1718,7 +1729,8 @@ fun ReadingSentenceBlock(
                         Text(
                             text = token,
                             style = MaterialTheme.typography.bodyLarge,
-                            fontSize = 17.sp,
+                            fontSize = 18.sp,
+                            lineHeight = 28.sp,
                             fontWeight = if (isTarget) FontWeight.Bold else FontWeight.Normal,
                             color = if (isTarget) Color(0xFF3E2723) else MaterialTheme.colorScheme.onSurface
                         )
@@ -1726,7 +1738,7 @@ fun ReadingSentenceBlock(
                 }
             }
 
-            // Arabic toggle button for this sentence
+            // Arabic toggle button for this sentence (High contrast)
             if (sentence.ar.isNotBlank()) {
                 IconButton(
                     onClick = onToggleArabic,
@@ -1735,7 +1747,7 @@ fun ReadingSentenceBlock(
                     Icon(
                         imageVector = Icons.Default.Translate,
                         contentDescription = "Toggle translation",
-                        tint = if (isArabicVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                        tint = if (isArabicVisible) Color(0xFFE5C158) else Color(0xFFD1D5DB),
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -1751,7 +1763,7 @@ fun ReadingSentenceBlock(
             BidiText(
                 text = sentence.ar,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary,
+                color = Color(0xFFE5C158),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 36.dp, top = 4.dp, bottom = 4.dp)
@@ -3255,6 +3267,7 @@ fun AddReadingTextDialog(
     )
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun TabCreateWithAi(
     onDismiss: () -> Unit,
@@ -3293,7 +3306,7 @@ fun TabCreateWithAi(
         )
 
         Text("Story Length:", style = MaterialTheme.typography.labelMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
                 selected = length == "short",
                 onClick = { length = "short" },

@@ -130,6 +130,7 @@ fun HomeScreen(
     onOpenDeck: (String) -> Unit = {},
     onOpenFlashcardsForDeck: (String) -> Unit = {},
     onOpenPlanScreen: () -> Unit = {},
+    onNavigateToTask: (route: String, linkedId: String?) -> Unit = { _, _ -> onOpenPlanScreen() },
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
@@ -188,7 +189,8 @@ fun HomeScreen(
                     ) {
                         TodayPlanCard(
                             todayChecklist = todayChecklist,
-                            onOpenPlanScreen = onOpenPlanScreen
+                            onOpenPlanScreen = onOpenPlanScreen,
+                            onNavigateToTask = onNavigateToTask
                         )
 
                         WeeklyProgressSummaryCard(
@@ -229,7 +231,8 @@ fun HomeScreen(
                 // Single-column phone layout
                 TodayPlanCard(
                     todayChecklist = todayChecklist,
-                    onOpenPlanScreen = onOpenPlanScreen
+                    onOpenPlanScreen = onOpenPlanScreen,
+                    onNavigateToTask = onNavigateToTask
                 )
 
                 ReviewDueSection(
@@ -367,6 +370,7 @@ private fun WelcomeSection(
 private fun TodayPlanCard(
     todayChecklist: DailyChecklistEntity?,
     onOpenPlanScreen: () -> Unit,
+    onNavigateToTask: (route: String, linkedId: String?) -> Unit = { _, _ -> onOpenPlanScreen() },
     modifier: Modifier = Modifier
 ) {
     val totalTasks = todayChecklist?.totalCount?.takeIf { it > 0 } ?: 4
@@ -488,7 +492,17 @@ private fun TodayPlanCard(
                 displayTasks.forEach { task ->
                     TaskCheckRow(
                         task = task,
-                        onClick = onOpenPlanScreen
+                        onClick = {
+                            val targetRoute = when (task.type) {
+                                "flashcards" -> "flashcards"
+                                "new_words" -> "database"
+                                "reading" -> "reading"
+                                "grammar" -> "grammar"
+                                "quiz" -> "plan"
+                                else -> "plan"
+                            }
+                            onNavigateToTask(targetRoute, task.linkedId)
+                        }
                     )
                 }
             }

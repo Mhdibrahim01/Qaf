@@ -178,7 +178,7 @@ object FreeDictionaryAndTranslationEngine {
                         val myMem = translateSingleMyMemory(cleanWord)
                         if (containsArabicScript(myMem)) listOf(myMem) else listOf("معنى $cleanWord")
                     }
-                }
+                }.distinct()
 
                 val meanings = sensesWithExamples.mapIndexed { idx, sense ->
                     val normPos = normalizePosTag(sense.pos)
@@ -207,13 +207,14 @@ object FreeDictionaryAndTranslationEngine {
                             ar = exAr
                         )
                     )
-                }
+                }.distinctBy { it.pos + it.arabic.joinToString() }
 
                 val phrases = candidatePhrasesEn.mapIndexed { idx, phraseEn ->
                     val rawAr = phraseTranslations.getOrNull(idx).orEmpty().trim()
                     val arList = rawAr.split(Regex("[،,;؛/|]+"))
                         .map { it.trim() }
                         .filter { containsArabicScript(it) }
+                        .distinct()
                         .ifEmpty { fallbackWordAr.take(2) }
                     AiPhraseItem(
                         en = phraseEn,
@@ -222,8 +223,7 @@ object FreeDictionaryAndTranslationEngine {
                 }.take(6)
 
                 val extraExamples = meanings.mapNotNull { it.example }.distinctBy { it.en }.take(3)
-                val posSummaryAr = meanings.joinToString("، ") { it.arabic.firstOrNull().orEmpty() }
-                val etymologyAr = "تُستخدم كلمة \"$cleanWord\" في اللغة الإنجليزية بمعنى ($posSummaryAr) بحسب السياق ونوع الكلمة."
+                val etymologyAr = ""
 
                 val resultJson = AiWordDetailJson(
                     syllables = computeSyllables(cleanWord),
@@ -547,18 +547,18 @@ object FreeDictionaryAndTranslationEngine {
         val joined = sanitized.joinToString("\n")
 
         // 1. Try Google GTX batch newline translation first
+        var gtxBatchConn: HttpURLConnection? = null
         try {
             val encoded = URLEncoder.encode(joined, "UTF-8")
             val endpoint = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ar&dt=t&q=$encoded"
-            val conn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+            gtxBatchConn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 connectTimeout = 10_000
                 readTimeout = 10_000
                 setRequestProperty("User-Agent", "Mozilla/5.0")
             }
-            if (conn.responseCode in 200..299) {
-                val body = conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-                conn.disconnect()
+            if (gtxBatchConn.responseCode in 200..299) {
+                val body = gtxBatchConn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
                 val root = json.parseToJsonElement(body).jsonArray
                 val segs = root.getOrNull(0) as? JsonArray
                 val fullText = buildString {
@@ -572,10 +572,11 @@ object FreeDictionaryAndTranslationEngine {
                 if (splitLines.size == lines.size) {
                     return splitLines
                 }
-            } else {
-                conn.disconnect()
             }
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+        } finally {
+            gtxBatchConn?.disconnect()
+        }
 
         // 2. Fallback: translate line by line via GTX single or LibreTranslate or MyMemory
         return sanitized.map { singleLine ->
@@ -586,18 +587,18 @@ object FreeDictionaryAndTranslationEngine {
 
     private fun translateSingleWithFallbacks(text: String): String {
         // A. Try GTX single
+        var gtxSingleConn: HttpURLConnection? = null
         try {
             val encoded = URLEncoder.encode(text, "UTF-8")
             val endpoint = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ar&dt=t&q=$encoded"
-            val conn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+            gtxSingleConn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 connectTimeout = 6_000
                 readTimeout = 6_000
                 setRequestProperty("User-Agent", "Mozilla/5.0")
             }
-            if (conn.responseCode in 200..299) {
-                val body = conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-                conn.disconnect()
+            if (gtxSingleConn.responseCode in 200..299) {
+                val body = gtxSingleConn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
                 val root = json.parseToJsonElement(body).jsonArray
                 val segs = root.getOrNull(0) as? JsonArray
                 val full = buildString {
@@ -607,10 +608,11 @@ object FreeDictionaryAndTranslationEngine {
                     }
                 }.trim()
                 if (containsArabicScript(full)) return full
-            } else {
-                conn.disconnect()
             }
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+        } finally {
+            gtxSingleConn?.disconnect()
+        }
 
         // B. Try LibreTranslate public mirror
         val libreMirrors = listOf(
@@ -618,8 +620,9 @@ object FreeDictionaryAndTranslationEngine {
             "https://libretranslate.de/translate"
         )
         for (mirror in libreMirrors) {
+            var libreConn: HttpURLConnection? = null
             try {
-                val conn = (URL(mirror).openConnection() as HttpURLConnection).apply {
+                libreConn = (URL(mirror).openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
                     connectTimeout = 6_000
                     readTimeout = 6_000
@@ -627,17 +630,17 @@ object FreeDictionaryAndTranslationEngine {
                     setRequestProperty("Content-Type", "application/json; charset=utf-8")
                 }
                 val payload = """{"q":${JsonPrimitive(text)},"source":"en","target":"ar","format":"text"}"""
-                OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { it.write(payload) }
-                if (conn.responseCode in 200..299) {
-                    val body = conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-                    conn.disconnect()
+                OutputStreamWriter(libreConn.outputStream, Charsets.UTF_8).use { it.write(payload) }
+                if (libreConn.responseCode in 200..299) {
+                    val body = libreConn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
                     val obj = json.parseToJsonElement(body).jsonObject
                     val tr = obj["translatedText"]?.jsonPrimitive?.content.orEmpty().trim()
                     if (containsArabicScript(tr)) return tr
-                } else {
-                    conn.disconnect()
                 }
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+            } finally {
+                libreConn?.disconnect()
+            }
         }
 
         // C. Try MyMemory
@@ -645,23 +648,24 @@ object FreeDictionaryAndTranslationEngine {
     }
 
     internal fun translateSingleMyMemory(text: String): String {
+        var myMemoryConn: HttpURLConnection? = null
         return try {
             val encoded = URLEncoder.encode(text.take(450), "UTF-8")
             val endpoint = "https://api.mymemory.translated.net/get?q=$encoded&langpair=en|ar"
-            val conn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+            myMemoryConn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 6_000
                 readTimeout = 6_000
                 setRequestProperty("User-Agent", "WordBooks-Android/2.0")
             }
-            val result = if (conn.responseCode in 200..299) {
-                val body = conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+            if (myMemoryConn.responseCode in 200..299) {
+                val body = myMemoryConn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
                 val root = json.parseToJsonElement(body).jsonObject
                 root["responseData"]?.jsonObject?.get("translatedText")?.jsonPrimitive?.content.orEmpty().trim()
             } else ""
-            conn.disconnect()
-            result
         } catch (_: Exception) {
             ""
+        } finally {
+            myMemoryConn?.disconnect()
         }
     }
 

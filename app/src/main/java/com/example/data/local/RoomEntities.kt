@@ -129,7 +129,8 @@ typealias PosSenseVariant = com.example.data.importer.PosSenseVariant
         Index(value = ["deck"]),
         Index(value = ["due_timestamp"]),
         Index(value = ["is_favorite"]),
-        Index(value = ["is_mastered"])
+        Index(value = ["is_mastered"]),
+        Index(value = ["is_mastered", "due_timestamp"])
     ]
 )
 data class WordProgressEntity(
@@ -149,7 +150,13 @@ data class WordProgressEntity(
 /**
  * 4. sentences table
  */
-@Entity(tableName = "sentences")
+@Entity(
+    tableName = "sentences",
+    indices = [
+        Index(value = ["created_at"]),
+        Index(value = ["english_text"])
+    ]
+)
 data class SentenceEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0L,
     @ColumnInfo(name = "english_text") val englishText: String,
@@ -164,7 +171,12 @@ data class SentenceEntity(
 /**
  * 5. grammar_lessons table
  */
-@Entity(tableName = "grammar_lessons")
+@Entity(
+    tableName = "grammar_lessons",
+    indices = [
+        Index(value = ["level"])
+    ]
+)
 data class GrammarLessonEntity(
     @PrimaryKey val id: String,
     val level: String,
@@ -254,7 +266,12 @@ data class GrammarSentenceCheckResult(
 /**
  * 6. reading_texts table
  */
-@Entity(tableName = "reading_texts")
+@Entity(
+    tableName = "reading_texts",
+    indices = [
+        Index(value = ["level"])
+    ]
+)
 data class ReadingTextEntity(
     @PrimaryKey val id: String,
     val level: String,

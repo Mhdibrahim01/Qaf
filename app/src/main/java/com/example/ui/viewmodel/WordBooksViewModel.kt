@@ -493,6 +493,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 wordText = nextWordText,
                 incrementStudied = true
             )
+            refreshDailyChecklist()
         }
     }
 
@@ -642,6 +643,8 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             current.copy(
                 deckId = deckId ?: "",
                 onlyFavorites = deckId == DataImportRepository.SAVED_WORDS_DECK_ID,
+                onlyMastered = false,
+                onlyLearning = false,
                 searchQuery = "",
                 typeFilter = "",
                 levelFilter = "",
@@ -774,7 +777,40 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun selectWordListTab(isMasteredOnly: Boolean) {
-        _filterState.update { it.copy(onlyMastered = isMasteredOnly) }
+        _filterState.update {
+            it.copy(
+                onlyMastered = isMasteredOnly,
+                onlyLearning = false,
+                onlyFavorites = if (isMasteredOnly) false else (it.deckId == DataImportRepository.SAVED_WORDS_DECK_ID)
+            )
+        }
+    }
+
+    fun updateStatusFilter(status: String) {
+        _filterState.update { current ->
+            when (status.lowercase()) {
+                "learning" -> current.copy(
+                    onlyLearning = true,
+                    onlyMastered = false,
+                    onlyFavorites = false
+                )
+                "mastered" -> current.copy(
+                    onlyLearning = false,
+                    onlyMastered = true,
+                    onlyFavorites = false
+                )
+                "favorites" -> current.copy(
+                    onlyLearning = false,
+                    onlyMastered = false,
+                    onlyFavorites = true
+                )
+                else -> current.copy(
+                    onlyLearning = false,
+                    onlyMastered = false,
+                    onlyFavorites = current.deckId == DataImportRepository.SAVED_WORDS_DECK_ID
+                )
+            }
+        }
     }
 
     fun canMakeAiRequest(): Boolean = batchTranslateManager.canMakeAiRequest()
@@ -907,6 +943,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 score = score,
                 isCompleted = isDone
             )
+            refreshDailyChecklist()
         }
     }
 
@@ -990,6 +1027,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 score = score,
                 isCompleted = isDone
             )
+            refreshDailyChecklist()
         }
     }
 
@@ -1179,11 +1217,64 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     fun recordSpacedReviewAttempt(id: Long, newSentence: String, isSuccess: Boolean = true) {
         viewModelScope.launch {
             readingRepository.recordSpacedReviewAttempt(id, newSentence, isSuccess)
+            refreshDailyChecklist()
         }
     }
 
     suspend fun getGrammarLessonById(lessonId: String): GrammarLessonEntity? {
         return grammarRepository.getLessonById(lessonId)
+    }
+
+    fun preparePlanTaskNavigation(route: String, linkedId: String?) {
+        val safeLinkedId = linkedId.orEmpty()
+        when (route) {
+            "flashcards" -> {
+                val deck = safeLinkedId.ifBlank { "oxford5000" }
+                selectFlashcardDeck(deck)
+            }
+            "word_books" -> {
+                val parts = safeLinkedId.split("|")
+                val deck = parts.getOrNull(0)?.ifBlank { "oxford5000" } ?: "oxford5000"
+                val level = parts.getOrNull(1).orEmpty()
+                _selectedDeckId.value = deck
+                _filterState.update { current ->
+                    current.copy(
+                        deckId = deck,
+                        onlyFavorites = false,
+                        searchQuery = "",
+                        typeFilter = "",
+                        levelFilter = level,
+                        posFilter = ""
+                    )
+                }
+            }
+            "grammar" -> {
+                if (safeLinkedId.isNotBlank()) {
+                    val existing = grammarLessons.value.find { it.id == safeLinkedId }
+                    if (existing != null) {
+                        selectGrammarLesson(existing)
+                    } else {
+                        viewModelScope.launch {
+                            val loaded = grammarRepository.getLessonById(safeLinkedId)
+                            selectGrammarLesson(loaded)
+                        }
+                    }
+                }
+            }
+            "reading" -> {
+                if (safeLinkedId.isNotBlank()) {
+                    val existing = readingTexts.value.find { it.id == safeLinkedId }
+                    if (existing != null) {
+                        selectReadingText(existing)
+                    } else {
+                        viewModelScope.launch {
+                            val loaded = readingRepository.getReadingTextById(safeLinkedId)
+                            selectReadingText(loaded)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fun refreshDailyChecklist() {
@@ -1218,6 +1309,11 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
 
     suspend fun generateWeeklyQuiz(): List<QuizQuestionItem> {
         return localQuizEngine.generateWeeklyQuiz(isTtsAvailable = true)
+    }
+
+    suspend fun generateWeakAreasQuiz(): List<QuizQuestionItem> {
+        val level = studyPlanProfile.value?.level ?: "B2"
+        return localQuizEngine.generateWeakAreasQuiz(targetLevel = level, isTtsAvailable = true)
     }
 
     suspend fun submitQuizAnswers(

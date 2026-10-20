@@ -29,7 +29,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         QuizResultEntity::class,
         WordDetailEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class WordBooksDatabase : RoomDatabase() {
@@ -121,6 +121,16 @@ abstract class WordBooksDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_sentences_created_at ON sentences(created_at)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_sentences_english_text ON sentences(english_text)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_word_progress_is_mastered_due_timestamp ON word_progress(is_mastered, due_timestamp)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_grammar_lessons_level ON grammar_lessons(level)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_reading_texts_level ON reading_texts(level)")
+            }
+        }
+
         fun getInstance(context: Context): WordBooksDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -128,7 +138,7 @@ abstract class WordBooksDatabase : RoomDatabase() {
                     WordBooksDatabase::class.java,
                     "wordbooks.db"
                 )
-                    .addMigrations(MIGRATION_9_10, MIGRATION_10_11)
+                    .addMigrations(MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
                     .build()
                 INSTANCE = instance
                 instance

@@ -70,6 +70,7 @@ import com.example.ui.components.GoldBadge
 import com.example.ui.components.WordBooksBottomNavigation
 import com.example.ui.components.WordBooksNavigationRail
 import com.example.ui.components.WordBooksTopAppBar
+import com.example.ui.components.cleanGrammarArabicTitle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -194,6 +195,9 @@ fun WordBooksAppShell(
     }
 
     val onNavigateToDestination: (BottomNavDestination) -> Unit = { destination ->
+        if (destination.route == AppRoute.WordBooks) {
+            wordBooksViewModel.selectDeck(null)
+        }
         if (destination == BottomNavDestination.GRAMMAR) {
             wordBooksViewModel.selectGrammarLesson(null)
         }
@@ -259,7 +263,7 @@ fun WordBooksAppShell(
         AppRoute.Grammar -> {
             val lesson = selectedGrammarLesson
             if (lesson != null) {
-                Triple(lesson.titleEn, "${lesson.level} • ${lesson.topic} • ${lesson.titleAr}", lesson.titleAr)
+                Triple(lesson.titleEn, "${lesson.level} • ${lesson.topic}", cleanGrammarArabicTitle(lesson.titleAr))
             } else {
                 Triple("Grammar Lessons", "CEFR A1–C1", "القواعد النحوية")
             }
@@ -267,8 +271,7 @@ fun WordBooksAppShell(
         AppRoute.Reading -> {
             val text = selectedReadingText
             if (text != null) {
-                val sub = if (text.titleAr.isNotBlank()) "${text.level} • ${text.topic} • ${text.titleAr}" else "${text.level} • ${text.topic}"
-                Triple(text.titleEn, sub, text.titleAr)
+                Triple(text.titleEn, "${text.level} • ${text.topic}", text.titleAr)
             } else {
                 Triple("Graded Reading", "Bilingual Texts", "القراءة المتدرجة")
             }
@@ -284,28 +287,34 @@ fun WordBooksAppShell(
             .background(BackgroundDark),
         containerColor = BackgroundDark,
         topBar = {
-            WordBooksTopAppBar(
-                title = topTitle,
-                subtitle = topSubtitle,
-                arabicTitle = topArabicTitle,
-                canNavigateBack = canNavigateBack,
-                onNavigateBack = onNavigateBack,
-                actions = {
-                    IconButton(
-                        onClick = { isSettingsOpen = true },
-                        modifier = Modifier.testTag("btn_top_settings")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Settings,
-                            contentDescription = "Settings",
-                            tint = TextMuted
-                        )
+            val isWordBookDetailOpen = currentRoute == AppRoute.WordBooks && selectedDeckId != null
+            if (!isWordBookDetailOpen) {
+                WordBooksTopAppBar(
+                    title = topTitle,
+                    subtitle = topSubtitle,
+                    arabicTitle = topArabicTitle,
+                    canNavigateBack = canNavigateBack,
+                    onNavigateBack = onNavigateBack,
+                    actions = {
+                        IconButton(
+                            onClick = { isSettingsOpen = true },
+                            modifier = Modifier.testTag("btn_top_settings")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Settings",
+                                tint = TextMuted
+                            )
+                        }
                     }
-                }
-            )
+                )
+            }
         },
         bottomBar = {
-            if (!useSideRail) {
+            val isDetailActive = (currentRoute == AppRoute.Grammar && selectedGrammarLesson != null) ||
+                (currentRoute == AppRoute.Reading && selectedReadingText != null) ||
+                currentRoute !in topLevelDestinations
+            if (!useSideRail && !isDetailActive) {
                 WordBooksBottomNavigation(
                     currentRoute = currentRoute,
                     onNavigateToDestination = onNavigateToDestination
@@ -356,6 +365,16 @@ fun WordBooksAppShell(
                         },
                         onOpenPlanScreen = {
                             navController.navigate(AppRoute.Plan) { launchSingleTop = true }
+                        },
+                        onNavigateToTask = { route, linkedId ->
+                            wordBooksViewModel.preparePlanTaskNavigation(route, linkedId)
+                            when (route) {
+                                "flashcards" -> navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
+                                "database" -> navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
+                                "reading" -> navController.navigate(AppRoute.Reading) { launchSingleTop = true }
+                                "grammar" -> navController.navigate(AppRoute.Grammar) { launchSingleTop = true }
+                                else -> navController.navigate(AppRoute.Plan) { launchSingleTop = true }
+                            }
                         }
                     )
                 }
@@ -399,6 +418,7 @@ fun WordBooksAppShell(
                         onToggleFavorite = wordBooksViewModel::toggleFavorite,
                         onToggleMastered = wordBooksViewModel::toggleMastered,
                         onSelectWordListTab = wordBooksViewModel::selectWordListTab,
+                        onStatusFilterChange = wordBooksViewModel::updateStatusFilter,
                         onOpenDetailedDefinition = wordBooksViewModel::openDetailedDefinition,
                         onDismissDetailedDefinition = wordBooksViewModel::dismissDetailedDefinition,
                         onRetryAiDefinition = wordBooksViewModel::retryAiDefinition,
@@ -666,10 +686,13 @@ fun WordBooksAppShell(
                         onGeneratePlanWithAi = wordBooksViewModel::generatePlanWithAi,
                         onGenerateDailyQuiz = wordBooksViewModel::generateDailyQuiz,
                         onGenerateWeeklyQuiz = wordBooksViewModel::generateWeeklyQuiz,
+                        onGenerateWeakAreasQuiz = wordBooksViewModel::generateWeakAreasQuiz,
+                        onRefreshPlan = wordBooksViewModel::refreshDailyChecklist,
                         onSubmitQuizAnswers = wordBooksViewModel::submitQuizAnswers,
                         onPlayAudio = { text: String -> wordBooksViewModel.speakSentenceTts(text) },
                         onToggleTaskCompleted = wordBooksViewModel::toggleTaskCompleted,
-                        onNavigateToTaskRoute = { route: String, _: String ->
+                        onNavigateToTaskRoute = { route: String, linkedId: String ->
+                            wordBooksViewModel.preparePlanTaskNavigation(route, linkedId)
                             when (route) {
                                 "flashcards" -> navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
                                 "word_books" -> navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }

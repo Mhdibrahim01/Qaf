@@ -322,6 +322,7 @@ fun WordBooksDatabaseScreen(
     onToggleFavorite: (String, String) -> Unit,
     onToggleMastered: (String, String) -> Unit,
     onSelectWordListTab: (Boolean) -> Unit = {},
+    onStatusFilterChange: (String) -> Unit = {},
     onOpenDetailedDefinition: (String, String) -> Unit,
     onDismissDetailedDefinition: () -> Unit,
     onRetryAiDefinition: (String) -> Unit = {},
@@ -372,6 +373,7 @@ fun WordBooksDatabaseScreen(
                                 }
                             },
                             onSelectWordListTab = onSelectWordListTab,
+                            onStatusFilterChange = onStatusFilterChange,
                             onUpdateDeckFilter = onUpdateDeckFilterInList,
                             onSearchQueryChange = onSearchQueryChange,
                             onTypeFilterChange = onTypeFilterChange,
@@ -469,6 +471,7 @@ fun WordBooksDatabaseScreen(
                             }
                         },
                         onSelectWordListTab = onSelectWordListTab,
+                        onStatusFilterChange = onStatusFilterChange,
                         onUpdateDeckFilter = onUpdateDeckFilterInList,
                         onSearchQueryChange = onSearchQueryChange,
                         onTypeFilterChange = onTypeFilterChange,
@@ -914,6 +917,7 @@ private fun PagedDeckWordListScreen(
     onBack: () -> Unit,
     onOpenFlashcards: () -> Unit = {},
     onSelectWordListTab: (Boolean) -> Unit = {},
+    onStatusFilterChange: (String) -> Unit = {},
     onUpdateDeckFilter: (String) -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onTypeFilterChange: (String) -> Unit,
@@ -927,17 +931,26 @@ private fun PagedDeckWordListScreen(
     onPlayAudio: (String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showFiltersPanel by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
 
-    val levels = listOf("A1", "A2", "B1", "B2", "C1")
-    val posOptions = listOf("n.", "v.", "adj.", "adv.", "prep.")
-    val typeOptions = listOf("word", "academic", "phrase", "expression", "idiom")
+    val levels = listOf("All", "A1", "A2", "B1", "B2", "C1")
+    val statuses = listOf("All", "Learning", "Mastered", "Favorites")
 
-    val hasActiveFilters = filterState.levelFilter.isNotEmpty() ||
-        filterState.posFilter.isNotEmpty() ||
-        filterState.typeFilter.isNotEmpty() ||
-        filterState.searchQuery.isNotEmpty()
+    val activeStatus = when {
+        filterState.onlyFavorites && filterState.deckId != DataImportRepository.SAVED_WORDS_DECK_ID -> "Favorites"
+        filterState.onlyMastered -> "Mastered"
+        filterState.onlyLearning -> "Learning"
+        else -> "All"
+    }
+
+    val sortShortLabel = when (filterState.sortOrder) {
+        WordSortOrder.AZ -> "A–Z"
+        WordSortOrder.ZA -> "Z–A"
+        WordSortOrder.LEVEL -> "Level"
+    }
+
+    val isEmpty = pagedEntries.itemCount == 0 &&
+        pagedEntries.loadState.refresh is LoadState.NotLoading
 
     Box(
         modifier = modifier
@@ -946,309 +959,288 @@ private fun PagedDeckWordListScreen(
             .testTag("deck_word_list_screen"),
         contentAlignment = Alignment.TopCenter
     ) {
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .widthIn(max = 760.dp)
                 .fillMaxSize()
+                .testTag("paged_word_list"),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp)
         ) {
-            Surface(
-                color = SurfaceDark,
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            // Header + Search + LEVEL/STATUS Filter Card + Count/Sort Bar
+            item(key = "word_book_header_and_filters") {
                 Column(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    BooksModeSwitcher(
-                        isFlashcardsActive = false,
-                        dueTodayCount = reviewDueTodayCount,
-                        onSelectBooksMode = {},
-                        onSelectFlashcardsMode = onOpenFlashcards
-                    )
-
+                    // 1. Header section matching image.png
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.weight(1f)
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            IconButton(
-                                onClick = onBack,
-                                modifier = Modifier.testTag("back_to_decks_button")
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable(onClick = onBack)
+                                    .padding(vertical = 2.dp)
+                                    .testTag("back_to_decks_button"),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                     contentDescription = "Back to Word Books",
-                                    tint = TextPrimary
+                                    tint = TextMuted,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    text = "WORD BOOK",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 11.sp,
+                                        letterSpacing = 1.5.sp
+                                    ),
+                                    color = TextMuted
                                 )
                             }
-                            Column {
+
+                            Text(
+                                text = deck?.name ?: "All Words",
+                                style = MaterialTheme.typography.headlineMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 28.sp,
+                                    letterSpacing = (-0.5).sp
+                                ),
+                                color = TextPrimary,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.padding(top = 2.dp)
+                            ) {
                                 Text(
-                                    text = deck?.name ?: "All Words",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = TextPrimary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    text = "${formatNumber(deck?.rowCount ?: 0)} entries",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                                    color = TextSecondary
                                 )
                                 Text(
-                                    text = "${formatNumber(deck?.rowCount ?: 0)} entries • Dictionary View",
-                                    style = MaterialTheme.typography.labelSmall,
+                                    text = "•",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    ),
                                     color = GoldAccent
+                                )
+                                Text(
+                                    text = "Dictionary view",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                                    color = TextSecondary
                                 )
                             }
                         }
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(
-                                onClick = { showFiltersPanel = !showFiltersPanel },
-                                modifier = Modifier.testTag("toggle_filters_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.FilterList,
-                                    contentDescription = "Filters",
-                                    tint = if (showFiltersPanel || hasActiveFilters) GoldAccent else TextSecondary
-                                )
-                            }
-
-                            Box {
-                                IconButton(
-                                    onClick = { showSortMenu = true },
-                                    modifier = Modifier.testTag("sort_menu_button")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.Sort,
-                                        contentDescription = "Sort words",
-                                        tint = GoldAccent
-                                    )
-                                }
-                                DropdownMenu(
-                                    expanded = showSortMenu,
-                                    onDismissRequest = { showSortMenu = false },
-                                    containerColor = SurfaceElevatedDark
-                                ) {
-                                    WordSortOrder.entries.forEach { order ->
-                                        DropdownMenuItem(
-                                            text = {
-                                                Text(
-                                                    text = order.labelEn,
-                                                    color = if (filterState.sortOrder == order) GoldAccent else TextPrimary,
-                                                    fontWeight = if (filterState.sortOrder == order) FontWeight.Bold else FontWeight.Normal
-                                                )
-                                            },
-                                            onClick = {
-                                                onSortOrderChange(order)
-                                                showSortMenu = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
+                        Button(
+                            onClick = onOpenFlashcards,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = GoldAccent,
+                                contentColor = BackgroundDark
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                            modifier = Modifier.testTag("study_cards_header_btn")
+                        ) {
+                            Text(
+                                text = "Study cards",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                ),
+                                color = BackgroundDark
+                            )
                         }
                     }
 
+                    // 2. Search Bar matching image.png
                     SearchField(
                         query = filterState.searchQuery,
                         onQueryChange = onSearchQueryChange,
-                        placeholder = "Search word, definition, example, or Arabic...",
+                        placeholder = "Search word, translation, or meaning...",
                         onClear = { onSearchQueryChange("") },
                         testTag = "word_search_input"
                     )
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    // 3. Unified LEVEL & STATUS Filter Card matching image.png
+                    Surface(
+                        color = SurfaceDark,
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, BorderDark),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        levels.forEach { lvl ->
-                            val selected = filterState.levelFilter == lvl
-                            FilterChip(
-                                selected = selected,
-                                onClick = { onLevelFilterChange(lvl) },
-                                label = { Text(lvl) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = GoldAccentDim,
-                                    selectedLabelColor = GoldAccent,
-                                    containerColor = SurfaceElevatedDark,
-                                    labelColor = TextSecondary
-                                ),
-                                border = FilterChipDefaults.filterChipBorder(
-                                    enabled = true,
-                                    selected = selected,
-                                    borderColor = BorderDark,
-                                    selectedBorderColor = GoldAccentBorder
-                                )
-                            )
-                        }
-
-                        posOptions.forEach { pos ->
-                            val selected = filterState.posFilter == pos
-                            FilterChip(
-                                selected = selected,
-                                onClick = { onPosFilterChange(pos) },
-                                label = { Text(pos) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = GoldAccentDim,
-                                    selectedLabelColor = GoldAccent,
-                                    containerColor = SurfaceElevatedDark,
-                                    labelColor = TextSecondary
-                                ),
-                                border = FilterChipDefaults.filterChipBorder(
-                                    enabled = true,
-                                    selected = selected,
-                                    borderColor = BorderDark,
-                                    selectedBorderColor = GoldAccentBorder
-                                )
-                            )
-                        }
-                    }
-
-                    AnimatedVisibility(visible = showFiltersPanel) {
-                        Surface(
-                            color = SurfaceElevatedDark,
-                            shape = MaterialTheme.shapes.medium,
-                            border = BorderStroke(1.dp, BorderDark),
-                            modifier = Modifier.fillMaxWidth()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
-                            Column(
-                                modifier = Modifier.padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "Filter by Deck & Entry Type",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = GoldAccent
-                                    )
-                                    if (hasActiveFilters) {
-                                        TextButton(onClick = onClearFilters) {
-                                            Text("Reset Filters", color = CoralAccent)
-                                        }
-                                    }
-                                }
-
+                            // LEVEL section
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(
-                                    text = "Entry Type:",
-                                    style = MaterialTheme.typography.labelSmall,
+                                    text = "LEVEL",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 11.sp,
+                                        letterSpacing = 1.2.sp
+                                    ),
                                     color = TextMuted
                                 )
-                                FlowRow(
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState()),
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    typeOptions.forEach { type ->
-                                        val selected = filterState.typeFilter == type
-                                        FilterChip(
+                                    levels.forEach { lvl ->
+                                        val isAll = lvl == "All"
+                                        val selected = if (isAll) {
+                                            filterState.levelFilter.isEmpty()
+                                        } else {
+                                            filterState.levelFilter == lvl
+                                        }
+                                        WordBookFilterPill(
+                                            label = lvl,
                                             selected = selected,
-                                            onClick = { onTypeFilterChange(type) },
-                                            label = { Text(type) },
-                                            colors = FilterChipDefaults.filterChipColors(
-                                                selectedContainerColor = GoldAccentDim,
-                                                selectedLabelColor = GoldAccent,
-                                                containerColor = SurfaceDark,
-                                                labelColor = TextSecondary
-                                            )
+                                            onClick = {
+                                                if (isAll) {
+                                                    if (filterState.levelFilter.isNotEmpty()) {
+                                                        onLevelFilterChange(filterState.levelFilter)
+                                                    }
+                                                } else {
+                                                    onLevelFilterChange(lvl)
+                                                }
+                                            },
+                                            testTag = "level_filter_$lvl"
                                         )
                                     }
                                 }
+                            }
 
+                            // STATUS section
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(
-                                    text = "Switch Deck:",
-                                    style = MaterialTheme.typography.labelSmall,
+                                    text = "STATUS",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 11.sp,
+                                        letterSpacing = 1.2.sp
+                                    ),
                                     color = TextMuted
                                 )
                                 Row(
-                                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    allDecks.forEach { d ->
-                                        val selected = filterState.deckId == d.id
-                                        FilterChip(
+                                    statuses.forEach { status ->
+                                        val selected = activeStatus == status
+                                        val tag = when (status) {
+                                            "All" -> "tab_all_words"
+                                            "Mastered" -> "tab_mastered_words"
+                                            "Learning" -> "tab_learning_words"
+                                            else -> "tab_favorites_words"
+                                        }
+                                        WordBookFilterPill(
+                                            label = status,
                                             selected = selected,
-                                            onClick = { onUpdateDeckFilter(d.id) },
-                                            label = { Text(d.name) },
-                                            colors = FilterChipDefaults.filterChipColors(
-                                                selectedContainerColor = GoldAccentDim,
-                                                selectedLabelColor = GoldAccent,
-                                                containerColor = SurfaceDark,
-                                                labelColor = TextSecondary
-                                            )
+                                            onClick = {
+                                                onStatusFilterChange(status)
+                                            },
+                                            testTag = tag
                                         )
                                     }
                                 }
                             }
                         }
                     }
-                    // Top Tabs: All | Mastered <count>
+
+                    // 4. Words Count & Sort Bar matching image.png
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            .padding(top = 2.dp, bottom = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val isMasteredOnly = filterState.onlyMastered
-                        Surface(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .clickable { onSelectWordListTab(false) }
-                                .testTag("tab_all_words"),
-                            color = if (!isMasteredOnly) GoldAccentDim else SurfaceElevatedDark,
-                            shape = RoundedCornerShape(20.dp),
-                            border = BorderStroke(1.dp, if (!isMasteredOnly) GoldAccentBorder else BorderDark)
-                        ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "All",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = if (!isMasteredOnly) FontWeight.Bold else FontWeight.Medium
+                                text = formatNumber(pagedEntries.itemCount),
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
                                 ),
-                                color = if (!isMasteredOnly) GoldAccent else TextSecondary,
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = " words shown",
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                                color = TextSecondary
                             )
                         }
 
-                        Surface(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .clickable { onSelectWordListTab(true) }
-                                .testTag("tab_mastered_words"),
-                            color = if (isMasteredOnly) EmeraldAccent.copy(alpha = 0.18f) else SurfaceElevatedDark,
-                            shape = RoundedCornerShape(20.dp),
-                            border = BorderStroke(1.dp, if (isMasteredOnly) EmeraldAccent.copy(alpha = 0.5f) else BorderDark)
-                        ) {
+                        Box {
                             Row(
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { showSortMenu = true }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    .testTag("sort_menu_button"),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Text(
-                                    text = "Mastered",
-                                    style = MaterialTheme.typography.labelMedium.copy(
-                                        fontWeight = if (isMasteredOnly) FontWeight.Bold else FontWeight.Medium
-                                    ),
-                                    color = if (isMasteredOnly) EmeraldAccent else TextSecondary
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Sort,
+                                    contentDescription = "Sort words",
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(16.dp)
                                 )
-                                Surface(
-                                    color = if (isMasteredOnly) EmeraldAccent.copy(alpha = 0.3f) else BackgroundDark,
-                                    shape = RoundedCornerShape(10.dp)
-                                ) {
-                                    Text(
-                                        text = "$masteredCount",
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 11.sp
-                                        ),
-                                        color = if (isMasteredOnly) EmeraldAccent else TextMuted,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                                Text(
+                                    text = sortShortLabel,
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 13.sp
+                                    ),
+                                    color = TextSecondary
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showSortMenu,
+                                onDismissRequest = { showSortMenu = false },
+                                containerColor = SurfaceElevatedDark
+                            ) {
+                                WordSortOrder.entries.forEach { order ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                text = order.labelEn,
+                                                color = if (filterState.sortOrder == order) GoldAccent else TextPrimary,
+                                                fontWeight = if (filterState.sortOrder == order) FontWeight.Bold else FontWeight.Normal
+                                            )
+                                        },
+                                        onClick = {
+                                            onSortOrderChange(order)
+                                            showSortMenu = false
+                                        }
                                     )
                                 }
                             }
@@ -1257,123 +1249,155 @@ private fun PagedDeckWordListScreen(
                 }
             }
 
-            HorizontalDivider(color = BorderDark, thickness = 1.dp)
-
-            val isEmpty = pagedEntries.itemCount == 0 &&
-                pagedEntries.loadState.refresh is LoadState.NotLoading
-
+            // 5. Word List Content
             when {
                 pagedEntries.loadState.refresh is LoadState.Loading && pagedEntries.itemCount == 0 -> {
-                    LoadingState(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        messageEn = "Loading vocabulary...",
-                        messageAr = "جاري تحميل المفردات..."
-                    )
+                    item(key = "loading_state") {
+                        LoadingState(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            messageEn = "Loading vocabulary...",
+                            messageAr = "جاري تحميل المفردات..."
+                        )
+                    }
                 }
                 pagedEntries.loadState.refresh is LoadState.Error && pagedEntries.itemCount == 0 -> {
                     val err = (pagedEntries.loadState.refresh as LoadState.Error).error
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        ErrorState(
-                            messageEn = err.localizedMessage ?: "Failed to load vocabulary",
-                            messageAr = "تعذر تحميل المفردات",
-                            onRetry = { pagedEntries.retry() }
-                        )
+                    item(key = "error_state") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ErrorState(
+                                messageEn = err.localizedMessage ?: "Failed to load vocabulary",
+                                messageAr = "تعذر تحميل المفردات",
+                                onRetry = { pagedEntries.retry() }
+                            )
+                        }
                     }
                 }
                 isEmpty -> {
                     val emptyTitle = when {
-                        filterState.deckId == DataImportRepository.SAVED_WORDS_DECK_ID ->
-                            "No Saved Words Yet"
+                        filterState.deckId == DataImportRepository.SAVED_WORDS_DECK_ID || activeStatus == "Favorites" ->
+                            "No Favorite Words Yet"
+                        activeStatus == "Mastered" ->
+                            "No Mastered Words Yet"
                         (deck?.rowCount ?: 0) == 0 ->
                             "Empty Deck (${deck?.name ?: filterState.deckId})"
                         else ->
                             "No Matching Words"
                     }
                     val emptyDesc = when {
-                        filterState.deckId == DataImportRepository.SAVED_WORDS_DECK_ID ->
-                            "Tap the heart icon on any word to save it here."
+                        filterState.deckId == DataImportRepository.SAVED_WORDS_DECK_ID || activeStatus == "Favorites" ->
+                            "Tap the heart icon on any word to save it to your favorites."
+                        activeStatus == "Mastered" ->
+                            "Study cards or mark words as mastered to see them here."
                         (deck?.rowCount ?: 0) == 0 ->
                             "0 rows imported for ${deck?.id}."
                         else ->
-                            "Try adjusting your search query or clearing the level/POS filters."
+                            "Try adjusting your search query or clearing the level/status filters."
                     }
                     val emptyTitleAr = when {
-                        filterState.deckId == DataImportRepository.SAVED_WORDS_DECK_ID ->
-                            "لا توجد كلمات محفوظة بعد"
+                        filterState.deckId == DataImportRepository.SAVED_WORDS_DECK_ID || activeStatus == "Favorites" ->
+                            "لا توجد كلمات مفضلة بعد"
+                        activeStatus == "Mastered" ->
+                            "لا توجد كلمات متقنة بعد"
                         (deck?.rowCount ?: 0) == 0 ->
                             "الكتاب فارغ"
                         else ->
                             "لا توجد نتائج مطابقة"
                     }
-                    EmptyState(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        titleEn = emptyTitle,
-                        titleAr = emptyTitleAr,
-                        descriptionEn = emptyDesc,
-                        icon = Icons.AutoMirrored.Filled.MenuBook
-                    )
+                    item(key = "empty_state") {
+                        EmptyState(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            titleEn = emptyTitle,
+                            titleAr = emptyTitleAr,
+                            descriptionEn = emptyDesc,
+                            icon = Icons.AutoMirrored.Filled.MenuBook
+                        )
+                    }
                 }
                 else -> {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .testTag("paged_word_list"),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(
-                            count = pagedEntries.itemCount,
-                            key = pagedEntries.itemKey { it.id }
-                        ) { index ->
-                            val entry = pagedEntries[index]
-                            if (entry != null) {
-                                val cardKey = "${entry.deck}:${entry.text.trim().lowercase()}"
-                                val prog = progressMap[cardKey]
-                                WordBookEntryRow(
-                                    entry = entry,
-                                    isMastered = prog?.isMastered ?: false,
-                                    isFavorite = prog?.isFavorite ?: false,
-                                    isPlayingAudio = currentlyPlayingWord == entry.text,
-                                    studiedCount = prog?.repetitions ?: 0,
-                                    onPlayAudio = { onPlayAudio(entry.text, entry.audioUrl) },
-                                    onToggleMastered = { onToggleMastered(entry.deck, entry.text) },
-                                    onToggleFavorite = { onToggleFavorite(entry.deck, entry.text) },
-                                    onOpenDetail = { onOpenDetailedDefinition(entry.deck, entry.text) }
-                                )
-                            }
+                    items(
+                        count = pagedEntries.itemCount,
+                        key = pagedEntries.itemKey { it.id }
+                    ) { index ->
+                        val entry = pagedEntries[index]
+                        if (entry != null) {
+                            val cardKey = "${entry.deck}:${entry.text.trim().lowercase()}"
+                            val prog = progressMap[cardKey]
+                            val isFirst = index == 0
+                            val isLast = index == pagedEntries.itemCount - 1
+                            WordBookEntryRow(
+                                entry = entry,
+                                isMastered = prog?.isMastered ?: false,
+                                isFavorite = prog?.isFavorite ?: false,
+                                isPlayingAudio = currentlyPlayingWord == entry.text,
+                                studiedCount = prog?.repetitions ?: 0,
+                                isFirstInCard = isFirst,
+                                isLastInCard = isLast,
+                                onPlayAudio = { onPlayAudio(entry.text, entry.audioUrl) },
+                                onToggleMastered = { onToggleMastered(entry.deck, entry.text) },
+                                onToggleFavorite = { onToggleFavorite(entry.deck, entry.text) },
+                                onOpenDetail = { onOpenDetailedDefinition(entry.deck, entry.text) }
+                            )
                         }
+                    }
 
-                        if (pagedEntries.loadState.append is LoadState.Loading) {
-                            item {
-                                LoadingState(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    messageEn = "Loading more words..."
-                                )
-                            }
-                        } else if (pagedEntries.loadState.append is LoadState.Error) {
-                            item {
-                                val appendErr = (pagedEntries.loadState.append as LoadState.Error).error
-                                ErrorState(
-                                    messageEn = appendErr.localizedMessage ?: "Failed to load more words",
-                                    onRetry = { pagedEntries.retry() }
-                                )
-                            }
+                    if (pagedEntries.loadState.append is LoadState.Loading) {
+                        item(key = "append_loading") {
+                            LoadingState(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                messageEn = "Loading more words..."
+                            )
+                        }
+                    } else if (pagedEntries.loadState.append is LoadState.Error) {
+                        item(key = "append_error") {
+                            val appendErr = (pagedEntries.loadState.append as LoadState.Error).error
+                            ErrorState(
+                                messageEn = appendErr.localizedMessage ?: "Failed to load more words",
+                                onRetry = { pagedEntries.retry() }
+                            )
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun WordBookFilterPill(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    testTag: String = ""
+) {
+    Surface(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .then(if (testTag.isNotEmpty()) Modifier.testTag(testTag) else Modifier),
+        color = if (selected) GoldAccentDim else Color.Transparent,
+        shape = RoundedCornerShape(8.dp),
+        border = if (selected) BorderStroke(1.dp, GoldAccentBorder) else null
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                fontSize = 13.sp
+            ),
+            color = if (selected) GoldAccent else TextSecondary,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+        )
     }
 }
 
@@ -1471,14 +1495,13 @@ fun ShimmerPlaceholder(modifier: Modifier = Modifier) {
 }
 
 /**
- * Trancy-style Word list row:
- * - One row per word
- * - Small count badge (times studied)
- * - Word in bold
- * - "US" chip with speaker icon and IPA
- * - Arabic meanings in ONE compact line grouped by POS tag chips (n., v., adj., adv.; "web." for extra meanings)
- * - Ending with mastered checkbox and heart
- * - "Tap to look up" if no Arabic
+ * Dictionary Word list row matching image.png:
+ * - Left: Rounded-square speaker button
+ * - Center:
+ *   - Line 1: Bold word + Gold CEFR level badge (e.g., B2, A2, C1)
+ *   - Line 2: Phonetic IPA • lowercase part of speech (e.g., /əˈbændən/ • verb)
+ *   - Line 3: Arabic translation in clean white text
+ * - Right: Favorite heart icon (filled gold when favorite, outlined muted when not)
  */
 @Composable
 fun WordBookEntryRow(
@@ -1487,190 +1510,169 @@ fun WordBookEntryRow(
     isFavorite: Boolean,
     isPlayingAudio: Boolean,
     studiedCount: Int = 0,
+    isFirstInCard: Boolean = false,
+    isLastInCard: Boolean = false,
     onPlayAudio: () -> Unit,
     onToggleMastered: () -> Unit,
     onToggleFavorite: () -> Unit,
     onOpenDetail: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val rowShape = when {
+        isFirstInCard && isLastInCard -> RoundedCornerShape(16.dp)
+        isFirstInCard -> RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+        isLastInCard -> RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
+        else -> RoundedCornerShape(0.dp)
+    }
+
+    val posLower = remember(entry.pos) {
+        posFullName(entry.pos).lowercase()
+    }
+    val ipaAndPos = remember(entry.ipa, posLower) {
+        when {
+            entry.ipa.isNotBlank() && posLower.isNotBlank() -> "${entry.ipa}  •  $posLower"
+            entry.ipa.isNotBlank() -> entry.ipa
+            else -> posLower
+        }
+    }
+    val formattedArabic = remember(entry.arabic) {
+        entry.arabic
+            .split(Regex("[;؛\\n]+"))
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .take(3)
+            .joinToString("، ")
+    }
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
+            .clip(rowShape)
             .clickable(onClick = onOpenDetail)
             .testTag("word_row_${entry.id}"),
         color = SurfaceDark,
-        shape = RoundedCornerShape(10.dp),
-        border = BorderStroke(
-            width = 1.dp,
-            color = when {
-                isFavorite -> GoldAccentBorder
-                isMastered -> EmeraldAccent.copy(alpha = 0.4f)
-                else -> BorderDark
-            }
-        )
+        shape = rowShape,
+        border = BorderStroke(1.dp, BorderDark)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 9.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Small count badge (times studied)
-            Surface(
-                color = SurfaceElevatedDark,
-                shape = RoundedCornerShape(4.dp),
-                border = BorderStroke(0.5.dp, BorderDark)
-            ) {
-                Text(
-                    text = "$studiedCount",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 11.sp
-                    ),
-                    color = TextMuted,
-                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                )
-            }
-
-            // Word in bold
-            Text(
-                text = entry.text,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
-                ),
-                color = if (isMastered) EmeraldAccent else TextPrimary,
-                maxLines = 1
-            )
-
-            // "US" chip with speaker icon and IPA
-            Surface(
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .clickable(onClick = onPlayAudio)
-                    .testTag("ipa_speaker_${entry.id}"),
-                color = if (isPlayingAudio) GoldAccent else GoldAccentDim,
-                shape = RoundedCornerShape(6.dp),
-                border = BorderStroke(1.dp, GoldAccentBorder)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                // Left: Rounded-square speaker button
+                Surface(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable(onClick = onPlayAudio)
+                        .testTag("ipa_speaker_${entry.id}"),
+                    color = if (isPlayingAudio) GoldAccentDim else SurfaceElevatedDark,
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, if (isPlayingAudio) GoldAccentBorder else BorderDark)
                 ) {
-                    Text(
-                        text = "US",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
-                        ),
-                        color = if (isPlayingAudio) BackgroundDark else GoldAccent
-                    )
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                        contentDescription = "Play pronunciation for ${entry.text}",
-                        tint = if (isPlayingAudio) BackgroundDark else GoldAccent,
-                        modifier = Modifier.size(12.dp)
-                    )
-                    if (entry.ipa.isNotBlank()) {
-                        Text(
-                            text = entry.ipa,
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.Normal,
-                                fontSize = 11.sp
-                            ),
-                            color = if (isPlayingAudio) BackgroundDark else GoldAccent,
-                            maxLines = 1
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = "Play pronunciation for ${entry.text}",
+                            tint = if (isPlayingAudio) GoldAccent else TextSecondary,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
-            }
 
-            // Arabic meanings in ONE compact line grouped by POS tag chips
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                if (entry.arabic.isBlank()) {
-                    Text(
-                        text = "Tap to look up",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontStyle = FontStyle.Italic,
-                            fontSize = 12.sp
-                        ),
-                        color = TextMuted,
-                        maxLines = 1
-                    )
-                } else {
-                    val groups = parseArabicMeaningGroups(entry.pos, entry.arabic)
-                    groups.forEach { (posChip, arabicText) ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier.weight(1f, fill = false)
-                        ) {
+                // Middle: Word + Level Badge, IPA • POS, Arabic Meaning
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = entry.text,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 17.sp
+                            ),
+                            color = if (isMastered) EmeraldAccent else TextPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        if (entry.level.isNotBlank()) {
                             Surface(
                                 color = GoldAccentDim,
-                                shape = RoundedCornerShape(4.dp),
-                                border = BorderStroke(0.5.dp, GoldAccentBorder)
+                                shape = RoundedCornerShape(6.dp)
                             ) {
                                 Text(
-                                    text = posChip,
+                                    text = entry.level.uppercase(),
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 10.sp
                                     ),
                                     color = GoldAccent,
-                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
-                            BidiText(
-                                text = arabicText,
-                                style = ArabicTypography.bodySmall.copy(
-                                    fontSize = 13.sp,
-                                    letterSpacing = 0.sp
-                                ),
-                                color = TextPrimary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                fillMaxWidth = false
-                            )
                         }
                     }
+
+                    if (ipaAndPos.isNotBlank()) {
+                        Text(
+                            text = ipaAndPos,
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                            color = TextMuted,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    if (formattedArabic.isNotBlank()) {
+                        BidiText(
+                            text = formattedArabic,
+                            style = ArabicTypography.bodyMedium.copy(
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium,
+                                letterSpacing = 0.sp
+                            ),
+                            color = TextPrimary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            fillMaxWidth = false
+                        )
+                    } else {
+                        Text(
+                            text = "Tap to look up",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontStyle = FontStyle.Italic,
+                                fontSize = 12.sp
+                            ),
+                            color = TextMuted,
+                            maxLines = 1
+                        )
+                    }
                 }
-            }
 
-            // Mastered checkbox
-            IconButton(
-                onClick = onToggleMastered,
-                modifier = Modifier
-                    .size(32.dp)
-                    .testTag("mastered_checkbox_${entry.id}")
-            ) {
-                Icon(
-                    imageVector = if (isMastered) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
-                    contentDescription = "Mark mastered",
-                    tint = if (isMastered) EmeraldAccent else TextMuted,
-                    modifier = Modifier.size(19.dp)
-                )
-            }
-
-            // Heart icon
-            IconButton(
-                onClick = onToggleFavorite,
-                modifier = Modifier
-                    .size(32.dp)
-                    .testTag("favorite_heart_${entry.id}")
-            ) {
-                Icon(
-                    imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    contentDescription = "Favorite word",
-                    tint = if (isFavorite) GoldAccent else TextMuted,
-                    modifier = Modifier.size(19.dp)
-                )
+                // Right: Favorite heart icon (filled gold when favorite, outlined gray when not)
+                IconButton(
+                    onClick = onToggleFavorite,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .testTag("favorite_heart_${entry.id}")
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = "Favorite word",
+                        tint = if (isFavorite) GoldAccent else TextMuted,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }

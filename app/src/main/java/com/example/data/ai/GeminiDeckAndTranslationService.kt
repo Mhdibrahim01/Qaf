@@ -218,7 +218,7 @@ class GeminiDeckAndTranslationService(
         }
 
         if (!isApiKeyConfigured()) {
-            val msg = "GEMINI_API_KEY is not configured. Please add your Gemini API key in the AI Studio Secrets panel."
+            val msg = "GEMINI_API_KEY is not configured. Please add your Gemini API key in settings."
             _status.value = AiTaskStatus(isRunning = false, error = msg)
             return@withContext Result.failure(IllegalStateException(msg))
         }
@@ -292,7 +292,7 @@ Keep the Arabic natural, clear, and easy to read.
      */
     suspend fun translateEmptyEntriesBatch(batchSize: Int = 20, deckFilter: String = ""): Result<Int> = withContext(Dispatchers.IO) {
         if (!isApiKeyConfigured()) {
-            val msg = "GEMINI_API_KEY is not configured. Add it in the AI Studio Secrets panel."
+            val msg = "GEMINI_API_KEY is not configured. Please add your Gemini API key in settings."
             _status.value = AiTaskStatus(isRunning = false, error = msg)
             return@withContext Result.failure(IllegalStateException(msg))
         }
@@ -352,7 +352,7 @@ Keep the Arabic natural, clear, and easy to read.
         onDecksUpdated: suspend () -> Unit = {}
     ): Result<Int> = withContext(Dispatchers.IO) {
         if (!isApiKeyConfigured()) {
-            val msg = "GEMINI_API_KEY is not configured. Add it in the AI Studio Secrets panel."
+            val msg = "GEMINI_API_KEY is not configured. Please add your Gemini API key in settings."
             _status.value = AiTaskStatus(isRunning = false, error = msg)
             return@withContext Result.failure(IllegalStateException(msg))
         }

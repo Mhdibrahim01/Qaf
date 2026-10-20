@@ -63,7 +63,15 @@ class ExampleRobolectricTest {
         val phrasesCount = dao.getEntryCountForDeck("oxford_phrases")
         val expressionsCount = dao.getEntryCountForDeck("everyday_expressions")
         val idiomsCount = dao.getEntryCountForDeck("essential_idioms")
+        val ieltsCount = dao.getEntryCountForDeck("ielts_core")
+        val itCount = dao.getEntryCountForDeck("it_industry")
+        val cefrC1Count = dao.getEntryCountForDeck("cefr_c1")
+        val pteCount = dao.getEntryCountForDeck("pte_academic")
+        val businessCount = dao.getEntryCountForDeck("business_english")
+        val careerCount = dao.getEntryCountForDeck("career_interview")
+        val medicalCount = dao.getEntryCountForDeck("medical_healthcare")
         val totalCount = dao.getTotalEntryCount()
+        val wordDetailsCount = dao.getWordDetailsCount()
         val emptyArabicCount = dao.getEmptyArabicCount()
         val fakeCount = dao.getFakeLegacyEntryCount()
 
@@ -72,8 +80,16 @@ class ExampleRobolectricTest {
         assertEquals(750, phrasesCount)
         assertEquals(600, expressionsCount)
         assertEquals(468, idiomsCount)
-        assertEquals(9862, totalCount)
-        assertEquals(9862, emptyArabicCount)
+        assertEquals(3575, ieltsCount)
+        assertEquals(1622, itCount)
+        assertEquals(1853, cefrC1Count)
+        assertEquals(2651, pteCount)
+        assertEquals(1250, businessCount)
+        assertEquals(406, careerCount)
+        assertEquals(405, medicalCount)
+        assertEquals(21624, totalCount)
+        assertEquals(8924, wordDetailsCount)
+        assertEquals(0, emptyArabicCount)
         assertEquals(0, fakeCount)
 
         // Verify progress (favorite & mastered) is preserved across content upserts
@@ -151,9 +167,9 @@ class ExampleRobolectricTest {
         val oxfordStats = dao.getDeckArabicStats().first { it.deck == "oxford5000" }
         assertEquals(5948, oxfordStats.totalRows)
         assertEquals(1, oxfordStats.fromFileCount)
-        assertEquals(0, oxfordStats.fromAiCount)
+        assertEquals(5946, oxfordStats.fromAiCount)
         assertEquals(1, oxfordStats.fromUserCount)
-        assertEquals(5946, oxfordStats.emptyCount)
+        assertEquals(0, oxfordStats.emptyCount)
 
         db.close()
     }
@@ -451,6 +467,7 @@ class ExampleRobolectricTest {
         val dao = db.wordBooksDao()
         val repo = DataImportRepository(context, db)
         repo.ensureImportedOnFirstLaunch()
+        db.openHelper.writableDatabase.execSQL("UPDATE entries SET arabic = '', arabic_source = ''")
 
         val geminiService = com.example.data.ai.GeminiDeckAndTranslationService(dao)
 

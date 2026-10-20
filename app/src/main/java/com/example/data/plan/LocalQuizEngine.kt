@@ -215,6 +215,96 @@ class LocalQuizEngine(
         return questions.take(20)
     }
 
+    /**
+     * Generates a targeted 8-question Weak Areas Practice Quiz focusing on the learner's
+     * weakest vocabulary words and uncompleted grammar lessons.
+     */
+    suspend fun generateWeakAreasQuiz(
+        targetLevel: String = "B2",
+        isTtsAvailable: Boolean = true
+    ): List<QuizQuestionItem> {
+        val questions = mutableListOf<QuizQuestionItem>()
+        val weakWords = dao.getWeakestWords(12).filter { it.arabic.isNotBlank() && it.text.isNotBlank() }
+        val allTranslated = dao.getAllTranslatedEntries().filter { it.arabic.isNotBlank() && it.text.isNotBlank() }.shuffled()
+        val vocabPool = (weakWords + allTranslated).distinctBy { it.id }
+
+        // 1. Up to 4 Weak Vocabulary questions
+        if (vocabPool.size >= 4) {
+            val targets = weakWords.ifEmpty { vocabPool }.take(4)
+            targets.forEachIndexed { idx, target ->
+                val distractors = vocabPool.filter { it.id != target.id && it.text != target.text }.shuffled().take(3)
+                if (distractors.size >= 3) {
+                    if (idx % 2 == 0) {
+                        val opts = (listOf(target.arabic) + distractors.map { it.arabic }).shuffled()
+                        questions.add(
+                            QuizQuestionItem(
+                                id = UUID.randomUUID().toString(),
+                                skill = "vocabulary",
+                                questionType = "mcq_en_ar",
+                                promptEn = "Weak Word Review: What is the Arabic meaning of \"${target.text}\" (${target.pos})?",
+                                promptAr = "مراجعة الكلمات الصعبة: ما معنى \"${target.text}\"؟",
+                                options = opts,
+                                answerIndex = opts.indexOf(target.arabic),
+                                correctText = target.arabic,
+                                explanationAr = "المعنى الصحيح هو: ${target.arabic}"
+                            )
+                        )
+                    } else {
+                        val opts = (listOf(target.text) + distractors.map { it.text }).shuffled()
+                        questions.add(
+                            QuizQuestionItem(
+                                id = UUID.randomUUID().toString(),
+                                skill = "vocabulary",
+                                questionType = "mcq_ar_en",
+                                promptEn = "Weak Word Review: Which English word means \"${target.arabic}\"?",
+                                promptAr = "أي كلمة إنجليزية تعني: \"${target.arabic}\"؟",
+                                options = opts,
+                                answerIndex = opts.indexOf(target.text),
+                                correctText = target.text,
+                                explanationAr = "الكلمة الصحيحة هي: ${target.text}"
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
+        // 2. Up to 3 Weak / Uncompleted Grammar questions
+        val uncompletedGrammar = dao.getUncompletedGrammarLessonsForLevel(targetLevel)
+            .ifEmpty { dao.getAllGrammarLessons().filter { !it.isCompleted } }
+            .ifEmpty { dao.getAllGrammarLessons() }
+            .shuffled()
+        for (lesson in uncompletedGrammar.take(3)) {
+            val q = buildGrammarQuestion(listOf(lesson))
+            if (q != null) questions.add(q)
+        }
+
+        // 3. 1 Listening question on a weak word
+        if (isTtsAvailable && vocabPool.size >= 4) {
+            val listenTarget = (weakWords.ifEmpty { vocabPool }).random()
+            val distractors = vocabPool.filter { it.id != listenTarget.id && it.text != listenTarget.text }.shuffled().take(3)
+            if (distractors.size >= 3) {
+                val opts = (listOf(listenTarget.text) + distractors.map { it.text }).shuffled()
+                questions.add(
+                    QuizQuestionItem(
+                        id = UUID.randomUUID().toString(),
+                        skill = "listening",
+                        questionType = "listening",
+                        promptEn = "Listen and identify the spoken word:",
+                        promptAr = "استمع واختر الكلمة الإنجليزية الصحيحة:",
+                        options = opts,
+                        answerIndex = opts.indexOf(listenTarget.text),
+                        correctText = listenTarget.text,
+                        audioText = listenTarget.text,
+                        explanationAr = "الكلمة المنطوقة هي: ${listenTarget.text} (${listenTarget.arabic})"
+                    )
+                )
+            }
+        }
+
+        return questions.take(8)
+    }
+
     private suspend fun buildGrammarQuestion(lessons: List<com.example.data.local.GrammarLessonEntity>): QuizQuestionItem? {
         val lesson = lessons.shuffled().firstOrNull() ?: return null
         val exercises: List<GrammarExerciseItem> = try {
@@ -223,11 +313,40 @@ class LocalQuizEngine(
             emptyList()
         }
         val ex = exercises.shuffled().firstOrNull() ?: return null
+        val exType = ex.type.lowercase().trim()
+        val isReorder = exType == "reorder" ||
+            (ex.options.size >= 3 && !ex.options.contains(ex.answer) && ex.answer.trim().contains(" "))
 
-        val options = if (ex.options.size >= 2) {
+        if (isReorder) {
+            val wordTokens = if (ex.options.size >= 2) {
+                ex.options.shuffled()
+            } else {
+                ex.answer.trim().split(Regex("\\s+")).filter { it.isNotBlank() }.shuffled()
+            }
+            return QuizQuestionItem(
+                id = UUID.randomUUID().toString(),
+                skill = "grammar",
+                questionType = "grammar_reorder",
+                promptEn = ex.prompt,
+                promptAr = "قواعد: ${lesson.titleAr}",
+                options = wordTokens,
+                answerIndex = 0,
+                correctText = ex.answer.trim(),
+                explanationAr = ex.explanationAr.ifBlank { "القاعدة من درس: ${lesson.titleAr}" }
+            )
+        }
+
+        val options = if (ex.options.size >= 2 && ex.options.contains(ex.answer)) {
             ex.options.shuffled()
         } else {
-            listOf(ex.answer, "is", "was", "been").shuffled()
+            val otherAnswers = exercises
+                .map { it.answer.trim() }
+                .filter { it.isNotBlank() && !it.equals(ex.answer.trim(), ignoreCase = true) }
+                .distinct()
+            val fallbackPool = (otherAnswers + listOf("is", "was", "been", "have", "had", "would")).distinct()
+                .filter { !it.equals(ex.answer.trim(), ignoreCase = true) }
+                .take(3)
+            (listOf(ex.answer) + fallbackPool).shuffled()
         }
 
         return QuizQuestionItem(

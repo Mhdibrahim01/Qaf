@@ -75,7 +75,8 @@ data class WordFilterState(
     val posFilter: String = "",
     val sortOrder: WordSortOrder = WordSortOrder.AZ,
     val onlyFavorites: Boolean = false,
-    val onlyMastered: Boolean = false
+    val onlyMastered: Boolean = false,
+    val onlyLearning: Boolean = false
 )
 
 data class ImportProgressState(
@@ -201,7 +202,7 @@ class DataImportRepository(
     companion object {
         const val BATCH_SIZE = 500
         const val TOTAL_EXPECTED_ROWS = 9862
-        const val DATA_VERSION = 2
+        const val DATA_VERSION = 3
         const val SAVED_WORDS_DECK_ID = "saved_words"
         const val DUE_TODAY_DECK_ID = "due_today"
         const val DAY_MILLIS = 24L * 60L * 60L * 1000L
@@ -229,27 +230,10 @@ class DataImportRepository(
         }
 
         fun computeSm2IntervalPreview(progress: WordProgressEntity?): Sm2IntervalPreview {
-            val reps = progress?.repetitions ?: 0
-            val interval = progress?.intervalDays ?: 0
-            val ef = (progress?.easeFactor ?: 2.5f).coerceAtLeast(1.3f)
-
-            val hardDays = if (reps == 0) 0 else maxOf(1, (interval * 1.2f).roundToInt())
-            val goodDays = when (reps) {
-                0 -> 1
-                1 -> 3
-                else -> maxOf(1, (interval * ef).roundToInt())
-            }
-            val easyDays = when (reps) {
-                0 -> 4
-                1 -> 7
-                else -> maxOf(4, (interval * ef * 1.3f).roundToInt())
-            }
-
-            return Sm2IntervalPreview(
-                againLabel = "<10m",
-                hardLabel = if (hardDays == 0) "Today" else "${hardDays}d",
-                goodLabel = "${goodDays}d",
-                easyLabel = "${easyDays}d"
+            return Sm2Algorithm.previewIntervals(
+                reps = progress?.repetitions ?: 0,
+                interval = progress?.intervalDays ?: 0,
+                ef = progress?.easeFactor ?: 2.5f
             )
         }
 
@@ -267,11 +251,16 @@ class DataImportRepository(
         )
 
         /**
-         * Optional generated decks created by `generate_decks.py` (fixed ID ranges: 100001+ and 200001+).
+         * Optional generated decks created by `generate_decks.py` (fixed ID ranges: 100001+ to 700001+).
          */
         val OPTIONAL_GENERATED_FILES = listOf(
             "ielts_core.json",
-            "it_industry.json"
+            "it_industry.json",
+            "cefr_c1.json",
+            "pte_academic.json",
+            "business_english.json",
+            "career_interview.json",
+            "medical_healthcare.json"
         )
 
         /**
@@ -298,7 +287,11 @@ class DataImportRepository(
             DUE_TODAY_DECK_ID -> dao.getDueTodayEntriesOrdered(computeEndOfTodayMillis(nowMillis))
             else -> dao.getEntriesForDeckOrdered(deckId)
         }
-        val progressByKey = dao.getAllWordProgressList().associateBy { it.cardKey }
+        val progressByKey = if (deckId == DUE_TODAY_DECK_ID) {
+            dao.getAllWordProgressList().associateBy { it.cardKey }
+        } else {
+            dao.getWordProgressForDeck(deckId).associateBy { it.cardKey }
+        }
 
         // Group same word (`LOWER(text)`) with different `pos` in the same deck into one card with POS tabs
         val groupedMap = LinkedHashMap<String, MutableList<EntryEntity>>()
@@ -375,67 +368,7 @@ class DataImportRepository(
             deck = deckId,
             text = wordText.trim().lowercase()
         )
-
-        val currentReps = current.repetitions
-        val currentInterval = current.intervalDays
-        val currentEf = current.easeFactor.coerceAtLeast(1.3f)
-
-        val updated = when (rating) {
-            Sm2Rating.AGAIN -> {
-                current.copy(
-                    repetitions = 0,
-                    intervalDays = 0,
-                    easeFactor = (currentEf - 0.20f).coerceAtLeast(1.3f),
-                    dueTimestamp = nowMillis + 10L * 60_000L, // due in 10m (due today)
-                    lastReviewedTimestamp = nowMillis,
-                    againCount = current.againCount + 1
-                )
-            }
-            Sm2Rating.HARD -> {
-                val nextInterval = if (currentReps == 0) 0 else maxOf(1, (currentInterval * 1.2f).roundToInt())
-                val nextDue = if (nextInterval == 0) {
-                    nowMillis + 4L * 3600_000L // due later today
-                } else {
-                    nowMillis + nextInterval * DAY_MILLIS
-                }
-                current.copy(
-                    repetitions = currentReps + 1,
-                    intervalDays = nextInterval,
-                    easeFactor = (currentEf - 0.15f).coerceAtLeast(1.3f),
-                    dueTimestamp = nextDue,
-                    lastReviewedTimestamp = nowMillis
-                )
-            }
-            Sm2Rating.GOOD -> {
-                val nextInterval = when (currentReps) {
-                    0 -> 1
-                    1 -> 3
-                    else -> maxOf(1, (currentInterval * currentEf).roundToInt())
-                }
-                current.copy(
-                    repetitions = currentReps + 1,
-                    intervalDays = nextInterval,
-                    easeFactor = currentEf,
-                    dueTimestamp = nowMillis + nextInterval * DAY_MILLIS,
-                    lastReviewedTimestamp = nowMillis
-                )
-            }
-            Sm2Rating.EASY -> {
-                val nextInterval = when (currentReps) {
-                    0 -> 4
-                    1 -> 7
-                    else -> maxOf(4, (currentInterval * currentEf * 1.3f).roundToInt())
-                }
-                current.copy(
-                    repetitions = currentReps + 1,
-                    intervalDays = nextInterval,
-                    easeFactor = (currentEf + 0.15f).coerceAtLeast(1.3f),
-                    dueTimestamp = nowMillis + nextInterval * DAY_MILLIS,
-                    lastReviewedTimestamp = nowMillis
-                )
-            }
-        }
-
+        val updated = Sm2Algorithm.applyRating(current, rating, nowMillis)
         dao.upsertWordProgress(updated)
         updated
     }
@@ -489,7 +422,11 @@ class DataImportRepository(
             rating = rating,
             nowMillis = nowMillis
         )
-        val progressByKey = dao.getAllWordProgressList().associateBy { it.cardKey }
+        val progressByKey = if (activeDeckId == DUE_TODAY_DECK_ID) {
+            dao.getAllWordProgressList().associateBy { it.cardKey }
+        } else {
+            dao.getWordProgressForDeck(activeDeckId).associateBy { it.cardKey }
+        }
         val nextIndex = findNextDueCardIndex(
             cards = cards,
             currentIndex = safeCurrent,
@@ -517,6 +454,7 @@ class DataImportRepository(
             pagingSourceFactory = {
                 if (filter.onlyFavorites || filter.deckId == SAVED_WORDS_DECK_ID) {
                     dao.getPagedFavoriteEntries(
+                        deckId = if (filter.deckId == SAVED_WORDS_DECK_ID) "" else filter.deckId,
                         searchQuery = filter.searchQuery.trim(),
                         typeFilter = filter.typeFilter,
                         levelFilter = filter.levelFilter,
@@ -525,6 +463,15 @@ class DataImportRepository(
                     )
                 } else if (filter.onlyMastered) {
                     dao.getPagedMasteredEntries(
+                        deckId = filter.deckId,
+                        searchQuery = filter.searchQuery.trim(),
+                        typeFilter = filter.typeFilter,
+                        levelFilter = filter.levelFilter,
+                        posFilter = filter.posFilter,
+                        sortOrder = filter.sortOrder.sqlKey
+                    )
+                } else if (filter.onlyLearning) {
+                    dao.getPagedLearningEntries(
                         deckId = filter.deckId,
                         searchQuery = filter.searchQuery.trim(),
                         typeFilter = filter.typeFilter,
@@ -750,7 +697,12 @@ class DataImportRepository(
             dao.getFavoriteCountForDeck("everyday_expressions") +
             dao.getFavoriteCountForDeck("essential_idioms") +
             dao.getFavoriteCountForDeck("ielts_core") +
-            dao.getFavoriteCountForDeck("it_industry")
+            dao.getFavoriteCountForDeck("it_industry") +
+            dao.getFavoriteCountForDeck("cefr_c1") +
+            dao.getFavoriteCountForDeck("pte_academic") +
+            dao.getFavoriteCountForDeck("business_english") +
+            dao.getFavoriteCountForDeck("career_interview") +
+            dao.getFavoriteCountForDeck("medical_healthcare")
 
         val updatedDecks = currentDecks.map { deck ->
             when (deck.id) {
@@ -928,11 +880,35 @@ class DataImportRepository(
 
             val ieltsSourceExists = resolvedSources.any { it.fileName == "ielts_core.json" }
             val itSourceExists = resolvedSources.any { it.fileName == "it_industry.json" }
+            val cefrC1SourceExists = resolvedSources.any { it.fileName == "cefr_c1.json" }
+            val pteSourceExists = resolvedSources.any { it.fileName == "pte_academic.json" }
+            val businessSourceExists = resolvedSources.any { it.fileName == "business_english.json" }
+            val careerSourceExists = resolvedSources.any { it.fileName == "career_interview.json" }
+            val medicalSourceExists = resolvedSources.any { it.fileName == "medical_healthcare.json" }
+
             val ieltsNeedsImport = ieltsSourceExists && dao.getEntryCountForDeck("ielts_core") == 0
             val itNeedsImport = itSourceExists && dao.getEntryCountForDeck("it_industry") == 0
+            val cefrC1NeedsImport = cefrC1SourceExists && dao.getEntryCountForDeck("cefr_c1") == 0
+            val pteNeedsImport = pteSourceExists && dao.getEntryCountForDeck("pte_academic") == 0
+            val businessNeedsImport = businessSourceExists && dao.getEntryCountForDeck("business_english") == 0
+            val careerNeedsImport = careerSourceExists && dao.getEntryCountForDeck("career_interview") == 0
+            val medicalNeedsImport = medicalSourceExists && dao.getEntryCountForDeck("medical_healthcare") == 0
+
+            val anyOptionalNeedsImport = ieltsNeedsImport ||
+                itNeedsImport ||
+                cefrC1NeedsImport ||
+                pteNeedsImport ||
+                businessNeedsImport ||
+                careerNeedsImport ||
+                medicalNeedsImport
+
             val versionNeedsUpsert = dbDataVersion < DATA_VERSION
 
-            if (coreCountsMatchExact && !ieltsNeedsImport && !itNeedsImport && !versionNeedsUpsert && missing.isEmpty() && !forceRecheck) {
+            if (dao.getWordDetailsCount() < 8924 || versionNeedsUpsert) {
+                seedAiWordDetailsIfNeeded()
+            }
+
+            if (coreCountsMatchExact && !anyOptionalNeedsImport && !versionNeedsUpsert && missing.isEmpty() && !forceRecheck) {
                 refreshAllDeckCounts()
                 _importState.value = ImportProgressState(
                     isImporting = false,
@@ -1096,7 +1072,7 @@ class DataImportRepository(
 
     private suspend fun seedInitialDecks() {
         val existingDecks = dao.getDecksList()
-        if (existingDecks.isNotEmpty()) return
+        if (existingDecks.size >= 13) return
 
         val initialDecks = buildDeckEntitiesWithCounts(
             oxfordCount = 0, oxfordUnique = 0, oxfordMastered = 0, oxfordFav = 0,
@@ -1106,9 +1082,18 @@ class DataImportRepository(
             idiomsCount = 0, idiomsUnique = 0, idiomsMastered = 0, idiomsFav = 0,
             ieltsCount = 0, ieltsUnique = 0, ieltsMastered = 0, ieltsFav = 0,
             itCount = 0, itUnique = 0, itMastered = 0, itFav = 0,
+            cefrC1Count = 0, cefrC1Unique = 0, cefrC1Mastered = 0, cefrC1Fav = 0,
+            pteCount = 0, pteUnique = 0, pteMastered = 0, pteFav = 0,
+            businessCount = 0, businessUnique = 0, businessMastered = 0, businessFav = 0,
+            careerCount = 0, careerUnique = 0, careerMastered = 0, careerFav = 0,
+            medicalCount = 0, medicalUnique = 0, medicalMastered = 0, medicalFav = 0,
             savedFavTotal = 0
         )
-        dao.upsertDecks(initialDecks)
+        val existingIds = existingDecks.map { it.id }.toSet()
+        val missingDecks = initialDecks.filter { it.id !in existingIds }
+        if (missingDecks.isNotEmpty()) {
+            dao.upsertDecks(missingDecks)
+        }
     }
 
     suspend fun refreshAllDeckCounts() {
@@ -1147,7 +1132,33 @@ class DataImportRepository(
         val itMastered = dao.getMasteredCountForDeck("it_industry")
         val itFav = dao.getFavoriteCountForDeck("it_industry")
 
-        val savedFavTotal = oxfordFav + opalFav + phrasesFav + expressionsFav + idiomsFav + ieltsFav + itFav
+        val cefrC1Count = dao.getEntryCountForDeck("cefr_c1")
+        val cefrC1Unique = dao.getUniqueWordCountForDeck("cefr_c1")
+        val cefrC1Mastered = dao.getMasteredCountForDeck("cefr_c1")
+        val cefrC1Fav = dao.getFavoriteCountForDeck("cefr_c1")
+
+        val pteCount = dao.getEntryCountForDeck("pte_academic")
+        val pteUnique = dao.getUniqueWordCountForDeck("pte_academic")
+        val pteMastered = dao.getMasteredCountForDeck("pte_academic")
+        val pteFav = dao.getFavoriteCountForDeck("pte_academic")
+
+        val businessCount = dao.getEntryCountForDeck("business_english")
+        val businessUnique = dao.getUniqueWordCountForDeck("business_english")
+        val businessMastered = dao.getMasteredCountForDeck("business_english")
+        val businessFav = dao.getFavoriteCountForDeck("business_english")
+
+        val careerCount = dao.getEntryCountForDeck("career_interview")
+        val careerUnique = dao.getUniqueWordCountForDeck("career_interview")
+        val careerMastered = dao.getMasteredCountForDeck("career_interview")
+        val careerFav = dao.getFavoriteCountForDeck("career_interview")
+
+        val medicalCount = dao.getEntryCountForDeck("medical_healthcare")
+        val medicalUnique = dao.getUniqueWordCountForDeck("medical_healthcare")
+        val medicalMastered = dao.getMasteredCountForDeck("medical_healthcare")
+        val medicalFav = dao.getFavoriteCountForDeck("medical_healthcare")
+
+        val savedFavTotal = oxfordFav + opalFav + phrasesFav + expressionsFav + idiomsFav +
+            ieltsFav + itFav + cefrC1Fav + pteFav + businessFav + careerFav + medicalFav
 
         val decks = buildDeckEntitiesWithCounts(
             oxfordCount, oxfordUnique, oxfordMastered, oxfordFav,
@@ -1157,6 +1168,11 @@ class DataImportRepository(
             idiomsCount, idiomsUnique, idiomsMastered, idiomsFav,
             ieltsCount, ieltsUnique, ieltsMastered, ieltsFav,
             itCount, itUnique, itMastered, itFav,
+            cefrC1Count, cefrC1Unique, cefrC1Mastered, cefrC1Fav,
+            pteCount, pteUnique, pteMastered, pteFav,
+            businessCount, businessUnique, businessMastered, businessFav,
+            careerCount, careerUnique, careerMastered, careerFav,
+            medicalCount, medicalUnique, medicalMastered, medicalFav,
             savedFavTotal
         )
         dao.upsertDecks(decks)
@@ -1170,6 +1186,11 @@ class DataImportRepository(
         idiomsCount: Int, idiomsUnique: Int, idiomsMastered: Int, idiomsFav: Int,
         ieltsCount: Int, ieltsUnique: Int, ieltsMastered: Int, ieltsFav: Int,
         itCount: Int, itUnique: Int, itMastered: Int, itFav: Int,
+        cefrC1Count: Int, cefrC1Unique: Int, cefrC1Mastered: Int, cefrC1Fav: Int,
+        pteCount: Int, pteUnique: Int, pteMastered: Int, pteFav: Int,
+        businessCount: Int, businessUnique: Int, businessMastered: Int, businessFav: Int,
+        careerCount: Int, careerUnique: Int, careerMastered: Int, careerFav: Int,
+        medicalCount: Int, medicalUnique: Int, medicalMastered: Int, medicalFav: Int,
         savedFavTotal: Int
     ): List<DeckEntity> = listOf(
         DeckEntity(
@@ -1275,6 +1296,71 @@ class DataImportRepository(
             masteredCount = itMastered,
             favoriteCount = itFav,
             displayOrder = 7
+        ),
+        DeckEntity(
+            id = "cefr_c1",
+            title = "CEFR C1 Advanced",
+            arabicSubtitle = "المفردات المتقدمة للمستوى C1",
+            category = "Advanced English",
+            coverColorHex = "#1E1B4B",
+            accentColorHex = "#818CF8",
+            rowCount = cefrC1Count,
+            uniqueWordCount = cefrC1Unique,
+            masteredCount = cefrC1Mastered,
+            favoriteCount = cefrC1Fav,
+            displayOrder = 8
+        ),
+        DeckEntity(
+            id = "pte_academic",
+            title = "PTE Academic",
+            arabicSubtitle = "مفردات اختبار بيرسون الأكاديمي",
+            category = "Exam Preparation",
+            coverColorHex = "#0C4A6E",
+            accentColorHex = "#38BDF8",
+            rowCount = pteCount,
+            uniqueWordCount = pteUnique,
+            masteredCount = pteMastered,
+            favoriteCount = pteFav,
+            displayOrder = 9
+        ),
+        DeckEntity(
+            id = "business_english",
+            title = "Business English",
+            arabicSubtitle = "الإنجليزية المهنية وإدارة الأعمال",
+            category = "Professional English",
+            coverColorHex = "#172554",
+            accentColorHex = "#F59E0B",
+            rowCount = businessCount,
+            uniqueWordCount = businessUnique,
+            masteredCount = businessMastered,
+            favoriteCount = businessFav,
+            displayOrder = 10
+        ),
+        DeckEntity(
+            id = "career_interview",
+            title = "Job Interview & Career",
+            arabicSubtitle = "مقابلات العمل والتوظيف الدولي",
+            category = "Career Skills",
+            coverColorHex = "#064E3B",
+            accentColorHex = "#10B981",
+            rowCount = careerCount,
+            uniqueWordCount = careerUnique,
+            masteredCount = careerMastered,
+            favoriteCount = careerFav,
+            displayOrder = 11
+        ),
+        DeckEntity(
+            id = "medical_healthcare",
+            title = "Medical & Healthcare",
+            arabicSubtitle = "المصطلحات الطبية والرعاية الصحية",
+            category = "Healthcare & OET",
+            coverColorHex = "#450A0A",
+            accentColorHex = "#EF4444",
+            rowCount = medicalCount,
+            uniqueWordCount = medicalUnique,
+            masteredCount = medicalMastered,
+            favoriteCount = medicalFav,
+            displayOrder = 12
         )
     )
 
@@ -1313,20 +1399,32 @@ class DataImportRepository(
         json.encodeToString(list)
     }
 
+    private suspend fun seedAiWordDetailsIfNeeded() = withContext(Dispatchers.IO) {
+        if (dao.getWordDetailsCount() >= 8924) return@withContext
+        try {
+            val stream = context.assets.open("data_import/ai_word_details.json")
+            val rawText = stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+            val details = json.decodeFromString<List<WordDetailEntity>>(rawText)
+            details.chunked(BATCH_SIZE).forEach { batch ->
+                dao.insertWordDetails(batch)
+            }
+        } catch (e: Exception) {
+            // Fallback / log
+        }
+    }
+
     /**
      * Imports AI word details from JSON without ever overwriting existing entries.
      */
     suspend fun importWordDetailsJson(jsonText: String): Int = withContext(Dispatchers.IO) {
         val items = runCatching { json.decodeFromString<List<WordDetailEntity>>(jsonText) }.getOrDefault(emptyList())
-        var importedCount = 0
-        for (item in items) {
-            val existing = dao.getWordDetail(item.key)
-            if (existing == null) {
-                dao.insertWordDetail(item)
-                importedCount++
-            }
+        if (items.isEmpty()) return@withContext 0
+        val countBefore = dao.getWordDetailsCount()
+        items.chunked(500).forEach { chunk ->
+            dao.insertWordDetails(chunk)
         }
-        importedCount
+        val countAfter = dao.getWordDetailsCount()
+        (countAfter - countBefore).coerceAtLeast(0)
     }
 }
 

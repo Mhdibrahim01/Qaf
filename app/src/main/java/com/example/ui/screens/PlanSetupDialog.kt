@@ -4,6 +4,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -43,6 +45,9 @@ import com.example.ui.theme.TextSecondary
 import kotlinx.serialization.json.Json
 import java.util.Calendar
 
+private val setupJson = Json { ignoreUnknownKeys = true; isLenient = true }
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PlanSetupDialog(
     initialProfile: StudyPlanProfileEntity?,
@@ -52,7 +57,25 @@ fun PlanSetupDialog(
     var selectedLevel by remember { mutableStateOf(initialProfile?.level ?: "B2") }
     var selectedGoal by remember { mutableStateOf(initialProfile?.goal ?: "general_fluency") }
     var selectedMinutes by remember { mutableIntStateOf(initialProfile?.minutesPerDay ?: 30) }
-    var selectedDays by remember { mutableIntStateOf(initialProfile?.studyDaysPerWeek ?: 6) }
+
+    val initialDecks = remember(initialProfile?.selectedDecksJson) {
+        try {
+            setupJson.decodeFromString<List<String>>(initialProfile?.selectedDecksJson ?: "[\"oxford5000\",\"oxford_opal\"]")
+                .ifEmpty { listOf("oxford5000", "oxford_opal") }
+        } catch (e: Exception) {
+            listOf("oxford5000", "oxford_opal")
+        }
+    }
+    var selectedDecks by remember { mutableStateOf(initialDecks) }
+
+    val initialRestDays = remember(initialProfile?.restDaysJson) {
+        try {
+            setupJson.decodeFromString<List<Int>>(initialProfile?.restDaysJson ?: "[6]")
+        } catch (e: Exception) {
+            listOf(Calendar.FRIDAY)
+        }
+    }
+    var selectedRestDays by remember { mutableStateOf(initialRestDays) }
 
     val levels = listOf("A1", "A2", "B1", "B2", "C1")
     val goals = listOf(
@@ -60,8 +83,32 @@ fun PlanSetupDialog(
         Triple("ielts", "IELTS Preparation", "إعداد لاختبار الآيلتس الأكاديمي"),
         Triple("it_career", "IT & Tech Career", "المصطلحات التقنية والمهنية البرمجية")
     )
+    val availableDecks = listOf(
+        "oxford5000" to "Oxford 5000",
+        "oxford_opal" to "Academic OPAL",
+        "oxford_phrases" to "Oxford Phrases",
+        "everyday_expressions" to "Everyday Expressions",
+        "essential_idioms" to "Essential Idioms",
+        "ielts_core" to "IELTS Core",
+        "it_industry" to "IT & Tech Industry",
+        "cefr_c1" to "CEFR C1 Advanced",
+        "pte_academic" to "PTE Academic",
+        "business_english" to "Business English",
+        "career_interview" to "Job Interview & Career",
+        "medical_healthcare" to "Medical & Healthcare"
+    )
     val minuteOptions = listOf(15, 30, 45, 60)
-    val dayOptions = listOf(5, 6, 7)
+    val weekDays = listOf(
+        Calendar.SATURDAY to "Sat",
+        Calendar.SUNDAY to "Sun",
+        Calendar.MONDAY to "Mon",
+        Calendar.TUESDAY to "Tue",
+        Calendar.WEDNESDAY to "Wed",
+        Calendar.THURSDAY to "Thu",
+        Calendar.FRIDAY to "Fri"
+    )
+
+    val activeStudyDaysCount = (7 - selectedRestDays.size).coerceIn(1, 7)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -75,7 +122,7 @@ fun PlanSetupDialog(
                     color = TextPrimary
                 )
                 Text(
-                    text = "Personalize your daily pace and CEFR target",
+                    text = "Personalize your CEFR target, decks, and weekly schedule",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary
                 )
@@ -132,7 +179,12 @@ fun PlanSetupDialog(
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { selectedGoal = id },
+                                .clickable {
+                                    selectedGoal = id
+                                    if (id == "ielts" && "oxford_opal" !in selectedDecks) {
+                                        selectedDecks = (selectedDecks + "oxford_opal").distinct()
+                                    }
+                                },
                             shape = RoundedCornerShape(12.dp),
                             color = if (isSelected) GoldAccentDim else SurfaceElevatedDark,
                             border = BorderStroke(1.dp, if (isSelected) GoldAccent else BorderDark)
@@ -153,7 +205,47 @@ fun PlanSetupDialog(
                     }
                 }
 
-                // 3. Minutes Per Day
+                // 3. Vocabulary Focus Decks
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "Vocabulary Decks",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                        color = TextPrimary
+                    )
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        availableDecks.forEach { (deckId, label) ->
+                            val isSelected = deckId in selectedDecks
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    selectedDecks = if (isSelected) {
+                                        if (selectedDecks.size > 1) selectedDecks - deckId else selectedDecks
+                                    } else {
+                                        selectedDecks + deckId
+                                    }
+                                },
+                                label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = GoldAccentDim,
+                                    selectedLabelColor = GoldAccent,
+                                    containerColor = SurfaceElevatedDark,
+                                    labelColor = TextMuted
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = isSelected,
+                                    borderColor = if (isSelected) GoldAccent else BorderDark
+                                )
+                            )
+                        }
+                    }
+                }
+
+                // 4. Minutes Per Day
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         text = "Daily Commitment",
@@ -180,57 +272,67 @@ fun PlanSetupDialog(
                     }
                 }
 
-                // 4. Study Days Per Week
+                // 5. Study Days & Custom Rest Days
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = "Study Days Per Week",
+                        text = "Weekly Schedule ($activeStudyDaysCount study days/wk)",
                         style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                         color = TextPrimary
                     )
-                    Row(
+                    Text(
+                        text = "Tap any day to mark it as a Rest Day (maintains your streak):",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary
+                    )
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        dayOptions.forEach { days ->
+                        weekDays.forEach { (calDay, label) ->
+                            val isRest = calDay in selectedRestDays
                             FilterChip(
-                                selected = selectedDays == days,
-                                onClick = { selectedDays = days },
-                                label = { Text("$days days") },
+                                selected = !isRest,
+                                onClick = {
+                                    selectedRestDays = if (isRest) {
+                                        selectedRestDays - calDay
+                                    } else {
+                                        if (selectedRestDays.size < 3) selectedRestDays + calDay else selectedRestDays
+                                    }
+                                },
+                                label = {
+                                    Text(
+                                        text = if (isRest) "$label (Rest)" else label,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                                    )
+                                },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = GoldAccentDim,
                                     selectedLabelColor = GoldAccent,
                                     containerColor = SurfaceElevatedDark,
                                     labelColor = TextMuted
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = !isRest,
+                                    borderColor = if (!isRest) GoldAccent else BorderDark
                                 )
                             )
                         }
                     }
-                    Text(
-                        text = when (selectedDays) {
-                            6 -> "Rest day: Friday"
-                            5 -> "Rest days: Friday & Saturday"
-                            else -> "Everyday learning schedule"
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextMuted
-                    )
                 }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    val defaultRest = when (selectedDays) {
-                        5 -> listOf(Calendar.FRIDAY, Calendar.SATURDAY)
-                        6 -> listOf(Calendar.FRIDAY)
-                        else -> emptyList()
-                    }
                     val updated = (initialProfile ?: StudyPlanProfileEntity()).copy(
                         level = selectedLevel,
                         goal = selectedGoal,
                         minutesPerDay = selectedMinutes,
-                        studyDaysPerWeek = selectedDays,
-                        restDaysJson = Json.encodeToString(defaultRest)
+                        studyDaysPerWeek = activeStudyDaysCount,
+                        selectedDecksJson = setupJson.encodeToString(selectedDecks),
+                        restDaysJson = setupJson.encodeToString(selectedRestDays)
                     )
                     onSaveProfile(updated)
                     onDismiss()

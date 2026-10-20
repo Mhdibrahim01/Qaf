@@ -2,9 +2,12 @@ package com.example.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,13 +18,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
@@ -41,6 +49,7 @@ import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +61,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.example.data.local.DailyChecklistEntity
 import com.example.data.local.DailyTaskItem
@@ -82,6 +92,14 @@ import kotlinx.serialization.json.Json
 
 private val planUiJson = Json { ignoreUnknownKeys = true; isLenient = true }
 
+private fun formatGoalBadge(goal: String?): String {
+    return when (goal) {
+        "ielts" -> "IELTS Prep"
+        "it_career" -> "IT Career"
+        else -> "General Fluency"
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlanScreen(
@@ -96,6 +114,8 @@ fun PlanScreen(
     onGeneratePlanWithAi: suspend (month: String) -> Result<Unit>,
     onGenerateDailyQuiz: suspend () -> List<QuizQuestionItem>,
     onGenerateWeeklyQuiz: suspend () -> List<QuizQuestionItem>,
+    onGenerateWeakAreasQuiz: suspend () -> List<QuizQuestionItem> = { emptyList() },
+    onRefreshPlan: () -> Unit = {},
     onSubmitQuizAnswers: suspend (quizType: String, questions: List<QuizQuestionItem>, answers: Map<String, Int>) -> Map<String, Float>,
     onPlayAudio: (String) -> Unit,
     onToggleTaskCompleted: (date: String, taskId: String) -> Unit,
@@ -112,8 +132,16 @@ fun PlanScreen(
     var activeQuizType by remember { mutableStateOf("") }
     var isAiGeneratingPlan by remember { mutableStateOf(false) }
     var planAiError by remember { mutableStateOf<String?>(null) }
+    var planAiSuccessMessage by remember { mutableStateOf<String?>(null) }
 
-    val tabs = listOf("Today", "Monthly Plan", "Analytics")
+    LaunchedEffect(Unit) {
+        onRefreshPlan()
+    }
+
+    val completedToday = todayChecklist?.completedCount ?: 0
+    val totalToday = todayChecklist?.totalCount ?: 0
+    val todayTabTitle = if (totalToday > 0) "Today ($completedToday/$totalToday)" else "Today"
+    val tabs = listOf(todayTabTitle, "Monthly Plan", "Analytics")
 
     Column(
         modifier = modifier
@@ -135,7 +163,8 @@ fun PlanScreen(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.weight(1f)
                     ) {
                         Surface(
                             color = GoldAccentDim,
@@ -149,9 +178,21 @@ fun PlanScreen(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
+                        Surface(
+                            color = SurfaceElevatedDark,
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, BorderSubtle)
+                        ) {
+                            Text(
+                                text = formatGoalBadge(profile?.goal),
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                                color = TextPrimary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
                         Text(
-                            text = "${profile?.minutesPerDay ?: 30} min/day • ${profile?.studyDaysPerWeek ?: 6} days/wk",
-                            style = MaterialTheme.typography.labelMedium,
+                            text = "${profile?.minutesPerDay ?: 30}m • ${profile?.studyDaysPerWeek ?: 6}d/wk",
+                            style = MaterialTheme.typography.labelSmall,
                             color = TextSecondary
                         )
                     }
@@ -213,6 +254,7 @@ fun PlanScreen(
             0 -> TodayTabContent(
                 todayChecklist = todayChecklist,
                 streak = streak,
+                weakAreas = weakAreas,
                 onToggleTask = onToggleTaskCompleted,
                 onOpenTask = onNavigateToTaskRoute,
                 onStartMiniQuiz = {
@@ -222,6 +264,14 @@ fun PlanScreen(
                         activeQuizTitle = "Daily Mini-Quiz"
                         activeQuizType = "daily_mini"
                     }
+                },
+                onStartWeakAreasQuiz = {
+                    scope.launch {
+                        val questions = onGenerateWeakAreasQuiz()
+                        activeQuizQuestions = questions
+                        activeQuizTitle = "Weak Areas Targeted Practice"
+                        activeQuizType = "weak_areas"
+                    }
                 }
             )
             1 -> MonthlyPlanTabContent(
@@ -229,13 +279,17 @@ fun PlanScreen(
                 currentPlan = currentPlan,
                 isAiGenerating = isAiGeneratingPlan,
                 aiError = planAiError,
+                aiSuccessMessage = planAiSuccessMessage,
                 onGenerateWithAi = { month ->
                     scope.launch {
                         isAiGeneratingPlan = true
                         planAiError = null
+                        planAiSuccessMessage = null
                         val res = onGeneratePlanWithAi(month)
                         if (res.isFailure) {
                             planAiError = res.exceptionOrNull()?.message ?: "Plan generation failed."
+                        } else {
+                            planAiSuccessMessage = "تم تحديث الخطة الشهرية ومهام اليوم بنجاح!"
                         }
                         isAiGeneratingPlan = false
                     }
@@ -251,6 +305,14 @@ fun PlanScreen(
                         activeQuizQuestions = questions
                         activeQuizTitle = "Weekly Comprehensive Quiz"
                         activeQuizType = "weekly"
+                    }
+                },
+                onStartWeakAreasQuiz = {
+                    scope.launch {
+                        val questions = onGenerateWeakAreasQuiz()
+                        activeQuizQuestions = questions
+                        activeQuizTitle = "Weak Areas Targeted Practice"
+                        activeQuizType = "weak_areas"
                     }
                 },
                 onOpenTask = onNavigateToTaskRoute
@@ -286,9 +348,11 @@ fun PlanScreen(
 private fun TodayTabContent(
     todayChecklist: DailyChecklistEntity?,
     streak: Int,
+    weakAreas: WeakAreasState,
     onToggleTask: (date: String, taskId: String) -> Unit,
     onOpenTask: (route: String, id: String) -> Unit,
-    onStartMiniQuiz: () -> Unit
+    onStartMiniQuiz: () -> Unit,
+    onStartWeakAreasQuiz: () -> Unit
 ) {
     val tasks: List<DailyTaskItem> = remember(todayChecklist?.tasksJson) {
         try {
@@ -338,7 +402,7 @@ private fun TodayTabContent(
                             color = TextPrimary
                         )
                         Text(
-                            text = if (progressFraction >= 1f) "مبروك! أكملت جميع مهام اليوم بنجاح" else "استمر في التقدم لإكمال خطة اليوم",
+                            text = if (progressFraction >= 1f) "مبروك! أكملت جميع مهام اليوم بنجاح" else "اضغط على أي مهمة لفتح الدرس أو ضع علامة صح عند الإنجاز",
                             style = ArabicTypography.labelSmall,
                             color = if (progressFraction >= 1f) EmeraldAccent else TextSecondary
                         )
@@ -396,84 +460,188 @@ private fun TodayTabContent(
 
         // Task Items Header
         item {
-            Text(
-                text = "Today's Checklist",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = TextPrimary
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Today's Checklist",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = TextPrimary
+                )
+                Text(
+                    text = "Tap circle to check/uncheck",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextMuted
+                )
+            }
         }
 
         // Tasks List
         items(tasks, key = { it.id }) { task ->
+            val canOpenRoute = task.type != "quiz" && task.linkedRoute.isNotBlank()
+            val taskProgress = if (task.targetCount > 0) {
+                (task.completedCount.toFloat() / task.targetCount.toFloat()).coerceIn(0f, 1f)
+            } else {
+                if (task.isCompleted) 1f else 0f
+            }
+
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag("task_item_${task.type}"),
+                    .testTag("task_item_${task.type}")
+                    .then(
+                        if (canOpenRoute) {
+                            Modifier.clickable { onOpenTask(task.linkedRoute, task.linkedId) }
+                        } else {
+                            Modifier
+                        }
+                    ),
                 color = SurfaceDark,
                 shape = RoundedCornerShape(14.dp),
-                border = BorderStroke(1.dp, if (task.isCompleted) EmeraldAccent.copy(alpha = 0.45f) else BorderSubtle)
+                border = BorderStroke(1.dp, if (task.isCompleted) EmeraldAccent.copy(alpha = 0.55f) else BorderSubtle)
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    IconButton(
-                        onClick = {
-                            if (todayChecklist != null) {
-                                onToggleTask(todayChecklist.date, task.id)
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        IconButton(
+                            onClick = {
+                                if (todayChecklist != null) {
+                                    onToggleTask(todayChecklist.date, task.id)
+                                }
+                            },
+                            modifier = Modifier.testTag("btn_toggle_${task.type}")
+                        ) {
+                            Icon(
+                                imageVector = if (task.isCompleted) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
+                                contentDescription = if (task.isCompleted) "Uncheck task" else "Complete task",
+                                tint = if (task.isCompleted) EmeraldAccent else GoldAccent,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = task.titleEn,
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (task.isCompleted) TextMuted else TextPrimary,
+                                        textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None
+                                    ),
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                                if (task.targetCount > 1) {
+                                    Surface(
+                                        color = if (task.isCompleted) EmeraldAccent.copy(alpha = 0.15f) else SurfaceElevatedDark,
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        Text(
+                                            text = "${task.completedCount}/${task.targetCount}",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = if (task.isCompleted) EmeraldAccent else GoldAccent,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
+                            Text(
+                                text = task.titleAr,
+                                style = ArabicTypography.labelSmall,
+                                color = if (task.isCompleted) TextMuted else TextSecondary
+                            )
+                            if (task.subtitleEn.isNotBlank()) {
+                                Text(
+                                    text = task.subtitleEn,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = GoldAccent
+                                )
                             }
                         }
-                    ) {
-                        Icon(
-                            imageVector = if (task.isCompleted) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
-                            contentDescription = "Toggle completion",
-                            tint = if (task.isCompleted) EmeraldAccent else TextMuted,
-                            modifier = Modifier.size(24.dp)
-                        )
+
+                        if (task.type == "quiz") {
+                            Button(
+                                onClick = onStartMiniQuiz,
+                                colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = BackgroundDark),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.testTag("btn_start_daily_quiz")
+                            ) {
+                                Text(if (task.isCompleted) "Retake" else "Take Quiz", fontWeight = FontWeight.Bold)
+                            }
+                        } else if (task.linkedRoute.isNotBlank()) {
+                            IconButton(onClick = { onOpenTask(task.linkedRoute, task.linkedId) }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Go to task", tint = GoldAccent)
+                            }
+                        }
                     }
 
-                    Column(
+                    // Show progress bar for multi-item tasks (e.g. Flashcards, New Words, Sentences)
+                    if (task.targetCount > 1) {
+                        LinearProgressIndicator(
+                            progress = { taskProgress },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp)
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(2.dp)),
+                            color = if (task.isCompleted) EmeraldAccent else GoldAccent,
+                            trackColor = SurfaceElevatedDark
+                        )
+                    }
+                }
+            }
+        }
+
+        // Targeted Weak-Areas Quick Drill Card on Today Tab
+        if (weakAreas.weakWords.isNotEmpty() || weakAreas.weakGrammarLessons.isNotEmpty()) {
+            item {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = SurfaceDark,
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, BorderSubtle)
+                ) {
+                    Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = task.titleEn,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = if (task.isCompleted) TextMuted else TextPrimary
-                            )
-                        )
-                        Text(
-                            text = task.titleAr,
-                            style = ArabicTypography.labelSmall,
-                            color = if (task.isCompleted) TextMuted else TextSecondary
-                        )
-                        if (task.subtitleEn.isNotBlank()) {
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Icon(Icons.Filled.FitnessCenter, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(18.dp))
+                                Text(
+                                    text = "Weak-Areas Booster",
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = TextPrimary
+                                )
+                            }
                             Text(
-                                text = task.subtitleEn,
+                                text = "${weakAreas.weakWords.size} weak words • ${weakAreas.weakGrammarLessons.size} focus lessons",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = GoldAccent
+                                color = TextSecondary
                             )
                         }
-                    }
-
-                    if (task.type == "quiz") {
-                        Button(
-                            onClick = onStartMiniQuiz,
-                            colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = BackgroundDark),
+                        OutlinedButton(
+                            onClick = onStartWeakAreasQuiz,
                             shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.testTag("btn_start_daily_quiz")
+                            border = BorderStroke(1.dp, GoldAccentBorder),
+                            modifier = Modifier.testTag("btn_today_weak_quiz")
                         ) {
-                            Text(if (task.isCompleted) "Retake" else "Take Quiz", fontWeight = FontWeight.Bold)
-                        }
-                    } else if (task.linkedRoute.isNotBlank()) {
-                        IconButton(onClick = { onOpenTask(task.linkedRoute, task.linkedId) }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Go to task", tint = GoldAccent)
+                            Text("Practice Now", color = GoldAccent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }
@@ -482,12 +650,14 @@ private fun TodayTabContent(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MonthlyPlanTabContent(
     profile: StudyPlanProfileEntity?,
     currentPlan: StudyPlanEntity?,
     isAiGenerating: Boolean,
     aiError: String?,
+    aiSuccessMessage: String?,
     onGenerateWithAi: (month: String) -> Unit
 ) {
     val weeks: List<PlanWeekGoal> = remember(currentPlan?.weeksJson) {
@@ -522,14 +692,14 @@ private fun MonthlyPlanTabContent(
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
                                 text = "Month: ${currentPlan?.month ?: "Current"}",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = TextPrimary
                             )
                             Text(
-                                text = "Level ${currentPlan?.levelStart ?: "B2"} → ${currentPlan?.levelTarget ?: "B2+"}",
+                                text = "Level ${currentPlan?.levelStart ?: profile?.level ?: "B2"} → ${currentPlan?.levelTarget ?: "B2+"} • ${formatGoalBadge(profile?.goal)}",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = GoldAccent
                             )
@@ -540,7 +710,7 @@ private fun MonthlyPlanTabContent(
                             border = BorderStroke(1.dp, BorderSubtle)
                         ) {
                             Text(
-                                text = if (currentPlan?.source == "ai") "AI Plan" else "Standard Plan",
+                                text = if (currentPlan?.source == "ai") "AI Adapted Plan" else "Goal Curriculum",
                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                 color = if (currentPlan?.source == "ai") GoldAccent else TextMuted,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -550,6 +720,9 @@ private fun MonthlyPlanTabContent(
 
                     if (aiError != null) {
                         Text(text = aiError, style = MaterialTheme.typography.labelSmall, color = CoralAccent)
+                    }
+                    if (aiSuccessMessage != null) {
+                        BidiText(text = aiSuccessMessage, style = ArabicTypography.labelSmall, color = EmeraldAccent)
                     }
 
                     OutlinedButton(
@@ -564,7 +737,7 @@ private fun MonthlyPlanTabContent(
                         if (isAiGenerating) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), color = GoldAccent, strokeWidth = 2.dp)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Generating with AI...", color = GoldAccent)
+                            Text("Generating Personalized Plan...", color = GoldAccent)
                         } else {
                             Icon(Icons.Filled.AutoAwesome, contentDescription = "AI", tint = GoldAccent, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
@@ -583,18 +756,32 @@ private fun MonthlyPlanTabContent(
                 shape = RoundedCornerShape(14.dp),
                 border = BorderStroke(1.dp, BorderSubtle)
             ) {
-                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "Daily Time Allocation",
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = TextPrimary
-                    )
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Cards: ${template.review_cards_min}m", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-                        Text("Words: ${template.new_words}m", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-                        Text("Grammar: ${template.grammar_min}m", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-                        Text("Reading: ${template.reading_min}m", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-                        Text("Quiz: ${template.quiz_min}m", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Daily Pace & Targets",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "${template.new_words} new words/day",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = GoldAccent
+                        )
+                    }
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        PaceBadge("Flashcards", "${template.review_cards_min} min")
+                        PaceBadge("Grammar", "${template.grammar_min} min")
+                        PaceBadge("Reading", "${template.reading_min} min")
+                        PaceBadge("Quiz", "${template.quiz_min} min")
                     }
                 }
             }
@@ -607,11 +794,11 @@ private fun MonthlyPlanTabContent(
                     modifier = Modifier.fillMaxWidth(),
                     color = SurfaceDark,
                     shape = RoundedCornerShape(14.dp),
-                    border = BorderStroke(1.dp, BorderSubtle)
+                    border = BorderStroke(1.dp, GoldAccentBorder)
                 ) {
                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
-                            text = "Coaching Tips",
+                            text = "Personal Coaching Tips • نصائح المدرب",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                             color = GoldAccent
                         )
@@ -624,7 +811,7 @@ private fun MonthlyPlanTabContent(
         // Weekly Goals
         item {
             Text(
-                text = "Weekly Milestones",
+                text = "Weekly Milestones (${weeks.size} Weeks)",
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 color = TextPrimary
             )
@@ -638,23 +825,50 @@ private fun MonthlyPlanTabContent(
                 border = BorderStroke(1.dp, BorderSubtle)
             ) {
                 Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
                             text = "Week ${week.week}: ${week.focus}",
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                            color = TextPrimary
+                            color = TextPrimary,
+                            modifier = Modifier.weight(1f)
                         )
                     }
                     BidiText(text = week.focus_ar, style = ArabicTypography.labelSmall, color = TextSecondary)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Words: ${week.goals.new_words}", style = MaterialTheme.typography.labelSmall, color = GoldAccent)
-                        Text("Grammar: ${week.goals.grammar_lessons}", style = MaterialTheme.typography.labelSmall, color = GoldAccent)
-                        Text("Reading: ${week.goals.reading_texts}", style = MaterialTheme.typography.labelSmall, color = GoldAccent)
-                        Text("Sentences: ${week.goals.sentences}", style = MaterialTheme.typography.labelSmall, color = GoldAccent)
-                        Text("Quizzes: ${week.goals.quizzes}", style = MaterialTheme.typography.labelSmall, color = GoldAccent)
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        PaceBadge("Words", "${week.goals.new_words}")
+                        PaceBadge("Grammar", "${week.goals.grammar_lessons}")
+                        PaceBadge("Reading", "${week.goals.reading_texts}")
+                        PaceBadge("Sentences", "${week.goals.sentences}")
+                        PaceBadge("Quizzes", "${week.goals.quizzes}")
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PaceBadge(label: String, value: String) {
+    Surface(
+        color = SurfaceElevatedDark,
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, BorderSubtle)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "$label:", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+            Text(text = value, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = GoldAccent)
         }
     }
 }
@@ -665,8 +879,19 @@ private fun AnalyticsTabContent(
     quizHistory: List<QuizResultEntity>,
     weakAreas: WeakAreasState,
     onStartWeeklyQuiz: () -> Unit,
+    onStartWeakAreasQuiz: () -> Unit,
     onOpenTask: (route: String, id: String) -> Unit
 ) {
+    val completedDaysCount = remember(monthlyChecklists) {
+        monthlyChecklists.count { it.isCompleted }
+    }
+    val totalTasksDoneMonth = remember(monthlyChecklists) {
+        monthlyChecklists.sumOf { it.completedCount }
+    }
+    val sortedMonthChecklists = remember(monthlyChecklists) {
+        monthlyChecklists.sortedBy { it.date }.takeLast(14)
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -674,7 +899,88 @@ private fun AnalyticsTabContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Weekly Quiz Banner
+        // 1. Monthly Activity & Consistency Card
+        item {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = SurfaceDark,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, BorderSubtle)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(20.dp))
+                            Text(
+                                text = "Monthly Consistency",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = TextPrimary
+                            )
+                        }
+                        Text(
+                            text = "$completedDaysCount full days • $totalTasksDoneMonth tasks done",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = EmeraldAccent
+                        )
+                    }
+
+                    if (sortedMonthChecklists.isEmpty()) {
+                        Text(
+                            text = "Start completing today's tasks to build your monthly activity log.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextMuted
+                        )
+                    } else {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(sortedMonthChecklists, key = { it.date }) { dayItem ->
+                                val dayNumber = dayItem.date.takeLast(2)
+                                val ratio = if (dayItem.totalCount > 0) {
+                                    dayItem.completedCount.toFloat() / dayItem.totalCount.toFloat()
+                                } else 0f
+                                val dotColor = when {
+                                    dayItem.isCompleted || ratio >= 1f -> EmeraldAccent
+                                    dayItem.completedCount > 0 -> GoldAccent
+                                    else -> SurfaceElevatedDark
+                                }
+
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(34.dp)
+                                            .clip(CircleShape)
+                                            .background(dotColor.copy(alpha = if (dayItem.completedCount > 0) 0.22f else 1f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = dayNumber,
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = if (dayItem.completedCount > 0) dotColor else TextMuted
+                                        )
+                                    }
+                                    Text(
+                                        text = "${dayItem.completedCount}/${dayItem.totalCount}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = TextMuted
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Weekly Quiz & Weak Areas Quiz Banner
         item {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -682,36 +988,67 @@ private fun AnalyticsTabContent(
                 shape = RoundedCornerShape(16.dp),
                 border = BorderStroke(1.dp, GoldAccentBorder)
             ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = "Weekly Comprehensive Quiz",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = TextPrimary
-                        )
-                        Text(
-                            text = "20 Questions • Vocab, Grammar, Reading & Listening",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
-                        )
-                    }
-                    Button(
-                        onClick = onStartWeeklyQuiz,
-                        colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = BackgroundDark),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.testTag("btn_start_weekly_quiz")
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Start", fontWeight = FontWeight.Bold)
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = "Weekly Comprehensive Quiz",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "20 Questions • Vocab, Grammar, Reading & Listening",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                        }
+                        Button(
+                            onClick = onStartWeeklyQuiz,
+                            colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = BackgroundDark),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.testTag("btn_start_weekly_quiz")
+                        ) {
+                            Text("Start (20 Qs)", fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    HorizontalDivider(color = BorderSubtle)
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = "Targeted Weak-Areas Drill",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "8 Questions focused on your hardest words & unstudied grammar",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextSecondary
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = onStartWeakAreasQuiz,
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, GoldAccentBorder),
+                            modifier = Modifier.testTag("btn_start_weak_quiz")
+                        ) {
+                            Text("Drill (8 Qs)", color = GoldAccent, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
         }
 
-        // Skill Accuracy breakdown from quizzes
+        // 3. Skill Accuracy breakdown from quizzes
         item {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -753,10 +1090,66 @@ private fun AnalyticsTabContent(
             }
         }
 
-        // Weak Words Needing Review
+        // 4. Focus Grammar Lessons
+        if (weakAreas.weakGrammarLessons.isNotEmpty()) {
+            item {
+                Text(
+                    text = "Recommended Grammar Lessons",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = TextPrimary
+                )
+            }
+
+            items(weakAreas.weakGrammarLessons, key = { it.id }) { lesson ->
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenTask("grammar", lesson.id) },
+                    color = SurfaceDark,
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, BorderSubtle)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(Icons.Filled.MenuBook, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(20.dp))
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    text = "${lesson.titleEn} (${lesson.level})",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = TextPrimary
+                                )
+                                BidiText(
+                                    text = lesson.titleAr,
+                                    style = ArabicTypography.labelSmall,
+                                    color = TextSecondary,
+                                    fillMaxWidth = false
+                                )
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = { onOpenTask("grammar", lesson.id) },
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, GoldAccentBorder)
+                        ) {
+                            Text("Study", color = GoldAccent, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                        }
+                    }
+                }
+            }
+        }
+
+        // 5. Weak Words Needing Review
         item {
             Text(
-                text = "Focus Areas & Weak Words",
+                text = "Focus Vocabulary & Weak Words",
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 color = TextPrimary
             )
@@ -779,7 +1172,7 @@ private fun AnalyticsTabContent(
                 }
             }
         } else {
-            items(weakAreas.weakWords) { entry ->
+            items(weakAreas.weakWords, key = { it.id }) { entry ->
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = SurfaceDark,

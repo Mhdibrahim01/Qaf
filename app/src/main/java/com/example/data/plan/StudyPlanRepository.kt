@@ -3,23 +3,18 @@ package com.example.data.plan
 import android.content.Context
 import com.example.data.local.DailyChecklistEntity
 import com.example.data.local.DailyTaskItem
-import com.example.data.local.EntryEntity
-import com.example.data.local.GrammarLessonEntity
 import com.example.data.local.PlanDailyTemplate
 import com.example.data.local.PlanStudyGoals
 import com.example.data.local.PlanWeekGoal
-import com.example.data.local.ReadingTextEntity
 import com.example.data.local.StudyPlanEntity
 import com.example.data.local.StudyPlanJson
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.local.WeakAreasState
 import com.example.data.local.WordBooksDao
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -56,9 +51,12 @@ class StudyPlanRepository(
     }
 
     suspend fun updateProfile(profile: StudyPlanProfileEntity) {
-        dao.upsertStudyPlanProfile(profile.copy(updatedAt = timeProvider.currentTimeMillis()))
+        val stamped = profile.copy(updatedAt = timeProvider.currentTimeMillis())
+        dao.upsertStudyPlanProfile(stamped)
         // Automatically scale and update current month plan with new profile settings
-        loadDefaultPlanScaled(profile)
+        val updatedPlan = loadDefaultPlanScaled(stamped)
+        // Refresh today's checklist so uncompleted tasks immediately reflect the new profile settings
+        regenerateChecklistForUpdatedPlan(stamped, updatedPlan, timeProvider.todayDateString())
     }
 
     suspend fun getActiveStudyPlan(month: String = timeProvider.currentMonthString()): StudyPlanEntity {
@@ -74,8 +72,8 @@ class StudyPlanRepository(
     }
 
     /**
-     * Loads the default B2 plan from assets, ignores its hardcoded "month",
-     * stamps the current month, scales the daily template by minutesPerDay and weekly goals by studyDaysPerWeek.
+     * Loads the default plan from assets, adapts themes to the user's goal & level,
+     * stamps the target month, and scales the daily template by minutesPerDay and weekly goals by studyDaysPerWeek.
      */
     suspend fun loadDefaultPlanScaled(
         profile: StudyPlanProfileEntity,
@@ -87,17 +85,18 @@ class StudyPlanRepository(
             ""
         }
 
-        val basePlan = if (rawJsonString.isNotBlank()) {
+        val assetPlan = if (rawJsonString.isNotBlank()) {
             try {
                 json.decodeFromString<StudyPlanJson>(rawJsonString)
             } catch (e: Exception) {
-                createHardcodedBasePlan()
+                createGoalTailoredBasePlan(profile)
             }
         } else {
-            createHardcodedBasePlan()
+            createGoalTailoredBasePlan(profile)
         }
 
-        val scaled = scalePlan(basePlan, profile, targetMonth)
+        val goalAdaptedBase = adaptBasePlanThemesToGoal(assetPlan, profile)
+        val scaled = scalePlan(goalAdaptedBase, profile, targetMonth)
         dao.upsertStudyPlan(scaled)
         return scaled
     }
@@ -130,10 +129,13 @@ class StudyPlanRepository(
             week.copy(goals = scaledGoals)
         }
 
+        val startLvl = profile.level.ifBlank { "B2" }
+        val nextLvl = computeNextLevelTarget(startLvl)
+
         return StudyPlanEntity(
             month = targetMonth,
-            levelStart = profile.level.ifBlank { "B2" },
-            levelTarget = if (profile.level == "B2") "B2+" else profile.level,
+            levelStart = startLvl,
+            levelTarget = nextLvl,
             weeksJson = json.encodeToString(scaledWeeks),
             dailyTemplateJson = json.encodeToString(scaledTemplate),
             tipsAr = base.tips_ar.ifBlank { "ركز على مراجعة البطاقات المستحقة يومياً قبل البدء في الكلمات الجديدة." },
@@ -141,6 +143,72 @@ class StudyPlanRepository(
             createdAt = timeProvider.currentTimeMillis(),
             updatedAt = timeProvider.currentTimeMillis()
         )
+    }
+
+    fun computeNextLevelTarget(level: String): String {
+        return when (level.uppercase(Locale.US)) {
+            "A1" -> "A2"
+            "A2" -> "B1"
+            "B1" -> "B2"
+            "B2" -> "B2+"
+            "C1" -> "C1+"
+            else -> "$level+"
+        }
+    }
+
+    /**
+     * Rebuilds today's checklist when profile or monthly plan changes, preserving already-completed tasks
+     * while updating uncompleted tasks to match the new level, decks, and daily targets.
+     */
+    suspend fun regenerateChecklistForUpdatedPlan(
+        profile: StudyPlanProfileEntity? = null,
+        plan: StudyPlanEntity? = null,
+        date: String = timeProvider.todayDateString()
+    ): DailyChecklistEntity {
+        val resolvedProfile = profile ?: getOrCreateProfile()
+        val resolvedPlan = plan ?: getActiveStudyPlan(timeProvider.currentMonthString())
+        val existing = dao.getDailyChecklist(date)
+        val completedByType = mutableMapOf<String, DailyTaskItem>()
+        if (existing != null) {
+            try {
+                val oldTasks = json.decodeFromString<List<DailyTaskItem>>(existing.tasksJson)
+                oldTasks.filter { it.isCompleted }.forEach { completedByType[it.type] = it }
+            } catch (_: Exception) {
+            }
+        }
+
+        // Remove existing today record so getOrCreateDailyChecklist generates fresh tasks
+        if (existing != null) {
+            val freshTasks = buildDailyTaskList(
+                date = date,
+                profile = resolvedProfile,
+                plan = resolvedPlan,
+                isAdjustedAfterMissedDay = existing.isAdjusted,
+                daysMissed = 0,
+                latestPrevious = null
+            ).map { newTask ->
+                val prevDone = completedByType[newTask.type]
+                if (prevDone != null) {
+                    newTask.copy(
+                        completedCount = maxOf(prevDone.completedCount, newTask.targetCount),
+                        isCompleted = true
+                    )
+                } else {
+                    newTask
+                }
+            }
+
+            val merged = existing.copy(
+                tasksJson = json.encodeToString(freshTasks),
+                completedCount = freshTasks.count { it.isCompleted },
+                totalCount = freshTasks.size,
+                isCompleted = freshTasks.isNotEmpty() && freshTasks.all { it.isCompleted }
+            )
+            dao.upsertDailyChecklist(merged)
+            return refreshChecklistCompletion(merged)
+        }
+
+        return getOrCreateDailyChecklist(date)
     }
 
     /**
@@ -157,11 +225,6 @@ class StudyPlanRepository(
 
         val profile = getOrCreateProfile()
         val plan = getActiveStudyPlan(timeProvider.currentMonthString())
-        val template = try {
-            json.decodeFromString<PlanDailyTemplate>(plan.dailyTemplateJson)
-        } catch (e: Exception) {
-            PlanDailyTemplate()
-        }
 
         // 1. Check for missed days gap
         val allChecklists = dao.getAllDailyChecklists()
@@ -180,13 +243,57 @@ class StudyPlanRepository(
             }
         }
 
-        // 2. Determine if today is a scheduled rest day
+        val tasks = buildDailyTaskList(
+            date = date,
+            profile = profile,
+            plan = plan,
+            isAdjustedAfterMissedDay = isAdjustedAfterMissedDay,
+            daysMissed = daysMissed,
+            latestPrevious = latestPrevious
+        )
+
+        val checklist = DailyChecklistEntity(
+            date = date,
+            tasksJson = json.encodeToString(tasks),
+            completedCount = tasks.count { it.isCompleted },
+            totalCount = tasks.size,
+            isCompleted = tasks.isNotEmpty() && tasks.all { it.isCompleted },
+            completedAt = null,
+            isAdjusted = isAdjustedAfterMissedDay
+        )
+
+        dao.upsertDailyChecklist(checklist)
+        return refreshChecklistCompletion(checklist)
+    }
+
+    private suspend fun buildDailyTaskList(
+        date: String,
+        profile: StudyPlanProfileEntity,
+        plan: StudyPlanEntity,
+        isAdjustedAfterMissedDay: Boolean,
+        daysMissed: Int,
+        latestPrevious: DailyChecklistEntity?
+    ): List<DailyTaskItem> {
+        val template = try {
+            json.decodeFromString<PlanDailyTemplate>(plan.dailyTemplateJson)
+        } catch (e: Exception) {
+            PlanDailyTemplate()
+        }
+
         val restDays: List<Int> = try {
             json.decodeFromString(profile.restDaysJson)
         } catch (e: Exception) {
             listOf(Calendar.FRIDAY)
         }
         val isRestDay = restDays.contains(timeProvider.dayOfWeek())
+        val selectedDecks: List<String> = try {
+            json.decodeFromString<List<String>>(profile.selectedDecksJson).ifEmpty {
+                listOf("oxford5000", "oxford_opal")
+            }
+        } catch (e: Exception) {
+            listOf("oxford5000", "oxford_opal")
+        }
+        val primaryDeck = selectedDecks.firstOrNull() ?: "oxford5000"
 
         val tasks = mutableListOf<DailyTaskItem>()
         val now = timeProvider.currentTimeMillis()
@@ -199,12 +306,13 @@ class StudyPlanRepository(
                 id = "task_flashcards",
                 type = "flashcards",
                 titleEn = if (flashcardTarget > 0) "Review Due Flashcards" else "Flashcards Review (All Caught Up)",
-                titleAr = if (flashcardTarget > 0) "مراجعة البطاقات المستحقة (30 كحد أقصى)" else "البطاقات التعليمية (تمت مراجعة الجميع)",
-                subtitleEn = if (flashcardTarget > 0) "$flashcardTarget cards due today" else "No cards due",
+                titleAr = if (flashcardTarget > 0) "مراجعة البطاقات المستحقة ($flashcardTarget بطاقة)" else "البطاقات التعليمية (تمت مراجعة الجميع)",
+                subtitleEn = if (flashcardTarget > 0) "$flashcardTarget cards due today • ${template.review_cards_min} min" else "No cards due • Tap to practice $primaryDeck",
                 targetCount = flashcardTarget,
                 completedCount = 0,
                 isCompleted = (flashcardTarget == 0),
                 linkedRoute = "flashcards",
+                linkedId = primaryDeck,
                 explanationAr = "التكرار المتباعد يحفظ الكلمات في الذاكرة طويلة المدى."
             )
         )
@@ -220,37 +328,33 @@ class StudyPlanRepository(
         }
 
         if (newWordsTarget > 0) {
-            val selectedDecks: List<String> = try {
-                json.decodeFromString(profile.selectedDecksJson)
-            } catch (e: Exception) {
-                listOf("oxford5000", "oxford_opal")
-            }
-            val targetLevels = listOf("B1", "B2", "C1")
-            val candidateWords = dao.getNewWordsForLevelsAndDecks(targetLevels, selectedDecks, newWordsTarget)
-            val sampleWordText = candidateWords.firstOrNull()?.text ?: ""
+            val preferredLevels = levelsForUserProfile(profile.level)
+            val candidateWords = dao.getNewWordsForLevelsAndDecks(preferredLevels, selectedDecks, newWordsTarget)
+                .ifEmpty { dao.getNewWordsForLevelsAndDecks(listOf("A1", "A2", "B1", "B2", "C1"), selectedDecks, newWordsTarget) }
+            val samplePreview = candidateWords.take(3).joinToString(", ") { it.text }
 
             tasks.add(
                 DailyTaskItem(
                     id = "task_new_words",
                     type = "new_words",
-                    titleEn = "Learn $newWordsTarget New Words",
-                    titleAr = "تعلم $newWordsTarget مفردات جديدة (${profile.level})",
-                    subtitleEn = if (sampleWordText.isNotBlank()) "e.g. $sampleWordText" else "From your selected decks",
+                    titleEn = "Learn $newWordsTarget New Words (${profile.level})",
+                    titleAr = "تعلم $newWordsTarget مفردات جديدة (مستوى ${profile.level})",
+                    subtitleEn = if (samplePreview.isNotBlank()) "Focus: $samplePreview" else "Deck: ${formatDeckLabel(primaryDeck)}",
                     targetCount = newWordsTarget,
                     completedCount = 0,
                     isCompleted = false,
                     linkedRoute = "word_books",
+                    linkedId = "$primaryDeck|${profile.level}",
                     explanationAr = if (isAdjustedAfterMissedDay) {
                         "أهلاً بعودتك! خففنا كلمات اليوم لتستأنف التعلم بسلاسة وبدون أي ضغط."
                     } else {
-                        "دراسة كلمات جديدة تناسب مستواك B2 مع أمثلتها."
+                        "دراسة كلمات جديدة تناسب مستواك ${profile.level} مع أمثلتها."
                     }
                 )
             )
         }
 
         // Task 3 & 4: Grammar Lesson & Linked Reading Text Pairing
-        // Weekly goals dictate scheduling on study days needed (not every day!)
         val currentWeekGoals = try {
             val weeks = json.decodeFromString<List<PlanWeekGoal>>(plan.weeksJson)
             weeks.firstOrNull()?.goals ?: PlanStudyGoals()
@@ -263,10 +367,11 @@ class StudyPlanRepository(
         val shouldScheduleGrammarToday = !isRestDay && shouldScheduleOnDay(timeProvider.dayOfWeek(), grammarTargetPerWeek, studyDays)
 
         if (shouldScheduleGrammarToday) {
-            // Find uncompleted grammar lesson of user level (fallback to C1 or least-practiced)
             val uncompletedLessons = dao.getUncompletedGrammarLessonsForLevel(profile.level)
             val targetLesson = uncompletedLessons.firstOrNull()
+                ?: dao.getUncompletedGrammarLessonsForLevel("B2").firstOrNull()
                 ?: dao.getUncompletedGrammarLessonsForLevel("C1").firstOrNull()
+                ?: dao.getAllGrammarLessons().firstOrNull { !it.isCompleted }
                 ?: dao.getAllGrammarLessons().firstOrNull()
 
             if (targetLesson != null) {
@@ -276,9 +381,9 @@ class StudyPlanRepository(
                         type = "grammar",
                         titleEn = "Grammar: ${targetLesson.titleEn}",
                         titleAr = "قواعد: ${targetLesson.titleAr}",
-                        subtitleEn = "Topic: ${targetLesson.topic} • ${targetLesson.level}",
+                        subtitleEn = "Topic: ${targetLesson.topic} • ${targetLesson.level} (${template.grammar_min} min)",
                         targetCount = 1,
-                        completedCount = 0,
+                        completedCount = if (targetLesson.isCompleted) 1 else 0,
                         isCompleted = targetLesson.isCompleted,
                         linkedRoute = "grammar",
                         linkedId = targetLesson.id,
@@ -290,19 +395,22 @@ class StudyPlanRepository(
                 val allTexts = dao.getAllReadingTexts()
                 val pairedText = allTexts.firstOrNull { it.grammarIdsJson.contains(targetLesson.id) }
                     ?: dao.getUncompletedReadingTextsForLevel(profile.level).firstOrNull()
+                    ?: allTexts.firstOrNull { it.level == profile.level }
                     ?: allTexts.firstOrNull()
 
                 if (pairedText != null) {
+                    val readingProgress = dao.getReadingProgress(pairedText.id)
+                    val isReadingDone = readingProgress?.isCompleted == true
                     tasks.add(
                         DailyTaskItem(
                             id = "task_reading_${pairedText.id}",
                             type = "reading",
                             titleEn = "Reading: ${pairedText.titleEn}",
                             titleAr = "قراءة: ${pairedText.titleAr}",
-                            subtitleEn = "Level: ${pairedText.level} • Paired with ${targetLesson.titleEn}",
+                            subtitleEn = "Level: ${pairedText.level} • Paired with ${targetLesson.titleEn} (${template.reading_min} min)",
                             targetCount = 1,
-                            completedCount = 0,
-                            isCompleted = false,
+                            completedCount = if (isReadingDone) 1 else 0,
+                            isCompleted = isReadingDone,
                             linkedRoute = "reading",
                             linkedId = pairedText.id,
                             explanationAr = "قراءة النص في سياق درس القواعد والإجابة على أسئلة الفهم."
@@ -356,7 +464,7 @@ class StudyPlanRepository(
                 type = "quiz",
                 titleEn = "Daily Mini-Quiz (5 Questions)",
                 titleAr = "الاختبار اليومي السريع (5 أسئلة)",
-                subtitleEn = "Vocabulary, Grammar, Reading & Listening",
+                subtitleEn = "Vocabulary, Grammar, Reading & Listening (${template.quiz_min} min)",
                 targetCount = 5,
                 completedCount = 0,
                 isCompleted = false,
@@ -370,24 +478,13 @@ class StudyPlanRepository(
             try {
                 val prevTasks = json.decodeFromString<List<DailyTaskItem>>(latestPrevious.tasksJson)
                 val uncompletedPrev = prevTasks.filter { !it.isCompleted && it.type != "quiz" && tasks.none { t -> t.id == it.id } }
-                tasks.addAll(uncompletedPrev.take(2)) // Carry forward up to 2 expired tasks gently
+                tasks.addAll(uncompletedPrev.take(2))
             } catch (e: Exception) {
                 // Ignore parse errors
             }
         }
 
-        val checklist = DailyChecklistEntity(
-            date = date,
-            tasksJson = json.encodeToString(tasks),
-            completedCount = tasks.count { it.isCompleted },
-            totalCount = tasks.size,
-            isCompleted = tasks.isNotEmpty() && tasks.all { it.isCompleted },
-            completedAt = null,
-            isAdjusted = isAdjustedAfterMissedDay
-        )
-
-        dao.upsertDailyChecklist(checklist)
-        return refreshChecklistCompletion(checklist)
+        return tasks
     }
 
     /**
@@ -440,13 +537,13 @@ class StudyPlanRepository(
                         isCompleted = isDone
                     )
                 }
-                "sentences" -> {
-                    // Sentences completion can be checked or toggled
-                    task
-                }
+                "sentences" -> task
                 "correction_reviews" -> {
                     val isDone = task.isCompleted || (dueCorrectionCount == 0)
-                    task.copy(isCompleted = isDone)
+                    task.copy(
+                        completedCount = if (isDone) task.targetCount else (task.targetCount - dueCorrectionCount).coerceAtLeast(0),
+                        isCompleted = isDone
+                    )
                 }
                 "quiz" -> {
                     val isDone = task.isCompleted || quizResultsToday.isNotEmpty()
@@ -473,6 +570,9 @@ class StudyPlanRepository(
         return updatedChecklist
     }
 
+    /**
+     * Toggles a task's manual completion state so users can both check and uncheck tasks.
+     */
     suspend fun markTaskCompletedManually(date: String, taskId: String): DailyChecklistEntity {
         val checklist = getOrCreateDailyChecklist(date)
         val tasks = try {
@@ -481,7 +581,17 @@ class StudyPlanRepository(
             emptyList()
         }
 
-        val updated = tasks.map { if (it.id == taskId) it.copy(isCompleted = true, completedCount = it.targetCount) else it }
+        val updated = tasks.map { task ->
+            if (task.id == taskId) {
+                val nextCompleted = !task.isCompleted
+                task.copy(
+                    isCompleted = nextCompleted,
+                    completedCount = if (nextCompleted) task.targetCount.coerceAtLeast(1) else 0
+                )
+            } else {
+                task
+            }
+        }
         val allDone = updated.isNotEmpty() && updated.all { it.isCompleted }
         val entity = checklist.copy(
             tasksJson = json.encodeToString(updated),
@@ -525,7 +635,6 @@ class StudyPlanRepository(
         }
 
         var missedGraceDays = 0
-        // Loop backwards
         for (i in 0..60) {
             val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
             val dateStr = sdf.format(cal.time)
@@ -548,16 +657,47 @@ class StudyPlanRepository(
     }
 
     suspend fun getWeakAreas(limit: Int = 10): WeakAreasState {
+        val profile = getOrCreateProfile()
         val weakestWords = dao.getWeakestWords(limit)
-        val uncompletedLessons = dao.getUncompletedGrammarLessonsForLevel("B2")
+        val uncompletedLessons = dao.getUncompletedGrammarLessonsForLevel(profile.level)
+            .ifEmpty { dao.getUncompletedGrammarLessonsForLevel("B2") }
+            .ifEmpty { dao.getAllGrammarLessons().filter { !it.isCompleted } }
         return WeakAreasState(
             weakWords = weakestWords,
             weakGrammarLessons = uncompletedLessons.take(5)
         )
     }
 
+    private fun levelsForUserProfile(level: String): List<String> {
+        return when (level.uppercase(Locale.US)) {
+            "A1" -> listOf("A1", "A2")
+            "A2" -> listOf("A2", "A1", "B1")
+            "B1" -> listOf("B1", "A2", "B2")
+            "B2" -> listOf("B2", "B1", "C1")
+            "C1" -> listOf("C1", "B2")
+            else -> listOf("B1", "B2", "C1")
+        }
+    }
+
+    private fun formatDeckLabel(deckId: String): String {
+        return when (deckId) {
+            "oxford5000" -> "Oxford 5000"
+            "oxford_opal" -> "Oxford OPAL"
+            "oxford_phrases" -> "Oxford Phrases"
+            "everyday_expressions" -> "Everyday Expressions"
+            "essential_idioms" -> "Essential Idioms"
+            "ielts_core" -> "IELTS Core"
+            "it_industry" -> "IT & Tech Industry"
+            "cefr_c1" -> "CEFR C1 Advanced"
+            "pte_academic" -> "PTE Academic"
+            "business_english" -> "Business English"
+            "career_interview" -> "Job Interview & Career"
+            "medical_healthcare" -> "Medical & Healthcare"
+            else -> deckId
+        }
+    }
+
     private fun shouldScheduleOnDay(dayOfWeek: Int, targetPerWeek: Int, studyDays: Int): Boolean {
-        // Distributes targetPerWeek evenly across study days
         return when (targetPerWeek) {
             1 -> dayOfWeek == Calendar.MONDAY
             2 -> dayOfWeek == Calendar.MONDAY || dayOfWeek == Calendar.THURSDAY
@@ -567,19 +707,57 @@ class StudyPlanRepository(
         }
     }
 
-    private fun createHardcodedBasePlan(): StudyPlanJson {
+    private fun adaptBasePlanThemesToGoal(base: StudyPlanJson, profile: StudyPlanProfileEntity): StudyPlanJson {
+        if (profile.goal == "general_fluency" && profile.level == "B2") {
+            return base
+        }
+        val custom = createGoalTailoredBasePlan(profile)
+        // Keep base daily_template numbers so scaling math remains identical
+        return custom.copy(daily_template = base.daily_template)
+    }
+
+    fun createGoalTailoredBasePlan(profile: StudyPlanProfileEntity): StudyPlanJson {
+        val lvl = profile.level.ifBlank { "B2" }
+        val nextLvl = computeNextLevelTarget(lvl)
+        val baseGoals = PlanStudyGoals(50, 3, 3, 20, 2)
+
+        val (weeks, tipsAr) = when (profile.goal) {
+            "ielts" -> Pair(
+                listOf(
+                    PlanWeekGoal(1, "IELTS Academic Vocabulary & Complex Clauses ($lvl)", "المفردات الأكاديمية للآيلتس والجمل المركبة ($lvl)", baseGoals),
+                    PlanWeekGoal(2, "Reading Skimming, Scanning & Passive Structures", "مهارات القراءة السريعة والمبني للمجهول الأكاديمي", baseGoals),
+                    PlanWeekGoal(3, "Task 2 Essay Connectors, Hedging & Cohesion", "روابط المقال الأكاديمي وأساليب الترابط المنطقي", baseGoals),
+                    PlanWeekGoal(4, "Speaking Fluency, Idiomatic Precision & Mock Review", "طلاقة التحدث والدقة الاصطلاحية والمراجعة الشاملة", baseGoals)
+                ),
+                "ركز على مفردات القوائم الأكاديمية (OPAL) واستخدم الروابط المنطقية في كتابة الجمل اليومية لرفع درجتك في الآيلتس."
+            )
+            "it_career" -> Pair(
+                listOf(
+                    PlanWeekGoal(1, "Software Engineering & System Design Terminology ($lvl)", "مصطلحات هندسة البرمجيات وتصميم الأنظمة ($lvl)", baseGoals),
+                    PlanWeekGoal(2, "Standups, Code Reviews & Cause-Effect Grammar", "اجتماعات الفرق التقنية ومراجعة الكود وصيغ السبب والنتيجة", baseGoals),
+                    PlanWeekGoal(3, "Technical Documentation, RFCs & Modal Precision", "التوثيق التقني الدقيق وأفعال الاحتمال والالتزام", baseGoals),
+                    PlanWeekGoal(4, "Tech Interviews, Incident Reports & Executive Summaries", "المقابلات التقنية وتقارير الأعطال والتلخيص الاحترافي", baseGoals)
+                ),
+                "تدرب على صياغة جمل واضحة ومختصرة تشرح المشاكل التقنية والحلول البرمجية بدقة."
+            )
+            else -> Pair(
+                listOf(
+                    PlanWeekGoal(1, "Core Communication & Conditionals in Context ($lvl)", "التواصل اليومي والمهني وجمل الشرط في السياق ($lvl)", baseGoals),
+                    PlanWeekGoal(2, "Natural Collocations, Phrasal Verbs & Passive Nuances", "المتلازمات اللفظية والأفعال المركبة والمبني للمجهول", baseGoals),
+                    PlanWeekGoal(3, "Narrative Fluency, Storytelling & Idiomatic Expressions", "الطلاقة السردية والتعبيرات الاصطلاحية الطبيعية", baseGoals),
+                    PlanWeekGoal(4, "Active Writing, Listening Precision & Monthly Mastery", "الكتابة الفعالة ودقة الاستماع والمراجعة الشاملة", baseGoals)
+                ),
+                "ركز على ممارسة المفردات الجديدة في جمل سياقية كاملة، وراجع البطاقات المستحقة يومياً قبل البدء في الكلمات الجديدة."
+            )
+        }
+
         return StudyPlanJson(
             month = timeProvider.currentMonthString(),
-            level_start = "B2",
-            level_target = "B2+",
-            weeks = listOf(
-                PlanWeekGoal(1, "Workplace Communication & Advanced Conditionals", "التواصل المهني وجمل الشرط المتقدمة", PlanStudyGoals(50, 3, 3, 20, 2)),
-                PlanWeekGoal(2, "Academic Collocations & Passive Voice Nuances", "المتلازمات الأكاديمية ودقائق المبني للمجهول", PlanStudyGoals(50, 3, 3, 20, 2)),
-                PlanWeekGoal(3, "Narrative Tenses & Idiomatic Phrasal Verbs", "الأزمنة السردية والأفعال المركبة الاصطلاحية", PlanStudyGoals(50, 3, 3, 20, 2)),
-                PlanWeekGoal(4, "Professional Writing, Synthesis & Monthly Consolidation", "الكتابة المهنية والتلخيص والمراجعة الشاملة", PlanStudyGoals(50, 3, 3, 20, 2))
-            ),
+            level_start = lvl,
+            level_target = nextLvl,
+            weeks = weeks,
             daily_template = PlanDailyTemplate(8, 10, 7, 5, 3),
-            tips_ar = "ركز على ممارسة المفردات الجديدة في جمل سياقية كاملة، وراجع البطاقات المستحقة يومياً قبل البدء في الكلمات الجديدة."
+            tips_ar = tipsAr
         )
     }
 }

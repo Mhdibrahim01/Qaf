@@ -267,11 +267,25 @@ interface WordBooksDao {
     @Query("SELECT * FROM entries WHERE TRIM(arabic) != ''")
     suspend fun getAllTranslatedEntries(): List<EntryEntity>
 
-    /**
-     * Updates the primary entry (`id = :primaryId`) AND all untranslated entries sharing the same
-     * `(LOWER(TRIM(text)), LOWER(TRIM(pos)))` with `arabic`, `ipa`, `examples_ar`, and `arabic_source = 'ai'`.
-     * NEVER overwrites entries whose `arabic_source` is `'file'` or `'user'` or that already have Arabic.
-     */
+    @Query(
+        """
+        UPDATE entries
+        SET arabic = :arabic,
+            arabic_source = 'ai',
+            ipa = CASE WHEN :ipa != '' THEN :ipa ELSE ipa END,
+            examples_ar = CASE WHEN :examplesAr != '' THEN :examplesAr ELSE examples_ar END
+        WHERE id = :primaryId
+          AND TRIM(arabic) = ''
+          AND arabic_source NOT IN ('file', 'user')
+        """
+    )
+    suspend fun updateAiTranslationForPrimaryId(
+        primaryId: String,
+        arabic: String,
+        ipa: String,
+        examplesAr: String
+    ): Int
+
     @Query(
         """
         UPDATE entries
@@ -279,18 +293,24 @@ interface WordBooksDao {
             arabic_source = 'ai',
             ipa = CASE WHEN :ipa != '' THEN :ipa ELSE ipa END,
             examples_ar = CASE
-                WHEN id = :primaryId AND :examplesAr != '' THEN :examplesAr
                 WHEN TRIM(examples_en) = TRIM(:primaryExamplesEn) AND :examplesAr != '' THEN :examplesAr
                 ELSE examples_ar
             END
-        WHERE (
-            id = :primaryId
-            OR (LOWER(TRIM(text)) = LOWER(TRIM(:text)) AND LOWER(TRIM(pos)) = LOWER(TRIM(:pos)))
-        )
+        WHERE text = :text
+          AND pos = :pos
           AND TRIM(arabic) = ''
           AND arabic_source NOT IN ('file', 'user')
         """
     )
+    suspend fun updateAiTranslationForMatchingTextAndPos(
+        text: String,
+        pos: String,
+        arabic: String,
+        ipa: String,
+        primaryExamplesEn: String,
+        examplesAr: String
+    ): Int
+
     suspend fun updateAiTranslationForSharedTextAndPos(
         primaryId: String,
         text: String,
@@ -299,7 +319,13 @@ interface WordBooksDao {
         ipa: String,
         primaryExamplesEn: String,
         examplesAr: String
-    ): Int
+    ): Int {
+        var count = updateAiTranslationForPrimaryId(primaryId, arabic, ipa, examplesAr)
+        if (text.isNotBlank()) {
+            count += updateAiTranslationForMatchingTextAndPos(text, pos, arabic, ipa, primaryExamplesEn, examplesAr)
+        }
+        return count
+    }
 
     /**
      * Permanently saves a full batch of validated AI translations in a single Room database transaction
@@ -457,7 +483,8 @@ interface WordBooksDao {
         SELECT e.* FROM entries e
         INNER JOIN word_progress wp
             ON wp.deck = e.deck AND wp.text = LOWER(e.text) AND wp.is_favorite = 1
-        WHERE (:typeFilter = '' OR e.type = :typeFilter)
+        WHERE (:deckId = '' OR e.deck = :deckId)
+          AND (:typeFilter = '' OR e.type = :typeFilter)
           AND (:levelFilter = '' OR e.level = :levelFilter)
           AND (
               :posFilter = ''
@@ -492,6 +519,57 @@ interface WordBooksDao {
         """
     )
     fun getPagedFavoriteEntries(
+        deckId: String = "",
+        searchQuery: String,
+        typeFilter: String,
+        levelFilter: String,
+        posFilter: String,
+        sortOrder: String
+    ): PagingSource<Int, EntryEntity>
+
+    @Query(
+        """
+        SELECT e.* FROM entries e
+        LEFT JOIN word_progress wp
+            ON wp.deck = e.deck AND wp.text = LOWER(e.text)
+        WHERE (:deckId = '' OR e.deck = :deckId)
+          AND COALESCE(wp.is_mastered, 0) = 0
+          AND (:typeFilter = '' OR e.type = :typeFilter)
+          AND (:levelFilter = '' OR e.level = :levelFilter)
+          AND (
+              :posFilter = ''
+              OR LOWER(e.pos) = LOWER(:posFilter)
+              OR (:posFilter = 'noun' AND LOWER(e.pos) IN ('noun', 'n.', 'n'))
+              OR (:posFilter = 'verb' AND LOWER(e.pos) IN ('verb', 'v.', 'v', 'Phrasal Verb'))
+              OR (:posFilter = 'adjective' AND LOWER(e.pos) IN ('adjective', 'adj.', 'adj'))
+              OR (:posFilter = 'adverb' AND LOWER(e.pos) IN ('adverb', 'adv.', 'adv'))
+              OR (:posFilter = 'preposition' AND LOWER(e.pos) IN ('preposition', 'prep.', 'prep'))
+          )
+          AND (
+              :searchQuery = ''
+              OR LOWER(e.text) LIKE '%' || LOWER(:searchQuery) || '%'
+              OR e.arabic LIKE '%' || :searchQuery || '%'
+              OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
+          )
+        ORDER BY
+          CASE WHEN :sortOrder = 'AZ' THEN LOWER(e.text) END ASC,
+          CASE WHEN :sortOrder = 'ZA' THEN LOWER(e.text) END DESC,
+          CASE WHEN :sortOrder = 'LEVEL' THEN
+              CASE e.level
+                  WHEN 'A1' THEN 1
+                  WHEN 'A2' THEN 2
+                  WHEN 'B1' THEN 3
+                  WHEN 'B2' THEN 4
+                  WHEN 'C1' THEN 5
+                  ELSE 6
+              END
+          END ASC,
+          LOWER(e.text) ASC,
+          e.pos ASC
+        """
+    )
+    fun getPagedLearningEntries(
+        deckId: String,
         searchQuery: String,
         typeFilter: String,
         levelFilter: String,
@@ -552,6 +630,9 @@ interface WordBooksDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWordDetail(detail: WordDetailEntity)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertWordDetails(details: List<WordDetailEntity>)
+
     @Query("SELECT * FROM word_details WHERE `key` = :key LIMIT 1")
     suspend fun getWordDetail(key: String): WordDetailEntity?
 
@@ -604,6 +685,9 @@ interface WordBooksDao {
 
     @Query("SELECT * FROM word_progress")
     suspend fun getAllWordProgressList(): List<WordProgressEntity>
+
+    @Query("SELECT * FROM word_progress WHERE deck = :deckId")
+    suspend fun getWordProgressForDeck(deckId: String): List<WordProgressEntity>
 
     @Query("SELECT * FROM word_progress WHERE card_key = :cardKey LIMIT 1")
     suspend fun getWordProgress(cardKey: String): WordProgressEntity?
