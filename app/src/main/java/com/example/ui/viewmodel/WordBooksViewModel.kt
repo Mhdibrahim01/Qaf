@@ -61,6 +61,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -395,9 +402,53 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         initialValue = emptyList()
     )
 
+    // --- LETTER OFFSETS IN-MEMORY CACHE FOR A-Z JUMP ---
+    private val _letterOffsetsCache = MutableStateFlow<Map<Char, Int>>(emptyMap())
+    val letterOffsetsCache: StateFlow<Map<Char, Int>> = _letterOffsetsCache.asStateFlow()
+
     init {
         startImportIfNeeded()
-        refreshDailyChecklist()
+        // 1. Initial study plan load
+        viewModelScope.launch {
+            val checklist = studyPlanRepository.getOrCreateDailyChecklist()
+            _todayChecklist.value = checklist
+            _studyStreak.value = studyPlanRepository.computeStreak()
+            _weakAreas.value = studyPlanRepository.getWeakAreas()
+        }
+
+        // 2. Debounced (300ms) Room Flow that recomputes completion idempotently from database state
+        combine(
+            database.wordBooksDao().observeAllWordProgress(),
+            database.wordBooksDao().observeAllQuizResults(),
+            database.wordBooksDao().observeAllGrammarProgress(),
+            database.wordBooksDao().observeAllReadingProgress()
+        ) { _, _, _, _ -> System.currentTimeMillis() }
+            .debounce(300L)
+            .onEach {
+                val updated = studyPlanRepository.recomputeTodayChecklistCompletion()
+                if (updated != null) {
+                    _todayChecklist.value = updated
+                    _studyStreak.value = studyPlanRepository.computeStreak()
+                }
+            }
+            .launchIn(viewModelScope)
+
+        // 3. Observed filter state for in-memory letter offset cache for A-Z jump
+        viewModelScope.launch {
+            _filterState.collectLatest { filter ->
+                rebuildLetterOffsetsCache(filter)
+            }
+        }
+
+        // 4. Clear letter offsets cache on import completion and rebuild
+        viewModelScope.launch {
+            repository.importState.collectLatest { state ->
+                if (state.isCompleted) {
+                    clearLetterOffsetsCache()
+                    rebuildLetterOffsetsCache(_filterState.value)
+                }
+            }
+        }
     }
 
     fun startImportIfNeeded(forceRecheck: Boolean = false) {
@@ -456,9 +507,63 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun clearLetterOffsetsCache() {
+        _letterOffsetsCache.value = emptyMap()
+    }
+
+    suspend fun rebuildLetterOffsetsCache(filter: WordFilterState = _filterState.value) {
+        if (filter.sortOrder != WordSortOrder.AZ) {
+            _letterOffsetsCache.value = emptyMap()
+            return
+        }
+        val effectiveDeckId = filter.deckId
+        val onlyFav = if (filter.onlyFavorites || effectiveDeckId == DataImportRepository.SAVED_WORDS_DECK_ID) 1 else 0
+        val onlyMast = if (filter.onlyMastered) 1 else 0
+        val onlyLearn = if (filter.onlyLearning) 1 else 0
+        val deckArg = if (effectiveDeckId == DataImportRepository.SAVED_WORDS_DECK_ID) "" else effectiveDeckId
+
+        val counts = withContext(Dispatchers.IO) {
+            database.wordBooksDao().getGroupedInitialLetterCounts(
+                deckId = deckArg,
+                searchQuery = filter.searchQuery.trim(),
+                typeFilter = filter.typeFilter,
+                levelFilter = filter.levelFilter,
+                posFilter = filter.posFilter,
+                onlyFavorites = onlyFav,
+                onlyMastered = onlyMast,
+                onlyLearning = onlyLearn
+            )
+        }
+
+        val offsets = mutableMapOf<Char, Int>()
+        var runningOffset = 0
+        val groupedByChar = mutableMapOf<Char, Int>()
+        for (item in counts) {
+            val ch = item.initial.firstOrNull()?.uppercaseChar()
+            if (ch != null && ch in 'A'..'Z') {
+                groupedByChar[ch] = (groupedByChar[ch] ?: 0) + item.count
+            } else {
+                runningOffset += item.count
+            }
+        }
+
+        for (ch in 'A'..'Z') {
+            offsets[ch] = runningOffset
+            runningOffset += (groupedByChar[ch] ?: 0)
+        }
+
+        _letterOffsetsCache.value = offsets
+    }
+
+    fun getLetterIndexInstant(letter: Char): Int {
+        return _letterOffsetsCache.value[letter.uppercaseChar()] ?: 0
+    }
+
     suspend fun getLetterIndex(deckId: String?, letter: Char): Int {
-        val prefix = letter.lowercaseChar().toString()
-        return database.wordBooksDao().getEntryIndexBeforeLetter(deckId, prefix)
+        val cached = _letterOffsetsCache.value[letter.uppercaseChar()]
+        if (cached != null) return cached
+        rebuildLetterOffsetsCache(_filterState.value)
+        return _letterOffsetsCache.value[letter.uppercaseChar()] ?: 0
     }
 
     fun loadFlashcardsForDeck(deckId: String) {
@@ -582,15 +687,19 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun clearAndReimportDatabase() {
         viewModelScope.launch {
+            clearLetterOffsetsCache()
             repository.clearAndReimport()
             loadFlashcardsForDeck(_flashcardDeckId.value)
+            rebuildLetterOffsetsCache(_filterState.value)
         }
     }
 
     fun importJsonUris(uris: List<Uri>) {
         viewModelScope.launch {
+            clearLetterOffsetsCache()
             repository.importFromContentUris(uris)
             loadFlashcardsForDeck(_flashcardDeckId.value)
+            rebuildLetterOffsetsCache(_filterState.value)
         }
     }
 

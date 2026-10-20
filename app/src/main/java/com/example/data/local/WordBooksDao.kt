@@ -638,6 +638,187 @@ interface WordBooksDao {
     )
     suspend fun getEntryIndexBeforeLetter(deckId: String?, letterPrefix: String): Int
 
+    @Query(
+        """
+        SELECT COUNT(*) FROM entries e
+        WHERE (:deckId = '' OR e.deck = :deckId)
+          AND (:typeFilter = '' OR e.type = :typeFilter)
+          AND (:levelFilter = '' OR e.level = :levelFilter)
+          AND (
+              :posFilter = ''
+              OR LOWER(e.pos) = LOWER(:posFilter)
+              OR (:posFilter = 'noun' AND LOWER(e.pos) IN ('noun', 'n.', 'n'))
+              OR (:posFilter = 'verb' AND LOWER(e.pos) IN ('verb', 'v.', 'v', 'Phrasal Verb'))
+              OR (:posFilter = 'adjective' AND LOWER(e.pos) IN ('adjective', 'adj.', 'adj'))
+              OR (:posFilter = 'adverb' AND LOWER(e.pos) IN ('adverb', 'adv.', 'adv'))
+              OR (:posFilter = 'preposition' AND LOWER(e.pos) IN ('preposition', 'prep.', 'prep'))
+          )
+          AND (
+              :searchQuery = ''
+              OR LOWER(e.text) LIKE '%' || LOWER(:searchQuery) || '%'
+              OR e.arabic LIKE '%' || :searchQuery || '%'
+              OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
+          )
+          AND LOWER(e.text) < :letterPrefix
+        """
+    )
+    suspend fun getFilteredEntryIndexBeforeLetter(
+        deckId: String,
+        letterPrefix: String,
+        searchQuery: String,
+        typeFilter: String,
+        levelFilter: String,
+        posFilter: String
+    ): Int
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM entries e
+        INNER JOIN word_progress wp
+            ON wp.deck = e.deck AND wp.text = LOWER(e.text) AND wp.is_favorite = 1
+        WHERE (:deckId = '' OR e.deck = :deckId)
+          AND (:typeFilter = '' OR e.type = :typeFilter)
+          AND (:levelFilter = '' OR e.level = :levelFilter)
+          AND (
+              :posFilter = ''
+              OR LOWER(e.pos) = LOWER(:posFilter)
+              OR (:posFilter = 'noun' AND LOWER(e.pos) IN ('noun', 'n.', 'n'))
+              OR (:posFilter = 'verb' AND LOWER(e.pos) IN ('verb', 'v.', 'v', 'Phrasal Verb'))
+              OR (:posFilter = 'adjective' AND LOWER(e.pos) IN ('adjective', 'adj.', 'adj'))
+              OR (:posFilter = 'adverb' AND LOWER(e.pos) IN ('adverb', 'adv.', 'adv'))
+              OR (:posFilter = 'preposition' AND LOWER(e.pos) IN ('preposition', 'prep.', 'prep'))
+          )
+          AND (
+              :searchQuery = ''
+              OR LOWER(e.text) LIKE '%' || LOWER(:searchQuery) || '%'
+              OR e.arabic LIKE '%' || :searchQuery || '%'
+              OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
+          )
+          AND LOWER(e.text) < :letterPrefix
+        """
+    )
+    suspend fun getFavoriteFilteredEntryIndexBeforeLetter(
+        deckId: String,
+        letterPrefix: String,
+        searchQuery: String,
+        typeFilter: String,
+        levelFilter: String,
+        posFilter: String
+    ): Int
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM entries e
+        INNER JOIN word_progress wp
+            ON wp.deck = e.deck AND wp.text = LOWER(e.text) AND wp.is_mastered = 1
+        WHERE (:deckId = '' OR e.deck = :deckId)
+          AND (:typeFilter = '' OR e.type = :typeFilter)
+          AND (:levelFilter = '' OR e.level = :levelFilter)
+          AND (
+              :posFilter = ''
+              OR LOWER(e.pos) = LOWER(:posFilter)
+              OR (:posFilter = 'noun' AND LOWER(e.pos) IN ('noun', 'n.', 'n'))
+              OR (:posFilter = 'verb' AND LOWER(e.pos) IN ('verb', 'v.', 'v', 'Phrasal Verb'))
+              OR (:posFilter = 'adjective' AND LOWER(e.pos) IN ('adjective', 'adj.', 'adj'))
+              OR (:posFilter = 'adverb' AND LOWER(e.pos) IN ('adverb', 'adv.', 'adv'))
+              OR (:posFilter = 'preposition' AND LOWER(e.pos) IN ('preposition', 'prep.', 'prep'))
+          )
+          AND (
+              :searchQuery = ''
+              OR LOWER(e.text) LIKE '%' || LOWER(:searchQuery) || '%'
+              OR e.arabic LIKE '%' || :searchQuery || '%'
+              OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
+          )
+          AND LOWER(e.text) < :letterPrefix
+        """
+    )
+    suspend fun getMasteredFilteredEntryIndexBeforeLetter(
+        deckId: String,
+        letterPrefix: String,
+        searchQuery: String,
+        typeFilter: String,
+        levelFilter: String,
+        posFilter: String
+    ): Int
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM entries e
+        LEFT JOIN word_progress wp
+            ON wp.deck = e.deck AND wp.text = LOWER(e.text)
+        WHERE (:deckId = '' OR e.deck = :deckId)
+          AND COALESCE(wp.is_mastered, 0) = 0
+          AND (:typeFilter = '' OR e.type = :typeFilter)
+          AND (:levelFilter = '' OR e.level = :levelFilter)
+          AND (
+              :posFilter = ''
+              OR LOWER(e.pos) = LOWER(:posFilter)
+              OR (:posFilter = 'noun' AND LOWER(e.pos) IN ('noun', 'n.', 'n'))
+              OR (:posFilter = 'verb' AND LOWER(e.pos) IN ('verb', 'v.', 'v', 'Phrasal Verb'))
+              OR (:posFilter = 'adjective' AND LOWER(e.pos) IN ('adjective', 'adj.', 'adj'))
+              OR (:posFilter = 'adverb' AND LOWER(e.pos) IN ('adverb', 'adv.', 'adv'))
+              OR (:posFilter = 'preposition' AND LOWER(e.pos) IN ('preposition', 'prep.', 'prep'))
+          )
+          AND (
+              :searchQuery = ''
+              OR LOWER(e.text) LIKE '%' || LOWER(:searchQuery) || '%'
+              OR e.arabic LIKE '%' || :searchQuery || '%'
+              OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
+          )
+          AND LOWER(e.text) < :letterPrefix
+        """
+    )
+    suspend fun getLearningFilteredEntryIndexBeforeLetter(
+        deckId: String,
+        letterPrefix: String,
+        searchQuery: String,
+        typeFilter: String,
+        levelFilter: String,
+        posFilter: String
+    ): Int
+
+    @Query(
+        """
+        SELECT UPPER(SUBSTR(e.text, 1, 1)) AS initial, COUNT(*) AS count
+        FROM entries e
+        LEFT JOIN word_progress wp
+            ON wp.deck = e.deck AND wp.text = LOWER(e.text)
+        WHERE (:deckId = '' OR e.deck = :deckId)
+          AND (:typeFilter = '' OR e.type = :typeFilter)
+          AND (:levelFilter = '' OR e.level = :levelFilter)
+          AND (
+              :posFilter = ''
+              OR LOWER(e.pos) = LOWER(:posFilter)
+              OR (:posFilter = 'noun' AND LOWER(e.pos) IN ('noun', 'n.', 'n'))
+              OR (:posFilter = 'verb' AND LOWER(e.pos) IN ('verb', 'v.', 'v', 'Phrasal Verb'))
+              OR (:posFilter = 'adjective' AND LOWER(e.pos) IN ('adjective', 'adj.', 'adj'))
+              OR (:posFilter = 'adverb' AND LOWER(e.pos) IN ('adverb', 'adv.', 'adv'))
+              OR (:posFilter = 'preposition' AND LOWER(e.pos) IN ('preposition', 'prep.', 'prep'))
+          )
+          AND (
+              :searchQuery = ''
+              OR LOWER(e.text) LIKE '%' || LOWER(:searchQuery) || '%'
+              OR e.arabic LIKE '%' || :searchQuery || '%'
+              OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
+          )
+          AND (:onlyFavorites = 0 OR wp.is_favorite = 1)
+          AND (:onlyMastered = 0 OR wp.is_mastered = 1)
+          AND (:onlyLearning = 0 OR (COALESCE(wp.is_mastered, 0) = 0 AND (COALESCE(wp.repetitions, 0) > 0 OR COALESCE(wp.last_reviewed_timestamp, 0) > 0)))
+        GROUP BY UPPER(SUBSTR(e.text, 1, 1))
+        ORDER BY initial ASC
+        """
+    )
+    suspend fun getGroupedInitialLetterCounts(
+        deckId: String,
+        searchQuery: String,
+        typeFilter: String,
+        levelFilter: String,
+        posFilter: String,
+        onlyFavorites: Int = 0,
+        onlyMastered: Int = 0,
+        onlyLearning: Int = 0
+    ): List<LetterCountResult>
+
     // --- WORD DETAILS TABLE QUERIES ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWordDetail(detail: WordDetailEntity)
@@ -806,6 +987,14 @@ interface WordBooksDao {
     @Query("SELECT * FROM grammar_lessons WHERE id = :id LIMIT 1")
     suspend fun getGrammarLessonById(id: String): GrammarLessonEntity?
 
+    @Query("""
+        SELECT gl.* FROM grammar_lessons gl
+        LEFT JOIN grammar_progress gp ON gl.id = gp.lesson_id
+        ORDER BY COALESCE(gp.last_score, 0) ASC, gl.id ASC
+        LIMIT :limit
+    """)
+    suspend fun getLowestScoringGrammarLessons(limit: Int = 10): List<GrammarLessonEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertGrammarLesson(lesson: GrammarLessonEntity)
 
@@ -882,6 +1071,14 @@ interface WordBooksDao {
 
     @Query("SELECT * FROM reading_texts WHERE id = :id LIMIT 1")
     suspend fun getReadingTextById(id: String): ReadingTextEntity?
+
+    @Query("""
+        SELECT rt.* FROM reading_texts rt
+        LEFT JOIN reading_progress rp ON rt.id = rp.text_id
+        ORDER BY COALESCE(rp.last_score, 0) ASC, rt.id ASC
+        LIMIT :limit
+    """)
+    suspend fun getLowestScoringReadingTexts(limit: Int = 10): List<ReadingTextEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertReadingText(text: ReadingTextEntity)

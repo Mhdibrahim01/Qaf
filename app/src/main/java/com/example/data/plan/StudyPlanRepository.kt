@@ -3,9 +3,11 @@ package com.example.data.plan
 import android.content.Context
 import com.example.data.local.DailyChecklistEntity
 import com.example.data.local.DailyTaskItem
+import com.example.data.local.GrammarLessonEntity
 import com.example.data.local.PlanDailyTemplate
 import com.example.data.local.PlanStudyGoals
 import com.example.data.local.PlanWeekGoal
+import com.example.data.local.ReadingTextEntity
 import com.example.data.local.StudyPlanEntity
 import com.example.data.local.StudyPlanJson
 import com.example.data.local.StudyPlanProfileEntity
@@ -298,16 +300,29 @@ class StudyPlanRepository(
         val tasks = mutableListOf<DailyTaskItem>()
         val now = timeProvider.currentTimeMillis()
 
-        // Task 1: Flashcards (Capped at 30 cards, oldest due first; fallback to 10 practice cards)
+        val minutes = profile.minutesPerDay
+        // Task 1: Flashcards (scaled by minutes per day)
+        val flashcardBaseTarget = when {
+            minutes <= 15 -> 5
+            minutes <= 30 -> 10
+            minutes <= 45 -> 15
+            else -> 20
+        }
         val dueCount = dao.getDueCardsCount(now)
-        val flashcardTarget = if (dueCount > 0) minOf(dueCount, 30) else 10
+        val flashcardTarget = if (isRestDay) 5 else if (dueCount > 0) minOf(dueCount, flashcardBaseTarget * 2) else flashcardBaseTarget
+        val flashcardMinutes = when {
+            minutes <= 15 -> 4
+            minutes <= 30 -> 8
+            minutes <= 45 -> 12
+            else -> 15
+        }
         tasks.add(
             DailyTaskItem(
                 id = "task_flashcards",
                 type = "flashcards",
-                titleEn = if (dueCount > 0) "Review Due Flashcards" else "Flashcards Review Practice",
-                titleAr = if (dueCount > 0) "مراجعة البطاقات المستحقة ($flashcardTarget بطاقة)" else "مراجعة البطاقات التعليمية (10 بطاقات)",
-                subtitleEn = if (dueCount > 0) "$flashcardTarget cards due today • ${template.review_cards_min} min" else "10 practice cards • Tap to review ${formatDeckLabel(primaryDeck)}",
+                titleEn = if (isRestDay) "Flashcards (Rest Day Light Review)" else if (dueCount > 0) "Review Due Flashcards" else "Flashcards Review Practice",
+                titleAr = if (isRestDay) "مراجعة بطاقات خفيفة ليوم الراحة" else if (dueCount > 0) "مراجعة البطاقات المستحقة ($flashcardTarget بطاقة)" else "مراجعة البطاقات التعليمية ($flashcardTarget بطاقات)",
+                subtitleEn = if (dueCount > 0) "$flashcardTarget cards due today • $flashcardMinutes min" else "$flashcardTarget practice cards • Tap to review ${formatDeckLabel(primaryDeck)}",
                 targetCount = flashcardTarget,
                 completedCount = 0,
                 isCompleted = false,
@@ -317,155 +332,178 @@ class StudyPlanRepository(
             )
         )
 
-        // Task 2: New Words
+        // Task 2: New Words (scaled by minutes per day, reduced after missed days, not hard-coded 10)
+        val baseNewWords = when {
+            minutes <= 15 -> 5
+            minutes <= 30 -> 10
+            minutes <= 45 -> 15
+            else -> 20
+        }
         val newWordsTarget = if (isRestDay) {
-            0
+            3
         } else if (isAdjustedAfterMissedDay) {
-            // Missed day: reduce new words to 5 for single day only, without guilt
-            5
+            maxOf(3, baseNewWords / 2)
         } else {
-            template.new_words
+            baseNewWords
         }
 
-        if (newWordsTarget > 0) {
-            val preferredLevels = levelsForUserProfile(profile.level)
-            val candidateWords = dao.getNewWordsForLevelsAndDecks(preferredLevels, selectedDecks, newWordsTarget)
-                .ifEmpty { dao.getNewWordsForLevelsAndDecks(listOf("A1", "A2", "B1", "B2", "C1"), selectedDecks, newWordsTarget) }
-            val samplePreview = candidateWords.take(3).joinToString(", ") { it.text }
+        val preferredLevels = levelsForUserProfile(profile.level)
+        val candidateWords = dao.getNewWordsForLevelsAndDecks(preferredLevels, selectedDecks, newWordsTarget)
+            .ifEmpty { dao.getNewWordsForLevelsAndDecks(listOf("A1", "A2", "B1", "B2", "C1"), selectedDecks, newWordsTarget) }
+        val samplePreview = candidateWords.take(3).joinToString(", ") { it.text }
 
-            tasks.add(
-                DailyTaskItem(
-                    id = "task_new_words",
-                    type = "new_words",
-                    titleEn = "Learn $newWordsTarget New Words (${profile.level})",
-                    titleAr = "تعلم $newWordsTarget مفردات جديدة (مستوى ${profile.level})",
-                    subtitleEn = if (samplePreview.isNotBlank()) "Focus: $samplePreview" else "Deck: ${formatDeckLabel(primaryDeck)}",
-                    targetCount = newWordsTarget,
-                    completedCount = 0,
-                    isCompleted = false,
-                    linkedRoute = "word_books",
-                    linkedId = "$primaryDeck|${profile.level}",
-                    explanationAr = if (isAdjustedAfterMissedDay) {
-                        "أهلاً بعودتك! خففنا كلمات اليوم لتستأنف التعلم بسلاسة وبدون أي ضغط."
-                    } else {
-                        "دراسة كلمات جديدة تناسب مستواك ${profile.level} مع أمثلتها."
-                    }
-                )
-            )
-        }
-
-        // Task 3 & 4: Grammar Lesson & Linked Reading Text Pairing
-        val currentWeekGoals = try {
-            val weeks = json.decodeFromString<List<PlanWeekGoal>>(plan.weeksJson)
-            weeks.firstOrNull()?.goals ?: PlanStudyGoals()
-        } catch (e: Exception) {
-            PlanStudyGoals()
-        }
-
-        val studyDays = profile.studyDaysPerWeek.coerceIn(1, 7)
-        val grammarTargetPerWeek = currentWeekGoals.grammar_lessons.coerceIn(1, studyDays)
-        val shouldScheduleGrammarToday = !isRestDay && shouldScheduleOnDay(timeProvider.dayOfWeek(), grammarTargetPerWeek, studyDays)
-
-        if (shouldScheduleGrammarToday) {
-            val uncompletedLessons = dao.getUncompletedGrammarLessonsForLevel(profile.level)
-            val targetLesson = uncompletedLessons.firstOrNull()
-                ?: dao.getUncompletedGrammarLessonsForLevel("B2").firstOrNull()
-                ?: dao.getUncompletedGrammarLessonsForLevel("C1").firstOrNull()
-                ?: dao.getAllGrammarLessons().firstOrNull { !it.isCompleted }
-                ?: dao.getAllGrammarLessons().firstOrNull()
-
-            if (targetLesson != null) {
-                tasks.add(
-                    DailyTaskItem(
-                        id = "task_grammar_${targetLesson.id}",
-                        type = "grammar",
-                        titleEn = "Grammar: ${targetLesson.titleEn}",
-                        titleAr = "قواعد: ${targetLesson.titleAr}",
-                        subtitleEn = "Topic: ${targetLesson.topic} • ${targetLesson.level} (${template.grammar_min} min)",
-                        targetCount = 1,
-                        completedCount = if (targetLesson.isCompleted) 1 else 0,
-                        isCompleted = targetLesson.isCompleted,
-                        linkedRoute = "grammar",
-                        linkedId = targetLesson.id,
-                        explanationAr = "دراسة درس القواعد وحل تمارينه التفاعلية."
-                    )
-                )
-
-                // Pair reading text with linked grammar lesson (via grammar_ids)
-                val allTexts = dao.getAllReadingTexts()
-                val pairedText = allTexts.firstOrNull { it.grammarIdsJson.contains(targetLesson.id) }
-                    ?: dao.getUncompletedReadingTextsForLevel(profile.level).firstOrNull()
-                    ?: allTexts.firstOrNull { it.level == profile.level }
-                    ?: allTexts.firstOrNull()
-
-                if (pairedText != null) {
-                    val readingProgress = dao.getReadingProgress(pairedText.id)
-                    val isReadingDone = readingProgress?.isCompleted == true
-                    tasks.add(
-                        DailyTaskItem(
-                            id = "task_reading_${pairedText.id}",
-                            type = "reading",
-                            titleEn = "Reading: ${pairedText.titleEn}",
-                            titleAr = "قراءة: ${pairedText.titleAr}",
-                            subtitleEn = "Level: ${pairedText.level} • Paired with ${targetLesson.titleEn} (${template.reading_min} min)",
-                            targetCount = 1,
-                            completedCount = if (isReadingDone) 1 else 0,
-                            isCompleted = isReadingDone,
-                            linkedRoute = "reading",
-                            linkedId = pairedText.id,
-                            explanationAr = "قراءة النص في سياق درس القواعد والإجابة على أسئلة الفهم."
-                        )
-                    )
+        tasks.add(
+            DailyTaskItem(
+                id = "task_new_words",
+                type = "new_words",
+                titleEn = if (isRestDay) "Learn $newWordsTarget Light Words (Rest Day)" else "Learn $newWordsTarget New Words (${profile.level})",
+                titleAr = if (isRestDay) "تعلم $newWordsTarget مفردات خفيفة (يوم راحة)" else "تعلم $newWordsTarget مفردات جديدة (مستوى ${profile.level})",
+                subtitleEn = if (samplePreview.isNotBlank()) "Focus: $samplePreview" else "Deck: ${formatDeckLabel(primaryDeck)}",
+                targetCount = newWordsTarget,
+                completedCount = 0,
+                isCompleted = false,
+                linkedRoute = "word_books",
+                linkedId = "$primaryDeck|${profile.level}",
+                explanationAr = if (isAdjustedAfterMissedDay) {
+                    "أهلاً بعودتك! خففنا كلمات اليوم لتستأنف التعلم بسلاسة وبدون أي ضغط."
+                } else if (isRestDay) {
+                    "مفردات خفيفة اختيارية للحفاظ على استمرارية التعلّم في يوم الراحة."
+                } else {
+                    "دراسة كلمات جديدة تناسب مستواك ${profile.level} مع أمثلتها."
                 }
+            )
+        )
+
+        // Task 3 & 4: Grammar Lesson & Linked Reading Text Pairing (gXXX with rXXX, same number)
+        val levelsOrder = listOf("A1", "A2", "B1", "B2", "C1")
+        val searchLevels = listOf(profile.level) + levelsOrder.filter { it != profile.level }
+        var targetLesson: GrammarLessonEntity? = null
+        for (lvl in searchLevels) {
+            val uncompleted = dao.getUncompletedGrammarLessonsForLevel(lvl)
+            if (uncompleted.isNotEmpty()) {
+                targetLesson = uncompleted.first()
+                break
             }
         }
+        val isGrammarExhausted = targetLesson == null
+        if (targetLesson == null) {
+            targetLesson = dao.getLowestScoringGrammarLessons(1).firstOrNull()
+                ?: dao.getAllGrammarLessons().firstOrNull()
+        }
 
-        // Task 5: 5 Sentences to Review or Dictation
-        if (!isRestDay) {
+        val grammarTime = when { minutes <= 15 -> 4; minutes <= 30 -> 7; minutes <= 45 -> 10; else -> 15 }
+        val readingTime = when { minutes <= 15 -> 3; minutes <= 30 -> 5; minutes <= 45 -> 8; else -> 12 }
+        val exerciseCount = when { minutes <= 15 -> 4; minutes <= 30 -> 6; minutes <= 45 -> 8; else -> 10 }
+
+        if (targetLesson != null) {
+            val grammarProgress = dao.getGrammarProgress(targetLesson.id)
+            val isGrammarDone = (grammarProgress != null && (grammarProgress.completedExercises > 0 || grammarProgress.isCompleted)) || targetLesson.isCompleted
             tasks.add(
                 DailyTaskItem(
-                    id = "task_sentences",
-                    type = "sentences",
-                    titleEn = "Practice 5 Sentences",
-                    titleAr = "ممارسة 5 جمل (إملاء أو تحدث)",
-                    subtitleEn = "Dictation or speaking practice",
-                    targetCount = 5,
+                    id = "task_grammar_${targetLesson.id}",
+                    type = "grammar",
+                    titleEn = "Grammar: ${targetLesson.titleEn}",
+                    titleAr = "قواعد: ${targetLesson.titleAr}",
+                    subtitleEn = if (minutes <= 15) "Topic: ${targetLesson.topic} • ${targetLesson.level} ($exerciseCount exercises, $grammarTime min)" else "Topic: ${targetLesson.topic} • ${targetLesson.level} ($grammarTime min)",
+                    targetCount = 1,
+                    completedCount = if (isGrammarDone) 1 else 0,
+                    isCompleted = isGrammarDone,
+                    linkedRoute = "grammar",
+                    linkedId = targetLesson.id,
+                    explanationAr = if (isGrammarExhausted) "مراجعة ذكية لترسيخ القواعد بعد إتمام دروس المستوى." else "دراسة درس القواعد وحل تمارينه التفاعلية."
+                )
+            )
+
+            // Pair reading text (gXXX with rXXX, same number)
+            val pairedNumber = targetLesson.id.filter { it.isDigit() }
+            val directPairedId = if (pairedNumber.isNotEmpty()) "r$pairedNumber" else targetLesson.id.replaceFirst("g", "r")
+            val directPairedText = dao.getReadingTextById(directPairedId)
+
+            val pairedText = directPairedText
+                ?: dao.getAllReadingTexts().firstOrNull { it.grammarIdsJson.contains(targetLesson.id) }
+                ?: dao.getUncompletedReadingTextsForLevel(targetLesson.level).firstOrNull()
+                ?: dao.getLowestScoringReadingTexts(1).firstOrNull()
+                ?: dao.getAllReadingTexts().firstOrNull()
+
+            if (pairedText != null) {
+                val readingProgress = dao.getReadingProgress(pairedText.id)
+                val isReadingDone = readingProgress != null && (readingProgress.completedQuestions > 0 || readingProgress.isCompleted)
+                tasks.add(
+                    DailyTaskItem(
+                        id = "task_reading_${pairedText.id}",
+                        type = "reading",
+                        titleEn = "Reading: ${pairedText.titleEn}",
+                        titleAr = "قراءة: ${pairedText.titleAr}",
+                        subtitleEn = if (minutes <= 15) "Short text • Level: ${pairedText.level} ($readingTime min)" else "Level: ${pairedText.level} • Paired with ${targetLesson.titleEn} ($readingTime min)",
+                        targetCount = 1,
+                        completedCount = if (isReadingDone) 1 else 0,
+                        isCompleted = isReadingDone,
+                        linkedRoute = "reading",
+                        linkedId = pairedText.id,
+                        explanationAr = if (isGrammarExhausted) "قراءة متقدمة لترسيخ المفردات والقواعد." else "قراءة النص في سياق درس القواعد والإجابة على أسئلة الفهم."
+                    )
+                )
+            } else {
+                tasks.add(
+                    DailyTaskItem(
+                        id = "task_reading_fallback",
+                        type = "reading",
+                        titleEn = "Reading: Graded Stories",
+                        titleAr = "قراءة: نصوص متدرجة",
+                        subtitleEn = "Bilingual texts • Level: ${profile.level} ($readingTime min)",
+                        targetCount = 1,
+                        completedCount = 0,
+                        isCompleted = false,
+                        linkedRoute = "reading",
+                        linkedId = "",
+                        explanationAr = "جميع نصوص المستوى مكتملة • يمكنك مراجعة أي نص لترسيخ الطلاقة."
+                    )
+                )
+            }
+        } else {
+            tasks.add(
+                DailyTaskItem(
+                    id = "task_grammar_fallback",
+                    type = "grammar",
+                    titleEn = "Grammar: Master Rules Review",
+                    titleAr = "قواعد: مراجعة شاملة",
+                    subtitleEn = "Comprehensive review • Level ${profile.level} ($grammarTime min)",
+                    targetCount = 1,
                     completedCount = 0,
                     isCompleted = false,
-                    linkedRoute = "sentences",
-                    explanationAr = "الاستماع لجمل حقيقية وكتابتها بالإملاء يعزز الطلاقة."
+                    linkedRoute = "grammar",
+                    linkedId = "",
+                    explanationAr = "تمت جميع دروس المستوى بنجاح • استمر في تثبيت القواعد."
+                )
+            )
+            tasks.add(
+                DailyTaskItem(
+                    id = "task_reading_fallback",
+                    type = "reading",
+                    titleEn = "Reading: Graded Stories",
+                    titleAr = "قراءة: نصوص متدرجة",
+                    subtitleEn = "Bilingual texts • Level: ${profile.level} ($readingTime min)",
+                    targetCount = 1,
+                    completedCount = 0,
+                    isCompleted = false,
+                    linkedRoute = "reading",
+                    linkedId = "",
+                    explanationAr = "جميع نصوص المستوى مكتملة • يمكنك مراجعة أي نص لترسيخ الطلاقة."
                 )
             )
         }
 
-        // Task 6: Due Correction Notebook Reviews (if any are due)
-        val dueCorrections = dao.getDueCorrectionReviewsCount(now)
-        if (dueCorrections > 0) {
-            tasks.add(
-                DailyTaskItem(
-                    id = "task_correction_reviews",
-                    type = "correction_reviews",
-                    titleEn = "Correction Notebook ($dueCorrections Due)",
-                    titleAr = "دفتر التصحيحات ($dueCorrections جمل مستحقة)",
-                    subtitleEn = "Spaced rewrite of your personal sentences",
-                    targetCount = dueCorrections,
-                    completedCount = 0,
-                    isCompleted = false,
-                    linkedRoute = "correction_notebook",
-                    explanationAr = "إعادة كتابة الجمل المصححة في مواقف جديدة لترسيخ القاعدة."
-                )
-            )
-        }
-
-        // Task 7: Daily Mini-Quiz (5 questions)
+        // Task 5: Daily Mini-Quiz
+        val quizQuestions = if (minutes <= 15) 3 else 5
+        val quizMin = if (minutes <= 15) 2 else 3
         tasks.add(
             DailyTaskItem(
                 id = "task_daily_quiz",
                 type = "quiz",
-                titleEn = "Daily Mini-Quiz (5 Questions)",
-                titleAr = "الاختبار اليومي السريع (5 أسئلة)",
-                subtitleEn = "Vocabulary, Grammar, Reading & Listening (${template.quiz_min} min)",
-                targetCount = 5,
+                titleEn = "Daily Mini-Quiz ($quizQuestions Questions)",
+                titleAr = "الاختبار اليومي السريع ($quizQuestions أسئلة)",
+                subtitleEn = "Vocabulary, Grammar, Reading & Listening ($quizMin min)",
+                targetCount = quizQuestions,
                 completedCount = 0,
                 isCompleted = false,
                 linkedRoute = "quiz",
@@ -500,7 +538,7 @@ class StudyPlanRepository(
         val startOfDay = timeProvider.startOfDayMillis(checklist.date)
         val now = timeProvider.currentTimeMillis()
         val cardsRatedToday = dao.getCardsRatedTodayCount(startOfDay)
-        val newWordsRatedToday = dao.getNewWordsRatedTodayCount(startOfDay)
+        val wordsStudiedToday = dao.getStudiedTodayCount(startOfDay)
         val quizResultsToday = dao.getQuizResultsForDate(checklist.date)
         val dueCorrectionCount = dao.getDueCorrectionReviewsCount(now)
 
@@ -517,17 +555,18 @@ class StudyPlanRepository(
                 }
                 "new_words" -> {
                     val normalizedTarget = if (task.targetCount <= 0) 5 else task.targetCount
-                    val isDone = task.isCompleted || (newWordsRatedToday >= normalizedTarget)
+                    val isDone = task.isCompleted || (wordsStudiedToday >= normalizedTarget)
                     task.copy(
                         targetCount = normalizedTarget,
-                        completedCount = if (isDone) normalizedTarget else minOf(newWordsRatedToday, normalizedTarget),
+                        completedCount = if (isDone) normalizedTarget else minOf(wordsStudiedToday, normalizedTarget),
                         isCompleted = isDone
                     )
                 }
                 "grammar" -> {
                     val lesson = dao.getGrammarLessonById(task.linkedId)
                     val progress = dao.getGrammarProgress(task.linkedId)
-                    val isDone = task.isCompleted || (progress?.isCompleted == true) || (lesson?.isCompleted == true)
+                    val isSubmitted = (progress != null && (progress.completedExercises > 0 || progress.isCompleted)) || (lesson?.isCompleted == true)
+                    val isDone = task.isCompleted || isSubmitted
                     task.copy(
                         completedCount = if (isDone) 1 else 0,
                         isCompleted = isDone
@@ -535,7 +574,8 @@ class StudyPlanRepository(
                 }
                 "reading" -> {
                     val progress = dao.getReadingProgress(task.linkedId)
-                    val isDone = task.isCompleted || (progress?.isCompleted == true)
+                    val isSubmitted = progress != null && (progress.completedQuestions > 0 || progress.isCompleted)
+                    val isDone = task.isCompleted || isSubmitted
                     task.copy(
                         completedCount = if (isDone) 1 else 0,
                         isCompleted = isDone
@@ -572,6 +612,14 @@ class StudyPlanRepository(
 
         dao.upsertDailyChecklist(updatedChecklist)
         return updatedChecklist
+    }
+
+    /**
+     * Recomputes completion idempotently from database state. Returns null if no checklist exists for that date.
+     */
+    suspend fun recomputeTodayChecklistCompletion(date: String = timeProvider.todayDateString()): DailyChecklistEntity? {
+        val existing = dao.getDailyChecklist(date) ?: return null
+        return refreshChecklistCompletion(existing)
     }
 
     /**

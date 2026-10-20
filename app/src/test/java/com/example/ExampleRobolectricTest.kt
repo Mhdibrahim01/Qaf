@@ -17,6 +17,8 @@ import com.example.data.local.GrammarLessonEntity
 import com.example.data.local.PlanDailyTemplate
 import com.example.data.local.PlanStudyGoals
 import com.example.data.local.PlanWeekGoal
+import com.example.data.local.GrammarProgressEntity
+import com.example.data.local.ReadingProgressEntity
 import com.example.data.local.ReadingSentenceItem
 import com.example.data.local.ReadingTextEntity
 import com.example.data.local.SentenceEntity
@@ -1625,6 +1627,182 @@ class ExampleRobolectricTest {
         val savedPlan = dao.getStudyPlanForMonth("2026-11")
         assertNotNull(savedPlan)
         assertEquals("ai", savedPlan!!.source)
+
+        db.close()
+    }
+
+    @Test
+    fun verifyPlanExecutionAutoDoneRestDayUnchangedAndAzJump() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val db = Room.inMemoryDatabaseBuilder(context, WordBooksDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        val dao = db.wordBooksDao()
+        val importRepo = DataImportRepository(context, db)
+        importRepo.ensureImportedOnFirstLaunch(forceRecheck = true)
+        val grammarRepo = GrammarRepository(context, dao)
+        grammarRepo.importGrammarLessonsIfNeeded()
+        val readingRepo = ReadingRepository(context, dao)
+        readingRepo.importReadingTextsIfNeeded()
+
+        val timeProvider = TestTimeProvider(1793577600000L) // Monday, 2026-11-02
+        val planRepo = StudyPlanRepository(context, dao, timeProvider)
+
+        val profile = StudyPlanProfileEntity(
+            id = 1,
+            level = "B2",
+            goal = "general_fluency",
+            minutesPerDay = 30,
+            studyDaysPerWeek = 6,
+            startDate = "2026-11-02",
+            selectedDecksJson = "[\"oxford5000\"]",
+            restDaysJson = "[6]" // Friday
+        )
+        planRepo.updateProfile(profile)
+
+        // 1. Unchanged checklist when regenerated on same day
+        val initialChecklist = planRepo.getOrCreateDailyChecklist(timeProvider.todayDateString())
+        val sameDayChecklist = planRepo.getOrCreateDailyChecklist(timeProvider.todayDateString())
+        assertEquals(initialChecklist.tasksJson, sameDayChecklist.tasksJson)
+        assertEquals(initialChecklist.date, sameDayChecklist.date)
+
+        val json = Json { ignoreUnknownKeys = true; isLenient = true }
+        val tasks = json.decodeFromString<List<DailyTaskItem>>(initialChecklist.tasksJson)
+        // Verify all 5 pillars are present
+        val taskTypes = tasks.map { it.type }.toSet()
+        assertTrue(taskTypes.contains("flashcards"))
+        assertTrue(taskTypes.contains("new_words"))
+        assertTrue(taskTypes.contains("grammar"))
+        assertTrue(taskTypes.contains("reading"))
+        assertTrue(taskTypes.contains("quiz"))
+        assertEquals(5, tasks.size)
+
+        // 2. Auto-completion at target count without manual toggle:
+        val flashTask = tasks.first { it.type == "flashcards" }
+        val newWordsTask = tasks.first { it.type == "new_words" }
+        val grammarTask = tasks.first { it.type == "grammar" }
+        val readingTask = tasks.first { it.type == "reading" }
+
+        assertFalse(flashTask.isCompleted)
+        assertFalse(newWordsTask.isCompleted)
+
+        // Simulate reviewing flashcards up to target
+        val startOfDay = timeProvider.startOfDayMillis(initialChecklist.date)
+        for (i in 1..flashTask.targetCount) {
+            dao.upsertWordProgress(
+                WordProgressEntity(
+                    cardKey = "oxford5000:card_$i",
+                    deck = "oxford5000",
+                    text = "card_$i",
+                    repetitions = 2,
+                    lastReviewedTimestamp = startOfDay + (i * 1000L)
+                )
+            )
+        }
+
+        // Simulate studying new words up to target
+        for (i in 1..newWordsTask.targetCount) {
+            dao.upsertWordProgress(
+                WordProgressEntity(
+                    cardKey = "oxford5000:newword_$i",
+                    deck = "oxford5000",
+                    text = "newword_$i",
+                    repetitions = 1,
+                    lastReviewedTimestamp = startOfDay + 50000L + (i * 1000L)
+                )
+            )
+        }
+
+        // Simulate grammar lesson completion in DB
+        dao.upsertGrammarProgress(
+            GrammarProgressEntity(
+                lessonId = grammarTask.linkedId,
+                completedExercises = 6,
+                totalExercises = 6,
+                bestScore = 100,
+                lastScore = 100,
+                isCompleted = true,
+                updatedAt = timeProvider.currentTimeMillis()
+            )
+        )
+
+        // Simulate reading text completion in DB
+        dao.upsertReadingProgress(
+            ReadingProgressEntity(
+                textId = readingTask.linkedId,
+                completedQuestions = 3,
+                totalQuestions = 3,
+                bestScore = 100,
+                lastScore = 100,
+                isCompleted = true,
+                updatedAt = timeProvider.currentTimeMillis()
+            )
+        )
+
+        // Recompute completion idempotently from DB records
+        val refreshed = planRepo.refreshChecklistCompletion(initialChecklist)
+        val refreshedTasks = json.decodeFromString<List<DailyTaskItem>>(refreshed.tasksJson)
+        assertTrue("Flashcards should be auto-completed at target count", refreshedTasks.first { it.type == "flashcards" }.isCompleted)
+        assertTrue("New words should be auto-completed at target count", refreshedTasks.first { it.type == "new_words" }.isCompleted)
+        assertTrue("Grammar should be auto-completed when exercises submitted", refreshedTasks.first { it.type == "grammar" }.isCompleted)
+        assertTrue("Reading should be auto-completed when questions submitted", refreshedTasks.first { it.type == "reading" }.isCompleted)
+
+        // 3. 2-day gap behavior (missed days carried over without guilt)
+        timeProvider.advanceDays(3) // Advance 3 days (creates a 2-day gap)
+        val afterGapChecklist = planRepo.getOrCreateDailyChecklist(timeProvider.todayDateString())
+        assertTrue("Checklist after missed days should be marked adjusted", afterGapChecklist.isAdjusted)
+        val afterGapTasks = json.decodeFromString<List<DailyTaskItem>>(afterGapChecklist.tasksJson)
+        val adjustedNewWords = afterGapTasks.first { it.type == "new_words" }
+        assertEquals(5, adjustedNewWords.targetCount) // reduced from 10 to 5 for smoother resumption
+
+        // 4. Rest-day behavior (e.g. Friday)
+        val restProfile = profile.copy(
+            startDate = "2026-11-06",
+            restDaysJson = "[6]" // Friday
+        )
+        planRepo.updateProfile(restProfile)
+        val fridayDate = "2026-11-06"
+        val fridayChecklist = planRepo.generateFreshChecklist(fridayDate)
+        assertTrue(fridayChecklist.isRestDay)
+        val fridayTasks = json.decodeFromString<List<DailyTaskItem>>(fridayChecklist.tasksJson)
+        val restNewWords = fridayTasks.first { it.type == "new_words" }
+        assertEquals(3, restNewWords.targetCount) // Light words for rest day
+        assertEquals(5, fridayTasks.size) // All 5 pillars still shown
+
+        // 5. Content exhausted fallback
+        // Mark all B2 grammar lessons completed
+        val b2Lessons = dao.getGrammarLessonsForLevel("B2")
+        for (l in b2Lessons) {
+            dao.upsertGrammarProgress(
+                GrammarProgressEntity(
+                    lessonId = l.id,
+                    completedExercises = 10,
+                    isCompleted = true,
+                    updatedAt = timeProvider.currentTimeMillis()
+                )
+            )
+        }
+        val exhaustedChecklist = planRepo.generateFreshChecklist("2026-11-10")
+        val exhaustedTasks = json.decodeFromString<List<DailyTaskItem>>(exhaustedChecklist.tasksJson)
+        val nextGrammarTask = exhaustedTasks.first { it.type == "grammar" }
+        assertNotNull(nextGrammarTask)
+        assertTrue("Should provide intelligent explanation when level content is exhausted", nextGrammarTask.explanationAr.isNotBlank())
+
+        // 6. A–Z jump on filtered list:
+        val groupedCounts = dao.getGroupedInitialLetterCounts(
+            deckId = "oxford5000",
+            searchQuery = "",
+            typeFilter = "",
+            levelFilter = "B2",
+            posFilter = "",
+            onlyFavorites = 0,
+            onlyMastered = 0,
+            onlyLearning = 0
+        )
+        assertTrue("Grouped letter counts should return letters for B2 Oxford 5000", groupedCounts.isNotEmpty())
+        assertTrue("Should contain entries for letters like A", groupedCounts.any { it.initial.equals("A", ignoreCase = true) })
+        val countA = groupedCounts.firstOrNull { it.initial.equals("A", ignoreCase = true) }?.count ?: 0
+        assertTrue(countA > 0)
 
         db.close()
     }

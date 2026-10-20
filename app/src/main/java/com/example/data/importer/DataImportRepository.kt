@@ -455,7 +455,7 @@ class DataImportRepository(
             config = PagingConfig(
                 pageSize = 60,
                 prefetchDistance = 30,
-                enablePlaceholders = false,
+                enablePlaceholders = true,
                 initialLoadSize = 120
             ),
             pagingSourceFactory = {
@@ -580,7 +580,10 @@ class DataImportRepository(
             cardKey = cardKey,
             deck = deckId,
             text = wordText.lowercase()
-        )).copy(isMastered = !(existing?.isMastered ?: false))
+        )).copy(
+            isMastered = !(existing?.isMastered ?: false),
+            lastReviewedTimestamp = System.currentTimeMillis()
+        )
         dao.upsertWordProgress(updated)
         refreshDeckProgressCounts(deckId)
     }

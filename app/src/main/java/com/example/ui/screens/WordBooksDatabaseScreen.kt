@@ -1228,8 +1228,21 @@ private fun PagedDeckWordListScreen(
                             }
                         }
 
+                        val hasActiveFilters = filterState.searchQuery.isNotBlank() ||
+                            (filterState.levelFilter.isNotBlank() && !filterState.levelFilter.equals("All", ignoreCase = true)) ||
+                            filterState.posFilter.isNotBlank() ||
+                            filterState.onlyFavorites ||
+                            filterState.onlyMastered ||
+                            filterState.onlyLearning
+
                         Button(
-                            onClick = onOpenFlashcards,
+                            onClick = {
+                                if (hasActiveFilters && onOpenFilteredFlashcards != null) {
+                                    onOpenFilteredFlashcards(currentDeckId, filterState)
+                                } else {
+                                    onOpenFlashcards()
+                                }
+                            },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = GoldAccent,
                                 contentColor = BackgroundDark
@@ -1239,7 +1252,7 @@ private fun PagedDeckWordListScreen(
                             modifier = Modifier.testTag("study_cards_header_btn")
                         ) {
                             Text(
-                                text = "Study cards",
+                                text = if (hasActiveFilters) "Study filtered" else "Study cards",
                                 style = MaterialTheme.typography.labelLarge.copy(
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp
@@ -1378,50 +1391,83 @@ private fun PagedDeckWordListScreen(
                             )
                         }
 
-                        Box {
-                            Row(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { showSortMenu = true }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                                    .testTag("sort_menu_button"),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.Sort,
-                                    contentDescription = "Sort words",
-                                    tint = TextSecondary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = sortShortLabel,
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        fontWeight = FontWeight.Medium,
-                                        fontSize = 13.sp
-                                    ),
-                                    color = TextSecondary
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = showSortMenu,
-                                onDismissRequest = { showSortMenu = false },
-                                containerColor = SurfaceElevatedDark
-                            ) {
-                                WordSortOrder.entries.forEach { order ->
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                text = order.labelEn,
-                                                color = if (filterState.sortOrder == order) GoldAccent else TextPrimary,
-                                                fontWeight = if (filterState.sortOrder == order) FontWeight.Bold else FontWeight.Normal
-                                            )
-                                        },
-                                        onClick = {
-                                            onSortOrderChange(order)
-                                            showSortMenu = false
-                                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            if (onGetLetterIndex != null) {
+                                val isAzSort = filterState.sortOrder == WordSortOrder.AZ
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .then(
+                                            if (isAzSort) {
+                                                Modifier.clickable { showAlphabetDialog = true }
+                                            } else {
+                                                Modifier
+                                            }
+                                        )
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        .testTag("alphabet_jump_button"),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = "🔤 A–Z",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp
+                                        ),
+                                        color = if (isAzSort) GoldAccent else TextMuted.copy(alpha = 0.4f)
                                     )
+                                }
+                            }
+
+                            Box {
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { showSortMenu = true }
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        .testTag("sort_menu_button"),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Sort,
+                                        contentDescription = "Sort words",
+                                        tint = TextSecondary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = sortShortLabel,
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            fontWeight = FontWeight.Medium,
+                                            fontSize = 13.sp
+                                        ),
+                                        color = TextSecondary
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = showSortMenu,
+                                    onDismissRequest = { showSortMenu = false },
+                                    containerColor = SurfaceElevatedDark
+                                ) {
+                                    WordSortOrder.entries.forEach { order ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = order.labelEn,
+                                                    color = if (filterState.sortOrder == order) GoldAccent else TextPrimary,
+                                                    fontWeight = if (filterState.sortOrder == order) FontWeight.Bold else FontWeight.Normal
+                                                )
+                                            },
+                                            onClick = {
+                                                onSortOrderChange(order)
+                                                showSortMenu = false
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1495,12 +1541,13 @@ private fun PagedDeckWordListScreen(
                                         }
                                         val targetIdx = foundIdx ?: currentStudyState?.lastCardIndex?.takeIf { it in 0 until (deck?.rowCount ?: totalEntriesCount) }
                                         if (targetIdx != null) {
-                                            if (targetIdx < pagedEntries.itemCount) {
-                                                pagedEntries[targetIdx]
+                                            val totalCount = pagedEntries.itemCount
+                                            if (totalCount > 0) {
+                                                val clampedIdx = targetIdx.coerceIn(0, totalCount - 1)
+                                                val headerItemsCount = if (hasCheckpoint) 2 else 1
+                                                pagedEntries[clampedIdx]
+                                                listState.scrollToItem((clampedIdx + headerItemsCount).coerceAtLeast(0))
                                             }
-                                            // Item 0 = header, item 1 = checkpoint banner (this button is inside it),
-                                            // item 2+ = word list entries
-                                            listState.animateScrollToItem((targetIdx + 2).coerceAtLeast(0))
                                         }
                                     }
                                 },
@@ -1638,6 +1685,8 @@ private fun PagedDeckWordListScreen(
                                     onSetCheckpoint(entry.deck, entry.text, index)
                                 }
                             )
+                        } else {
+                            WordBookEntryPlaceholderRow()
                         }
                     }
 
@@ -1695,12 +1744,18 @@ private fun PagedDeckWordListScreen(
                                         .clip(RoundedCornerShape(10.dp))
                                         .clickable {
                                             showAlphabetDialog = false
+                                            if (filterState.sortOrder != WordSortOrder.AZ) {
+                                                onSortOrderChange(WordSortOrder.AZ)
+                                            }
                                             coroutineScope.launch {
-                                                val targetIdx = onGetLetterIndex?.invoke(currentDeckId, letter) ?: 0
-                                                if (targetIdx < pagedEntries.itemCount) {
-                                                    pagedEntries[targetIdx]
+                                                val totalCount = pagedEntries.itemCount
+                                                if (totalCount > 0) {
+                                                    val targetIdx = onGetLetterIndex?.invoke(currentDeckId, letter) ?: 0
+                                                    val clampedIdx = targetIdx.coerceIn(0, totalCount - 1)
+                                                    val headerItemsCount = if (hasCheckpoint) 2 else 1
+                                                    pagedEntries[clampedIdx]
+                                                    listState.scrollToItem((clampedIdx + headerItemsCount).coerceAtLeast(0))
                                                 }
-                                                listState.animateScrollToItem((targetIdx + 2).coerceAtLeast(0))
                                             }
                                         },
                                     shape = RoundedCornerShape(10.dp),
@@ -1856,6 +1911,48 @@ fun ShimmerPlaceholder(modifier: Modifier = Modifier) {
     )
 }
 
+@Composable
+private fun WordBookEntryPlaceholderRow(
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        color = SurfaceDark,
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, BorderDark)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                ShimmerPlaceholder(modifier = Modifier.size(40.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ShimmerPlaceholder(modifier = Modifier.size(width = 110.dp, height = 16.dp))
+                        ShimmerPlaceholder(modifier = Modifier.size(width = 28.dp, height = 16.dp))
+                    }
+                    ShimmerPlaceholder(modifier = Modifier.size(width = 90.dp, height = 12.dp))
+                    ShimmerPlaceholder(modifier = Modifier.size(width = 140.dp, height = 14.dp))
+                }
+            }
+            ShimmerPlaceholder(modifier = Modifier.size(24.dp))
+        }
+    }
+}
+
 /**
  * Dictionary Word list row matching image.png:
  * - Left: Rounded-square speaker button
@@ -1984,22 +2081,6 @@ fun WordBookEntryRow(
                             }
                         }
 
-                        if (studiedCount > 0 || isMastered) {
-                            Surface(
-                                color = EmeraldAccent.copy(alpha = 0.15f),
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
-                                Text(
-                                    text = if (isMastered) "✓ Mastered" else "✓ Studied",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 10.sp
-                                    ),
-                                    color = EmeraldAccent,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
                     }
 
                     if (ipaAndPos.isNotBlank()) {
@@ -2064,14 +2145,14 @@ fun WordBookEntryRow(
                     IconButton(
                         onClick = onToggleMastered,
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(48.dp)
                             .testTag("mastered_check_${entry.id}")
                     ) {
                         Icon(
                             imageVector = if (isMastered) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
-                            contentDescription = if (isMastered) "Mastered word" else "Mark as mastered",
+                            contentDescription = if (isMastered) "Mastered" else "Mark as mastered",
                             tint = if (isMastered) EmeraldAccent else TextMuted,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
 
@@ -2173,12 +2254,15 @@ fun AiDefinitionPanel(
                         modifier = Modifier.size(20.dp)
                     )
                 }
-                IconButton(onClick = onToggleMastered, modifier = Modifier.size(36.dp)) {
+                IconButton(
+                    onClick = onToggleMastered,
+                    modifier = Modifier.size(48.dp)
+                ) {
                     Icon(
-                        imageVector = if (card.isMastered) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
-                        contentDescription = "Toggle mastered",
-                        tint = if (card.isMastered) EmeraldAccent else TextSecondary,
-                        modifier = Modifier.size(20.dp)
+                        imageVector = if (card.isMastered) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
+                        contentDescription = if (card.isMastered) "Mastered" else "Mark as mastered",
+                        tint = if (card.isMastered) EmeraldAccent else TextMuted,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
 

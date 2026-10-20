@@ -599,4 +599,10 @@ data class WeakAreasState(
     val weakGrammarLessons: List<GrammarLessonEntity> = emptyList()
 )
 
+@Immutable
+data class LetterCountResult(
+    val initial: String,
+    val count: Int
+)
+
 
