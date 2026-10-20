@@ -27,3 +27,7 @@ __pycache__/
 .vscode/
 data_import_backup/
 public/
+
+.idea/
+.aistudio/
+*.apk
