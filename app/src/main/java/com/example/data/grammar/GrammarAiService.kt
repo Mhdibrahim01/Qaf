@@ -1,6 +1,7 @@
 package com.example.data.grammar
 
 import com.example.BuildConfig
+import com.example.ui.components.stripMarkdownAsterisks
 import com.example.data.ai.GeminiHttpException
 import com.example.data.local.GrammarExerciseItem
 import com.example.data.local.GrammarLessonEntity
@@ -77,9 +78,12 @@ Student Question: "$userQuestion"
 
 Answer the student clearly in simple, natural Arabic with helpful English examples.
 Use bullet points and short sentences so it is easy to read.
+
+STRICT FORMATTING: Do NOT use markdown bold asterisks (**) or formatting syntax. Output clean, readable plain text with bullet points (•).
 """.trimIndent()
 
-            val answer = callGeminiRaw(prompt, expectsJson = false)
+            val rawAnswer = callGeminiRaw(prompt, expectsJson = false)
+            val answer = rawAnswer.stripMarkdownAsterisks().trim()
             repository.addChatMessage(lesson.id, "assistant", answer)
             Result.success(answer)
         } catch (e: Exception) {
@@ -120,9 +124,12 @@ Explain clearly and concisely in simple Arabic (2 to 4 bullet points):
 2. Why "$correctAnswer" is the correct grammatical choice.
 3. A tip or mnemonic in Arabic to help avoid this mistake again.
 Keep the explanation gentle, clear, and direct.
+
+STRICT FORMATTING: Do NOT use markdown bold asterisks (**) or formatting syntax. Output clean, readable plain text with bullet points (•).
 """.trimIndent()
 
-            val explanation = callGeminiRaw(prompt, expectsJson = false)
+            val rawExplanation = callGeminiRaw(prompt, expectsJson = false)
+            val explanation = rawExplanation.stripMarkdownAsterisks().trim()
             repository.saveMistakeExplanationToCache(lessonId, exercisePrompt, wrongAnswer, explanation)
             Result.success(explanation)
         } catch (e: Exception) {

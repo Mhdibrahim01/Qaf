@@ -379,7 +379,9 @@ class ReadingRepository(
         word: String
     ): String? = withContext(Dispatchers.IO) {
         val key = buildWordCacheKey(textId, sentenceIndex, word)
-        dao.getAiCache(key)?.detailedExplanationAr?.ifBlank { null }
+        dao.getAiCache(key)?.detailedExplanationAr?.ifBlank { null }?.let {
+            com.example.data.ai.AiPromptContract.sanitizeAiPlainText(it)
+        }
     }
 
     suspend fun saveCachedWordExplanation(
@@ -389,6 +391,7 @@ class ReadingRepository(
         explanationAr: String
     ) = withContext(Dispatchers.IO) {
         val key = buildWordCacheKey(textId, sentenceIndex, word)
+        val cleanExplanation = com.example.data.ai.AiPromptContract.sanitizeAiPlainText(explanationAr)
         dao.upsertAiCache(
             AiCacheEntity(
                 cacheKey = key,
@@ -397,7 +400,7 @@ class ReadingRepository(
                 syllables = "",
                 arabicSummary = "Word Context: $word",
                 extraExamplesJson = "",
-                detailedExplanationAr = explanationAr,
+                detailedExplanationAr = cleanExplanation,
                 updatedAt = System.currentTimeMillis()
             )
         )
@@ -405,11 +408,17 @@ class ReadingRepository(
 
     private fun buildWordCacheKey(textId: String, sentenceIndex: Int, word: String): String {
         val cleanWord = cleanWordForLookup(word).lowercase()
-        return "reading_word:${textId}:${sentenceIndex}:${cleanWord}"
+        return com.example.data.ai.AiPromptContract.versionedCacheKey(
+            namespace = "reading_word",
+            rawKey = "${textId}:${sentenceIndex}:${cleanWord}"
+        )
     }
 
     suspend fun getCachedCorrectionResult(lessonTitle: String, userSentence: String): CorrectionAiResult? = withContext(Dispatchers.IO) {
-        val key = "correction:${lessonTitle.trim().lowercase()}:${userSentence.trim().lowercase()}"
+        val key = com.example.data.ai.AiPromptContract.versionedCacheKey(
+            namespace = "correction",
+            rawKey = "${lessonTitle.trim().lowercase()}:${userSentence.trim().lowercase()}"
+        )
         val cached = dao.getAiCache(key) ?: return@withContext null
         try {
             json.decodeFromString<CorrectionAiResult>(cached.extraExamplesJson)
@@ -419,7 +428,10 @@ class ReadingRepository(
     }
 
     suspend fun saveCachedCorrectionResult(lessonTitle: String, userSentence: String, result: CorrectionAiResult) = withContext(Dispatchers.IO) {
-        val key = "correction:${lessonTitle.trim().lowercase()}:${userSentence.trim().lowercase()}"
+        val key = com.example.data.ai.AiPromptContract.versionedCacheKey(
+            namespace = "correction",
+            rawKey = "${lessonTitle.trim().lowercase()}:${userSentence.trim().lowercase()}"
+        )
         dao.upsertAiCache(
             AiCacheEntity(
                 cacheKey = key,
@@ -428,7 +440,7 @@ class ReadingRepository(
                 syllables = "",
                 arabicSummary = result.correctedSentence,
                 extraExamplesJson = json.encodeToString(result),
-                detailedExplanationAr = result.explanationAr,
+                detailedExplanationAr = com.example.data.ai.AiPromptContract.sanitizeAiPlainText(result.explanationAr),
                 updatedAt = System.currentTimeMillis()
             )
         )

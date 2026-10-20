@@ -1,6 +1,7 @@
 package com.example.data.reading
 
 import com.example.BuildConfig
+import com.example.ui.components.stripMarkdownAsterisks
 import com.example.data.ai.GeminiHttpException
 import com.example.data.local.ReadingQuestionItem
 import com.example.data.local.ReadingSentenceItem
@@ -170,20 +171,13 @@ REQUIREMENTS:
 
             checkPreconditions()
 
-            val prompt = """
-You are an English teacher explaining vocabulary to an Arabic speaker.
-In the sentence: "$sentenceEn"
-Explain the word: "$word"
+            val prompt = com.example.data.ai.AiPromptContract.buildWordInContextPrompt(
+                word = word,
+                sentenceEn = sentenceEn
+            )
 
-Provide:
-1. The exact meaning of "$word" in this specific sentence in clear, simple Arabic.
-2. The part of speech in this sentence (verb, noun, adjective, etc.).
-3. A simple alternative example in English with Arabic translation.
-
-Keep it concise, friendly, and easy to understand.
-""".trimIndent()
-
-            val explanation = callGeminiRaw(prompt, expectsJson = false).trim()
+            val rawExplanation = callGeminiRaw(prompt, expectsJson = false)
+            val explanation = com.example.data.ai.AiPromptContract.sanitizeAiPlainText(rawExplanation)
             repository.saveCachedWordExplanation(textId, sentenceIndex, word, explanation)
             Result.success(explanation)
         } catch (e: Exception) {
@@ -349,9 +343,11 @@ Student Question: "$userQuestion"
 
 Answer the student in clear, natural Arabic with helpful English examples from the text.
 Be concise, polite, and encouraging.
+
+STRICT FORMATTING: Do NOT use markdown asterisks (**) or markdown headers (###). Output clean plain text using bullet points (•) and natural punctuation.
 """.trimIndent()
 
-            val answer = callGeminiRaw(prompt, expectsJson = false).trim()
+            val answer = callGeminiRaw(prompt, expectsJson = false).stripMarkdownAsterisks().trim()
             repository.addChatMessage(text.id, "assistant", answer)
             Result.success(answer)
         } catch (e: Exception) {
@@ -389,9 +385,11 @@ TASK:
 4. Suggest a polished English version of their answer.
 
 Format nicely with bullet points.
+
+STRICT FORMATTING: Do NOT use markdown asterisks (**) or markdown headers (###). Output clean plain text using bullet points (•) and natural punctuation.
 """.trimIndent()
 
-            val feedback = callGeminiRaw(prompt, expectsJson = false).trim()
+            val feedback = callGeminiRaw(prompt, expectsJson = false).stripMarkdownAsterisks().trim()
             repository.addOpenQuestionHistory(text.id, "user", "$questionPrompt\nAnswer: $userAnswer")
             repository.addOpenQuestionHistory(text.id, "assistant", feedback)
             Result.success(feedback)

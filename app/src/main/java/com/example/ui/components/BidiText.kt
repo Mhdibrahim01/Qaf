@@ -74,11 +74,20 @@ private fun isAllowedInRun(c: Char): Boolean {
 }
 
 /**
+ * Helper function to strip markdown bold asterisks, conversational fluff, and convert formatting asterisks to bullets
+ * via the centralized [com.example.data.ai.AiPromptContract] Single Source of Truth.
+ */
+fun String.stripMarkdownAsterisks(): String {
+    return com.example.data.ai.AiPromptContract.sanitizeAiPlainText(this)
+}
+
+/**
  * Wraps each run of English text in U+2066 (LRI) ... U+2069 (PDI).
  * A run = Latin letters/digits plus the spaces, apostrophes, + - / , . ! ? ( ) " ' % = between them.
  * Never merges runs across line breaks, and does NOT include a trailing colon or Arabic punctuation inside the isolate.
  */
-fun isolateLatin(text: String): String {
+fun isolateLatin(rawText: String): String {
+    val text = rawText.stripMarkdownAsterisks()
     if (text.isEmpty() || !hasLatinCharacters(text)) {
         return text
     }
@@ -218,50 +227,21 @@ fun BidiText(
 
     val isolated = remember(text) { isolateLatin(text) }
     val baseModifier = if (fillMaxWidth) modifier.fillMaxWidth() else modifier
+    val hasArabic = remember(isolated) { hasArabicCharacters(isolated) }
+    val direction = if (hasArabic) TextDirection.Rtl else TextDirection.Ltr
+    val resolvedAlign = textAlign ?: if (hasArabic) TextAlign.Right else TextAlign.Left
 
-    if (!isolated.contains('\n')) {
-        val hasArabic = remember(isolated) { hasArabicCharacters(isolated) }
-        val direction = if (hasArabic) TextDirection.Rtl else TextDirection.Ltr
-        val resolvedAlign = textAlign ?: if (hasArabic) TextAlign.Right else TextAlign.Left
-
-        Text(
-            text = isolated,
-            modifier = baseModifier,
-            style = style.copy(textDirection = direction, textAlign = resolvedAlign),
-            color = color,
-            fontSize = fontSize,
-            fontWeight = fontWeight,
-            lineHeight = lineHeight,
-            maxLines = maxLines,
-            overflow = overflow
-        )
-    } else {
-        val lines = remember(isolated) { isolated.lines() }
-        Column(
-            modifier = baseModifier,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            lines.forEach { line ->
-                if (line.isEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                } else {
-                    val hasArabic = line.any { isArabicChar(it) }
-                    val direction = if (hasArabic) TextDirection.Rtl else TextDirection.Ltr
-                    val resolvedAlign = textAlign ?: if (hasArabic) TextAlign.Right else TextAlign.Left
-
-                    Text(
-                        text = line,
-                        modifier = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier,
-                        style = style.copy(textDirection = direction, textAlign = resolvedAlign),
-                        color = color,
-                        fontSize = fontSize,
-                        fontWeight = fontWeight,
-                        lineHeight = lineHeight
-                    )
-                }
-            }
-        }
-    }
+    Text(
+        text = isolated,
+        modifier = baseModifier,
+        style = style.copy(textDirection = direction, textAlign = resolvedAlign),
+        color = color,
+        fontSize = fontSize,
+        fontWeight = fontWeight,
+        lineHeight = lineHeight,
+        maxLines = maxLines,
+        overflow = overflow
+    )
 }
 
 /**

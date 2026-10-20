@@ -1,5 +1,6 @@
 package com.example.data.local
 
+import androidx.compose.runtime.Immutable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
@@ -37,6 +38,7 @@ data class RawJsonEntry(
 /**
  * Per-deck breakdown of Arabic translation provenance and empty counts.
  */
+@Immutable
 data class DeckArabicStats(
     val deck: String,
     val totalRows: Int,
@@ -61,6 +63,7 @@ data class DeckArabicStats(
  * `dataVersion` tracks the schema/content version of the imported entry so content upserts by id
  * can update content fields without touching `word_progress` or `sentences`.
  */
+@Immutable
 @Entity(
     tableName = "entries",
     indices = [
@@ -98,6 +101,7 @@ data class EntryEntity(
  * Merged "oxford5000" (5,948 rows from part1/2/3), "oxford_opal", "oxford_phrases",
  * "everyday_expressions", "essential_idioms", plus "ielts_core" and "it_industry".
  */
+@Immutable
 @Entity(tableName = "decks")
 data class DeckEntity(
     @PrimaryKey val id: String,
@@ -123,6 +127,7 @@ typealias PosSenseVariant = com.example.data.importer.PosSenseVariant
  * 3. word_progress table (Progress / SRS per grouped word card: deck + lowercase text)
  * Kept in a separate table from `entries` so content upserts never touch favorites, mastered flags, or SRS.
  */
+@Immutable
 @Entity(
     tableName = "word_progress",
     indices = [
@@ -150,6 +155,7 @@ data class WordProgressEntity(
 /**
  * 4. sentences table
  */
+@Immutable
 @Entity(
     tableName = "sentences",
     indices = [
@@ -171,6 +177,7 @@ data class SentenceEntity(
 /**
  * 5. grammar_lessons table
  */
+@Immutable
 @Entity(
     tableName = "grammar_lessons",
     indices = [
@@ -196,6 +203,7 @@ data class GrammarLessonEntity(
  * Persists exercises completed, score, and completion status per lesson separately
  * so importing or updating lesson content by ID NEVER touches user progress.
  */
+@Immutable
 @Entity(tableName = "grammar_progress")
 data class GrammarProgressEntity(
     @PrimaryKey @ColumnInfo(name = "lesson_id") val lessonId: String,
@@ -211,6 +219,7 @@ data class GrammarProgressEntity(
  * 5c. ai_history table
  * Stores AI interactions (chat with lesson, written sentence checks, etc.)
  */
+@Immutable
 @Entity(
     tableName = "ai_history",
     indices = [
@@ -226,12 +235,14 @@ data class AiHistoryEntity(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+@Immutable
 @Serializable
 data class GrammarExampleItem(
     val en: String = "",
     val ar: String = ""
 )
 
+@Immutable
 @Serializable
 data class GrammarExerciseItem(
     val type: String = "mcq", // "mcq" | "fill" | "reorder"
@@ -242,6 +253,7 @@ data class GrammarExerciseItem(
     val source: String = "sample" // "sample" | "file" | "ai"
 )
 
+@Immutable
 @Serializable
 data class GrammarLessonJson(
     val id: String = "",
@@ -255,6 +267,7 @@ data class GrammarLessonJson(
     val source: String = "sample"
 )
 
+@Immutable
 @Serializable
 data class GrammarSentenceCheckResult(
     @SerialName("is_correct") val isCorrect: Boolean = true,
@@ -266,6 +279,7 @@ data class GrammarSentenceCheckResult(
 /**
  * 6. reading_texts table
  */
+@Immutable
 @Entity(
     tableName = "reading_texts",
     indices = [
@@ -291,6 +305,7 @@ data class ReadingTextEntity(
 /**
  * reading_progress table
  */
+@Immutable
 @Entity(tableName = "reading_progress")
 data class ReadingProgressEntity(
     @PrimaryKey @ColumnInfo(name = "text_id") val textId: String,
@@ -302,6 +317,7 @@ data class ReadingProgressEntity(
     @ColumnInfo(name = "updated_at") val updatedAt: Long = System.currentTimeMillis()
 )
 
+@Immutable
 @Serializable
 data class ReadingSentenceItem(
     val en: String = "",
@@ -309,6 +325,7 @@ data class ReadingSentenceItem(
     @SerialName("grammar_id") val grammarId: String? = null
 )
 
+@Immutable
 @Serializable
 data class ReadingQuestionItem(
     val prompt: String = "",
@@ -317,6 +334,7 @@ data class ReadingQuestionItem(
     @SerialName("explanation_ar") val explanationAr: String = ""
 )
 
+@Immutable
 @Serializable
 data class ReadingTextJson(
     val id: String = "",
@@ -336,6 +354,7 @@ data class ReadingTextJson(
  * 6b. correction_notebook table
  * Stores user-written sentences, AI feedback, manual edits, and spaced review attempts.
  */
+@Immutable
 @Entity(
     tableName = "correction_notebook",
     indices = [
@@ -365,6 +384,7 @@ data class CorrectionNotebookEntity(
 /**
  * 7. ai_cache table
  */
+@Immutable
 @Entity(tableName = "ai_cache")
 data class AiCacheEntity(
     @PrimaryKey @ColumnInfo(name = "cache_key") val cacheKey: String,
@@ -380,6 +400,7 @@ data class AiCacheEntity(
 /**
  * 8. feature_flags table
  */
+@Immutable
 @Entity(tableName = "feature_flags")
 data class FeatureFlagEntity(
     @PrimaryKey val id: String,
@@ -390,6 +411,7 @@ data class FeatureFlagEntity(
     @ColumnInfo(name = "user_suggestion") val userSuggestion: String = ""
 )
 
+@Immutable
 @Entity(tableName = "feature_suggestions")
 data class FeatureSuggestionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0L,
@@ -402,6 +424,7 @@ data class FeatureSuggestionEntity(
  * Persists the user's last flashcard position (`lastCardIndex` and `lastWordText`) per deck
  * so closing and reopening the app restores the exact card position in every deck.
  */
+@Immutable
 @Entity(tableName = "deck_study_state")
 data class DeckStudyStateEntity(
     @PrimaryKey @ColumnInfo(name = "deck_id") val deckId: String,
@@ -411,6 +434,7 @@ data class DeckStudyStateEntity(
     @ColumnInfo(name = "updated_at") val updatedAt: Long = System.currentTimeMillis()
 )
 
+@Immutable
 data class AiBatchSavePayload(
     val id: String,
     val text: String,
@@ -425,6 +449,7 @@ data class AiBatchSavePayload(
  * 11. study_plan_profile table
  * Stores user study preferences (target level, goal, daily minutes, days per week, rest days).
  */
+@Immutable
 @Entity(tableName = "study_plan_profile")
 data class StudyPlanProfileEntity(
     @PrimaryKey val id: Int = 1,
@@ -442,6 +467,7 @@ data class StudyPlanProfileEntity(
  * 12. study_plans table
  * Stores monthly study plans (from AI or default B2 fallback).
  */
+@Immutable
 @Entity(tableName = "study_plans")
 data class StudyPlanEntity(
     @PrimaryKey val month: String,
@@ -459,6 +485,7 @@ data class StudyPlanEntity(
  * 13. daily_task_checklist table
  * Persists each day's task checklist generated locally.
  */
+@Immutable
 @Entity(tableName = "daily_task_checklist")
 data class DailyChecklistEntity(
     @PrimaryKey val date: String,
@@ -474,6 +501,7 @@ data class DailyChecklistEntity(
  * 14. quiz_results table
  * Tracks score & accuracy per skill (vocabulary, grammar, reading, listening) for mini and weekly quizzes.
  */
+@Immutable
 @Entity(
     tableName = "quiz_results",
     indices = [
@@ -494,6 +522,7 @@ data class QuizResultEntity(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+@Immutable
 @Serializable
 data class PlanStudyGoals(
     val new_words: Int = 50,
@@ -503,6 +532,7 @@ data class PlanStudyGoals(
     val quizzes: Int = 2
 )
 
+@Immutable
 @Serializable
 data class PlanWeekGoal(
     val week: Int,
@@ -511,6 +541,7 @@ data class PlanWeekGoal(
     val goals: PlanStudyGoals
 )
 
+@Immutable
 @Serializable
 data class PlanDailyTemplate(
     val review_cards_min: Int = 8,
@@ -520,6 +551,7 @@ data class PlanDailyTemplate(
     val quiz_min: Int = 3
 )
 
+@Immutable
 @Serializable
 data class StudyPlanJson(
     val month: String = "",
@@ -530,6 +562,7 @@ data class StudyPlanJson(
     val tips_ar: String = ""
 )
 
+@Immutable
 @Serializable
 data class DailyTaskItem(
     val id: String,
@@ -545,6 +578,7 @@ data class DailyTaskItem(
     val explanationAr: String = ""
 )
 
+@Immutable
 @Serializable
 data class QuizQuestionItem(
     val id: String,
@@ -559,6 +593,7 @@ data class QuizQuestionItem(
     val explanationAr: String = ""
 )
 
+@Immutable
 data class WeakAreasState(
     val weakWords: List<EntryEntity> = emptyList(),
     val weakGrammarLessons: List<GrammarLessonEntity> = emptyList()

@@ -705,6 +705,9 @@ fun WordBooksAppShell(
                                     }
                                 }
                             }
+                        },
+                        onOpenDictionaryWord = { word ->
+                            wordBooksViewModel.openDetailedDefinition("", word)
                         }
                     )
                 }

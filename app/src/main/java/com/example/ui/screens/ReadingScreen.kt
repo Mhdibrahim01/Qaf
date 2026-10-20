@@ -147,6 +147,9 @@ private val readingJson = Json {
     coerceInputValues = true
 }
 
+private val READING_WHITESPACE_REGEX = Regex("\\s+")
+private val READING_TOKEN_CLEAN_REGEX = Regex("^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$")
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReadingScreen(
@@ -325,6 +328,10 @@ fun ReadingListScreen(
         progressList.count { it.isCompleted }
     }
 
+    val progressByTextId = remember(progressList) {
+        progressList.associateBy { it.textId }
+    }
+
     Scaffold(
         modifier = modifier.testTag("reading_list_screen"),
         containerColor = Color(0xFF0E0F13),
@@ -339,7 +346,7 @@ fun ReadingListScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // 1. Compact Header, Action Pills, Search & Filter Controls
-            item {
+            item(key = "reading_header_controls", contentType = "header") {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -527,7 +534,11 @@ fun ReadingListScreen(
                             contentPadding = PaddingValues(end = 24.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            items(levels) { level ->
+                            items(
+                                items = levels,
+                                key = { it },
+                                contentType = { "level_chip" }
+                            ) { level ->
                                 val isSelected = selectedLevelFilter == level
                                 val count = levelCounts[level] ?: 0
                                 val labelText = if (level == "ALL") "All ($count)" else "$level ($count)"
@@ -578,7 +589,11 @@ fun ReadingListScreen(
                                 contentPadding = PaddingValues(end = 24.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                items(topics) { topic ->
+                                items(
+                                    items = topics,
+                                    key = { it },
+                                    contentType = { "topic_chip" }
+                                ) { topic ->
                                     val isSelected = selectedTopicFilter.equals(topic, ignoreCase = true)
                                     val displayTopic = if (topic == "ALL") "All Topics" else topic.replaceFirstChar { it.uppercase() }
                                     Surface(
@@ -621,7 +636,7 @@ fun ReadingListScreen(
 
             // 2. List of Reading Texts
             if (filteredTexts.isEmpty()) {
-                item {
+                item(key = "reading_empty_state", contentType = "empty_state") {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -688,8 +703,12 @@ fun ReadingListScreen(
                     }
                 }
             } else {
-                items(filteredTexts, key = { it.id }) { textEntity ->
-                    val prog = progressList.firstOrNull { it.textId == textEntity.id }
+                items(
+                    items = filteredTexts,
+                    key = { it.id },
+                    contentType = { "reading_text_card" }
+                ) { textEntity ->
+                    val prog = progressByTextId[textEntity.id]
                     ReadingTextCard(
                         text = textEntity,
                         progress = prog,
@@ -970,6 +989,10 @@ fun ReadingDetailScreen(
         } catch (_: Exception) { emptySet() }
     }
 
+    val grammarLessonsById = remember(grammarLessons) {
+        grammarLessons.associateBy { it.id }
+    }
+
     // Per-sentence translation visibility map
     val sentenceTranslationVisibility = remember { mutableStateMapOf<Int, Boolean>() }
     var areAllTranslationsVisible by remember { mutableStateOf(false) }
@@ -1054,7 +1077,7 @@ fun ReadingDetailScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Header Info & Controls Card
-            item {
+            item(key = "detail_header", contentType = "detail_header") {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -1292,7 +1315,7 @@ fun ReadingDetailScreen(
 
             // Pasted Text: Generate questions banner if needed
             if (text.source == "user" && questions.isEmpty()) {
-                item {
+                item(key = "pasted_banner", contentType = "pasted_banner") {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -1346,7 +1369,7 @@ fun ReadingDetailScreen(
             }
 
             // PASSAGE BODY: Sentences with interactive word chips & translation toggle
-            item {
+            item(key = "passage_body", contentType = "passage_body") {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -1365,7 +1388,7 @@ fun ReadingDetailScreen(
                             val isHighlighted = isReadingAudioActive && currentReadingSentenceIndex == sIndex
                             val isArabicVisible = sentenceTranslationVisibility[sIndex] ?: areAllTranslationsVisible
                             val isSentenceSelected = selectedSentenceIndex == sIndex
-                            val linkedGrammarLesson = grammarLessons.firstOrNull { it.id == sentenceItem.grammarId }
+                            val linkedGrammarLesson = sentenceItem.grammarId?.let { grammarLessonsById[it] }
                             val grammarTitle = linkedGrammarLesson?.let {
                                 if (it.titleEn.isNotBlank()) "${it.topic} • ${it.titleEn}" else it.topic
                             } ?: sentenceItem.grammarId?.takeIf { !it.startsWith("g", ignoreCase = true) } ?: "Grammar Rule"
@@ -1405,7 +1428,7 @@ fun ReadingDetailScreen(
 
             // 5 COMPREHENSION QUESTIONS SECTION
             if (questions.isNotEmpty()) {
-                item {
+                item(key = "questions_header", contentType = "questions_header") {
                     Text(
                         text = "Comprehension Questions (${questions.size})",
                         style = MaterialTheme.typography.titleLarge,
@@ -1414,7 +1437,11 @@ fun ReadingDetailScreen(
                     )
                 }
 
-                itemsIndexed(questions) { qIndex, question ->
+                itemsIndexed(
+                    items = questions,
+                    key = { qIndex, q -> "q_${qIndex}_${q.prompt.hashCode()}" },
+                    contentType = { _, _ -> "quiz_question" }
+                ) { qIndex, question ->
                     val selectedOption = userAnswers[qIndex]
                     ReadingQuestionCard(
                         index = qIndex,
@@ -1442,7 +1469,7 @@ fun ReadingDetailScreen(
 
                 // QUIZ RESULT BANNER
                 if (userAnswers.size == questions.size) {
-                    item {
+                    item(key = "quiz_result_banner", contentType = "quiz_result_banner") {
                         val score = questions.indices.count { idx ->
                             userAnswers[idx] == questions[idx].answerIndex
                         }
@@ -1456,7 +1483,7 @@ fun ReadingDetailScreen(
                     }
 
                     // YOUR TURN SECTION (Grammar application)
-                    item {
+                    item(key = "your_turn_grammar", contentType = "your_turn_grammar") {
                         YourTurnGrammarCard(
                             text = text,
                             grammarLessons = grammarLessons,
@@ -1470,7 +1497,7 @@ fun ReadingDetailScreen(
             }
 
             // OPEN QUESTION AT THE END (e.g. Summarize the text)
-            item {
+            item(key = "open_question_card", contentType = "open_question_card") {
                 OpenQuestionCard(
                     text = text,
                     answerText = openQuestionAnswer,
@@ -1703,18 +1730,22 @@ fun ReadingSentenceBlock(
 
             Spacer(Modifier.width(4.dp))
 
-            // Flow of clickable words
+            // Flow of clickable words (memoized tokenization)
+            val parsedTokens = remember(sentence.en, targetWords) {
+                sentence.en.split(READING_WHITESPACE_REGEX)
+                    .filter { it.isNotBlank() }
+                    .map { token ->
+                        val cleanWord = token.replace(READING_TOKEN_CLEAN_REGEX, "")
+                        val isTarget = cleanWord.isNotBlank() && targetWords.contains(cleanWord.lowercase())
+                        Triple(token, cleanWord, isTarget)
+                    }
+            }
             FlowRow(
                 modifier = Modifier.weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                val rawTokens = sentence.en.split(" ")
-                for (token in rawTokens) {
-                    if (token.isBlank()) continue
-                    val cleanWord = token.replace(Regex("^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$"), "")
-                    val isTarget = cleanWord.isNotBlank() && targetWords.contains(cleanWord.lowercase())
-
+                for ((token, cleanWord, isTarget) in parsedTokens) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(4.dp))

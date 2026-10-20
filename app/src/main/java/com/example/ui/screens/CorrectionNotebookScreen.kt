@@ -186,7 +186,7 @@ fun CorrectionNotebookScreen(
             }
 
             // WEEKLY STUDY GOAL BANNER (Phase 9 Plan Integration)
-            item {
+            item(key = "weekly_study_plan_card", contentType = "weekly_plan_card") {
                 WeeklyStudyPlanCard(
                     grammarLessons = grammarLessons,
                     readingTexts = readingTexts,
@@ -196,18 +196,32 @@ fun CorrectionNotebookScreen(
             }
 
             // FILTER ROW: Status
-            item {
+            item(key = "notebook_status_filter_row", contentType = "status_filter_row") {
+                val statusCounts = remember(entries, now) {
+                    mapOf(
+                        "ALL" to entries.size,
+                        "not_checked" to entries.count { it.status == "not_checked" },
+                        "checked" to entries.count { it.status == "checked" },
+                        "mastered" to entries.count { it.status == "mastered" },
+                        "due_review" to entries.count { it.nextReviewTimestamp in 1..now && it.status != "mastered" }
+                    )
+                }
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(statusOptions) { status ->
+                    items(
+                        items = statusOptions,
+                        key = { it },
+                        contentType = { "status_filter_chip" }
+                    ) { status ->
+                        val count = statusCounts[status] ?: 0
                         val label = when (status) {
-                            "ALL" -> "All (${entries.size})"
-                            "not_checked" -> "Not Checked (${entries.count { it.status == "not_checked" }})"
-                            "checked" -> "AI Checked (${entries.count { it.status == "checked" }})"
-                            "mastered" -> "Mastered (${entries.count { it.status == "mastered" }})"
-                            "due_review" -> "Due for Review (${entries.count { it.nextReviewTimestamp in 1..now && it.status != "mastered" }})"
+                            "ALL" -> "All ($count)"
+                            "not_checked" -> "Not Checked ($count)"
+                            "checked" -> "AI Checked ($count)"
+                            "mastered" -> "Mastered ($count)"
+                            "due_review" -> "Due for Review ($count)"
                             else -> status
                         }
                         FilterChip(
@@ -225,14 +239,19 @@ fun CorrectionNotebookScreen(
 
             // FILTER ROW: Lessons
             if (lessonIdsWithEntries.size > 2) {
-                item {
+                item(key = "notebook_lesson_filter_row", contentType = "lesson_filter_row") {
+                    val lessonsById = remember(grammarLessons) { grammarLessons.associateBy { it.id } }
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        items(lessonIdsWithEntries) { lId ->
+                        items(
+                            items = lessonIdsWithEntries,
+                            key = { it },
+                            contentType = { "lesson_filter_chip" }
+                        ) { lId ->
                             val lessonTitle = if (lId == "ALL") "All Lessons" else {
-                                grammarLessons.firstOrNull { it.id == lId }?.titleEn ?: lId
+                                lessonsById[lId]?.titleEn ?: lId
                             }
                             FilterChip(
                                 selected = selectedLessonFilter == lId,
@@ -246,7 +265,7 @@ fun CorrectionNotebookScreen(
 
             // EMPTY STATE
             if (filteredEntries.isEmpty()) {
-                item {
+                item(key = "notebook_empty_state", contentType = "empty_state") {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -292,7 +311,11 @@ fun CorrectionNotebookScreen(
                 }
             } else {
                 // LIST OF NOTEBOOK ENTRIES
-                items(filteredEntries, key = { it.id }) { entry ->
+                items(
+                    items = filteredEntries,
+                    key = { it.id },
+                    contentType = { "correction_entry_card" }
+                ) { entry ->
                     val linkedLesson = grammarLessons.firstOrNull { it.id == entry.grammarLessonId }
                     CorrectionEntryCard(
                         entry = entry,

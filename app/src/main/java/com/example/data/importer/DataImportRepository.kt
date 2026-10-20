@@ -3,6 +3,7 @@ package com.example.data.importer
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import androidx.compose.runtime.Immutable
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
@@ -37,6 +38,7 @@ enum class Sm2Rating(val labelEn: String, val labelAr: String, val quality: Int)
     EASY("Easy", "سهل", 5)
 }
 
+@Immutable
 data class Sm2IntervalPreview(
     val againLabel: String = "<10m",
     val hardLabel: String = "Today",
@@ -67,6 +69,7 @@ enum class FlashcardDirection(
     }
 }
 
+@Immutable
 data class WordFilterState(
     val deckId: String = "",
     val searchQuery: String = "",
@@ -79,6 +82,7 @@ data class WordFilterState(
     val onlyLearning: Boolean = false
 )
 
+@Immutable
 data class ImportProgressState(
     val isImporting: Boolean = false,
     val currentFile: String = "",
@@ -104,6 +108,7 @@ data class ImportProgressState(
  * UI representation of a grouped word card where the same `text` with different `pos`
  * in a deck is merged into one card with POS tabs.
  */
+@Immutable
 data class GroupedWordCard(
     val cardKey: String,
     val deck: String,
@@ -117,6 +122,7 @@ data class GroupedWordCard(
     val isMastered: Boolean = false
 )
 
+@Immutable
 data class PosSenseVariant(
     val entryId: String,
     val pos: String,
@@ -904,7 +910,7 @@ class DataImportRepository(
 
             val versionNeedsUpsert = dbDataVersion < DATA_VERSION
 
-            if (dao.getWordDetailsCount() < 8924 || versionNeedsUpsert) {
+            if (dao.getWordDetailsCount() < 10317 || versionNeedsUpsert) {
                 seedAiWordDetailsIfNeeded()
             }
 
@@ -1400,7 +1406,7 @@ class DataImportRepository(
     }
 
     private suspend fun seedAiWordDetailsIfNeeded() = withContext(Dispatchers.IO) {
-        if (dao.getWordDetailsCount() >= 8924) return@withContext
+        if (dao.getWordDetailsCount() >= 10317) return@withContext
         try {
             val stream = context.assets.open("data_import/ai_word_details.json")
             val rawText = stream.bufferedReader(Charsets.UTF_8).use { it.readText() }

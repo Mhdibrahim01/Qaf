@@ -120,6 +120,7 @@ fun PlanScreen(
     onPlayAudio: (String) -> Unit,
     onToggleTaskCompleted: (date: String, taskId: String) -> Unit,
     onNavigateToTaskRoute: (route: String, id: String) -> Unit,
+    onOpenDictionaryWord: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -339,6 +340,7 @@ fun PlanScreen(
                     onSubmitQuizAnswers(activeQuizType, activeQuizQuestions!!, answers)
                 }
             },
+            onOpenDictionaryWord = onOpenDictionaryWord,
             onDismiss = { activeQuizQuestions = null }
         )
     }
@@ -373,7 +375,7 @@ private fun TodayTabContent(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Hero Progress & Streak Card
-        item {
+        item(key = "today_hero_streak", contentType = "hero_streak") {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = SurfaceDark,
@@ -428,7 +430,7 @@ private fun TodayTabContent(
 
         // Missed Days Non-Guilt Banner
         if (todayChecklist?.isAdjusted == true) {
-            item {
+            item(key = "today_adjusted_banner", contentType = "adjusted_banner") {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = GoldAccentDim,
@@ -459,7 +461,7 @@ private fun TodayTabContent(
         }
 
         // Task Items Header
-        item {
+        item(key = "today_tasks_header", contentType = "tasks_header") {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -479,7 +481,11 @@ private fun TodayTabContent(
         }
 
         // Tasks List
-        items(tasks, key = { it.id }) { task ->
+        items(
+            items = tasks,
+            key = { it.id },
+            contentType = { "daily_task_row" }
+        ) { task ->
             val canOpenRoute = task.type != "quiz" && task.linkedRoute.isNotBlank()
             val taskProgress = if (task.targetCount > 0) {
                 (task.completedCount.toFloat() / task.targetCount.toFloat()).coerceIn(0f, 1f)
@@ -606,7 +612,7 @@ private fun TodayTabContent(
 
         // Targeted Weak-Areas Quick Drill Card on Today Tab
         if (weakAreas.weakWords.isNotEmpty() || weakAreas.weakGrammarLessons.isNotEmpty()) {
-            item {
+            item(key = "today_weak_areas_drill", contentType = "weak_areas_drill") {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = SurfaceDark,
@@ -683,7 +689,7 @@ private fun MonthlyPlanTabContent(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Month Header
-        item {
+        item(key = "monthly_header", contentType = "monthly_header") {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = SurfaceDark,
@@ -749,7 +755,7 @@ private fun MonthlyPlanTabContent(
         }
 
         // Daily Time Breakdown Template
-        item {
+        item(key = "monthly_daily_template", contentType = "daily_template") {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = SurfaceDark,
@@ -789,7 +795,7 @@ private fun MonthlyPlanTabContent(
 
         // Arabic Coaching Tips
         if (!currentPlan?.tipsAr.isNullOrBlank()) {
-            item {
+            item(key = "monthly_coaching_tips", contentType = "coaching_tips") {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = SurfaceDark,
@@ -809,7 +815,7 @@ private fun MonthlyPlanTabContent(
         }
 
         // Weekly Goals
-        item {
+        item(key = "monthly_weeks_header", contentType = "weeks_header") {
             Text(
                 text = "Weekly Milestones (${weeks.size} Weeks)",
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
@@ -817,7 +823,11 @@ private fun MonthlyPlanTabContent(
             )
         }
 
-        items(weeks) { week ->
+        items(
+            items = weeks,
+            key = { "week_${it.week}" },
+            contentType = { "week_goal_card" }
+        ) { week ->
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = SurfaceDark,

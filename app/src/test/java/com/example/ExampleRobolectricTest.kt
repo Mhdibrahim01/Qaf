@@ -88,7 +88,7 @@ class ExampleRobolectricTest {
         assertEquals(406, careerCount)
         assertEquals(405, medicalCount)
         assertEquals(21624, totalCount)
-        assertEquals(8924, wordDetailsCount)
+        assertEquals(10317, wordDetailsCount)
         assertEquals(0, emptyArabicCount)
         assertEquals(0, fakeCount)
 

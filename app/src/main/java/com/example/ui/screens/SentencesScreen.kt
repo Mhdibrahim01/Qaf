@@ -595,7 +595,7 @@ private fun FavoritesSentencesTabContent(
         contentPadding = PaddingValues(bottom = 24.dp)
     ) {
         // Quick action bar to browse/bookmark real example sentences from the dictionary
-        item {
+        item(key = "sentences_save_example_bar", contentType = "save_example_bar") {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = SurfaceDark,
@@ -637,7 +637,7 @@ private fun FavoritesSentencesTabContent(
         }
 
         if (showDictionaryPicker && dictionarySampleExamples.isNotEmpty()) {
-            item {
+            item(key = "dictionary_examples_picker", contentType = "dictionary_picker") {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -787,7 +787,11 @@ private fun FavoritesSentencesTabContent(
                 }
             }
         } else {
-            items(savedSentences, key = { it.id }) { sentence ->
+            items(
+                items = savedSentences,
+                key = { it.id },
+                contentType = { "saved_sentence_card" }
+            ) { sentence ->
                 val isPlaying = currentlyPlayingText == sentence.englishText
                 val isExplaining = sentence.id in explainingSentenceIds
                 val isExplanationExpanded = expandedExplanationMap[sentence.id] == true ||

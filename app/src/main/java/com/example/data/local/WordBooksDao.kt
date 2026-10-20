@@ -152,6 +152,9 @@ interface WordBooksDao {
     @Query("SELECT * FROM ai_cache WHERE cache_key = :cacheKey LIMIT 1")
     suspend fun getAiCache(cacheKey: String): AiCacheEntity?
 
+    @Query("DELETE FROM ai_cache WHERE cache_key NOT LIKE :prefixPattern")
+    suspend fun deleteStaleAiCacheNotStartingWith(prefixPattern: String)
+
     @Query("DELETE FROM entries")
     suspend fun deleteAllEntries()
 
@@ -851,6 +854,12 @@ interface WordBooksDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAiHistory(item: AiHistoryEntity): Long
+
+    @Query("SELECT * FROM ai_history ORDER BY id ASC")
+    suspend fun getAllAiHistoryItems(): List<AiHistoryEntity>
+
+    @Query("UPDATE ai_history SET text = :cleanedText WHERE id = :id")
+    suspend fun updateAiHistoryText(id: Long, cleanedText: String)
 
     @Query("DELETE FROM ai_history WHERE context_type = :contextType AND context_id = :contextId")
     suspend fun clearAiHistory(contextType: String, contextId: String)

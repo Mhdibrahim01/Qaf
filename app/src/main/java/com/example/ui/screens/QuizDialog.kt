@@ -16,8 +16,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Check
@@ -85,6 +88,7 @@ fun QuizDialog(
     questions: List<QuizQuestionItem>,
     onPlayAudio: (String) -> Unit,
     onQuizCompleted: (userAnswers: Map<String, Int>) -> Unit,
+    onOpenDictionaryWord: ((String) -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     if (questions.isEmpty()) {
@@ -141,7 +145,7 @@ fun QuizDialog(
                         color = TextPrimary
                     )
                     Text(
-                        text = if (!isFinished) "Question ${currentIndex + 1} of ${questions.size} • Skill: ${currentQuestion.skill.uppercase()}" else "Quiz Results",
+                        text = if (!isFinished) "Question ${currentIndex + 1} of ${questions.size} • Skill: ${currentQuestion.skill.uppercase()}" else "Quiz Summary & Word Review",
                         style = MaterialTheme.typography.labelSmall,
                         color = GoldAccent
                     )
@@ -463,14 +467,17 @@ fun QuizDialog(
                     }
                 }
             } else {
-                // Final Results Card
+                // Final Results & Missed Questions Summary View
                 val total = questions.size
                 val correct = questions.count { q -> userAnswers[q.id] == q.answerIndex }
+                val missedQuestions = questions.filter { q -> userAnswers[q.id] != q.answerIndex }
                 val scorePercent = ((correct.toFloat() / total.toFloat()) * 100).toInt()
 
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
@@ -502,6 +509,130 @@ fun QuizDialog(
                                 ) {
                                     Text(skill.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall, color = TextPrimary)
                                     Text("$sCorrect / ${sQuestions.size}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = GoldAccent)
+                                }
+                            }
+                        }
+                    }
+
+                    // Missed Questions Section with One-Tap Dictionary Access
+                    if (missedQuestions.isNotEmpty()) {
+                        HorizontalDivider(color = BorderDark, modifier = Modifier.padding(vertical = 4.dp))
+
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(
+                                text = "Missed Questions (${missedQuestions.size})",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = CoralAccent
+                            )
+                            Text(
+                                text = "Tap 'Review Word' to open dictionary definitions and phonetic details for missed terms.",
+                                style = ArabicTypography.labelSmall,
+                                color = TextMuted
+                            )
+
+                            missedQuestions.forEachIndexed { index, missed ->
+                                val targetWord = remember(missed) {
+                                    val wordCandidate = missed.correctText.trim().takeIf { it.isNotBlank() && !it.contains(" ") }
+                                        ?: missed.audioText.trim().takeIf { it.isNotBlank() && !it.contains(" ") }
+                                        ?: missed.promptEn.split(" ").firstOrNull { w -> w.length > 2 && w.all { c -> c.isLetter() } }
+                                        ?: missed.correctText
+                                    wordCandidate.lowercase().replace(Regex("[^a-z\\s-]"), "").trim()
+                                }
+
+                                val userAnswerIdx = userAnswers[missed.id] ?: -1
+                                val userAnswerText = missed.options.getOrNull(userAnswerIdx) ?: "No answer selected"
+
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("quiz_missed_card_$index"),
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = SurfaceElevatedDark,
+                                    border = BorderStroke(1.dp, CoralAccent.copy(alpha = 0.4f))
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Question ${questions.indexOf(missed) + 1} • ${missed.skill.uppercase()}",
+                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                                color = CoralAccent
+                                            )
+                                        }
+
+                                        BidiText(
+                                            text = missed.promptEn,
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                            color = TextPrimary
+                                        )
+
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Icon(Icons.Filled.Close, contentDescription = null, tint = CoralAccent, modifier = Modifier.size(14.dp))
+                                            Text(
+                                                text = "Your Answer: $userAnswerText",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = CoralAccent
+                                            )
+                                        }
+
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Icon(Icons.Filled.Check, contentDescription = null, tint = EmeraldAccent, modifier = Modifier.size(14.dp))
+                                            Text(
+                                                text = "Correct: ${missed.correctText}",
+                                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                                color = EmeraldAccent
+                                            )
+                                        }
+
+                                        if (missed.explanationAr.isNotBlank()) {
+                                            BidiText(
+                                                text = "الشرح: ${missed.explanationAr}",
+                                                style = ArabicTypography.labelSmall,
+                                                color = TextSecondary
+                                            )
+                                        }
+
+                                        if (targetWord.isNotBlank()) {
+                                            OutlinedButton(
+                                                onClick = {
+                                                    onOpenDictionaryWord?.invoke(targetWord)
+                                                },
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(top = 4.dp)
+                                                    .testTag("quiz_review_word_btn_$index"),
+                                                shape = RoundedCornerShape(8.dp),
+                                                border = BorderStroke(1.dp, GoldAccentBorder),
+                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = GoldAccent)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.MenuBook,
+                                                    contentDescription = "Review Word",
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text(
+                                                    text = "Review \"$targetWord\" in Dictionary 📖",
+                                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

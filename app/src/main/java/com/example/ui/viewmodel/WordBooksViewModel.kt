@@ -402,6 +402,10 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun startImportIfNeeded(forceRecheck: Boolean = false) {
         viewModelScope.launch {
+            com.example.data.ai.AiPromptContract.syncAndSanitizeCacheIfNeeded(
+                context = getApplication(),
+                dao = database.wordBooksDao()
+            )
             repository.ensureImportedOnFirstLaunch(forceRecheck = forceRecheck)
             loadFlashcardsForDeck(_flashcardDeckId.value)
             loadDictionarySampleExamples()

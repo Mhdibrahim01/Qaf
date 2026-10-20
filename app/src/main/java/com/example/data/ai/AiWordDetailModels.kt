@@ -1,14 +1,17 @@
 package com.example.data.ai
 
+import androidx.compose.runtime.Immutable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+@Immutable
 @Serializable
 data class AiExampleItem(
     val en: String = "",
     val ar: String = ""
 )
 
+@Immutable
 @Serializable
 data class AiMeaningItem(
     val pos: String = "",
@@ -17,12 +20,14 @@ data class AiMeaningItem(
     val example: AiExampleItem? = null
 )
 
+@Immutable
 @Serializable
 data class AiPhraseItem(
     val en: String = "",
     val ar: List<String> = emptyList()
 )
 
+@Immutable
 @Serializable
 data class AiWordDetailJson(
     val syllables: String = "",

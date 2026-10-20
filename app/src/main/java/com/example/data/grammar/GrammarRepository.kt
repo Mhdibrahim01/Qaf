@@ -451,7 +451,9 @@ class GrammarRepository(
         wrongAnswer: String
     ): String? = withContext(Dispatchers.IO) {
         val cacheKey = buildMistakeCacheKey(lessonId, prompt, wrongAnswer)
-        dao.getAiCache(cacheKey)?.detailedExplanationAr?.ifBlank { null }
+        dao.getAiCache(cacheKey)?.detailedExplanationAr?.ifBlank { null }?.let {
+            com.example.data.ai.AiPromptContract.sanitizeAiPlainText(it)
+        }
     }
 
     suspend fun saveMistakeExplanationToCache(
@@ -461,6 +463,7 @@ class GrammarRepository(
         explanationAr: String
     ) = withContext(Dispatchers.IO) {
         val cacheKey = buildMistakeCacheKey(lessonId, prompt, wrongAnswer)
+        val cleanExplanation = com.example.data.ai.AiPromptContract.sanitizeAiPlainText(explanationAr)
         dao.upsertAiCache(
             AiCacheEntity(
                 cacheKey = cacheKey,
@@ -469,7 +472,7 @@ class GrammarRepository(
                 syllables = "",
                 arabicSummary = "Mistake: $wrongAnswer",
                 extraExamplesJson = "",
-                detailedExplanationAr = explanationAr,
+                detailedExplanationAr = cleanExplanation,
                 updatedAt = System.currentTimeMillis()
             )
         )
@@ -478,7 +481,10 @@ class GrammarRepository(
     private fun buildMistakeCacheKey(lessonId: String, prompt: String, wrongAnswer: String): String {
         val cleanPrompt = prompt.trim().lowercase().replace(Regex("[^a-z0-9]"), "_").take(40)
         val cleanAnswer = wrongAnswer.trim().lowercase().replace(Regex("[^a-z0-9]"), "_").take(30)
-        return "mistake:${lessonId}:$cleanPrompt:$cleanAnswer"
+        return com.example.data.ai.AiPromptContract.versionedCacheKey(
+            namespace = "mistake",
+            rawKey = "${lessonId}:$cleanPrompt:$cleanAnswer"
+        )
     }
 
     private fun loadAssetJsonString(assetPath: String): String? {

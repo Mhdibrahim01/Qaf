@@ -276,6 +276,12 @@ fun GrammarLessonListScreen(
         filteredLessons.groupBy { it.level.uppercase() }
     }
 
+    val doneCountByLevel = remember(groupedByLevel, progressMap) {
+        groupedByLevel.mapValues { (_, list) ->
+            list.count { progressMap[it.id]?.isCompleted == true }
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -290,7 +296,7 @@ fun GrammarLessonListScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // 1. Compact Header & Action Pills Bar (No overlapping bottom FAB)
-            item {
+            item(key = "grammar_header_controls", contentType = "header") {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -465,7 +471,11 @@ fun GrammarLessonListScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             contentPadding = PaddingValues(end = 24.dp)
                         ) {
-                            items(availableLevels) { level ->
+                            items(
+                                items = availableLevels,
+                                key = { it },
+                                contentType = { "level_chip" }
+                            ) { level ->
                                 val isSelected = selectedLevelFilter == level
                                 val count = if (level == "ALL") lessons.size else (levelCounts[level] ?: 0)
                                 FilterChip(
@@ -521,7 +531,11 @@ fun GrammarLessonListScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 contentPadding = PaddingValues(end = 24.dp)
                             ) {
-                                items(availableTopics) { topic ->
+                                items(
+                                    items = availableTopics,
+                                    key = { it },
+                                    contentType = { "topic_chip" }
+                                ) { topic ->
                                     val isSelected = selectedTopicFilter == topic
                                     FilterChip(
                                         selected = isSelected,
@@ -608,7 +622,7 @@ fun GrammarLessonListScreen(
             }
 
             if (lessons.isEmpty()) {
-                item {
+                item(key = "grammar_loading", contentType = "loading") {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
@@ -629,7 +643,7 @@ fun GrammarLessonListScreen(
                     }
                 }
             } else if (filteredLessons.isEmpty()) {
-                item {
+                item(key = "grammar_empty", contentType = "empty") {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
@@ -671,7 +685,7 @@ fun GrammarLessonListScreen(
             }
 
             groupedByLevel.forEach { (level, levelLessons) ->
-                item {
+                item(key = "level_header_$level", contentType = "level_header") {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -702,7 +716,7 @@ fun GrammarLessonListScreen(
                                 color = TextMuted
                             )
                         }
-                        val doneInLevel = levelLessons.count { progressMap[it.id]?.isCompleted == true }
+                        val doneInLevel = doneCountByLevel[level] ?: 0
                         if (doneInLevel > 0) {
                             Text(
                                 text = "$doneInLevel/${levelLessons.size} done",
@@ -714,7 +728,11 @@ fun GrammarLessonListScreen(
                     }
                 }
 
-                items(levelLessons, key = { it.id }) { lesson ->
+                items(
+                    items = levelLessons,
+                    key = { it.id },
+                    contentType = { "grammar_lesson_card" }
+                ) { lesson ->
                     val progress = progressMap[lesson.id]
                     LessonCard(
                         lesson = lesson,
@@ -810,8 +828,9 @@ fun LessonCard(
                     color = TextPrimary,
                     fontWeight = FontWeight.Bold
                 )
+                val cleanedTitleAr = remember(lesson.titleAr) { cleanGrammarArabicTitle(lesson.titleAr) }
                 BidiText(
-                    text = cleanGrammarArabicTitle(lesson.titleAr),
+                    text = cleanedTitleAr,
                     style = ArabicTypography.bodyMedium,
                     color = TextSecondary
                 )

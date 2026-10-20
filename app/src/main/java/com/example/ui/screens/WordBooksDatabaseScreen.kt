@@ -112,6 +112,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import com.example.data.importer.DataImportRepository
 import com.example.data.importer.ImportProgressState
@@ -576,7 +577,7 @@ private fun DecksLibraryGrid(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             // Mode Switcher: Word Books | Flashcards
-            item {
+            item(key = "mode_switcher", contentType = "mode_switcher") {
                 BooksModeSwitcher(
                     isFlashcardsActive = false,
                     dueTodayCount = reviewDueTodayCount,
@@ -585,7 +586,7 @@ private fun DecksLibraryGrid(
                 )
             }
 
-            item {
+            item(key = "import_progress_banner", contentType = "import_banner") {
                 ImportProgressBanner(
                     importState = importState,
                     totalEntriesCount = totalEntriesCount,
@@ -594,7 +595,7 @@ private fun DecksLibraryGrid(
             }
 
             // Page Intro (Figma 03-books.png)
-            item {
+            item(key = "page_intro", contentType = "page_intro") {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -625,7 +626,7 @@ private fun DecksLibraryGrid(
             }
 
             // Stats Grid (3 columns: Total words, Mastered, Favorites)
-            item {
+            item(key = "stats_grid", contentType = "stats_grid") {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(9.dp)
@@ -649,7 +650,7 @@ private fun DecksLibraryGrid(
             }
 
             // Section Heading: COLLECTIONS / Recommended for you
-            item {
+            item(key = "collections_heading", contentType = "collections_heading") {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -681,7 +682,11 @@ private fun DecksLibraryGrid(
             }
 
             // Numbered Book Cards
-            itemsIndexed(decks, key = { _, deck -> deck.id }) { index, deck ->
+            itemsIndexed(
+                items = decks,
+                key = { _, deck -> deck.id },
+                contentType = { _, _ -> "numbered_book_card" }
+            ) { index, deck ->
                 NumberedBookCard(
                     deck = deck,
                     index = index,
@@ -764,8 +769,9 @@ fun NumberedBookCard(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.Top
         ) {
+            val formattedIndex = remember(index) { String.format(Locale.US, "%02d", index + 1) }
             Text(
-                text = String.format(Locale.US, "%02d", index + 1),
+                text = formattedIndex,
                 style = MaterialTheme.typography.labelMedium.copy(
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF4F4F57),
@@ -790,8 +796,9 @@ fun NumberedBookCard(
                 )
 
                 if (deck.nameAr.isNotBlank()) {
+                    val isolatedNameAr = remember(deck.nameAr) { isolateLatin(deck.nameAr) }
                     ArabicText(
-                        text = isolateLatin(deck.nameAr),
+                        text = isolatedNameAr,
                         style = ArabicTypography.labelMedium.copy(
                             fontWeight = FontWeight.SemiBold,
                             color = TextSecondary,
@@ -802,13 +809,15 @@ fun NumberedBookCard(
                     )
                 }
 
-                val metaText = buildString {
-                    append("${formatNumber(deck.rowCount)} words")
-                    if (deck.category.isNotBlank() && deck.category != deck.name) {
-                        append(" • ${deck.category}")
-                    }
-                    if (progressPercent > 0) {
-                        append(" • $progressPercent% complete")
+                val metaText = remember(deck.rowCount, deck.category, deck.name, progressPercent) {
+                    buildString {
+                        append("${formatNumber(deck.rowCount)} words")
+                        if (deck.category.isNotBlank() && deck.category != deck.name) {
+                            append(" • ${deck.category}")
+                        }
+                        if (progressPercent > 0) {
+                            append(" • $progressPercent% complete")
+                        }
                     }
                 }
 
@@ -967,7 +976,7 @@ private fun PagedDeckWordListScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp)
         ) {
             // Header + Search + LEVEL/STATUS Filter Card + Count/Sort Bar
-            item(key = "word_book_header_and_filters") {
+            item(key = "word_book_header_and_filters", contentType = "header_and_filters") {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -1252,7 +1261,7 @@ private fun PagedDeckWordListScreen(
             // 5. Word List Content
             when {
                 pagedEntries.loadState.refresh is LoadState.Loading && pagedEntries.itemCount == 0 -> {
-                    item(key = "loading_state") {
+                    item(key = "loading_state", contentType = "loading_state") {
                         LoadingState(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1264,7 +1273,7 @@ private fun PagedDeckWordListScreen(
                 }
                 pagedEntries.loadState.refresh is LoadState.Error && pagedEntries.itemCount == 0 -> {
                     val err = (pagedEntries.loadState.refresh as LoadState.Error).error
-                    item(key = "error_state") {
+                    item(key = "error_state", contentType = "error_state") {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1310,7 +1319,7 @@ private fun PagedDeckWordListScreen(
                         else ->
                             "لا توجد نتائج مطابقة"
                     }
-                    item(key = "empty_state") {
+                    item(key = "empty_state", contentType = "empty_state") {
                         EmptyState(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1323,16 +1332,18 @@ private fun PagedDeckWordListScreen(
                     }
                 }
                 else -> {
+                    val itemCount = pagedEntries.itemCount
                     items(
-                        count = pagedEntries.itemCount,
-                        key = pagedEntries.itemKey { it.id }
+                        count = itemCount,
+                        key = pagedEntries.itemKey { "${it.deck}_${it.id}_${it.text}" },
+                        contentType = pagedEntries.itemContentType { "word_entry_row" }
                     ) { index ->
                         val entry = pagedEntries[index]
                         if (entry != null) {
                             val cardKey = "${entry.deck}:${entry.text.trim().lowercase()}"
                             val prog = progressMap[cardKey]
                             val isFirst = index == 0
-                            val isLast = index == pagedEntries.itemCount - 1
+                            val isLast = index == itemCount - 1
                             WordBookEntryRow(
                                 entry = entry,
                                 isMastered = prog?.isMastered ?: false,
@@ -1350,7 +1361,7 @@ private fun PagedDeckWordListScreen(
                     }
 
                     if (pagedEntries.loadState.append is LoadState.Loading) {
-                        item(key = "append_loading") {
+                        item(key = "append_loading", contentType = "append_loading") {
                             LoadingState(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -1359,7 +1370,7 @@ private fun PagedDeckWordListScreen(
                             )
                         }
                     } else if (pagedEntries.loadState.append is LoadState.Error) {
-                        item(key = "append_error") {
+                        item(key = "append_error", contentType = "append_error") {
                             val appendErr = (pagedEntries.loadState.append as LoadState.Error).error
                             ErrorState(
                                 messageEn = appendErr.localizedMessage ?: "Failed to load more words",
@@ -1421,11 +1432,17 @@ fun posShortLabel(pos: String): String {
     }
 }
 
+private val ARABIC_MEANING_SPLIT_REGEX = Regex("[;؛\\n]+")
+private val ROW_SHAPE_SINGLE = RoundedCornerShape(16.dp)
+private val ROW_SHAPE_FIRST = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+private val ROW_SHAPE_LAST = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
+private val ROW_SHAPE_MIDDLE = RoundedCornerShape(0.dp)
+
 fun parseArabicMeaningGroups(pos: String, arabic: String): List<Pair<String, String>> {
     val cleanArabic = arabic.trim()
     if (cleanArabic.isEmpty()) return emptyList()
 
-    val rawParts = cleanArabic.split(Regex("[;؛\\n]+"))
+    val rawParts = cleanArabic.split(ARABIC_MEANING_SPLIT_REGEX)
         .map { it.trim() }
         .filter { it.isNotEmpty() }
 
@@ -1519,10 +1536,10 @@ fun WordBookEntryRow(
     modifier: Modifier = Modifier
 ) {
     val rowShape = when {
-        isFirstInCard && isLastInCard -> RoundedCornerShape(16.dp)
-        isFirstInCard -> RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
-        isLastInCard -> RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
-        else -> RoundedCornerShape(0.dp)
+        isFirstInCard && isLastInCard -> ROW_SHAPE_SINGLE
+        isFirstInCard -> ROW_SHAPE_FIRST
+        isLastInCard -> ROW_SHAPE_LAST
+        else -> ROW_SHAPE_MIDDLE
     }
 
     val posLower = remember(entry.pos) {
@@ -1537,7 +1554,7 @@ fun WordBookEntryRow(
     }
     val formattedArabic = remember(entry.arabic) {
         entry.arabic
-            .split(Regex("[;؛\\n]+"))
+            .split(ARABIC_MEANING_SPLIT_REGEX)
             .map { it.trim() }
             .filter { it.isNotEmpty() }
             .take(3)

@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan for wiring ai_word_details.json (10,317 pre-seeded offline dictionary profiles), registering all 5 new specialized vocabulary decks (CEFR C1, PTE Academic, Business English, Job Interview & Career, Medical & Healthcare), and enabling auto-update/upsert across Word Books, Flashcards, Study Plan, and Data Check.",
-  "updatedAt": "2026-10-20T10:18:19.725203691Z",
+  "summary": "Implementation plan for establishing a Single Source of Truth (SSOT) across UI density/font scaling, bundled bilingual typography, centralized design tokens, and versioned AI prompt caching so the physical phone APK and AI Studio preview emulator render and behave identically.",
+  "updatedAt": "2026-10-20T11:55:45.499173099Z",
   "requestFeedback": true,
   "userFacing": true
 }

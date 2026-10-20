@@ -138,13 +138,17 @@ fun HomeScreen(
     val scrollState = rememberScrollState()
 
     val studyStateByDeck = remember(deckStudyStates) { deckStudyStates.associateBy { it.deckId } }
-    val mostRecentStudyState = deckStudyStates.firstOrNull {
-        it.deckId != DataImportRepository.DUE_TODAY_DECK_ID
+    val mostRecentStudyState = remember(deckStudyStates) {
+        deckStudyStates.firstOrNull {
+            it.deckId != DataImportRepository.DUE_TODAY_DECK_ID
+        }
     }
-    val continueDeckId = mostRecentStudyState?.deckId ?: "oxford5000"
-    val continueDeck = decks.find { it.id == continueDeckId }
-    val continueCardPosition = (mostRecentStudyState?.lastCardIndex ?: 0) + 1
-    val continueTotalCards = (continueDeck?.uniqueWordCount ?: continueDeck?.rowCount ?: 0).coerceAtLeast(1)
+    val continueDeckId = remember(mostRecentStudyState) { mostRecentStudyState?.deckId ?: "oxford5000" }
+    val continueDeck = remember(decks, continueDeckId) { decks.find { it.id == continueDeckId } }
+    val continueCardPosition = remember(mostRecentStudyState) { (mostRecentStudyState?.lastCardIndex ?: 0) + 1 }
+    val continueTotalCards = remember(continueDeck) {
+        (continueDeck?.uniqueWordCount ?: continueDeck?.rowCount ?: 0).coerceAtLeast(1)
+    }
 
     // Filter valid visible decks (hide internal saved words deck from library cards)
     val displayDecks = remember(decks) {
