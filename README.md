@@ -1,4 +1,4 @@
-# 📖 قاف | Qaf (WordBooks v2)
+# 📖 قاف | Qaf
 ### The Ultimate Intelligent English Learning Platform • تطبيق تعلّم وممارسة الإنجليزية الذكي
 
 <div align="center">
