@@ -29,12 +29,13 @@ android {
     create("release") {
       val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
       storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD")
+      storePassword = System.getenv("STORE_PASSWORD") ?: "wordbooks2026"
       keyAlias = "upload"
-      keyPassword = System.getenv("KEY_PASSWORD")
+      keyPassword = System.getenv("KEY_PASSWORD") ?: "wordbooks2026"
     }
+    val customDebugKeystore = file("${rootDir}/debug.keystore")
     create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
+      storeFile = if (customDebugKeystore.exists()) customDebugKeystore else signingConfigs.getByName("debug").storeFile
       storePassword = "android"
       keyAlias = "androiddebugkey"
       keyPassword = "android"
@@ -53,7 +54,12 @@ android {
     debug {
       // Do not remove or modify this signingConfig assignment. It is necessary for Android apps in
       // AI Studio.
-      signingConfig = signingConfigs.getByName("debugConfig")
+      val customDebugKeystore = file("${rootDir}/debug.keystore")
+      signingConfig = if (customDebugKeystore.exists()) {
+        signingConfigs.getByName("debugConfig")
+      } else {
+        signingConfigs.getByName("debug")
+      }
     }
   }
   compileOptions {

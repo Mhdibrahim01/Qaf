@@ -51,6 +51,7 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
@@ -1838,7 +1839,7 @@ fun WordBookEntryRow(
             .testTag("word_row_${entry.id}"),
         color = SurfaceDark,
         shape = rowShape,
-        border = BorderStroke(if (isCheckpoint) 1.5.dp else 1.dp, if (isCheckpoint) GoldAccent else BorderDark)
+        border = BorderStroke(1.dp, BorderDark)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
@@ -1906,29 +1907,13 @@ fun WordBookEntryRow(
                             }
                         }
 
-                        if (isCheckpoint) {
-                            Surface(
-                                color = GoldAccent.copy(alpha = 0.2f),
-                                shape = RoundedCornerShape(6.dp),
-                                border = BorderStroke(1.dp, GoldAccent)
-                            ) {
-                                Text(
-                                    text = "📍 Checkpoint",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 10.sp
-                                    ),
-                                    color = GoldAccent,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        } else if (studiedCount > 0 || isMastered) {
+                        if (studiedCount > 0 || isMastered) {
                             Surface(
                                 color = EmeraldAccent.copy(alpha = 0.15f),
                                 shape = RoundedCornerShape(6.dp)
                             ) {
                                 Text(
-                                    text = "✓ Studied",
+                                    text = if (isMastered) "✓ Mastered" else "✓ Studied",
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 10.sp
@@ -1978,7 +1963,7 @@ fun WordBookEntryRow(
                     }
                 }
 
-                // Right: Checkpoint Pin Bookmark & Favorite heart icon
+                // Right: Checkpoint Pin Bookmark, Mastered Check & Favorite heart icon
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
@@ -1997,6 +1982,20 @@ fun WordBookEntryRow(
                                 modifier = Modifier.size(19.dp)
                             )
                         }
+                    }
+
+                    IconButton(
+                        onClick = onToggleMastered,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .testTag("mastered_check_${entry.id}")
+                    ) {
+                        Icon(
+                            imageVector = if (isMastered) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
+                            contentDescription = if (isMastered) "Mastered word" else "Mark as mastered",
+                            tint = if (isMastered) EmeraldAccent else TextMuted,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
 
                     IconButton(

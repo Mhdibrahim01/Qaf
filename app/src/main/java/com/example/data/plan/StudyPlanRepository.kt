@@ -298,19 +298,19 @@ class StudyPlanRepository(
         val tasks = mutableListOf<DailyTaskItem>()
         val now = timeProvider.currentTimeMillis()
 
-        // Task 1: Flashcards (Capped at 30 cards, oldest due first)
+        // Task 1: Flashcards (Capped at 30 cards, oldest due first; fallback to 10 practice cards)
         val dueCount = dao.getDueCardsCount(now)
-        val flashcardTarget = minOf(dueCount, 30)
+        val flashcardTarget = if (dueCount > 0) minOf(dueCount, 30) else 10
         tasks.add(
             DailyTaskItem(
                 id = "task_flashcards",
                 type = "flashcards",
-                titleEn = if (flashcardTarget > 0) "Review Due Flashcards" else "Flashcards Review (All Caught Up)",
-                titleAr = if (flashcardTarget > 0) "مراجعة البطاقات المستحقة ($flashcardTarget بطاقة)" else "البطاقات التعليمية (تمت مراجعة الجميع)",
-                subtitleEn = if (flashcardTarget > 0) "$flashcardTarget cards due today • ${template.review_cards_min} min" else "No cards due • Tap to practice $primaryDeck",
+                titleEn = if (dueCount > 0) "Review Due Flashcards" else "Flashcards Review Practice",
+                titleAr = if (dueCount > 0) "مراجعة البطاقات المستحقة ($flashcardTarget بطاقة)" else "مراجعة البطاقات التعليمية (10 بطاقات)",
+                subtitleEn = if (dueCount > 0) "$flashcardTarget cards due today • ${template.review_cards_min} min" else "10 practice cards • Tap to review ${formatDeckLabel(primaryDeck)}",
                 targetCount = flashcardTarget,
                 completedCount = 0,
-                isCompleted = (flashcardTarget == 0),
+                isCompleted = false,
                 linkedRoute = "flashcards",
                 linkedId = primaryDeck,
                 explanationAr = "التكرار المتباعد يحفظ الكلمات في الذاكرة طويلة المدى."
@@ -507,16 +507,20 @@ class StudyPlanRepository(
         val updatedTasks = tasks.map { task ->
             when (task.type) {
                 "flashcards" -> {
-                    val isDone = task.isCompleted || (task.targetCount == 0) || (cardsRatedToday >= task.targetCount)
+                    val normalizedTarget = if (task.targetCount <= 0) 10 else task.targetCount
+                    val isDone = task.isCompleted || (cardsRatedToday >= normalizedTarget)
                     task.copy(
-                        completedCount = if (isDone) task.targetCount else minOf(cardsRatedToday, task.targetCount),
+                        targetCount = normalizedTarget,
+                        completedCount = if (isDone) normalizedTarget else minOf(cardsRatedToday, normalizedTarget),
                         isCompleted = isDone
                     )
                 }
                 "new_words" -> {
-                    val isDone = task.isCompleted || (task.targetCount == 0) || (newWordsRatedToday >= task.targetCount)
+                    val normalizedTarget = if (task.targetCount <= 0) 5 else task.targetCount
+                    val isDone = task.isCompleted || (newWordsRatedToday >= normalizedTarget)
                     task.copy(
-                        completedCount = if (isDone) task.targetCount else minOf(newWordsRatedToday, task.targetCount),
+                        targetCount = normalizedTarget,
+                        completedCount = if (isDone) normalizedTarget else minOf(newWordsRatedToday, normalizedTarget),
                         isCompleted = isDone
                     )
                 }
@@ -574,7 +578,7 @@ class StudyPlanRepository(
      * Toggles a task's manual completion state so users can both check and uncheck tasks.
      */
     suspend fun markTaskCompletedManually(date: String, taskId: String): DailyChecklistEntity {
-        val checklist = getOrCreateDailyChecklist(date)
+        val checklist = dao.getDailyChecklist(date) ?: getOrCreateDailyChecklist(date)
         val tasks = try {
             json.decodeFromString<List<DailyTaskItem>>(checklist.tasksJson)
         } catch (e: Exception) {
@@ -584,9 +588,13 @@ class StudyPlanRepository(
         val updated = tasks.map { task ->
             if (task.id == taskId) {
                 val nextCompleted = !task.isCompleted
+                val normalizedTarget = if (task.targetCount <= 0) {
+                    if (task.type == "flashcards") 10 else 1
+                } else task.targetCount
                 task.copy(
+                    targetCount = normalizedTarget,
                     isCompleted = nextCompleted,
-                    completedCount = if (nextCompleted) task.targetCount.coerceAtLeast(1) else 0
+                    completedCount = if (nextCompleted) normalizedTarget else 0
                 )
             } else {
                 task
@@ -596,8 +604,9 @@ class StudyPlanRepository(
         val entity = checklist.copy(
             tasksJson = json.encodeToString(updated),
             completedCount = updated.count { it.isCompleted },
+            totalCount = updated.size,
             isCompleted = allDone,
-            completedAt = if (allDone) timeProvider.currentTimeMillis() else null
+            completedAt = if (allDone) checklist.completedAt ?: timeProvider.currentTimeMillis() else null
         )
         dao.upsertDailyChecklist(entity)
         return entity

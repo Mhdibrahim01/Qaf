@@ -404,10 +404,10 @@ private fun TodayPlanCard(
         tasks.take(4)
     } else {
         listOf(
-            DailyTaskItem(id = "1", type = "flashcards", titleEn = "Review due flashcards", titleAr = "مراجعة البطاقات المستحقة", targetCount = 20, isCompleted = completedTasks >= 1),
-            DailyTaskItem(id = "2", type = "new_words", titleEn = "Learn 10 new words", titleAr = "تعلم ١٠ كلمات جديدة", targetCount = 10, isCompleted = completedTasks >= 2),
-            DailyTaskItem(id = "3", type = "reading", titleEn = "Read a short story", titleAr = "قراءة قصة قصيرة متدرجة", targetCount = 1, isCompleted = completedTasks >= 3),
-            DailyTaskItem(id = "4", type = "grammar", titleEn = "Practice grammar lesson", titleAr = "تطبيق على درس القواعد", targetCount = 1, isCompleted = completedTasks >= 4)
+            DailyTaskItem(id = "task_flashcards", type = "flashcards", titleEn = "Review due flashcards", titleAr = "مراجعة البطاقات المستحقة", targetCount = 20, isCompleted = false),
+            DailyTaskItem(id = "task_new_words", type = "new_words", titleEn = "Learn 10 new words", titleAr = "تعلم ١٠ كلمات جديدة", targetCount = 10, isCompleted = false),
+            DailyTaskItem(id = "task_reading", type = "reading", titleEn = "Read a short story", titleAr = "قراءة قصة قصيرة متدرجة", targetCount = 1, isCompleted = false),
+            DailyTaskItem(id = "task_grammar", type = "grammar", titleEn = "Practice grammar lesson", titleAr = "تطبيق على درس القواعد", targetCount = 1, isCompleted = false)
         )
     }
 
