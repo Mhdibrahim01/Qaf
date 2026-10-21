@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -136,10 +137,6 @@ fun HomeScreen(
     todayChecklist: DailyChecklistEntity? = null,
     studyStreak: Int = 0,
     studyPlanProfile: StudyPlanProfileEntity? = null,
-    kickoffWords: List<EntryEntity> = emptyList(),
-    isKickoffDismissed: Boolean = false,
-    onStartKickoffSession: () -> Unit = {},
-    onDismissKickoffSession: () -> Unit = {},
     onOpenDeck: (String) -> Unit = {},
     onOpenFlashcardsForDeck: (String) -> Unit = {},
     onOpenPlanScreen: () -> Unit = {},
@@ -195,17 +192,6 @@ fun HomeScreen(
                 studyStreak = studyStreak,
                 studyPlanProfile = studyPlanProfile
             )
-
-            // 2. 5-Min Kickoff Starter Session Card (prominently displayed post-onboarding)
-            if (kickoffWords.isNotEmpty() && !isKickoffDismissed) {
-                KickoffStarterCard(
-                    words = kickoffWords,
-                    level = studyPlanProfile?.level ?: "B2",
-                    goal = studyPlanProfile?.goal ?: "general_fluency",
-                    onStartKickoffSession = onStartKickoffSession,
-                    onDismissKickoffSession = onDismissKickoffSession
-                )
-            }
 
             if (isTablet) {
                 // Two-column tablet layout
@@ -504,199 +490,8 @@ private fun WelcomeSection(
 }
 
 /**
- * High-priority Post-Onboarding Starter Session Card.
- * Displays 5 curated vocabulary words matching the user's level and selected starting deck
- * with an immediate "Start 5-Min Session" call to action.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun KickoffStarterCard(
-    words: List<EntryEntity>,
-    level: String,
-    goal: String,
-    onStartKickoffSession: () -> Unit,
-    onDismissKickoffSession: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val goalTitle = when (goal) {
-        "ielts" -> "IELTS Vocabulary"
-        "it_career" -> "IT & Tech Vocabulary"
-        else -> "Core Oxford Vocabulary"
-    }
-
-    Surface(
-        color = SurfaceElevatedDark,
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.5.dp, EmeraldAccent.copy(alpha = 0.5f)),
-        modifier = modifier
-            .fillMaxWidth()
-            .testTag("home_kickoff_starter_card")
-    ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            // Header Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Surface(
-                        color = EmeraldAccentBg,
-                        shape = CircleShape,
-                        border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.3f)),
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = null,
-                                tint = EmeraldAccent,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = "5-Min Kickoff Session",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = TextPrimary
-                            )
-                            Surface(
-                                color = EmeraldAccentBg,
-                                shape = PillShape,
-                                border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.4f))
-                            ) {
-                                Text(
-                                    text = "5 Words",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
-                                    color = EmeraldAccent,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                        BidiText(
-                            text = "جلسة الانطلاق السريعة: أول 5 كلمات لمستوى $level · $goalTitle",
-                            style = ArabicTypography.labelSmall,
-                            color = TextSecondary,
-                            fillMaxWidth = false,
-                            textAlign = TextAlign.Start
-                        )
-                    }
-                }
-
-                IconButton(
-                    onClick = onDismissKickoffSession,
-                    modifier = Modifier
-                        .size(32.dp)
-                        .testTag("btn_dismiss_kickoff_session")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Dismiss kickoff session",
-                        tint = TextMuted,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-
-            // Word Preview Chips
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                words.take(5).forEachIndexed { index, word ->
-                    Surface(
-                        color = BackgroundDark,
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, BorderDark),
-                        modifier = Modifier.testTag("kickoff_word_chip_$index")
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = word.text,
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                color = TextPrimary
-                            )
-                            if (word.pos.isNotBlank()) {
-                                Text(
-                                    text = "(${word.pos})",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                    color = TextMuted
-                                )
-                            }
-                            if (word.arabic.isNotBlank()) {
-                                Text(
-                                    text = word.arabic,
-                                    style = ArabicTypography.labelSmall.copy(fontSize = 11.sp),
-                                    color = EmeraldAccent
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Action Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(
-                    onClick = onStartKickoffSession,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = EmeraldAccent,
-                        contentColor = BackgroundDark
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.testTag("btn_start_kickoff_session")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Start 5-Min Session · ابدأ الآن",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
-                    )
-                }
-
-                TextButton(
-                    onClick = onDismissKickoffSession,
-                    modifier = Modifier.testTag("btn_later_kickoff_session")
-                ) {
-                    Text(
-                        text = "Later · لاحقاً",
-                        color = TextMuted,
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
  * Section 2: Today's Study Plan Card
- * Squircle 20dp card, calendar tile, completed count, progress bar, and 4 interactive tasks.
+ * Synchronized with PlanScreen: renders personalized tasks, progress fraction, level badges, and action buttons.
  */
 @Composable
 private fun TodayPlanCard(
@@ -820,9 +615,9 @@ private fun TodayPlanCard(
                 trackColor = BorderDark
             )
 
-            // Tasks List (2-column on wide phone/tablet, stacked cleanly)
+            // Tasks List (synced task rendering)
             Column(
-                verticalArrangement = Arrangement.spacedBy(7.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 displayTasks.forEach { task ->
@@ -831,13 +626,13 @@ private fun TodayPlanCard(
                         onClick = {
                             val targetRoute = when (task.type) {
                                 "flashcards" -> "flashcards"
-                                "new_words" -> "database"
+                                "new_words" -> "new_words"
                                 "reading" -> "reading"
                                 "grammar" -> "grammar"
                                 "quiz" -> "plan"
                                 else -> "plan"
                             }
-                            onNavigateToTask(targetRoute, task.linkedId)
+                            onNavigateToTask(targetRoute, task.linkedId.ifBlank { task.id })
                         },
                         onToggleComplete = {
                             onToggleTaskCompleted(todayDateStr, task.id)
@@ -860,7 +655,7 @@ private fun TodayPlanCard(
                     shape = RoundedCornerShape(10.dp),
                     border = BorderStroke(1.dp, GoldAccentBorder),
                     modifier = Modifier
-                        .heightIn(min = 48.dp)
+                        .heightIn(min = 44.dp)
                         .testTag("btn_home_open_plan")
                 ) {
                     Text(
@@ -881,7 +676,7 @@ private fun TodayPlanCard(
 }
 
 /**
- * Task Row inside Today's Study Plan
+ * Task Row inside Today's Study Plan (Upgraded & synced with PlanScreen)
  */
 @Composable
 private fun TaskCheckRow(
@@ -890,98 +685,173 @@ private fun TaskCheckRow(
     onToggleComplete: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val taskProgress = if (task.targetCount > 0) {
+        (task.completedCount.toFloat() / task.targetCount.toFloat()).coerceIn(0f, 1f)
+    } else {
+        if (task.isCompleted) 1f else 0f
+    }
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 48.dp)
             .clip(SquircleTaskShape)
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            .testTag("home_task_item_${task.type}"),
         color = SurfaceElevatedDark,
         shape = SquircleTaskShape,
-        border = BorderStroke(1.dp, BorderSubtle)
+        border = BorderStroke(1.dp, if (task.isCompleted) EmeraldAccent.copy(alpha = 0.55f) else BorderSubtle)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Task check squircle with enlarged 44.dp touch target (clickable to toggle complete directly)
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .clickable { onToggleComplete() }
-                    .testTag("task_checkbox_${task.id}"),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // Task check squircle with 44dp touch target
                 Box(
                     modifier = Modifier
-                        .size(24.dp)
-                        .clip(SquircleCheckShape)
-                        .background(if (task.isCompleted) GoldAccent else Color.Transparent)
-                        .border(
-                            width = 1.dp,
-                            color = if (task.isCompleted) GoldAccent else Color(0xFF55555E),
-                            shape = SquircleCheckShape
-                        ),
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .clickable { onToggleComplete() }
+                        .testTag("home_task_checkbox_${task.id}"),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (task.isCompleted) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Completed",
-                            tint = OnGoldDark,
-                            modifier = Modifier.size(14.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(SquircleCheckShape)
+                            .background(if (task.isCompleted) EmeraldAccent else Color.Transparent)
+                            .border(
+                                width = 1.dp,
+                                color = if (task.isCompleted) EmeraldAccent else Color(0xFF55555E),
+                                shape = SquircleCheckShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (task.isCompleted) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Completed",
+                                tint = BackgroundDark,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Title, Arabic Title, and Subtitle
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = task.titleEn,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                textDecoration = if (task.isCompleted) androidx.compose.ui.text.style.TextDecoration.LineThrough else androidx.compose.ui.text.style.TextDecoration.None
+                            ),
+                            color = if (task.isCompleted) TextMuted else TextPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+
+                        if (task.targetCount > 1) {
+                            Surface(
+                                color = if (task.isCompleted) EmeraldAccent.copy(alpha = 0.15f) else SurfaceDark,
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    text = "${task.completedCount}/${task.targetCount}",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
+                                    color = if (task.isCompleted) EmeraldAccent else GoldAccent,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    if (task.titleAr.isNotBlank()) {
+                        BidiText(
+                            text = task.titleAr,
+                            style = ArabicTypography.labelSmall.copy(fontSize = 11.sp),
+                            color = if (task.isCompleted) TextMuted else TextSecondary,
+                            fillMaxWidth = false,
+                            maxLines = 1,
+                            textAlign = TextAlign.Start
+                        )
+                    }
+
+                    if (task.subtitleEn.isNotBlank()) {
+                        Text(
+                            text = task.subtitleEn,
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            color = GoldAccent
                         )
                     }
                 }
-            }
 
-            // Task title and Arabic subtitle
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = task.titleEn,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 12.sp
+                // Typed action button matching PlanScreen
+                val actionLabel = when (task.type) {
+                    "quiz" -> if (task.isCompleted) "Retake" else "Quiz"
+                    "flashcards" -> if (task.isCompleted) "Review" else "Start"
+                    "new_words" -> if (task.isCompleted) "Words" else "Learn"
+                    "grammar" -> if (task.isCompleted) "Lesson" else "Study"
+                    "reading" -> if (task.isCompleted) "Story" else "Read"
+                    "sentences" -> "Practice"
+                    "correction_reviews" -> "Review"
+                    else -> "Open"
+                }
+
+                Button(
+                    onClick = onClick,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (task.isCompleted) SurfaceDark else GoldAccent,
+                        contentColor = if (task.isCompleted) GoldAccent else BackgroundDark
                     ),
-                    color = if (task.isCompleted) TextMuted else TextPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (task.titleAr.isNotBlank()) {
-                    BidiText(
-                        text = task.titleAr,
-                        style = ArabicTypography.labelSmall.copy(
-                            fontSize = 10.sp
-                        ),
-                        color = TextSecondary,
-                        fillMaxWidth = false,
-                        maxLines = 1,
-                        textAlign = TextAlign.Start
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier
+                        .heightIn(min = 32.dp)
+                        .testTag("btn_home_task_action_${task.type}")
+                ) {
+                    Text(actionLabel, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    Spacer(Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        modifier = Modifier.size(11.dp)
                     )
                 }
             }
 
-            // Estimated duration badge
-            val estMin = when (task.type) {
-                "flashcards" -> 8
-                "new_words" -> 10
-                "reading" -> 12
-                "grammar" -> 10
-                "sentences" -> 6
-                else -> 8
-            }
-            Text(
-                text = "$estMin min",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 10.sp,
+            if (task.explanationAr.isNotBlank()) {
+                BidiText(
+                    text = task.explanationAr,
+                    style = ArabicTypography.labelSmall.copy(fontSize = 10.sp),
                     color = TextMuted
                 )
-            )
+            }
+
+            if (task.targetCount > 1) {
+                LinearProgressIndicator(
+                    progress = { taskProgress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(2.dp)),
+                    color = if (task.isCompleted) EmeraldAccent else GoldAccent,
+                    trackColor = SurfaceDark
+                )
+            }
         }
     }
 }

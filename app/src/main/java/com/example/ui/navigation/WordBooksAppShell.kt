@@ -397,13 +397,6 @@ fun WordBooksAppShell(
                         todayChecklist = todayChecklist,
                         studyStreak = studyStreak,
                         studyPlanProfile = studyPlanProfile,
-                        kickoffWords = kickoffWords,
-                        isKickoffDismissed = isKickoffDismissed,
-                        onStartKickoffSession = {
-                            wordBooksViewModel.startKickoffStarterSession()
-                            navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
-                        },
-                        onDismissKickoffSession = wordBooksViewModel::dismissKickoffStarter,
                         onOpenDeck = { deckId ->
                             wordBooksViewModel.selectDeck(deckId)
                             navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
@@ -418,8 +411,8 @@ fun WordBooksAppShell(
                         onNavigateToTask = { route, linkedId ->
                             wordBooksViewModel.preparePlanTaskNavigation(route, linkedId)
                             when (route) {
-                                "flashcards" -> navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
-                                "database" -> navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
+                                "flashcards", "new_words" -> navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
+                                "word_books", "database" -> navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
                                 "reading" -> navController.navigate(AppRoute.Reading) { launchSingleTop = true }
                                 "grammar" -> navController.navigate(AppRoute.Grammar) { launchSingleTop = true }
                                 else -> navController.navigate(AppRoute.Plan) { launchSingleTop = true }
@@ -768,8 +761,8 @@ fun WordBooksAppShell(
                         onNavigateToTaskRoute = { route: String, linkedId: String ->
                             wordBooksViewModel.preparePlanTaskNavigation(route, linkedId)
                             when (route) {
-                                "flashcards" -> navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
-                                "word_books" -> navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
+                                "flashcards", "new_words" -> navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
+                                "word_books", "database" -> navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
                                 "grammar" -> navController.navigate(AppRoute.Grammar) { launchSingleTop = true }
                                 "reading" -> navController.navigate(AppRoute.Reading) { launchSingleTop = true }
                                 "sentences" -> navController.navigate(AppRoute.Sentences) { launchSingleTop = true }
@@ -778,6 +771,7 @@ fun WordBooksAppShell(
                                         launchSingleTop = true
                                     }
                                 }
+                                else -> navController.navigate(AppRoute.Plan) { launchSingleTop = true }
                             }
                         },
                         onOpenDictionaryWord = { word ->

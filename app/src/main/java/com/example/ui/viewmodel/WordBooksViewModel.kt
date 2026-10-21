@@ -1920,14 +1920,124 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         return grammarRepository.getLessonById(lessonId)
     }
 
+    fun startFocusedReviewPracticeSession() {
+        viewModelScope.launch {
+            _isFlashcardsLoading.value = true
+            try {
+                val userLevel = studyPlanProfile.value?.level?.ifBlank { "B2" }?.uppercase() ?: "B2"
+                val nowMillis = System.currentTimeMillis()
+                val endOfToday = DataImportRepository.computeEndOfTodayMillis(nowMillis)
+
+                val dueEntries = database.wordBooksDao().getDueTodayEntriesOrdered(endOfToday)
+                val allProgress = database.wordBooksDao().getAllWordProgressList()
+                val progressMap = allProgress.associateBy { it.cardKey }
+
+                val candidates = database.wordBooksDao().getPlacementVocabularyCandidatesForLevel(userLevel, limit = 100)
+                val reviewedLevelEntries = candidates.filter { entry ->
+                    val key = "${entry.deck}:${entry.text.trim().lowercase()}"
+                    val p = progressMap[key]
+                    p != null && p.lastReviewedTimestamp > 0 && !p.isMastered
+                }
+
+                val combined = (dueEntries + reviewedLevelEntries).distinctBy { "${it.deck}:${it.text.trim().lowercase()}" }
+
+                val finalEntries = if (combined.size < 10) {
+                    val unmasteredLevelEntries = candidates.filter { entry ->
+                        val key = "${entry.deck}:${entry.text.trim().lowercase()}"
+                        val p = progressMap[key]
+                        p == null || !p.isMastered
+                    }
+                    (combined + unmasteredLevelEntries).distinctBy { "${it.deck}:${it.text.trim().lowercase()}" }
+                } else {
+                    combined
+                }
+
+                val groupedMap = LinkedHashMap<String, MutableList<EntryEntity>>()
+                for (entry in finalEntries.take(15)) {
+                    val key = "${entry.deck}:${entry.text.trim().lowercase()}"
+                    groupedMap.getOrPut(key) { ArrayList(2) }.add(entry)
+                }
+
+                val cards: List<GroupedWordCard> = groupedMap.map { (cardKey, variants) ->
+                    repository.buildGroupedCardFromEntries(variants, progressMap[cardKey])
+                }.take(10)
+
+                if (cards.isNotEmpty()) {
+                    _flashcardCards.value = cards
+                    _flashcardDeckId.value = DataImportRepository.DUE_TODAY_DECK_ID
+                    _flashcardIndex.value = 0
+                    _isCurrentCardFlipped.value = false
+                } else {
+                    loadFlashcardsForDeck("oxford5000")
+                }
+            } catch (_: Exception) {
+                loadFlashcardsForDeck("oxford5000")
+            } finally {
+                _isFlashcardsLoading.value = false
+            }
+        }
+    }
+
+    fun startFocusedNewWordsSession() {
+        viewModelScope.launch {
+            _isFlashcardsLoading.value = true
+            try {
+                val userLevel = studyPlanProfile.value?.level?.ifBlank { "B2" }?.uppercase() ?: "B2"
+                val selectedDecks = try {
+                    studyPlanProfile.value?.selectedDecksJson?.let {
+                        if (it.isNotBlank()) {
+                            kotlinx.serialization.json.Json.decodeFromString<List<String>>(it)
+                        } else emptyList()
+                    } ?: listOf("oxford5000", "oxford_opal")
+                } catch (_: Exception) {
+                    listOf("oxford5000", "oxford_opal")
+                }
+
+                val newEntries = database.wordBooksDao().getNewWordsForLevelsAndDecks(
+                    levels = listOf(userLevel),
+                    decks = selectedDecks.ifEmpty { listOf("oxford5000", "oxford_opal") },
+                    limit = 20
+                ).ifEmpty {
+                    database.wordBooksDao().getPlacementVocabularyCandidatesForLevel(userLevel, limit = 20)
+                }
+
+                val allProgress = database.wordBooksDao().getAllWordProgressList().associateBy { it.cardKey }
+                val groupedMap = LinkedHashMap<String, MutableList<EntryEntity>>()
+                for (entry in newEntries) {
+                    val key = "${entry.deck}:${entry.text.trim().lowercase()}"
+                    groupedMap.getOrPut(key) { ArrayList(2) }.add(entry)
+                }
+
+                val cards: List<GroupedWordCard> = groupedMap.map { (cardKey, variants) ->
+                    repository.buildGroupedCardFromEntries(variants, allProgress[cardKey])
+                }.take(10)
+
+                if (cards.isNotEmpty()) {
+                    _flashcardCards.value = cards
+                    _flashcardDeckId.value = selectedDecks.firstOrNull() ?: "oxford5000"
+                    _flashcardIndex.value = 0
+                    _isCurrentCardFlipped.value = false
+                } else {
+                    loadFlashcardsForDeck("oxford5000")
+                }
+            } catch (_: Exception) {
+                loadFlashcardsForDeck("oxford5000")
+            } finally {
+                _isFlashcardsLoading.value = false
+            }
+        }
+    }
+
     fun preparePlanTaskNavigation(route: String, linkedId: String?) {
         val safeLinkedId = linkedId.orEmpty()
-        when (route) {
-            "flashcards" -> {
-                val deck = safeLinkedId.ifBlank { "oxford5000" }
-                selectFlashcardDeck(deck)
+        when {
+            route == "flashcards" || safeLinkedId.contains("flashcard") || safeLinkedId.contains("review") -> {
+                startFocusedReviewPracticeSession()
             }
-            "word_books" -> {
+            route == "new_words" || safeLinkedId.contains("new_words") || safeLinkedId.contains("learn") -> {
+                startFocusedNewWordsSession()
+            }
+            route == "word_books" || route == "database" -> {
                 val parts = safeLinkedId.split("|")
                 val deck = parts.getOrNull(0)?.ifBlank { "oxford5000" } ?: "oxford5000"
                 val level = parts.getOrNull(1).orEmpty()
@@ -1943,7 +2053,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                     )
                 }
             }
-            "grammar" -> {
+            route == "grammar" -> {
                 if (safeLinkedId.isNotBlank()) {
                     val existing = grammarLessons.value.find { it.id == safeLinkedId }
                     if (existing != null) {
@@ -1956,7 +2066,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                     }
                 }
             }
-            "reading" -> {
+            route == "reading" -> {
                 if (safeLinkedId.isNotBlank()) {
                     val existing = readingTexts.value.find { it.id == safeLinkedId }
                     if (existing != null) {
