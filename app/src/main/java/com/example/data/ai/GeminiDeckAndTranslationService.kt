@@ -71,7 +71,7 @@ data class GeneratedDeckItem(
  */
 class GeminiDeckAndTranslationService(
     private val dao: WordBooksDao,
-    private val apiKeyProvider: () -> String = { BuildConfig.GEMINI_API_KEY },
+    private val apiKeyProvider: () -> String = { "" },
     private val apiKeysProvider: (() -> List<String>)? = null
 ) {
     private val json = Json {

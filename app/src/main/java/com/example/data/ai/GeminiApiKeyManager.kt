@@ -322,31 +322,21 @@ object GeminiApiKeyManager {
     }
 
     /**
-     * Returns all valid configured keys:
+     * Returns all valid user-configured keys:
      * 1. Active key first
      * 2. Other configured custom keys
-     * 3. Built-in `BuildConfig.GEMINI_API_KEY` automatically kept at the end of the pool as a fallback
+     * Never uses any built-in developer or BuildConfig key.
      */
     fun getAllConfiguredKeys(context: Context): List<String> {
         val items = getConfiguredKeyItems(context)
         val activeKey = items.firstOrNull { it.isActive }?.key
         val otherKeys = items.filter { !it.isActive }.map { it.key }
 
-        val buildKey = sanitizeKey(BuildConfig.GEMINI_API_KEY)
-        val validBuildKey = buildKey.isNotBlank() &&
-            buildKey != "null" &&
-            buildKey != "YOUR_GEMINI_API_KEY" &&
-            buildKey != "MY_GEMINI_API_KEY" &&
-            detectProvider(buildKey) != AiKeyProvider.OAUTH_OR_INVALID
-
         val combined = LinkedHashSet<String>()
         if (!activeKey.isNullOrBlank()) {
             combined.add(activeKey)
         }
         combined.addAll(otherKeys)
-        if (validBuildKey) {
-            combined.add(buildKey)
-        }
         return combined.toList()
     }
 
@@ -423,10 +413,7 @@ object GeminiApiKeyManager {
                     "Custom ($providers key)$suffix"
                 }
             }
-            BuildConfig.GEMINI_API_KEY.isNotBlank() &&
-                BuildConfig.GEMINI_API_KEY != "YOUR_GEMINI_API_KEY" &&
-                BuildConfig.GEMINI_API_KEY != "null" -> "System Key$suffix"
-            mode == TranslationEngineMode.SMART_AUTO -> "Free API Auto-Fallback"
+            mode == TranslationEngineMode.SMART_AUTO -> "Not configured"
             else -> "Not configured"
         }
     }

@@ -43,6 +43,9 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -170,12 +173,50 @@ fun WordBooksAppShell(
     val currentAiWordDetail by wordBooksViewModel.currentAiWordDetail.collectAsStateWithLifecycle()
     val isAiDetailLoading by wordBooksViewModel.isAiDetailLoading.collectAsStateWithLifecycle()
     val aiDetailError by wordBooksViewModel.aiDetailError.collectAsStateWithLifecycle()
+    val onboardingState by wordBooksViewModel.onboardingState.collectAsStateWithLifecycle()
+    val placementQuizState by wordBooksViewModel.placementQuizState.collectAsStateWithLifecycle()
+    val kickoffWords by wordBooksViewModel.kickoffWords.collectAsStateWithLifecycle()
+    val isKickoffDismissed by wordBooksViewModel.isKickoffDismissed.collectAsStateWithLifecycle()
+    val recommendedWordsForLevel by wordBooksViewModel.recommendedWordsForLevel.collectAsStateWithLifecycle()
+    val userLevel = studyPlanProfile?.level?.ifBlank { "B2" } ?: "B2"
     var isSettingsOpen by remember { mutableStateOf(false) }
     var isApiKeyDialogOpen by remember { mutableStateOf(false) }
     val apiKeyTrigger by wordBooksViewModel.apiKeyUpdatedTrigger.collectAsStateWithLifecycle()
     val currentKeySource = remember(apiKeyTrigger) { wordBooksViewModel.getApiKeySource() }
     val customApiKey = remember(apiKeyTrigger) { wordBooksViewModel.getCustomApiKey() }
     val pagedEntries = wordBooksViewModel.pagedEntries.collectAsLazyPagingItems()
+
+    val resolvedOnboarding = onboardingState
+    if (resolvedOnboarding != null && !resolvedOnboarding.onboardingCompleted) {
+        com.example.ui.screens.OnboardingScreen(
+            onboardingState = resolvedOnboarding,
+            importState = importState,
+            totalEntriesCount = totalEntriesCount,
+            placementQuizState = placementQuizState,
+            onCompleteStep1 = wordBooksViewModel::completeOnboardingStep1,
+            onSelectLevel = wordBooksViewModel::selectOnboardingLevel,
+            onCompleteStep2 = wordBooksViewModel::completeOnboardingStep2,
+            onStartPlacementQuiz = wordBooksViewModel::startPlacementQuiz,
+            onAnswerPlacementQuestion = wordBooksViewModel::answerPlacementQuizQuestion,
+            onRetakePlacementQuiz = wordBooksViewModel::retakePlacementQuiz,
+            onUpdateQuizEditableLevel = wordBooksViewModel::updateQuizEditableLevel,
+            onPlacementQuizBack = wordBooksViewModel::handlePlacementQuizBack,
+            onSelectGoal = wordBooksViewModel::selectOnboardingGoal,
+            onSelectMinutesPerDay = wordBooksViewModel::selectOnboardingMinutesPerDay,
+            onSelectStudyDaysPerWeek = wordBooksViewModel::selectOnboardingStudyDaysPerWeek,
+            onCompleteStep3 = wordBooksViewModel::completeOnboardingStep3,
+            onStep3Back = wordBooksViewModel::navigateBackFromStep3,
+            onCompleteStep4 = wordBooksViewModel::completeOnboardingStep4,
+            onStep4Back = wordBooksViewModel::navigateBackFromStep4,
+            initialAllowAi = batchTranslateState.allowAi,
+            onCompleteStep5 = wordBooksViewModel::completeOnboardingStep5,
+            onStep5Back = wordBooksViewModel::navigateBackFromStep5,
+            onSkipOnboarding = wordBooksViewModel::skipOnboarding,
+            onRetryImport = wordBooksViewModel::retryDictionaryImportFromOnboarding,
+            modifier = modifier
+        )
+        return
+    }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
@@ -355,6 +396,14 @@ fun WordBooksAppShell(
                         deckStudyStates = deckStudyStates,
                         todayChecklist = todayChecklist,
                         studyStreak = studyStreak,
+                        studyPlanProfile = studyPlanProfile,
+                        kickoffWords = kickoffWords,
+                        isKickoffDismissed = isKickoffDismissed,
+                        onStartKickoffSession = {
+                            wordBooksViewModel.startKickoffStarterSession()
+                            navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
+                        },
+                        onDismissKickoffSession = wordBooksViewModel::dismissKickoffStarter,
                         onOpenDeck = { deckId ->
                             wordBooksViewModel.selectDeck(deckId)
                             navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
@@ -439,7 +488,9 @@ fun WordBooksAppShell(
                         onSetCheckpoint = wordBooksViewModel::setDeckCheckpoint,
                         onOpenAllWords = wordBooksViewModel::openAllWords,
                         onOpenMasteredWords = wordBooksViewModel::openMasteredWords,
-                        onOpenFavoriteWords = wordBooksViewModel::openFavoriteWords
+                        onOpenFavoriteWords = wordBooksViewModel::openFavoriteWords,
+                        userLevel = userLevel,
+                        recommendedWords = recommendedWordsForLevel
                     )
                 }
                 composable<AppRoute.Flashcards> {
@@ -470,11 +521,17 @@ fun WordBooksAppShell(
                             navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
                         },
                         onIndexChanged = wordBooksViewModel::onFlashcardIndexChanged,
-                        onFlipCard = wordBooksViewModel::flipCurrentFlashcard,
+                        onFlipCard = {
+                            wordBooksViewModel.flipCurrentFlashcard()
+                            wordBooksViewModel.dismissCoachTipFlip()
+                        },
                         onSetCardFlipped = wordBooksViewModel::setCurrentFlashcardFlipped,
                         onUpdateCardDirection = wordBooksViewModel::updateFlashcardDirection,
                         onUpdateAutoShowAnswer = wordBooksViewModel::updateFlashcardAutoShowAnswer,
-                        onRateCard = wordBooksViewModel::rateCurrentFlashcard,
+                        onRateCard = { rating ->
+                            wordBooksViewModel.rateCurrentFlashcard(rating)
+                            wordBooksViewModel.dismissCoachTipRate()
+                        },
                         onToggleMastered = wordBooksViewModel::toggleCurrentFlashcardMastered,
                         onToggleFavorite = wordBooksViewModel::toggleCurrentFlashcardFavorite,
                         onPlayAudio = wordBooksViewModel::playAudio,
@@ -487,7 +544,11 @@ fun WordBooksAppShell(
                         onSaveUserArabic = wordBooksViewModel::saveUserArabicForEntry,
                         onToggleSaveSentence = wordBooksViewModel::toggleSaveExampleSentence,
                         onToggleCardFavoriteInSheet = wordBooksViewModel::toggleFavorite,
-                        onToggleCardMasteredInSheet = wordBooksViewModel::toggleMastered
+                        onToggleCardMasteredInSheet = wordBooksViewModel::toggleMastered,
+                        showCoachTipFlip = onboardingState?.coachTipFlipDismissed == false,
+                        showCoachTipRate = onboardingState?.coachTipRateDismissed == false,
+                        onDismissCoachTipFlip = wordBooksViewModel::dismissCoachTipFlip,
+                        onDismissCoachTipRate = wordBooksViewModel::dismissCoachTipRate
                     )
                 }
                 composable<AppRoute.Sentences> {
@@ -550,7 +611,8 @@ fun WordBooksAppShell(
                         onCreateLessonWithAi = wordBooksViewModel::createGrammarLessonWithAi,
                         onSyncAssets = { wordBooksViewModel.syncGrammarLessonsFromAssets() },
                         onImportJsonUris = { wordBooksViewModel.importGrammarLessonsFromUris(it) },
-                        onImportJsonText = { wordBooksViewModel.importGrammarLessonsFromText(it) }
+                        onImportJsonText = { wordBooksViewModel.importGrammarLessonsFromText(it) },
+                        userLevel = userLevel
                     )
                 }
                 composable<AppRoute.Reading> {
@@ -606,7 +668,8 @@ fun WordBooksAppShell(
                         onImportJsonText = wordBooksViewModel::importReadingTextsFromText,
                         onSpeakSentence = { wordBooksViewModel.speakSentenceTts(it) },
                         onStopAudio = { wordBooksViewModel.stopAudio() },
-                        ttsSpeechRate = ttsSpeechRate
+                        ttsSpeechRate = ttsSpeechRate,
+                        userLevel = userLevel
                     )
                 }
                 composable<AppRoute.Labs> {
@@ -857,6 +920,40 @@ fun WordBooksAppShell(
                             modifier = Modifier.testTag("btn_settings_change_api_key")
                         ) {
                             Text("Change", color = GoldAccent, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                        }
+                    }
+
+                    HorizontalDivider(color = BorderDark)
+
+                    // Redo Onboarding Setup
+                    OutlinedButton(
+                        onClick = {
+                            isSettingsOpen = false
+                            wordBooksViewModel.startRedoOnboardingSetup()
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("btn_settings_redo_onboarding"),
+                        border = BorderStroke(1.dp, BorderDark)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "Redo Onboarding Setup",
+                                color = TextPrimary,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                            )
+                            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                Text(
+                                    text = "إعادة ضبط الإعداد الأولي (دون مسح تقدمك)",
+                                    style = ArabicTypography.labelSmall,
+                                    color = TextSecondary
+                                )
+                            }
                         }
                     }
 

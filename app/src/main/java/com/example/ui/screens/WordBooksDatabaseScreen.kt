@@ -23,7 +23,9 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items as lazyListItems
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.rememberScrollState
@@ -142,14 +144,19 @@ import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
 import com.example.ui.theme.CoralAccent
 import com.example.ui.theme.EmeraldAccent
+import com.example.ui.theme.EmeraldAccentBg
 import com.example.ui.theme.GoldAccent
 import com.example.ui.theme.GoldAccentBorder
 import com.example.ui.theme.GoldAccentDim
+import com.example.ui.theme.SkyAccent
+import com.example.ui.theme.SkyAccentBg
 import com.example.ui.theme.SurfaceDark
 import com.example.ui.theme.SurfaceElevatedDark
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.VioletAccent
+import com.example.ui.theme.VioletAccentBg
 import com.example.ui.theme.EyebrowStyle
 import com.example.ui.theme.StatValueGridStyle
 import com.example.ui.theme.SquircleCardShape
@@ -349,6 +356,10 @@ fun WordBooksDatabaseScreen(
     onOpenFavoriteWords: (() -> Unit)? = null,
     onOpenFilteredFlashcards: ((String, WordFilterState) -> Unit)? = null,
     onGetLetterIndex: (suspend (String?, Char) -> Int)? = null,
+    showCoachTipWordTap: Boolean = false,
+    onDismissCoachTipWordTap: () -> Unit = {},
+    userLevel: String = "B2",
+    recommendedWords: List<EntryEntity> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     val handleOpenAll = onOpenAllWords ?: {
@@ -420,7 +431,9 @@ fun WordBooksDatabaseScreen(
                             onOpenDetailedDefinition = onOpenDetailedDefinition,
                             onPlayAudio = onPlayAudio,
                             onOpenFilteredFlashcards = onOpenFilteredFlashcards,
-                            onGetLetterIndex = onGetLetterIndex
+                            onGetLetterIndex = onGetLetterIndex,
+                            userLevel = userLevel,
+                            recommendedWords = recommendedWords
                         )
                     } else {
                         DecksLibraryGrid(
@@ -526,7 +539,9 @@ fun WordBooksDatabaseScreen(
                         onOpenDetailedDefinition = onOpenDetailedDefinition,
                         onPlayAudio = onPlayAudio,
                         onOpenFilteredFlashcards = onOpenFilteredFlashcards,
-                        onGetLetterIndex = onGetLetterIndex
+                        onGetLetterIndex = onGetLetterIndex,
+                        userLevel = userLevel,
+                        recommendedWords = recommendedWords
                     )
                 } else {
                     DecksLibraryGrid(
@@ -1016,6 +1031,8 @@ private fun PagedDeckWordListScreen(
     onPlayAudio: (String, String) -> Unit,
     onOpenFilteredFlashcards: ((String, WordFilterState) -> Unit)? = null,
     onGetLetterIndex: (suspend (String?, Char) -> Int)? = null,
+    userLevel: String = "B2",
+    recommendedWords: List<EntryEntity> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     var showSortMenu by remember { mutableStateOf(false) }
@@ -1124,7 +1141,8 @@ private fun PagedDeckWordListScreen(
                             }.coerceAtLeast(deck?.masteredCount ?: masteredCount)
                             val leftWords = (totalCount - studiedWords).coerceAtLeast(0)
                             val progressFraction = if (totalCount > 0) (studiedWords.toFloat() / totalCount.toFloat()).coerceIn(0f, 1f) else 0f
-                            val progressPercent = (progressFraction * 100).toInt()
+                            val visualProgressFraction = if (studiedWords > 0) progressFraction.coerceIn(0.02f, 1f) else 0f
+                            val progressPercentText = formatProgressPercent(studiedWords, totalCount)
 
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -1208,7 +1226,7 @@ private fun PagedDeckWordListScreen(
                                             )
                                         }
                                         Text(
-                                            text = "$progressPercent%",
+                                            text = progressPercentText,
                                             style = MaterialTheme.typography.labelSmall.copy(
                                                 fontWeight = FontWeight.Bold,
                                                 color = GoldAccent
@@ -1216,7 +1234,7 @@ private fun PagedDeckWordListScreen(
                                         )
                                     }
                                     LinearProgressIndicator(
-                                        progress = { progressFraction },
+                                        progress = { visualProgressFraction },
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(5.dp)
@@ -1309,8 +1327,10 @@ private fun PagedDeckWordListScreen(
                                         } else {
                                             filterState.levelFilter == lvl
                                         }
+                                        val isUserLevel = lvl.equals(userLevel, ignoreCase = true) && !isAll
+                                        val displayLabel = if (isUserLevel) "$lvl ★" else lvl
                                         WordBookFilterPill(
-                                            label = lvl,
+                                            label = displayLabel,
                                             selected = selected,
                                             onClick = {
                                                 if (isAll) {
@@ -1472,6 +1492,38 @@ private fun PagedDeckWordListScreen(
                             }
                         }
                     }
+                }
+            }
+
+            // 4a. Level Progress Summary Banner
+            if (recommendedWords.isNotEmpty()) {
+                item(key = "recommended_words_section", contentType = "recommended_words") {
+                    LevelProgressSummaryBanner(
+                        userLevel = userLevel,
+                        activeLevelFilter = filterState.levelFilter,
+                        currentDeckId = currentDeckId,
+                        recommendedWords = recommendedWords,
+                        progressMap = progressMap,
+                        onFilterToLevel = { targetLvl ->
+                            if (!filterState.levelFilter.equals(targetLvl, ignoreCase = true)) {
+                                onLevelFilterChange(targetLvl)
+                            }
+                        },
+                        onQuickPractice = {
+                            val targetLevel = if (filterState.levelFilter.isNotBlank() && !filterState.levelFilter.equals("All", ignoreCase = true)) {
+                                filterState.levelFilter
+                            } else {
+                                userLevel
+                            }
+                            val targetFilterState = filterState.copy(levelFilter = targetLevel)
+                            if (onOpenFilteredFlashcards != null) {
+                                onOpenFilteredFlashcards(currentDeckId, targetFilterState)
+                            } else {
+                                onOpenFlashcards()
+                            }
+                        },
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
                 }
             }
 
@@ -2896,6 +2948,264 @@ private fun highlightTargetWordInGold(sentence: String, rawWord: String) = build
     }
     if (lastIndex < sentence.length) {
         append(sentence.substring(lastIndex))
+    }
+}
+
+private fun formatProgressPercent(count: Int, total: Int): String {
+    if (total <= 0 || count <= 0) return "0%"
+    if (count >= total) return "100%"
+    val rawPercent = (count.toDouble() * 100.0) / total.toDouble()
+    return when {
+        rawPercent < 0.1 -> "<0.1%"
+        rawPercent < 10.0 -> {
+            val oneDecimal = String.format(java.util.Locale.US, "%.1f", rawPercent)
+            if (oneDecimal.endsWith(".0")) "${rawPercent.toInt()}%" else "$oneDecimal%"
+        }
+        else -> "${rawPercent.toInt()}%"
+    }
+}
+
+@Composable
+fun LevelProgressSummaryBanner(
+    userLevel: String,
+    activeLevelFilter: String,
+    recommendedWords: List<EntryEntity>,
+    progressMap: Map<String, WordProgressEntity>,
+    onQuickPractice: () -> Unit,
+    currentDeckId: String = "",
+    onFilterToLevel: ((String) -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    if (recommendedWords.isEmpty()) return
+
+    val displayLevel = if (activeLevelFilter.isNotBlank() && !activeLevelFilter.equals("All", ignoreCase = true)) {
+        activeLevelFilter.uppercase()
+    } else {
+        userLevel.ifBlank { "B2" }.uppercase()
+    }
+
+    val levelColor = when (displayLevel) {
+        "A1", "A2" -> EmeraldAccent
+        "B1", "B2" -> SkyAccent
+        else -> VioletAccent
+    }
+    val levelBg = when (displayLevel) {
+        "A1", "A2" -> EmeraldAccentBg
+        "B1", "B2" -> SkyAccentBg
+        else -> VioletAccentBg
+    }
+    val levelAr = when (displayLevel) {
+        "A1" -> "مبتدئ"
+        "A2" -> "ابتدائي"
+        "B1" -> "متوسط"
+        "B2" -> "فوق المتوسط"
+        "C1" -> "متقدم"
+        "C2" -> "إتقان"
+        else -> displayLevel
+    }
+
+    val levelWords = remember(recommendedWords, currentDeckId, displayLevel) {
+        val byDeckAndLevel = recommendedWords.filter { word ->
+            (currentDeckId.isBlank() || word.deck.equals(currentDeckId, ignoreCase = true)) &&
+                (word.level.isBlank() || word.level.trim().equals(displayLevel, ignoreCase = true))
+        }
+        if (byDeckAndLevel.isNotEmpty()) {
+            byDeckAndLevel
+        } else {
+            val byLevel = recommendedWords.filter { word ->
+                word.level.isBlank() || word.level.trim().equals(displayLevel, ignoreCase = true)
+            }
+            if (byLevel.isNotEmpty()) byLevel else recommendedWords
+        }
+    }
+
+    val totalCount = levelWords.size
+    val masteredCount = remember(levelWords, progressMap) {
+        levelWords.count { word ->
+            val keyColon = "${word.deck}:${word.text.trim().lowercase()}"
+            val keyUnderscore = "${word.deck}_${word.text}"
+            progressMap[keyColon]?.isMastered == true ||
+                progressMap[keyUnderscore]?.isMastered == true
+        }
+    }
+    val deckTotalMasteredCount = remember(currentDeckId, progressMap) {
+        progressMap.values.count {
+            (currentDeckId.isBlank() || it.deck.equals(currentDeckId, ignoreCase = true)) && it.isMastered
+        }
+    }
+    val progressFraction = if (totalCount > 0) (masteredCount.toFloat() / totalCount.toFloat()).coerceIn(0f, 1f) else 0f
+    val visualProgressFraction = if (masteredCount > 0) progressFraction.coerceIn(0.025f, 1f) else 0f
+    val progressPercentText = formatProgressPercent(masteredCount, totalCount)
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .testTag("level_progress_summary_banner"),
+        shape = RoundedCornerShape(16.dp),
+        color = SurfaceDark,
+        border = BorderStroke(1.dp, levelColor.copy(alpha = 0.35f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Header row with Level chip & Progress stats
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Surface(
+                        modifier = if (onFilterToLevel != null) {
+                            Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onFilterToLevel(displayLevel) }
+                        } else {
+                            Modifier
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        color = levelBg,
+                        border = BorderStroke(1.dp, levelColor.copy(alpha = 0.5f))
+                    ) {
+                        Text(
+                            text = "Level $displayLevel",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = levelColor,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = SurfaceElevatedDark,
+                        border = BorderStroke(1.dp, BorderDark)
+                    ) {
+                        Text(
+                            text = levelAr,
+                            style = ArabicTypography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                            color = TextSecondary,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = levelBg.copy(alpha = 0.6f),
+                    border = BorderStroke(1.dp, levelColor.copy(alpha = 0.3f))
+                ) {
+                    Text(
+                        text = if (totalCount > 0) {
+                            "${formatNumber(masteredCount)} / ${formatNumber(totalCount)} Mastered ($progressPercentText)"
+                        } else {
+                            "0 Words"
+                        },
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = levelColor,
+                        modifier = Modifier
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                            .testTag("level_progress_mastered_badge")
+                    )
+                }
+            }
+
+            // Progress bar
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Level $displayLevel Vocabulary Progress",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = TextPrimary
+                        )
+                        if (deckTotalMasteredCount > masteredCount && (activeLevelFilter.isBlank() || activeLevelFilter.equals("All", ignoreCase = true))) {
+                            Text(
+                                text = "${formatNumber(masteredCount)} $displayLevel mastered • ${formatNumber(deckTotalMasteredCount)} total mastered in book",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = GoldAccent
+                            )
+                        }
+                    }
+                    Text(
+                        text = "تقدم كلمات مستوى $displayLevel",
+                        style = ArabicTypography.labelSmall,
+                        color = TextMuted
+                    )
+                }
+
+                LinearProgressIndicator(
+                    progress = { visualProgressFraction },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(CircleShape)
+                        .testTag("level_progress_bar"),
+                    color = levelColor,
+                    trackColor = SurfaceElevatedDark
+                )
+            }
+
+            // Quick practice action bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Practice ${formatNumber(totalCount)} $displayLevel words with flashcards",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+                    Text(
+                        text = "تمرن على مفردات مستوى $displayLevel بالكروت التفاعلية",
+                        style = ArabicTypography.labelSmall,
+                        color = TextMuted
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Button(
+                    onClick = onQuickPractice,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = GoldAccent,
+                        contentColor = BackgroundDark
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                    modifier = Modifier.testTag("quick_practice_button")
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Quick Practice",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

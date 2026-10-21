@@ -126,6 +126,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.CompositionLocalProvider
 import com.example.ui.components.BidiText
+import com.example.ui.theme.ArabicTypography
+import com.example.ui.theme.EmeraldAccent
+import com.example.ui.theme.EmeraldAccentBg
+import com.example.ui.theme.GoldAccent
+import com.example.ui.theme.GoldAccentBorder
+import com.example.ui.theme.SkyAccent
+import com.example.ui.theme.SkyAccentBg
+import com.example.ui.theme.VioletAccent
+import com.example.ui.theme.VioletAccentBg
 import com.example.data.local.AiHistoryEntity
 import com.example.data.local.CorrectionNotebookEntity
 import com.example.data.local.EntryEntity
@@ -260,6 +269,7 @@ fun ReadingScreen(
     onSpeakSentence: (String) -> Unit,
     onStopAudio: () -> Unit,
     ttsSpeechRate: Float = 0.95f,
+    userLevel: String = "B2",
     modifier: Modifier = Modifier
 ) {
     if (selectedText != null) {
@@ -318,6 +328,7 @@ fun ReadingScreen(
             onImportJsonUris = onImportJsonUris,
             onImportJsonText = onImportJsonText,
             onNavigateToNotebook = onNavigateToNotebook,
+            userLevel = userLevel,
             modifier = modifier
         )
     }
@@ -340,6 +351,7 @@ fun ReadingListScreen(
     onImportJsonUris: (List<Uri>, (Result<Int>) -> Unit) -> Unit,
     onImportJsonText: suspend (String) -> Result<Int>,
     onNavigateToNotebook: () -> Unit = {},
+    userLevel: String = "B2",
     modifier: Modifier = Modifier
 ) {
     var selectedLevelFilter by remember { mutableStateOf("ALL") }
@@ -349,6 +361,10 @@ fun ReadingListScreen(
     var initialAddTab by remember { mutableIntStateOf(0) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    val recommendedTexts = remember(texts, userLevel) {
+        texts.filter { it.level.equals(userLevel, ignoreCase = true) }
+    }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
@@ -600,6 +616,16 @@ fun ReadingListScreen(
                             .testTag("reading_search_input")
                     )
 
+                    // Pinned Recommended for You Shelf
+                    if (recommendedTexts.isNotEmpty()) {
+                        ReadingRecommendedShelf(
+                            userLevel = userLevel,
+                            recommendedTexts = recommendedTexts,
+                            progressByTextId = progressByTextId,
+                            onSelectText = onSelectText
+                        )
+                    }
+
                     // Row 3: CEFR Level Filter Pills with Auto-Scroll & Edge Fade
                     Box(modifier = Modifier.fillMaxWidth()) {
                         LazyRow(
@@ -618,7 +644,12 @@ fun ReadingListScreen(
                             ) { level ->
                                 val isSelected = selectedLevelFilter == level
                                 val count = levelCounts[level] ?: 0
-                                val labelText = if (level == "ALL") "All ($count)" else "$level ($count)"
+                                val isUserLevel = level.equals(userLevel, ignoreCase = true) && level != "ALL"
+                                val labelText = when {
+                                    level == "ALL" -> "All ($count)"
+                                    isUserLevel -> "$level ★ ($count)"
+                                    else -> "$level ($count)"
+                                }
                                 Surface(
                                     shape = RoundedCornerShape(20.dp),
                                     color = if (isSelected) Color(0xFFE5C158) else Color(0xFF17181E),
@@ -3788,3 +3819,221 @@ fun TabSyncAssets(
         }
     }
 }
+
+@Composable
+fun ReadingRecommendedShelf(
+    userLevel: String,
+    recommendedTexts: List<ReadingTextEntity>,
+    progressByTextId: Map<String, ReadingProgressEntity>,
+    onSelectText: (ReadingTextEntity) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val levelColor = when (userLevel.uppercase()) {
+        "A1", "A2" -> EmeraldAccent
+        "B1", "B2" -> SkyAccent
+        else -> VioletAccent
+    }
+    val levelBg = when (userLevel.uppercase()) {
+        "A1", "A2" -> EmeraldAccentBg
+        "B1", "B2" -> SkyAccentBg
+        else -> VioletAccentBg
+    }
+    val levelAr = when (userLevel.uppercase()) {
+        "A1" -> "مبتدئ"
+        "A2" -> "ابتدائي"
+        "B1" -> "متوسط"
+        "B2" -> "فوق المتوسط"
+        "C1" -> "متقدم"
+        "C2" -> "إتقان"
+        else -> userLevel
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("reading_recommended_shelf"),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = levelBg,
+                    border = BorderStroke(1.dp, levelColor.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        text = userLevel.uppercase(),
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = levelColor,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+                Column {
+                    Text(
+                        text = "Recommended for Your Level ($userLevel)",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = Color(0xFFF3F4F6)
+                    )
+                    Text(
+                        text = "نصوص قراءة موصى بها لمستواك ($levelAr)",
+                        style = ArabicTypography.labelSmall,
+                        color = Color(0xFF9CA3AF)
+                    )
+                }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xFF17181E),
+                border = BorderStroke(1.dp, Color(0xFF262834))
+            ) {
+                Text(
+                    text = "${recommendedTexts.size} passages",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                    color = GoldAccent,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                )
+            }
+        }
+
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+        ) {
+            items(
+                items = recommendedTexts,
+                key = { "rec_reading_${it.id}" }
+            ) { text ->
+                val progress = progressByTextId[text.id]
+                val isDone = progress?.isCompleted == true
+                ReadingRecommendedCard(
+                    text = text,
+                    isDone = isDone,
+                    levelColor = levelColor,
+                    levelBg = levelBg,
+                    onClick = { onSelectText(text) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ReadingRecommendedCard(
+    text: ReadingTextEntity,
+    isDone: Boolean,
+    levelColor: Color,
+    levelBg: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .width(250.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .testTag("reading_recommended_card_${text.id}"),
+        shape = RoundedCornerShape(14.dp),
+        color = Color(0xFF17181E),
+        border = BorderStroke(1.dp, if (isDone) EmeraldAccent.copy(alpha = 0.4f) else GoldAccentBorder.copy(alpha = 0.4f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = levelBg,
+                    border = BorderStroke(1.dp, levelColor.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        text = text.level.uppercase(),
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
+                        color = levelColor,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (isDone) EmeraldAccent.copy(alpha = 0.15f) else Color(0xFF222430)
+                ) {
+                    Text(
+                        text = if (isDone) "✓ Completed" else "Read",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 11.sp
+                        ),
+                        color = if (isDone) EmeraldAccent else GoldAccent,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+            }
+
+            Text(
+                text = text.titleEn,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 15.sp),
+                color = Color(0xFFF3F4F6),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            if (text.titleAr.isNotBlank()) {
+                Text(
+                    text = text.titleAr,
+                    style = ArabicTypography.bodySmall,
+                    color = GoldAccent,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val totalWords = remember(text.sentencesJson) {
+                    try {
+                        val list = readingJson.decodeFromString<List<ReadingSentenceItem>>(text.sentencesJson)
+                        list.sumOf { it.en.split("\\s+".toRegex()).size }.coerceAtLeast(15)
+                    } catch (e: Exception) {
+                        (text.sentencesJson.length / 6).coerceAtLeast(15)
+                    }
+                }
+                val durationMin = (totalWords / 65).coerceAtLeast(1)
+                Text(
+                    text = "~$durationMin min • $totalWords words",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFF9CA3AF)
+                )
+
+                if (text.topic.isNotBlank()) {
+                    Text(
+                        text = text.topic,
+                        style = MaterialTheme.typography.labelSmall.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
+                        color = Color(0xFF6B7280),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+

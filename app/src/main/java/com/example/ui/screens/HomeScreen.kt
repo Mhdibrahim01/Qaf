@@ -27,15 +27,21 @@ import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -61,6 +67,8 @@ import com.example.data.local.DailyChecklistEntity
 import com.example.data.local.DailyTaskItem
 import com.example.data.local.DeckEntity
 import com.example.data.local.DeckStudyStateEntity
+import com.example.data.local.EntryEntity
+import com.example.data.local.StudyPlanProfileEntity
 import com.example.ui.components.BidiText
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
@@ -127,6 +135,11 @@ fun HomeScreen(
     deckStudyStates: List<DeckStudyStateEntity> = emptyList(),
     todayChecklist: DailyChecklistEntity? = null,
     studyStreak: Int = 0,
+    studyPlanProfile: StudyPlanProfileEntity? = null,
+    kickoffWords: List<EntryEntity> = emptyList(),
+    isKickoffDismissed: Boolean = false,
+    onStartKickoffSession: () -> Unit = {},
+    onDismissKickoffSession: () -> Unit = {},
     onOpenDeck: (String) -> Unit = {},
     onOpenFlashcardsForDeck: (String) -> Unit = {},
     onOpenPlanScreen: () -> Unit = {},
@@ -177,10 +190,22 @@ fun HomeScreen(
                 .padding(horizontal = 16.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(22.dp)
         ) {
-            // 1. Welcome section: Date eyebrow, Greeting H1, Arabic subtitle, Coral streak badge
+            // 1. Welcome section: Date eyebrow, Greeting H1, Arabic subtitle, Coral streak badge, and Level & Goal chips
             WelcomeSection(
-                studyStreak = studyStreak
+                studyStreak = studyStreak,
+                studyPlanProfile = studyPlanProfile
             )
+
+            // 2. 5-Min Kickoff Starter Session Card (prominently displayed post-onboarding)
+            if (kickoffWords.isNotEmpty() && !isKickoffDismissed) {
+                KickoffStarterCard(
+                    words = kickoffWords,
+                    level = studyPlanProfile?.level ?: "B2",
+                    goal = studyPlanProfile?.goal ?: "general_fluency",
+                    onStartKickoffSession = onStartKickoffSession,
+                    onDismissKickoffSession = onDismissKickoffSession
+                )
+            }
 
             if (isTablet) {
                 // Two-column tablet layout
@@ -283,6 +308,7 @@ fun HomeScreen(
 @Composable
 private fun WelcomeSection(
     studyStreak: Int,
+    studyPlanProfile: StudyPlanProfileEntity? = null,
     modifier: Modifier = Modifier
 ) {
     val dateString = remember {
@@ -302,68 +328,367 @@ private fun WelcomeSection(
         }
     }
 
-    Row(
+    Column(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Top
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
         ) {
-            Text(
-                text = dateString.uppercase(Locale.ENGLISH),
-                style = EyebrowStyle
-            )
-            Text(
-                text = "$greeting, Learner",
-                style = MaterialTheme.typography.displaySmall.copy(
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.8).sp
-                ),
-                color = TextPrimary
-            )
-            BidiText(
-                text = "جاهز لجلسة تعلم جديدة؟",
-                style = ArabicTypography.bodyMedium.copy(
-                    fontSize = 14.sp
-                ),
-                color = TextSecondary,
-                fillMaxWidth = false,
-                textAlign = TextAlign.Start
-            )
-        }
-
-        // Streak Badge Pill
-        val streakCount = if (studyStreak > 0) studyStreak else 1
-        Surface(
-            color = CoralAccentBg,
-            shape = PillShape,
-            border = BorderStroke(1.dp, CoralAccentBorder),
-            modifier = Modifier.padding(top = 4.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .padding(horizontal = 10.dp, vertical = 7.dp)
-                    .heightIn(min = 28.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.LocalFireDepartment,
-                    contentDescription = null,
-                    tint = CoralAccent,
-                    modifier = Modifier.size(16.dp)
+                Text(
+                    text = dateString.uppercase(Locale.ENGLISH),
+                    style = EyebrowStyle
                 )
                 Text(
-                    text = "$streakCount day streak",
-                    style = MaterialTheme.typography.labelSmall.copy(
+                    text = "$greeting, Learner",
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontSize = 26.sp,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
+                        letterSpacing = (-0.8).sp
                     ),
-                    color = CoralAccent
+                    color = TextPrimary
                 )
+                BidiText(
+                    text = "جاهز لجلسة تعلم جديدة اليوم؟",
+                    style = ArabicTypography.bodyMedium.copy(
+                        fontSize = 14.sp
+                    ),
+                    color = TextSecondary,
+                    fillMaxWidth = false,
+                    textAlign = TextAlign.Start
+                )
+            }
+
+            // Streak Badge Pill
+            val streakCount = if (studyStreak > 0) studyStreak else 1
+            Surface(
+                color = CoralAccentBg,
+                shape = PillShape,
+                border = BorderStroke(1.dp, CoralAccentBorder),
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .testTag("home_study_streak_badge")
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(horizontal = 10.dp, vertical = 7.dp)
+                        .heightIn(min = 28.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocalFireDepartment,
+                        contentDescription = null,
+                        tint = CoralAccent,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "$streakCount day streak",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        ),
+                        color = CoralAccent
+                    )
+                }
+            }
+        }
+
+        // Personalized Profile Row (CEFR Level, Goal, Daily Target)
+        if (studyPlanProfile != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 1. CEFR Level Badge
+                val level = studyPlanProfile.level.ifBlank { "B2" }
+                val levelColor = when (level) {
+                    "A1", "A2" -> EmeraldAccent
+                    "B1", "B2" -> SkyAccent
+                    else -> VioletAccent
+                }
+                val levelBg = when (level) {
+                    "A1", "A2" -> EmeraldAccentBg
+                    "B1", "B2" -> SkyAccentBg
+                    else -> VioletAccentBg
+                }
+                val levelArLabel = when (level) {
+                    "A1" -> "مبتدئ"
+                    "A2" -> "ابتدائي"
+                    "B1" -> "متوسط"
+                    "B2" -> "فوق المتوسط"
+                    "C1" -> "متقدم"
+                    "C2" -> "إتقان"
+                    else -> level
+                }
+                Surface(
+                    color = levelBg,
+                    shape = PillShape,
+                    border = BorderStroke(1.dp, levelColor.copy(alpha = 0.5f)),
+                    modifier = Modifier.testTag("home_cefr_badge")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(levelColor)
+                        )
+                        Text(
+                            text = "$level · $levelArLabel",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
+                            ),
+                            color = levelColor
+                        )
+                    }
+                }
+
+                // 2. Goal Chip
+                val (goalEn, goalAr) = when (studyPlanProfile.goal) {
+                    "ielts" -> "IELTS Academic" to "تحضير الآيلتس"
+                    "it_career" -> "IT Career" to "تقنية المعلومات"
+                    else -> "General Fluency" to "طلاقة عامة"
+                }
+                Surface(
+                    color = SurfaceElevatedDark,
+                    shape = PillShape,
+                    border = BorderStroke(1.dp, BorderDark),
+                    modifier = Modifier.testTag("home_goal_chip")
+                ) {
+                    Text(
+                        text = "$goalEn · $goalAr",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 11.sp
+                        ),
+                        color = TextSecondary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+
+                // 3. Pace Chip
+                Surface(
+                    color = SurfaceElevatedDark,
+                    shape = PillShape,
+                    border = BorderStroke(1.dp, BorderDark),
+                    modifier = Modifier.testTag("home_pace_chip")
+                ) {
+                    Text(
+                        text = "${studyPlanProfile.minutesPerDay} min/day",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 11.sp
+                        ),
+                        color = TextMuted,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * High-priority Post-Onboarding Starter Session Card.
+ * Displays 5 curated vocabulary words matching the user's level and selected starting deck
+ * with an immediate "Start 5-Min Session" call to action.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun KickoffStarterCard(
+    words: List<EntryEntity>,
+    level: String,
+    goal: String,
+    onStartKickoffSession: () -> Unit,
+    onDismissKickoffSession: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val goalTitle = when (goal) {
+        "ielts" -> "IELTS Vocabulary"
+        "it_career" -> "IT & Tech Vocabulary"
+        else -> "Core Oxford Vocabulary"
+    }
+
+    Surface(
+        color = SurfaceElevatedDark,
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.5.dp, EmeraldAccent.copy(alpha = 0.5f)),
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("home_kickoff_starter_card")
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // Header Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Surface(
+                        color = EmeraldAccentBg,
+                        shape = CircleShape,
+                        border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.3f)),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = null,
+                                tint = EmeraldAccent,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "5-Min Kickoff Session",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = TextPrimary
+                            )
+                            Surface(
+                                color = EmeraldAccentBg,
+                                shape = PillShape,
+                                border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.4f))
+                            ) {
+                                Text(
+                                    text = "5 Words",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
+                                    color = EmeraldAccent,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        BidiText(
+                            text = "جلسة الانطلاق السريعة: أول 5 كلمات لمستوى $level · $goalTitle",
+                            style = ArabicTypography.labelSmall,
+                            color = TextSecondary,
+                            fillMaxWidth = false,
+                            textAlign = TextAlign.Start
+                        )
+                    }
+                }
+
+                IconButton(
+                    onClick = onDismissKickoffSession,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .testTag("btn_dismiss_kickoff_session")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Dismiss kickoff session",
+                        tint = TextMuted,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            // Word Preview Chips
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                words.take(5).forEachIndexed { index, word ->
+                    Surface(
+                        color = BackgroundDark,
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, BorderDark),
+                        modifier = Modifier.testTag("kickoff_word_chip_$index")
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = word.text,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = TextPrimary
+                            )
+                            if (word.pos.isNotBlank()) {
+                                Text(
+                                    text = "(${word.pos})",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                    color = TextMuted
+                                )
+                            }
+                            if (word.arabic.isNotBlank()) {
+                                Text(
+                                    text = word.arabic,
+                                    style = ArabicTypography.labelSmall.copy(fontSize = 11.sp),
+                                    color = EmeraldAccent
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Action Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = onStartKickoffSession,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = EmeraldAccent,
+                        contentColor = BackgroundDark
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.testTag("btn_start_kickoff_session")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Start 5-Min Session · ابدأ الآن",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+
+                TextButton(
+                    onClick = onDismissKickoffSession,
+                    modifier = Modifier.testTag("btn_later_kickoff_session")
+                ) {
+                    Text(
+                        text = "Later · لاحقاً",
+                        color = TextMuted,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
             }
         }
     }

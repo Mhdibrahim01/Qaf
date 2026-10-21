@@ -1297,4 +1297,113 @@ interface WordBooksDao {
         WHERE wp.last_reviewed_timestamp > 0 AND wp.deck = :deckId
     """)
     suspend fun getLearnedWordsCountByDeck(deckId: String): Int
+
+    // --- ONBOARDING QUERIES ---
+    @Query(
+        """
+        SELECT * FROM entries
+        WHERE UPPER(TRIM(level)) = UPPER(TRIM(:level))
+          AND LOWER(TRIM(pos)) IN ('noun', 'verb', 'adjective', 'adverb')
+          AND LENGTH(TRIM(text)) >= 4
+          AND deck IN ('oxford5000', 'oxford_opal')
+          AND TRIM(arabic) != ''
+          AND NOT EXISTS (
+              SELECT 1 FROM word_progress r
+              WHERE r.entry_id = entries.id
+          )
+        ORDER BY CASE WHEN TRIM(audio_url) != '' THEN 0 ELSE 1 END ASC, CAST(id AS INTEGER) ASC, id ASC
+        LIMIT 3
+        """
+    )
+    suspend fun getOnboardingFirstWinEntries(level: String): List<EntryEntity>
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM entries
+        WHERE UPPER(TRIM(level)) = UPPER(TRIM(:level))
+          AND TRIM(arabic) != ''
+        """
+    )
+    suspend fun getEntryCountForLevelWithArabic(level: String): Int
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM entries
+        WHERE UPPER(TRIM(level)) = UPPER(TRIM(:level))
+          AND TRIM(arabic) != ''
+        """
+    )
+    fun observeEntryCountForLevelWithArabic(level: String): Flow<Int>
+
+    @Query(
+        """
+        SELECT * FROM entries
+        WHERE UPPER(TRIM(level)) = UPPER(TRIM(:level))
+          AND TRIM(arabic) != ''
+          AND LENGTH(TRIM(text)) >= 3
+        ORDER BY
+          CASE WHEN deck IN ('oxford5000', 'oxford_opal') THEN 0 ELSE 1 END ASC,
+          CASE WHEN LOWER(TRIM(pos)) IN ('noun', 'verb', 'adjective', 'adverb') THEN 0 ELSE 1 END ASC,
+          CAST(id AS INTEGER) ASC,
+          id ASC
+        LIMIT :limit
+        """
+    )
+    suspend fun getPlacementVocabularyCandidatesForLevel(level: String, limit: Int = 80): List<EntryEntity>
+
+    @Query(
+        """
+        SELECT * FROM grammar_lessons
+        WHERE UPPER(TRIM(level)) = UPPER(TRIM(:level))
+          AND TRIM(exercises_json) != ''
+          AND TRIM(exercises_json) != '[]'
+        ORDER BY id ASC
+        """
+    )
+    suspend fun getGrammarLessonsForLevelQuiz(level: String): List<GrammarLessonEntity>
+
+    @Query(
+        """
+        SELECT id FROM entries
+        WHERE deck = :deck AND LOWER(TRIM(text)) = LOWER(TRIM(:wordText))
+        ORDER BY CAST(id AS INTEGER) ASC, id ASC
+        LIMIT 1
+        """
+    )
+    suspend fun getPrimaryEntryIdForCard(deck: String, wordText: String): String?
+
+    @Query(
+        """
+        SELECT * FROM entries
+        WHERE (UPPER(TRIM(level)) = UPPER(TRIM(:level)) OR :level = '')
+          AND (deck IN (:decks) OR :hasDecks = 0)
+          AND TRIM(arabic) != ''
+          AND TRIM(text) != ''
+        ORDER BY CAST(id AS INTEGER) ASC, id ASC
+        LIMIT :limit
+        """
+    )
+    suspend fun getKickoffStarterWords(level: String, decks: List<String>, hasDecks: Int, limit: Int = 5): List<EntryEntity>
+
+    @Query(
+        """
+        SELECT * FROM entries
+        WHERE (UPPER(TRIM(level)) = UPPER(TRIM(:level)) OR :level = '')
+          AND TRIM(text) != ''
+        ORDER BY LOWER(text) ASC, pos ASC
+        LIMIT :limit
+        """
+    )
+    suspend fun getRecommendedWordsForLevel(level: String, limit: Int = 5000): List<EntryEntity>
+
+    @Query(
+        """
+        SELECT * FROM entries
+        WHERE (:deckId = '' OR deck = :deckId)
+          AND (UPPER(TRIM(level)) = UPPER(TRIM(:level)) OR :level = '')
+          AND TRIM(text) != ''
+        ORDER BY LOWER(text) ASC, pos ASC
+        """
+    )
+    fun observeWordsForDeckAndLevel(deckId: String, level: String): Flow<List<EntryEntity>>
 }

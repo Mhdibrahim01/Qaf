@@ -61,6 +61,101 @@ class StudyPlanRepository(
         regenerateChecklistForUpdatedPlan(stamped, updatedPlan, timeProvider.todayDateString())
     }
 
+    /**
+     * Maps the onboarding goal to default vocabulary focus decks.
+     */
+    fun defaultDecksForGoal(goal: String): List<String> {
+        return when (goal.trim().lowercase(Locale.US)) {
+            "ielts" -> listOf("oxford5000", "oxford_opal", "ielts_core")
+            "it_career" -> listOf("oxford5000", "oxford_opal", "it_industry")
+            else -> listOf("oxford5000", "oxford_opal")
+        }
+    }
+
+    /**
+     * Maps studyDaysPerWeek (1..7) to default rest day Calendar constants (Friday = 6 by default for 6 days/week).
+     */
+    fun defaultRestDaysForStudyDays(studyDaysPerWeek: Int): List<Int> {
+        return when (studyDaysPerWeek.coerceIn(1, 7)) {
+            7 -> emptyList()
+            6 -> listOf(Calendar.FRIDAY)
+            5 -> listOf(Calendar.FRIDAY, Calendar.SATURDAY)
+            4 -> listOf(Calendar.TUESDAY, Calendar.FRIDAY, Calendar.SATURDAY)
+            3 -> listOf(Calendar.SUNDAY, Calendar.TUESDAY, Calendar.THURSDAY, Calendar.FRIDAY)
+            2 -> listOf(Calendar.SATURDAY, Calendar.SUNDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.FRIDAY)
+            else -> listOf(
+                Calendar.SATURDAY,
+                Calendar.SUNDAY,
+                Calendar.TUESDAY,
+                Calendar.WEDNESDAY,
+                Calendar.THURSDAY,
+                Calendar.FRIDAY
+            )
+        }
+    }
+
+    /**
+     * Persists the user's Step 3 onboarding choices into `study_plan_profile`, scales and saves
+     * the monthly plan (`study_plans`) from `default_study_plan_b2.json`, and generates/updates
+     * today's 5-pillar checklist (`daily_checklists`) without deleting any user progress.
+     */
+    suspend fun saveOnboardingGoalAndGeneratePlan(
+        level: String,
+        goal: String,
+        minutesPerDay: Int,
+        studyDaysPerWeek: Int
+    ): DailyChecklistEntity {
+        val cleanLevel = level.trim().uppercase(Locale.US).ifBlank { "B2" }
+        val cleanGoal = goal.trim().lowercase(Locale.US).ifBlank { "general_fluency" }
+        val cleanMinutes = minutesPerDay.coerceIn(15, 60)
+        val cleanDays = studyDaysPerWeek.coerceIn(1, 7)
+
+        val existing = dao.getStudyPlanProfile()
+        val decksJson = if (existing != null && existing.goal == cleanGoal && existing.selectedDecksJson.isNotBlank()) {
+            existing.selectedDecksJson
+        } else {
+            json.encodeToString(defaultDecksForGoal(cleanGoal))
+        }
+        val restDaysJson = if (existing != null && existing.studyDaysPerWeek == cleanDays && existing.restDaysJson.isNotBlank()) {
+            existing.restDaysJson
+        } else {
+            json.encodeToString(defaultRestDaysForStudyDays(cleanDays))
+        }
+
+        val profile = (existing ?: StudyPlanProfileEntity(id = 1)).copy(
+            level = cleanLevel,
+            goal = cleanGoal,
+            minutesPerDay = cleanMinutes,
+            studyDaysPerWeek = cleanDays,
+            startDate = existing?.startDate?.ifBlank { timeProvider.todayDateString() } ?: timeProvider.todayDateString(),
+            selectedDecksJson = decksJson,
+            restDaysJson = restDaysJson,
+            updatedAt = timeProvider.currentTimeMillis()
+        )
+        dao.upsertStudyPlanProfile(profile)
+        val updatedPlan = loadDefaultPlanScaled(profile)
+        return regenerateChecklistForUpdatedPlan(profile, updatedPlan, timeProvider.todayDateString())
+    }
+
+    /**
+     * Updates the user's selected study decks and placement preference in `study_plan_profile`,
+     * scales the monthly plan, and regenerates today's checklist tasks.
+     */
+    suspend fun saveOnboardingDecksAndPlacement(
+        selectedDecks: List<String>,
+        startAtUserLevel: Boolean
+    ): DailyChecklistEntity {
+        val existing = getOrCreateProfile()
+        val safeDecks = selectedDecks.ifEmpty { listOf("oxford5000", "oxford_opal") }
+        val updated = existing.copy(
+            selectedDecksJson = json.encodeToString(safeDecks),
+            updatedAt = timeProvider.currentTimeMillis()
+        )
+        dao.upsertStudyPlanProfile(updated)
+        val updatedPlan = loadDefaultPlanScaled(updated)
+        return regenerateChecklistForUpdatedPlan(updated, updatedPlan, timeProvider.todayDateString())
+    }
+
     suspend fun getActiveStudyPlan(month: String = timeProvider.currentMonthString()): StudyPlanEntity {
         val existing = dao.getStudyPlanForMonth(month)
         if (existing != null) return existing
@@ -287,7 +382,14 @@ class StudyPlanRepository(
         } catch (e: Exception) {
             listOf(Calendar.FRIDAY)
         }
-        val isRestDay = restDays.contains(timeProvider.dayOfWeek())
+        val targetDayOfWeek = try {
+            val cal = Calendar.getInstance()
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            sdf.parse(date)?.let { cal.time = it; cal.get(Calendar.DAY_OF_WEEK) } ?: timeProvider.dayOfWeek()
+        } catch (_: Exception) {
+            timeProvider.dayOfWeek()
+        }
+        val isRestDay = restDays.contains(targetDayOfWeek)
         val selectedDecks: List<String> = try {
             json.decodeFromString<List<String>>(profile.selectedDecksJson).ifEmpty {
                 listOf("oxford5000", "oxford_opal")

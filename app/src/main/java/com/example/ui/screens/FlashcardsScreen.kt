@@ -166,6 +166,10 @@ fun FlashcardsScreen(
     onToggleSaveSentence: (String, String, String) -> Unit = { _, _, _ -> },
     onToggleCardFavoriteInSheet: (String, String) -> Unit,
     onToggleCardMasteredInSheet: (String, String) -> Unit,
+    showCoachTipFlip: Boolean = false,
+    showCoachTipRate: Boolean = false,
+    onDismissCoachTipFlip: () -> Unit = {},
+    onDismissCoachTipRate: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val formatter = remember { NumberFormat.getIntegerInstance(Locale.US) }
@@ -532,6 +536,27 @@ fun FlashcardsScreen(
                         onOpenDetailedDefinition = {
                             onOpenDetailedDefinition(card.deck, card.text)
                         }
+                    )
+                }
+
+                // First-session Coach Tip guidance (dismissible on tap or flip/rate)
+                if (showCoachTipFlip && !isCardFlipped) {
+                    com.example.ui.components.CoachTipBanner(
+                        icon = Icons.Filled.Flip,
+                        messageEn = "Tap card anywhere to reveal Arabic meaning & examples",
+                        messageAr = "اضغط على البطاقة لقلبها وإظهار المعنى والأمثلة",
+                        testTag = "coach_tip_flip",
+                        onDismiss = onDismissCoachTipFlip,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                } else if (showCoachTipRate && isCardFlipped) {
+                    com.example.ui.components.CoachTipBanner(
+                        icon = Icons.Filled.Timer,
+                        messageEn = "Rate your recall (Again, Hard, Good, Easy) to schedule spaced repetition",
+                        messageAr = "قيّم حفظك لجدولة المراجعة التكرارية",
+                        testTag = "coach_tip_rate",
+                        onDismiss = onDismissCoachTipRate,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                     )
                 }
 

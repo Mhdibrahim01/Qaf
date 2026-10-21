@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.QuestionAnswer
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.UploadFile
@@ -117,14 +118,19 @@ import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
 import com.example.ui.theme.CoralAccent
 import com.example.ui.theme.EmeraldAccent
+import com.example.ui.theme.EmeraldAccentBg
 import com.example.ui.theme.GoldAccent
 import com.example.ui.theme.GoldAccentBorder
 import com.example.ui.theme.GoldAccentDim
+import com.example.ui.theme.SkyAccent
+import com.example.ui.theme.SkyAccentBg
 import com.example.ui.theme.SurfaceDark
 import com.example.ui.theme.SurfaceElevatedDark
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.VioletAccent
+import com.example.ui.theme.VioletAccentBg
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
@@ -150,6 +156,7 @@ fun GrammarScreen(
     onSyncAssets: (() -> Unit)? = null,
     onImportJsonUris: ((List<Uri>) -> Unit)? = null,
     onImportJsonText: (suspend (String) -> Result<Int>)? = null,
+    userLevel: String = "B2",
     modifier: Modifier = Modifier
 ) {
     var showAddLessonDialog by remember { mutableStateOf(false) }
@@ -189,6 +196,7 @@ fun GrammarScreen(
                 onSyncAssets?.invoke()
                 userFeedbackBanner = "Re-synced grammar lessons from assets"
             },
+            userLevel = userLevel,
             modifier = modifier
         )
     }
@@ -224,11 +232,16 @@ fun GrammarLessonListScreen(
     onOpenAddLessons: (initialTab: Int) -> Unit,
     onSyncAssets: () -> Unit,
     onNavigateToNotebook: () -> Unit = {},
+    userLevel: String = "B2",
     modifier: Modifier = Modifier
 ) {
     var selectedLevelFilter by remember { mutableStateOf("ALL") }
     var selectedTopicFilter by remember { mutableStateOf("ALL") }
     var searchQuery by remember { mutableStateOf("") }
+
+    val recommendedLessons = remember(lessons, userLevel) {
+        lessons.filter { it.level.equals(userLevel, ignoreCase = true) }
+    }
 
     val progressMap = remember(progressList) { progressList.associateBy { it.lessonId } }
     val completedCount = remember(progressList) { progressList.count { it.isCompleted } }
@@ -459,6 +472,16 @@ fun GrammarLessonListScreen(
                             .testTag("grammar_search_input")
                     )
 
+                    // Pinned Recommended for You Shelf
+                    if (recommendedLessons.isNotEmpty()) {
+                        GrammarRecommendedShelf(
+                            userLevel = userLevel,
+                            recommendedLessons = recommendedLessons,
+                            progressMap = progressMap,
+                            onSelectLesson = onSelectLesson
+                        )
+                    }
+
                     // CEFR Level Filter Pills with Auto-Scroll & Edge Fade
                     Box(modifier = Modifier.fillMaxWidth()) {
                         LazyRow(
@@ -476,6 +499,12 @@ fun GrammarLessonListScreen(
                             ) { level ->
                                 val isSelected = selectedLevelFilter == level
                                 val count = if (level == "ALL") lessons.size else (levelCounts[level] ?: 0)
+                                val isUserLevel = level.equals(userLevel, ignoreCase = true) && level != "ALL"
+                                val labelText = when {
+                                    level == "ALL" -> "All ($count)"
+                                    isUserLevel -> "$level ★ ($count)"
+                                    else -> "$level ($count)"
+                                }
                                 FilterChip(
                                     selected = isSelected,
                                     onClick = {
@@ -484,7 +513,7 @@ fun GrammarLessonListScreen(
                                     },
                                     label = {
                                         Text(
-                                            text = if (level == "ALL") "All ($count)" else "$level ($count)",
+                                            text = labelText,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                         )
                                     },
@@ -1793,22 +1822,28 @@ fun GrammarLessonDetailScreen(
     }
 }
 
+private val INLINE_NUMBERED_ITEM_SPLIT_REGEX =
+    Regex("""(?<=[:.؟!])\s+(?=(\d+|[١-٩])[)-]\s+)""")
+
 /**
- * Isolates parenthesized English segments inside RTL Arabic strings with Unicode LTR Isolate
- * (\u2066 ... \u2069) so brackets, ticks (✓/✗), and trailing periods never flip in RTL layout.
+ * Splits a grammar lesson's `explanationAr` into structured lines, breaking inline numbered items
+ * (such as `تُقسم الصفات إلى نوعين: 1) ... 2) ...`) into distinct lines so each renders as its own card.
  */
-private fun formatRtlWithLtrIsolates(raw: String): String {
-    val regex = Regex("""\(([A-Za-z0-9][^)]*)\)""")
-    return regex.replace(raw) { match ->
-        "(\u2066${match.groupValues[1]}\u2069)"
-    }
+private fun splitGrammarExplanationLines(rawExplanation: String): List<String> {
+    return rawExplanation
+        .lines()
+        .flatMap { rawLine ->
+            INLINE_NUMBERED_ITEM_SPLIT_REGEX.split(rawLine.trim())
+        }
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
 }
 
 /**
  * Parses a grammar lesson's `explanationAr` into structured visual sub-cards:
  * - Core concept overview paragraphs
- * - Gold Formula Callout Box (`التركيب:`)
- * - Inline examples
+ * - Gold Formula Callout Box (`التركيب:`) with RTL-aligned sparkle header and full-width formula body
+ * - Dedicated Example Callout Cards (`مثال:` and `-` bullets)
  * - Numbered Rules & Common Mistake (`✗` / `✓`) cards
  */
 @Composable
@@ -1817,7 +1852,7 @@ fun StructuredGrammarExplanation(
     modifier: Modifier = Modifier
 ) {
     val lines = remember(lesson.explanationAr) {
-        lesson.explanationAr.lines().map { it.trim() }.filter { it.isNotEmpty() }
+        splitGrammarExplanationLines(lesson.explanationAr)
     }
 
     val numberedRegex = remember { Regex("""^(\d+|[١-٩])[)-.]\s*(.+)$""") }
@@ -1872,47 +1907,64 @@ fun StructuredGrammarExplanation(
             }
 
             lines.forEach { rawLine ->
-                val line = formatRtlWithLtrIsolates(rawLine)
-                val numberedMatch = numberedRegex.find(line)
+                val numberedMatch = numberedRegex.find(rawLine)
 
                 when {
                     // 1. Formula Callout Box
                     rawLine.startsWith("التركيب") || rawLine.startsWith("القاعدة:") || rawLine.startsWith("الصيغة:") -> {
+                        val hasColon = rawLine.contains(":")
+                        val headerLabel = if (hasColon) "${rawLine.substringBefore(":").trim()}:" else rawLine.trim()
+                        val formulaBody = if (hasColon) rawLine.substringAfter(":").trim() else ""
+
                         Surface(
                             shape = RoundedCornerShape(12.dp),
                             color = GoldAccentDim,
                             border = BorderStroke(1.dp, GoldAccent),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 14.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.AutoAwesome,
-                                    contentDescription = null,
-                                    tint = GoldAccent,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                BidiText(
-                                    text = line,
-                                    style = ArabicTypography.bodyLarge,
-                                    color = GoldAccent,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.weight(1f)
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                                ) {
+                                    BidiText(
+                                        text = headerLabel,
+                                        style = ArabicTypography.bodyLarge,
+                                        color = GoldAccent,
+                                        fontWeight = FontWeight.Bold,
+                                        fillMaxWidth = false
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = GoldAccent,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                if (formulaBody.isNotEmpty()) {
+                                    BidiText(
+                                        text = formulaBody,
+                                        style = ArabicTypography.bodyLarge,
+                                        color = GoldAccent,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
                             }
                         }
                     }
 
-                    // 2. Sub-section Headers (e.g. ملاحظات مهمة: / أمثلة:)
-                    rawLine == "أمثلة:" || rawLine.startsWith("ملاحظات") || rawLine.startsWith("تنبيه") -> {
+                    // 2. Sub-section Headers (e.g. ملاحظات مهمة: / أمثلة: / أخطاء شائعة:)
+                    rawLine == "أمثلة:" || rawLine == "أخطاء شائعة:" || rawLine.startsWith("ملاحظات") || rawLine.startsWith("تنبيه") -> {
                         Spacer(modifier = Modifier.height(2.dp))
                         BidiText(
-                            text = line,
+                            text = rawLine,
                             style = ArabicTypography.titleMedium,
                             color = GoldAccent,
                             fontWeight = FontWeight.Bold,
@@ -1920,9 +1972,45 @@ fun StructuredGrammarExplanation(
                         )
                     }
 
-                    // 3. Inline Bullet Examples (- I can swim. (...))
+                    // 3. Standalone Example Lines (`مثال: ...`)
+                    rawLine.startsWith("مثال:") || rawLine.startsWith("مثال :") -> {
+                        val exampleBody = rawLine.substringAfter(":").trim()
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = SurfaceElevatedDark,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 9.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "مثال:",
+                                    style = ArabicTypography.labelMedium.copy(
+                                        textDirection = TextDirection.Rtl,
+                                        textAlign = TextAlign.Right
+                                    ),
+                                    color = GoldAccent,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                if (exampleBody.isNotEmpty()) {
+                                    BidiText(
+                                        text = exampleBody,
+                                        style = ArabicTypography.bodyMedium,
+                                        color = TextPrimary,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // 4. Inline Bullet Examples (- I can swim. (...))
                     rawLine.startsWith("-") || rawLine.startsWith("•") -> {
-                        val cleanBullet = line.removePrefix("-").removePrefix("•").trim()
+                        val cleanBullet = rawLine.removePrefix("-").removePrefix("•").trim()
                         Surface(
                             shape = RoundedCornerShape(10.dp),
                             color = SurfaceElevatedDark,
@@ -1939,7 +2027,7 @@ fun StructuredGrammarExplanation(
                         }
                     }
 
-                    // 4. Numbered Rule / Common Mistake Cards (1), 2), 3), 4))
+                    // 5. Numbered Rule / Common Mistake Cards (1), 2), 3), 4))
                     numberedMatch != null -> {
                         val numLabel = numberedMatch.groupValues[1]
                         val bodyText = numberedMatch.groupValues[2]
@@ -1987,10 +2075,10 @@ fun StructuredGrammarExplanation(
                         }
                     }
 
-                    // 5. Standard Concept Explanation Line
+                    // 6. Standard Concept Explanation Line
                     else -> {
                         BidiText(
-                            text = line,
+                            text = rawLine,
                             style = ArabicTypography.bodyLarge,
                             color = TextPrimary,
                             lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.35f,
@@ -2439,7 +2527,7 @@ fun ExerciseItemView(
                     )
                     if (exercise.explanationAr.isNotBlank()) {
                         BidiText(
-                            text = formatRtlWithLtrIsolates(exercise.explanationAr),
+                            text = exercise.explanationAr,
                             style = ArabicTypography.bodyMedium,
                             color = TextSecondary
                         )
@@ -3218,3 +3306,201 @@ fun CreateAiLessonDialog(
         }
     )
 }
+
+@Composable
+fun GrammarRecommendedShelf(
+    userLevel: String,
+    recommendedLessons: List<GrammarLessonEntity>,
+    progressMap: Map<String, GrammarProgressEntity>,
+    onSelectLesson: (GrammarLessonEntity) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val levelColor = when (userLevel.uppercase()) {
+        "A1", "A2" -> EmeraldAccent
+        "B1", "B2" -> SkyAccent
+        else -> VioletAccent
+    }
+    val levelBg = when (userLevel.uppercase()) {
+        "A1", "A2" -> EmeraldAccentBg
+        "B1", "B2" -> SkyAccentBg
+        else -> VioletAccentBg
+    }
+    val levelAr = when (userLevel.uppercase()) {
+        "A1" -> "مبتدئ"
+        "A2" -> "ابتدائي"
+        "B1" -> "متوسط"
+        "B2" -> "فوق المتوسط"
+        "C1" -> "متقدم"
+        "C2" -> "إتقان"
+        else -> userLevel
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("grammar_recommended_shelf"),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = levelBg,
+                    border = BorderStroke(1.dp, levelColor.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        text = userLevel.uppercase(),
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = levelColor,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+                Column {
+                    Text(
+                        text = "Recommended for Your Level ($userLevel)",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "دروس موصى بها لمستواك ($levelAr)",
+                        style = ArabicTypography.labelSmall,
+                        color = TextSecondary
+                    )
+                }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = SurfaceElevatedDark,
+                border = BorderStroke(1.dp, BorderDark)
+            ) {
+                Text(
+                    text = "${recommendedLessons.size} lessons",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                    color = GoldAccent,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                )
+            }
+        }
+
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+        ) {
+            items(
+                items = recommendedLessons,
+                key = { "rec_grammar_${it.id}" }
+            ) { lesson ->
+                val progress = progressMap[lesson.id]
+                val isDone = progress?.isCompleted == true
+                GrammarRecommendedCard(
+                    lesson = lesson,
+                    isDone = isDone,
+                    levelColor = levelColor,
+                    levelBg = levelBg,
+                    onClick = { onSelectLesson(lesson) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun GrammarRecommendedCard(
+    lesson: GrammarLessonEntity,
+    isDone: Boolean,
+    levelColor: Color,
+    levelBg: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .width(240.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .testTag("grammar_recommended_card_${lesson.id}"),
+        shape = RoundedCornerShape(14.dp),
+        color = SurfaceDark,
+        border = BorderStroke(1.dp, if (isDone) EmeraldAccent.copy(alpha = 0.4f) else GoldAccentBorder.copy(alpha = 0.4f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = levelBg,
+                    border = BorderStroke(1.dp, levelColor.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        text = lesson.level.uppercase(),
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
+                        color = levelColor,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (isDone) EmeraldAccent.copy(alpha = 0.15f) else SurfaceElevatedDark
+                ) {
+                    Text(
+                        text = if (isDone) "✓ Completed" else "Study",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 11.sp
+                        ),
+                        color = if (isDone) EmeraldAccent else GoldAccent,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+            }
+
+            Text(
+                text = lesson.titleEn,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 15.sp),
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            val cleanAr = cleanGrammarArabicTitle(lesson.titleAr)
+            if (cleanAr.isNotBlank()) {
+                Text(
+                    text = cleanAr,
+                    style = ArabicTypography.bodySmall,
+                    color = GoldAccent,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            if (lesson.topic.isNotBlank()) {
+                Text(
+                    text = "• ${lesson.topic}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+

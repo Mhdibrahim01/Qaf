@@ -135,11 +135,13 @@ typealias PosSenseVariant = com.example.data.importer.PosSenseVariant
         Index(value = ["due_timestamp"]),
         Index(value = ["is_favorite"]),
         Index(value = ["is_mastered"]),
-        Index(value = ["is_mastered", "due_timestamp"])
+        Index(value = ["is_mastered", "due_timestamp"]),
+        Index(value = ["entry_id"])
     ]
 )
 data class WordProgressEntity(
     @PrimaryKey @ColumnInfo(name = "card_key") val cardKey: String,
+    @ColumnInfo(name = "entry_id") val entryId: String? = null,
     val deck: String,
     val text: String,
     @ColumnInfo(name = "is_favorite") val isFavorite: Boolean = false,

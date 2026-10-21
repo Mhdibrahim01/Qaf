@@ -309,7 +309,7 @@ fun LabsDataCheckScreen(
                                         color = TextPrimary
                                     )
                                     Text(
-                                        text = "${formatter.format(coreEntriesTotal)} / ${formatter.format(DataImportRepository.TOTAL_EXPECTED_ROWS)}",
+                                        text = "${formatter.format(coreEntriesTotal)} / ${formatter.format(DataImportRepository.CORE_EXPECTED_ROWS)}",
                                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                                         color = if (coreDecksMatched) EmeraldAccent else GoldAccent,
                                         modifier = Modifier.testTag("data_check_total_count")

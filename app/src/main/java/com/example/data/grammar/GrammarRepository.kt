@@ -498,7 +498,7 @@ class GrammarRepository(
     }
 
     companion object {
-        const val GRAMMAR_DATA_VERSION = 2
+        const val GRAMMAR_DATA_VERSION = 3
         const val PREFS_NAME = "grammar_repository_prefs"
         private const val KEY_DATA_VERSION = "grammar_data_version"
         private const val KEY_ASSET_HASH = "grammar_asset_hash"

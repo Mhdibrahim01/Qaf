@@ -119,6 +119,20 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         apiKeysProvider = { com.example.data.ai.GeminiApiKeyManager.getAllConfiguredKeys(application) }
     )
     private val audioPlayer = AudioPlayerManager(application)
+    val onboardingRepository = com.example.data.onboarding.OnboardingPreferencesRepository(application)
+
+    val onboardingState: StateFlow<com.example.data.onboarding.OnboardingPreferencesState?> =
+        onboardingRepository.stateFlow.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = null
+        )
+
+    private val _placementQuizState = MutableStateFlow(com.example.ui.screens.PlacementQuizUiState())
+    val placementQuizState: StateFlow<com.example.ui.screens.PlacementQuizUiState> = _placementQuizState.asStateFlow()
+
+    private val _isGrammarImporting = MutableStateFlow(true)
+    val isGrammarImporting: StateFlow<Boolean> = _isGrammarImporting.asStateFlow()
 
     val importState: StateFlow<ImportProgressState> = repository.importState
     val aiStatus: StateFlow<AiTaskStatus> = geminiService.status
@@ -406,14 +420,99 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     private val _letterOffsetsCache = MutableStateFlow<Map<Char, Int>>(emptyMap())
     val letterOffsetsCache: StateFlow<Map<Char, Int>> = _letterOffsetsCache.asStateFlow()
 
+    // --- POST-ONBOARDING KICKOFF STARTER SESSION ---
+    private val _isKickoffDismissed = MutableStateFlow(false)
+    val isKickoffDismissed: StateFlow<Boolean> = _isKickoffDismissed.asStateFlow()
+
+    fun dismissKickoffStarter() {
+        _isKickoffDismissed.value = true
+    }
+
+    val kickoffWords: StateFlow<List<EntryEntity>> = studyPlanProfile
+        .flatMapLatest { profile ->
+            kotlinx.coroutines.flow.flow {
+                val level = profile?.level.orEmpty()
+                val decks = try {
+                    if (!profile?.selectedDecksJson.isNullOrBlank()) {
+                        kotlinx.serialization.json.Json.decodeFromString<List<String>>(profile!!.selectedDecksJson)
+                    } else emptyList()
+                } catch (e: Exception) {
+                    emptyList()
+                }
+                val words = database.wordBooksDao().getKickoffStarterWords(
+                    level = level,
+                    decks = decks,
+                    hasDecks = if (decks.isNotEmpty()) 1 else 0,
+                    limit = 5
+                )
+                emit(words)
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    val recommendedWordsForLevel: StateFlow<List<EntryEntity>> = kotlinx.coroutines.flow.combine(
+        studyPlanProfile,
+        _selectedDeckId,
+        _filterState
+    ) { profile, selectedDeck, filter ->
+        val targetLevel = if (filter.levelFilter.isNotBlank() && !filter.levelFilter.equals("All", ignoreCase = true)) {
+            filter.levelFilter.uppercase()
+        } else {
+            profile?.level?.ifBlank { "B2" }?.uppercase() ?: "B2"
+        }
+        val rawDeck = filter.deckId.ifBlank { selectedDeck.orEmpty() }
+        val deckId = if (rawDeck == DataImportRepository.SAVED_WORDS_DECK_ID) "" else rawDeck
+        Pair(deckId, targetLevel)
+    }.flatMapLatest { (deckId, targetLevel) ->
+        database.wordBooksDao().observeWordsForDeckAndLevel(
+            deckId = deckId,
+            level = targetLevel
+        ).map { deckWords ->
+            if (deckWords.isNotEmpty() || deckId.isEmpty()) {
+                deckWords
+            } else {
+                database.wordBooksDao().getRecommendedWordsForLevel(
+                    level = targetLevel,
+                    limit = 5000
+                )
+            }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    fun startKickoffStarterSession(starterDeckId: String? = null) {
+        val targetDeck = starterDeckId?.ifBlank { null }
+            ?: studyPlanProfile.value?.let { profile ->
+                try {
+                    if (!profile.selectedDecksJson.isBlank()) {
+                        kotlinx.serialization.json.Json.decodeFromString<List<String>>(profile.selectedDecksJson).firstOrNull()
+                    } else null
+                } catch (e: Exception) {
+                    null
+                }
+            } ?: "oxford5000"
+        selectFlashcardDeck(targetDeck)
+    }
+
     init {
         startImportIfNeeded()
-        // 1. Initial study plan load
+        // 1. Initial study plan load if profile already exists or onboarding already completed
         viewModelScope.launch {
-            val checklist = studyPlanRepository.getOrCreateDailyChecklist()
-            _todayChecklist.value = checklist
-            _studyStreak.value = studyPlanRepository.computeStreak()
-            _weakAreas.value = studyPlanRepository.getWeakAreas()
+            val existingProfile = database.wordBooksDao().getStudyPlanProfile()
+            val onboardingSnap = onboardingRepository.getSnapshot()
+            if (existingProfile != null || onboardingSnap.onboardingCompleted) {
+                val checklist = studyPlanRepository.getOrCreateDailyChecklist()
+                _todayChecklist.value = checklist
+                _studyStreak.value = studyPlanRepository.computeStreak()
+                _weakAreas.value = studyPlanRepository.getWeakAreas()
+            }
         }
 
         // 2. Debounced (300ms) Room Flow that recomputes completion idempotently from database state
@@ -425,10 +524,12 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         ) { _, _, _, _ -> System.currentTimeMillis() }
             .debounce(300L)
             .onEach {
-                val updated = studyPlanRepository.recomputeTodayChecklistCompletion()
-                if (updated != null) {
-                    _todayChecklist.value = updated
-                    _studyStreak.value = studyPlanRepository.computeStreak()
+                if (database.wordBooksDao().getStudyPlanProfile() != null) {
+                    val updated = studyPlanRepository.recomputeTodayChecklistCompletion()
+                    if (updated != null) {
+                        _todayChecklist.value = updated
+                        _studyStreak.value = studyPlanRepository.computeStreak()
+                    }
                 }
             }
             .launchIn(viewModelScope)
@@ -440,14 +541,22 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             }
         }
 
-        // 4. Clear letter offsets cache on import completion and rebuild
+        // 4. Clear letter offsets cache on import completion and rebuild; also resume waiting placement quiz if active
         viewModelScope.launch {
-            repository.importState.collectLatest { state ->
-                if (state.isCompleted) {
-                    clearLetterOffsetsCache()
-                    rebuildLetterOffsetsCache(_filterState.value)
+            combine(
+                repository.importState,
+                _isGrammarImporting
+            ) { impState, grammarBusy -> impState to grammarBusy }
+                .collectLatest { (impState, grammarBusy) ->
+                    if (impState.isCompleted) {
+                        clearLetterOffsetsCache()
+                        rebuildLetterOffsetsCache(_filterState.value)
+                    }
+                    val currentQuiz = _placementQuizState.value
+                    if (currentQuiz.isQuizActive && currentQuiz.isWaitingForImport && !grammarBusy) {
+                        tryLoadPlacementQuizQuestions()
+                    }
                 }
-            }
         }
     }
 
@@ -460,6 +569,364 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             repository.ensureImportedOnFirstLaunch(forceRecheck = forceRecheck)
             loadFlashcardsForDeck(_flashcardDeckId.value)
             loadDictionarySampleExamples()
+        }
+    }
+
+    /**
+     * Completes Step 1 (Welcome) and persists `last_completed_step = 1` in DataStore.
+     */
+    fun completeOnboardingStep1() {
+        viewModelScope.launch {
+            onboardingRepository.setLastCompletedStep(1)
+        }
+    }
+
+    /**
+     * Updates the selected CEFR level on Step 2 (persisted in DataStore).
+     */
+    fun selectOnboardingLevel(level: String) {
+        viewModelScope.launch {
+            onboardingRepository.saveSelectedLevel(level)
+        }
+    }
+
+    /**
+     * Completes Step 2 (Level Selection) with [level] and advances to Step 3 (`last_completed_step = 2`).
+     */
+    fun completeOnboardingStep2(level: String) {
+        viewModelScope.launch {
+            val cleanLevel = level.trim().uppercase().ifBlank { "B2" }
+            onboardingRepository.saveSelectedLevel(cleanLevel)
+            _placementQuizState.value = com.example.ui.screens.PlacementQuizUiState()
+            onboardingRepository.setLastCompletedStep(2)
+        }
+    }
+
+    /**
+     * Updates the selected learning goal on Step 3 (persisted in DataStore).
+     */
+    fun selectOnboardingGoal(goal: String) {
+        viewModelScope.launch {
+            val snap = onboardingRepository.getSnapshot()
+            onboardingRepository.saveGoalAndTime(
+                goal = goal.trim().ifBlank { "general_fluency" },
+                minutesPerDay = snap.selectedMinutesPerDay,
+                studyDaysPerWeek = snap.selectedStudyDaysPerWeek
+            )
+        }
+    }
+
+    /**
+     * Updates the selected daily minutes commitment on Step 3 (persisted in DataStore).
+     */
+    fun selectOnboardingMinutesPerDay(minutesPerDay: Int) {
+        viewModelScope.launch {
+            val snap = onboardingRepository.getSnapshot()
+            onboardingRepository.saveGoalAndTime(
+                goal = snap.selectedGoal,
+                minutesPerDay = minutesPerDay.coerceIn(15, 60),
+                studyDaysPerWeek = snap.selectedStudyDaysPerWeek
+            )
+        }
+    }
+
+    /**
+     * Updates the selected weekly study days on Step 3 (persisted in DataStore).
+     */
+    fun selectOnboardingStudyDaysPerWeek(studyDaysPerWeek: Int) {
+        viewModelScope.launch {
+            val snap = onboardingRepository.getSnapshot()
+            onboardingRepository.saveGoalAndTime(
+                goal = snap.selectedGoal,
+                minutesPerDay = snap.selectedMinutesPerDay,
+                studyDaysPerWeek = studyDaysPerWeek.coerceIn(1, 7)
+            )
+        }
+    }
+
+    /**
+     * Completes Step 3 (Goal & Daily Time):
+     * - Saves goal, minutesPerDay, and studyDaysPerWeek in DataStore.
+     * - Writes/updates `StudyPlanProfileEntity` in Room (`study_plan_profile`).
+     * - Scales and saves the monthly plan (`study_plans`) from `default_study_plan_b2.json`.
+     * - Generates/updates today's 5-pillar checklist (`daily_checklists`).
+     * - Advances onboarding to Step 4 (`last_completed_step = 3`).
+     */
+    fun completeOnboardingStep3(
+        goal: String,
+        minutesPerDay: Int,
+        studyDaysPerWeek: Int
+    ) {
+        viewModelScope.launch {
+            val snap = onboardingRepository.getSnapshot()
+            val cleanLevel = snap.selectedLevel.trim().uppercase().ifBlank { "B2" }
+            val cleanGoal = goal.trim().ifBlank { "general_fluency" }
+            val cleanMinutes = minutesPerDay.coerceIn(15, 60)
+            val cleanDays = studyDaysPerWeek.coerceIn(1, 7)
+
+            onboardingRepository.saveGoalAndTime(
+                goal = cleanGoal,
+                minutesPerDay = cleanMinutes,
+                studyDaysPerWeek = cleanDays
+            )
+
+            val checklist = studyPlanRepository.saveOnboardingGoalAndGeneratePlan(
+                level = cleanLevel,
+                goal = cleanGoal,
+                minutesPerDay = cleanMinutes,
+                studyDaysPerWeek = cleanDays
+            )
+            _todayChecklist.value = checklist
+            _studyStreak.value = studyPlanRepository.computeStreak()
+            _weakAreas.value = studyPlanRepository.getWeakAreas()
+
+            onboardingRepository.setLastCompletedStep(3)
+        }
+    }
+
+    /**
+     * Navigates back from Step 3 (Goal & Time) to Step 2 (Level Selection).
+     */
+    fun navigateBackFromStep3() {
+        viewModelScope.launch {
+            onboardingRepository.setLastCompletedStep(1)
+        }
+    }
+
+    /**
+     * Completes Step 4 (Deck Selection & Placement):
+     * - Saves selectedDecks and startAtUserLevel in DataStore.
+     * - Updates StudyPlanProfileEntity.selectedDecksJson in Room.
+     * - Re-scales monthly plan and updates today's checklist tasks.
+     * - Advances onboarding to Step 5 (last_completed_step = 4).
+     */
+    fun completeOnboardingStep4(
+        selectedDecks: List<String>,
+        startAtUserLevel: Boolean
+    ) {
+        viewModelScope.launch {
+            val safeDecks = selectedDecks.ifEmpty { listOf("oxford5000", "oxford_opal") }
+            val decksJson = kotlinx.serialization.json.Json.encodeToString(safeDecks)
+            onboardingRepository.saveSelectedDecks(decksJson, startAtUserLevel)
+
+            val checklist = studyPlanRepository.saveOnboardingDecksAndPlacement(
+                selectedDecks = safeDecks,
+                startAtUserLevel = startAtUserLevel
+            )
+            _todayChecklist.value = checklist
+            _weakAreas.value = studyPlanRepository.getWeakAreas()
+
+            onboardingRepository.setLastCompletedStep(4)
+        }
+    }
+
+    /**
+     * Navigates back from Step 4 (Deck Selection) to Step 3 (Goal & Time).
+     */
+    fun navigateBackFromStep4() {
+        viewModelScope.launch {
+            onboardingRepository.setLastCompletedStep(2)
+        }
+    }
+
+    /**
+     * Completes Step 5 (AI Features & Launch):
+     * - Saves user's allowAi preference.
+     * - Marks onboarding as completed in DataStore (`onboarding_completed = true`, `last_completed_step = 5`).
+     * - Generates or ensures today's 5-pillar daily checklist is ready for immediate study.
+     */
+    fun completeOnboardingStep5(allowAi: Boolean) {
+        viewModelScope.launch {
+            batchTranslateManager.setAllowAi(allowAi)
+            val existingProfile = database.wordBooksDao().getStudyPlanProfile()
+            if (existingProfile == null) {
+                val created = studyPlanRepository.getOrCreateProfile()
+                val plan = studyPlanRepository.loadDefaultPlanScaled(created)
+                _todayChecklist.value = studyPlanRepository.regenerateChecklistForUpdatedPlan(created, plan)
+            } else if (_todayChecklist.value == null) {
+                _todayChecklist.value = studyPlanRepository.getOrCreateDailyChecklist()
+            }
+            _studyStreak.value = studyPlanRepository.computeStreak()
+            _weakAreas.value = studyPlanRepository.getWeakAreas()
+            onboardingRepository.markOnboardingCompleted()
+        }
+    }
+
+    /**
+     * Navigates back from Step 5 (AI Features) to Step 4 (Decks & Placement).
+     */
+    fun navigateBackFromStep5() {
+        viewModelScope.launch {
+            onboardingRepository.setLastCompletedStep(3)
+        }
+    }
+
+    fun dismissCoachTipFlip() {
+        viewModelScope.launch {
+            onboardingRepository.dismissCoachTipFlip()
+        }
+    }
+
+    fun dismissCoachTipRate() {
+        viewModelScope.launch {
+            onboardingRepository.dismissCoachTipRate()
+        }
+    }
+
+    fun dismissCoachTipWordTap() {
+        viewModelScope.launch {
+            onboardingRepository.dismissCoachTipWordTap()
+        }
+    }
+
+    /**
+     * Starts the 10-question local placement quiz on Step 2 ("Not sure").
+     * Waits for grammar import and dictionary import (>= 100 entries per level or import completed)
+     * without ever inventing fallback questions.
+     */
+    fun startPlacementQuiz() {
+        _placementQuizState.value = com.example.ui.screens.PlacementQuizUiState(
+            isQuizActive = true,
+            isWaitingForImport = true
+        )
+        viewModelScope.launch {
+            tryLoadPlacementQuizQuestions()
+        }
+    }
+
+    private suspend fun tryLoadPlacementQuizQuestions() {
+        val dao = database.wordBooksDao()
+        if (_isGrammarImporting.value) {
+            grammarRepository.importGrammarLessonsIfNeeded()
+            _isGrammarImporting.value = false
+        }
+        val isImportDone = repository.importState.value.isCompleted
+        val ready = com.example.data.onboarding.OnboardingPlacementQuiz.hasEnoughEntriesForPlacementQuiz(
+            dao = dao,
+            isImportCompleted = isImportDone
+        )
+        if (!ready) {
+            _placementQuizState.value = _placementQuizState.value.copy(
+                isQuizActive = true,
+                isWaitingForImport = true
+            )
+            return
+        }
+        val questions = com.example.data.onboarding.OnboardingPlacementQuiz.buildPlacementQuizQuestions(dao)
+        if (questions.isNullOrEmpty()) {
+            _placementQuizState.value = _placementQuizState.value.copy(
+                isQuizActive = true,
+                isWaitingForImport = true
+            )
+            return
+        }
+        _placementQuizState.value = com.example.ui.screens.PlacementQuizUiState(
+            isQuizActive = true,
+            isWaitingForImport = false,
+            questions = questions,
+            currentQuestionIndex = 0,
+            answersByQuestionId = emptyMap(),
+            isQuizFinished = false
+        )
+    }
+
+    fun answerPlacementQuizQuestion(selectedOption: String) {
+        val current = _placementQuizState.value
+        val question = current.questions.getOrNull(current.currentQuestionIndex) ?: return
+        val updatedAnswers = current.answersByQuestionId + (question.id to selectedOption)
+
+        if (current.currentQuestionIndex + 1 < current.questions.size) {
+            _placementQuizState.value = current.copy(
+                currentQuestionIndex = current.currentQuestionIndex + 1,
+                answersByQuestionId = updatedAnswers
+            )
+        } else {
+            val (suggested, countsByLevel) = com.example.data.onboarding.OnboardingPlacementQuiz.scorePlacementQuiz(
+                questions = current.questions,
+                answersByQuestionId = updatedAnswers
+            )
+            _placementQuizState.value = current.copy(
+                answersByQuestionId = updatedAnswers,
+                isQuizFinished = true,
+                suggestedLevel = suggested,
+                editableLevel = suggested,
+                correctCountByLevel = countsByLevel
+            )
+            viewModelScope.launch {
+                onboardingRepository.saveSelectedLevel(suggested)
+            }
+        }
+    }
+
+    fun retakePlacementQuiz() {
+        startPlacementQuiz()
+    }
+
+    fun updateQuizEditableLevel(level: String) {
+        val cleanLevel = level.trim().uppercase()
+        _placementQuizState.value = _placementQuizState.value.copy(editableLevel = cleanLevel)
+        viewModelScope.launch {
+            onboardingRepository.saveSelectedLevel(cleanLevel)
+        }
+    }
+
+    fun handlePlacementQuizBack() {
+        val current = _placementQuizState.value
+        if (!current.isQuizActive) return
+        if (!current.isWaitingForImport && !current.isQuizFinished && current.currentQuestionIndex > 0) {
+            _placementQuizState.value = current.copy(
+                currentQuestionIndex = current.currentQuestionIndex - 1
+            )
+        } else {
+            _placementQuizState.value = com.example.ui.screens.PlacementQuizUiState(isQuizActive = false)
+        }
+    }
+
+    /**
+     * Skips onboarding at any step:
+     * - Writes the default profile (B2, general_fluency, 30 min, 6 days, Friday rest) ONLY if no profile exists.
+     * - Never overwrites an existing profile and never changes `allowAi`.
+     * - Marks `onboarding_completed = true` and `last_completed_step = 5`.
+     */
+    fun skipOnboarding() {
+        viewModelScope.launch {
+            val existingProfile = database.wordBooksDao().getStudyPlanProfile()
+            if (existingProfile == null) {
+                val created = studyPlanRepository.getOrCreateProfile()
+                val plan = studyPlanRepository.loadDefaultPlanScaled(created)
+                _todayChecklist.value = studyPlanRepository.regenerateChecklistForUpdatedPlan(created, plan)
+            } else if (_todayChecklist.value == null) {
+                _todayChecklist.value = studyPlanRepository.getOrCreateDailyChecklist()
+            }
+            _studyStreak.value = studyPlanRepository.computeStreak()
+            _weakAreas.value = studyPlanRepository.getWeakAreas()
+            _placementQuizState.value = com.example.ui.screens.PlacementQuizUiState()
+            onboardingRepository.markOnboardingCompleted()
+        }
+    }
+
+    /**
+     * Idempotent retry for dictionary import during onboarding: upserts by ID without duplicating entries
+     * or altering user progress.
+     */
+    fun retryDictionaryImportFromOnboarding() {
+        startImportIfNeeded(forceRecheck = true)
+    }
+
+    /**
+     * Starts "Redo setup" from Settings without deleting any progress, streaks, saved sentences,
+     * notebook entries, checklists, or backups, and without changing `allowAi`.
+     */
+    fun startRedoOnboardingSetup() {
+        viewModelScope.launch {
+            val existingProfile = database.wordBooksDao().getStudyPlanProfile()
+            _placementQuizState.value = com.example.ui.screens.PlacementQuizUiState()
+            onboardingRepository.startRedoSetup(
+                existingLevel = existingProfile?.level,
+                existingGoal = existingProfile?.goal,
+                existingMinutes = existingProfile?.minutesPerDay,
+                existingStudyDays = existingProfile?.studyDaysPerWeek
+            )
         }
     }
 
@@ -1143,7 +1610,11 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     // --- GRAMMAR & READING INITIALIZATION ---
     init {
         viewModelScope.launch {
-            grammarRepository.importGrammarLessonsIfNeeded()
+            try {
+                grammarRepository.importGrammarLessonsIfNeeded()
+            } finally {
+                _isGrammarImporting.value = false
+            }
             readingRepository.importReadingTextsIfNeeded()
         }
     }

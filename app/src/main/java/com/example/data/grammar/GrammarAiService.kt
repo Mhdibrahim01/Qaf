@@ -24,7 +24,7 @@ class GrammarAiService(
     private val repository: GrammarRepository,
     private val isAllowAiEnabled: () -> Boolean,
     private val isOnline: () -> Boolean,
-    private val apiKeyProvider: () -> String = { BuildConfig.GEMINI_API_KEY },
+    private val apiKeyProvider: () -> String = { "" },
     private val apiKeysProvider: (() -> List<String>)? = null
 ) {
     private val json = Json {

@@ -58,7 +58,7 @@ data class BatchTranslateUiState(
     val consecutiveFailures: Int = 0,
     val requestsUsedToday: Int = 0,
     val dailyRequestLimit: Int = DEFAULT_DAILY_REQUEST_LIMIT,
-    val allowAi: Boolean = true,
+    val allowAi: Boolean = false,
     val statusMessage: String = "",
     val errorMessage: String? = null,
     val deckStats: List<DeckArabicStats> = emptyList(),
@@ -128,7 +128,7 @@ class BatchTranslateManager(
     }
 
     private fun loadInitialState(): BatchTranslateUiState {
-        val allowAi = prefs.getBoolean(KEY_ALLOW_AI, true)
+        val allowAi = prefs.getBoolean(KEY_ALLOW_AI, false)
         val dailyLimit = prefs.getInt(KEY_DAILY_LIMIT, BatchTranslateUiState.DEFAULT_DAILY_REQUEST_LIMIT)
         val usedToday = getPersistedRequestsUsedToday()
         val savedDeck = prefs.getString(KEY_SELECTED_DECK, "") ?: ""

@@ -88,7 +88,7 @@ data class ImportProgressState(
     val currentFile: String = "",
     val currentFileSourcePath: String = "",
     val importedRows: Int = 0,
-    val totalExpectedRows: Int = 9862,
+    val totalExpectedRows: Int = DataImportRepository.TOTAL_EXPECTED_ROWS,
     val batchNumber: Int = 0,
     val isCompleted: Boolean = false,
     val missingFiles: List<String> = emptyList(),
@@ -207,7 +207,8 @@ class DataImportRepository(
 
     companion object {
         const val BATCH_SIZE = 500
-        const val TOTAL_EXPECTED_ROWS = 9862
+        const val CORE_EXPECTED_ROWS = 9862
+        const val TOTAL_EXPECTED_ROWS = 21624
         const val DATA_VERSION = 3
         const val SAVED_WORDS_DECK_ID = "saved_words"
         const val DUE_TODAY_DECK_ID = "due_today"
@@ -267,6 +268,26 @@ class DataImportRepository(
             "business_english.json",
             "career_interview.json",
             "medical_healthcare.json"
+        )
+
+        /**
+         * Exact row counts per bundled JSON file (9,862 core + 11,762 specialized = 21,624 total).
+         */
+        val EXPECTED_FILE_ROW_COUNTS = linkedMapOf(
+            "oxford5000_part1.json" to 2383,
+            "oxford5000_part2.json" to 2386,
+            "oxford5000_part3.json" to 1179,
+            "oxford_opal.json" to 2096,
+            "oxford_phrases.json" to 750,
+            "everyday_expressions.json" to 600,
+            "essential_idioms.json" to 468,
+            "ielts_core.json" to 3575,
+            "it_industry.json" to 1622,
+            "cefr_c1.json" to 1853,
+            "pte_academic.json" to 2651,
+            "business_english.json" to 1250,
+            "career_interview.json" to 406,
+            "medical_healthcare.json" to 405
         )
 
         /**
@@ -367,15 +388,22 @@ class DataImportRepository(
         deckId: String,
         wordText: String,
         rating: Sm2Rating,
-        nowMillis: Long = System.currentTimeMillis()
+        nowMillis: Long = System.currentTimeMillis(),
+        entryId: String? = null
     ): WordProgressEntity = withContext(Dispatchers.IO) {
         val cardKey = buildCardKey(deckId, wordText)
-        val current = dao.getWordProgress(cardKey) ?: WordProgressEntity(
+        val existing = dao.getWordProgress(cardKey)
+        val resolvedEntryId = entryId
+            ?.takeIf { it.isNotBlank() }
+            ?: existing?.entryId
+            ?: dao.getPrimaryEntryIdForCard(deckId, wordText)
+        val current = (existing ?: WordProgressEntity(
             cardKey = cardKey,
+            entryId = resolvedEntryId,
             deck = deckId,
             text = wordText.trim().lowercase()
-        )
-        val updated = Sm2Algorithm.applyRating(current, rating, nowMillis)
+        )).copy(entryId = resolvedEntryId)
+        val updated = Sm2Algorithm.applyRating(current, rating, nowMillis).copy(entryId = resolvedEntryId)
         dao.upsertWordProgress(updated)
         updated
     }
@@ -567,7 +595,7 @@ class DataImportRepository(
         val updated = (existing ?: WordProgressEntity(
             cardKey = cardKey,
             deck = deckId,
-            text = wordText.lowercase()
+            text = wordText.trim().lowercase()
         )).copy(isFavorite = !(existing?.isFavorite ?: false))
         dao.upsertWordProgress(updated)
         refreshDeckProgressCounts(deckId)
@@ -579,7 +607,7 @@ class DataImportRepository(
         val updated = (existing ?: WordProgressEntity(
             cardKey = cardKey,
             deck = deckId,
-            text = wordText.lowercase()
+            text = wordText.trim().lowercase()
         )).copy(
             isMastered = !(existing?.isMastered ?: false),
             lastReviewedTimestamp = System.currentTimeMillis()
@@ -918,12 +946,16 @@ class DataImportRepository(
                 seedAiWordDetailsIfNeeded()
             }
 
+            val expectedRowsForResolved = resolvedSources
+                .sumOf { EXPECTED_FILE_ROW_COUNTS[it.fileName] ?: 0 }
+                .takeIf { it > 0 } ?: TOTAL_EXPECTED_ROWS
+
             if (coreCountsMatchExact && !anyOptionalNeedsImport && !versionNeedsUpsert && missing.isEmpty() && !forceRecheck) {
                 refreshAllDeckCounts()
                 _importState.value = ImportProgressState(
                     isImporting = false,
                     importedRows = currentTotal,
-                    totalExpectedRows = TOTAL_EXPECTED_ROWS,
+                    totalExpectedRows = maxOf(expectedRowsForResolved, currentTotal),
                     isCompleted = true,
                     missingFiles = emptyList(),
                     foundFilePaths = foundPathsMap
@@ -954,7 +986,7 @@ class DataImportRepository(
                     currentFile = source.fileName,
                     currentFileSourcePath = source.exactPath,
                     importedRows = runningTotalProcessed,
-                    totalExpectedRows = TOTAL_EXPECTED_ROWS,
+                    totalExpectedRows = maxOf(expectedRowsForResolved, runningTotalProcessed),
                     batchNumber = batchCounter,
                     missingFiles = missing,
                     foundFilePaths = foundPathsMap
@@ -969,6 +1001,7 @@ class DataImportRepository(
                             currentFile = source.fileName,
                             currentFileSourcePath = source.exactPath,
                             importedRows = runningTotalProcessed,
+                            totalExpectedRows = maxOf(expectedRowsForResolved, runningTotalProcessed),
                             batchNumber = batchCounter
                         )
                     }
@@ -985,9 +1018,9 @@ class DataImportRepository(
                 isImporting = false,
                 currentFile = "",
                 importedRows = finalDbCount,
-                totalExpectedRows = TOTAL_EXPECTED_ROWS,
+                totalExpectedRows = maxOf(expectedRowsForResolved, finalDbCount),
                 batchNumber = batchCounter,
-                isCompleted = missing.isEmpty() && finalDbCount >= TOTAL_EXPECTED_ROWS,
+                isCompleted = missing.isEmpty() && finalDbCount >= CORE_EXPECTED_ROWS,
                 missingFiles = missing,
                 foundFilePaths = foundPathsMap,
                 error = if (missing.isNotEmpty()) {

@@ -19,7 +19,7 @@ class StudyPlanAiService(
     private val isAllowAiEnabled: () -> Boolean,
     private val isOnline: () -> Boolean,
     private val timeProvider: TimeProvider = SystemTimeProvider(),
-    private val apiKeyProvider: () -> String = { BuildConfig.GEMINI_API_KEY },
+    private val apiKeyProvider: () -> String = { "" },
     private val apiKeysProvider: (() -> List<String>)? = null
 ) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
