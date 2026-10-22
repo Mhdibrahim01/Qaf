@@ -71,6 +71,8 @@ data class DeckArabicStats(
         Index(value = ["text"]),
         Index(value = ["deck", "text"]),
         Index(value = ["level"]),
+        Index(value = ["effective_level"]),
+        Index(value = ["deck", "effective_level"]),
         Index(value = ["type"]),
         Index(value = ["arabic_source"])
     ]
@@ -93,8 +95,33 @@ data class EntryEntity(
     val ipa: String = "",
     val syllables: String = "",
     @ColumnInfo(name = "extra_examples_json") val extraExamplesJson: String = "",
-    @ColumnInfo(name = "data_version") val dataVersion: Int = 1
-)
+    @ColumnInfo(name = "data_version") val dataVersion: Int = 1,
+    @ColumnInfo(name = "effective_level") val effectiveLevel: String? = computeInitialEffectiveLevel(deck, level)
+) {
+    companion object {
+        val GRADED_DECKS = setOf("oxford5000", "oxford_phrases", "cefr_c1")
+        val VALID_CEFR_LEVELS = setOf("A1", "A2", "B1", "B2", "C1")
+
+        fun computeInitialEffectiveLevel(
+            deck: String,
+            level: String,
+            oxfordHeadwordLevel: String? = null
+        ): String? {
+            val cleanDeck = deck.trim().lowercase()
+            val cleanLevel = level.trim().uppercase()
+            if (cleanDeck == "oxford5000" && cleanLevel in VALID_CEFR_LEVELS) {
+                return cleanLevel
+            }
+            if (oxfordHeadwordLevel != null && oxfordHeadwordLevel.uppercase() in VALID_CEFR_LEVELS) {
+                return oxfordHeadwordLevel.uppercase()
+            }
+            if (cleanDeck in GRADED_DECKS && cleanLevel in VALID_CEFR_LEVELS) {
+                return cleanLevel
+            }
+            return null
+        }
+    }
+}
 
 /**
  * 2. decks table
@@ -128,6 +155,7 @@ typealias PosSenseVariant = com.example.data.importer.PosSenseVariant
  * Kept in a separate table from `entries` so content upserts never touch favorites, mastered flags, or SRS.
  */
 @Immutable
+@Serializable
 @Entity(
     tableName = "word_progress",
     indices = [
@@ -136,7 +164,8 @@ typealias PosSenseVariant = com.example.data.importer.PosSenseVariant
         Index(value = ["is_favorite"]),
         Index(value = ["is_mastered"]),
         Index(value = ["is_mastered", "due_timestamp"]),
-        Index(value = ["entry_id"])
+        Index(value = ["entry_id"]),
+        Index(value = ["first_learned_timestamp"])
     ]
 )
 data class WordProgressEntity(
@@ -151,13 +180,49 @@ data class WordProgressEntity(
     @ColumnInfo(name = "ease_factor") val easeFactor: Float = 2.5f,
     @ColumnInfo(name = "due_timestamp") val dueTimestamp: Long = 0L,
     @ColumnInfo(name = "last_reviewed_timestamp") val lastReviewedTimestamp: Long = 0L,
-    @ColumnInfo(name = "again_count") val againCount: Int = 0
+    @ColumnInfo(name = "again_count") val againCount: Int = 0,
+    @ColumnInfo(name = "first_learned_timestamp") val firstLearnedTimestamp: Long = 0L
+)
+
+/**
+ * 3b. attempts table
+ * Append-only practice log written transactionally alongside real user practice actions.
+ * Favorite toggles and manual mastery toggles NEVER insert rows here.
+ *
+ * activity_type values:
+ * - "flashcard_new"     : first real SM-2 rating on a previously unrated card
+ * - "flashcard_review"  : subsequent SM-2 review rating on an already-introduced card
+ * - "grammar_quiz"      : grammar lesson exercise completion
+ * - "reading_quiz"      : reading comprehension quiz completion
+ * - "sentence_practice" : sentence dictation / speaking diff practice
+ * - "correction_review" : spaced review attempt in correction notebook
+ * - "quiz_question"     : mini/weekly quiz question attempt
+ */
+@Immutable
+@Serializable
+@Entity(
+    tableName = "attempts",
+    indices = [
+        Index(value = ["timestamp"]),
+        Index(value = ["activity_type", "item_id"])
+    ]
+)
+data class AttemptEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0L,
+    @ColumnInfo(name = "activity_type") val activityType: String,
+    @ColumnInfo(name = "item_id") val itemId: String,
+    val timestamp: Long,
+    @ColumnInfo(name = "sm2_rating") val sm2Rating: Int? = null, // 0=Again, 1=Hard, 2=Good, 3=Easy
+    @ColumnInfo(name = "is_correct") val isCorrect: Boolean? = null,
+    val score: Float? = null,
+    val deck: String? = null
 )
 
 /**
  * 4. sentences table
  */
 @Immutable
+@Serializable
 @Entity(
     tableName = "sentences",
     indices = [
@@ -206,6 +271,7 @@ data class GrammarLessonEntity(
  * so importing or updating lesson content by ID NEVER touches user progress.
  */
 @Immutable
+@Serializable
 @Entity(tableName = "grammar_progress")
 data class GrammarProgressEntity(
     @PrimaryKey @ColumnInfo(name = "lesson_id") val lessonId: String,
@@ -308,6 +374,7 @@ data class ReadingTextEntity(
  * reading_progress table
  */
 @Immutable
+@Serializable
 @Entity(tableName = "reading_progress")
 data class ReadingProgressEntity(
     @PrimaryKey @ColumnInfo(name = "text_id") val textId: String,
@@ -357,6 +424,7 @@ data class ReadingTextJson(
  * Stores user-written sentences, AI feedback, manual edits, and spaced review attempts.
  */
 @Immutable
+@Serializable
 @Entity(
     tableName = "correction_notebook",
     indices = [
@@ -452,6 +520,7 @@ data class AiBatchSavePayload(
  * Stores user study preferences (target level, goal, daily minutes, days per week, rest days).
  */
 @Immutable
+@Serializable
 @Entity(tableName = "study_plan_profile")
 data class StudyPlanProfileEntity(
     @PrimaryKey val id: Int = 1,
@@ -462,6 +531,7 @@ data class StudyPlanProfileEntity(
     @ColumnInfo(name = "start_date") val startDate: String = "",
     @ColumnInfo(name = "selected_decks_json") val selectedDecksJson: String = "[\"oxford5000\",\"oxford_opal\"]",
     @ColumnInfo(name = "rest_days_json") val restDaysJson: String = "[6]",
+    @ColumnInfo(name = "start_at_user_level") val startAtUserLevel: Boolean = true,
     @ColumnInfo(name = "updated_at") val updatedAt: Long = System.currentTimeMillis()
 )
 
@@ -470,6 +540,7 @@ data class StudyPlanProfileEntity(
  * Stores monthly study plans (from AI or default B2 fallback).
  */
 @Immutable
+@Serializable
 @Entity(tableName = "study_plans")
 data class StudyPlanEntity(
     @PrimaryKey val month: String,
@@ -488,6 +559,7 @@ data class StudyPlanEntity(
  * Persists each day's task checklist generated locally.
  */
 @Immutable
+@Serializable
 @Entity(tableName = "daily_task_checklist")
 data class DailyChecklistEntity(
     @PrimaryKey val date: String,
@@ -504,6 +576,7 @@ data class DailyChecklistEntity(
  * Tracks score & accuracy per skill (vocabulary, grammar, reading, listening) for mini and weekly quizzes.
  */
 @Immutable
+@Serializable
 @Entity(
     tableName = "quiz_results",
     indices = [
@@ -577,7 +650,10 @@ data class DailyTaskItem(
     val isCompleted: Boolean = false,
     val linkedRoute: String = "",
     val linkedId: String = "",
-    val explanationAr: String = ""
+    val explanationAr: String = "",
+    val reason: String = "",
+    val estimatedMinutes: Int = 1,
+    val backlogRemaining: Int = 0
 )
 
 @Immutable
@@ -607,4 +683,38 @@ data class LetterCountResult(
     val count: Int
 )
 
+/**
+ * Real stored accuracy & mastery summary computed from `attempts` and `word_progress`,
+ * kept strictly separate from daily task completion counts.
+ */
+@Immutable
+data class PracticeAccuracySummary(
+    val newWordsLearnedToday: Int = 0,
+    val reviewAttemptsToday: Int = 0,
+    val totalAttemptsToday: Int = 0,
+    val todayRecallAccuracyPercent: Int? = null,
+    val sevenDayRecallAccuracyPercent: Int? = null,
+    val totalMasteredWords: Int = 0,
+    val dueNowCount: Int = 0,
+    val dueTodayCount: Int = 0,
+    val waitingLaterTodayCount: Int = 0
+)
 
+/**
+ * Complete local backup/export payload containing all user progress, favorites,
+ * notebook entries, streaks/checklists, study profile, and append-only practice attempts.
+ */
+@Serializable
+data class UserBackupPayload(
+    val schemaVersion: Int = 15,
+    val exportedAt: Long = 0L,
+    val wordProgress: List<WordProgressEntity> = emptyList(),
+    val attempts: List<AttemptEntity> = emptyList(),
+    val sentences: List<SentenceEntity> = emptyList(),
+    val grammarProgress: List<GrammarProgressEntity> = emptyList(),
+    val readingProgress: List<ReadingProgressEntity> = emptyList(),
+    val correctionNotebook: List<CorrectionNotebookEntity> = emptyList(),
+    val studyPlanProfile: StudyPlanProfileEntity? = null,
+    val dailyChecklists: List<DailyChecklistEntity> = emptyList(),
+    val quizResults: List<QuizResultEntity> = emptyList()
+)

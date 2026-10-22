@@ -1,118 +1,367 @@
 package com.example.data.plan
 
+import com.example.data.local.AttemptEntity
+import com.example.data.local.DailyChecklistEntity
+import com.example.data.local.DailyTaskItem
+import com.example.data.local.EntryEntity
 import com.example.data.local.GrammarExerciseItem
+import com.example.data.local.GrammarLessonEntity
 import com.example.data.local.QuizQuestionItem
 import com.example.data.local.QuizResultEntity
+import com.example.data.local.ReadingQuestionItem
+import com.example.data.local.ReadingTextEntity
+import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.local.WordBooksDao
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.util.Locale
 import java.util.UUID
+
+@Serializable
+data class DailyQuizScopeInfo(
+    val vocabTitle: String = "10 New Words",
+    val vocabCompleted: Boolean = false,
+    val grammarLessonId: String = "",
+    val grammarTitle: String = "Grammar Lesson",
+    val grammarTitleAr: String = "درس القواعد",
+    val grammarCompleted: Boolean = false,
+    val readingStoryId: String = "",
+    val readingTitle: String = "Reading Story",
+    val readingTitleAr: String = "قصة القراءة",
+    val readingCompleted: Boolean = false,
+    val allCompleted: Boolean = false
+)
+
+data class AlignedDailyQuizResult(
+    val questions: List<QuizQuestionItem>,
+    val scopeInfo: DailyQuizScopeInfo
+)
 
 class LocalQuizEngine(
     private val dao: WordBooksDao,
-    private val timeProvider: TimeProvider = SystemTimeProvider()
+    private val timeProvider: TimeProvider = SystemTimeProvider(),
+    private val studyPlanRepository: StudyPlanRepository? = null
 ) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     /**
-     * Generates a 5-question Daily Mini-Quiz:
-     * - 2 Vocabulary (EN -> AR, AR -> EN)
-     * - 1 Grammar (from studied/available lessons)
-     * - 1 Reading Context / Cloze
-     * - 1 Listening (or additional Vocabulary if TTS is unavailable)
+     * Generates a 10-question Daily Mini-Quiz directly aligned with today's study plan:
+     * - 5 Vocabulary questions covering today's assigned words
+     * - 3 Grammar questions derived strictly from today's single grammar lesson
+     * - 2 Reading comprehension questions derived from today's assigned passage
      */
     suspend fun generateDailyMiniQuiz(isTtsAvailable: Boolean = true): List<QuizQuestionItem> {
+        val today = timeProvider.todayDateString()
+        val checklist = dao.getDailyChecklist(today)
+        val profile = dao.getStudyPlanProfile()
+        return generateAlignedDailyQuiz(checklist, profile, isTtsAvailable).questions
+    }
+
+    /**
+     * Core aligned assessment generator that pairs today's checklist tasks
+     * with exact questions and creates a DailyQuizScopeInfo preview.
+     */
+    suspend fun generateAlignedDailyQuiz(
+        checklist: DailyChecklistEntity?,
+        profile: StudyPlanProfileEntity?,
+        isTtsAvailable: Boolean = true
+    ): AlignedDailyQuizResult {
         val questions = mutableListOf<QuizQuestionItem>()
+        val tasks: List<DailyTaskItem> = try {
+            if (checklist != null && checklist.tasksJson.isNotBlank()) {
+                json.decodeFromString(checklist.tasksJson)
+            } else emptyList()
+        } catch (_: Exception) { emptyList() }
 
-        // 1. Vocabulary questions (only words with non-empty arabic!)
-        val vocabCandidates = dao.getAllTranslatedEntries().filter { it.arabic.isNotBlank() && it.text.isNotBlank() }.shuffled()
-        if (vocabCandidates.size >= 4) {
-            val q1Target = vocabCandidates[0]
-            val q1Distractors = vocabCandidates.filter { it.id != q1Target.id }.shuffled().take(3)
-            val q1Options = (listOf(q1Target.arabic) + q1Distractors.map { it.arabic }).shuffled()
-            questions.add(
-                QuizQuestionItem(
-                    id = UUID.randomUUID().toString(),
-                    skill = "vocabulary",
-                    questionType = "mcq_en_ar",
-                    promptEn = "What is the correct Arabic meaning of \"${q1Target.text}\" (${q1Target.pos})?",
-                    promptAr = "ما هو المعنى العربي الصحيح لكلمة \"${q1Target.text}\"؟",
-                    options = q1Options,
-                    answerIndex = q1Options.indexOf(q1Target.arabic),
-                    correctText = q1Target.arabic,
-                    explanationAr = "المعنى الصحيح هو: ${q1Target.arabic}"
-                )
-            )
+        val userLevel = profile?.level?.trim()?.uppercase(Locale.US)?.ifBlank { "B2" } ?: "B2"
+        val vocabTask = tasks.find { it.type == "new_words" }
+        val grammarTask = tasks.find { it.type == "grammar" }
+        val readingTask = tasks.find { it.type == "reading" }
 
-            val q2Target = vocabCandidates[1]
-            val q2Distractors = vocabCandidates.filter { it.id != q2Target.id && it.text != q2Target.text }.shuffled().take(3)
-            val q2Options = (listOf(q2Target.text) + q2Distractors.map { it.text }).shuffled()
-            questions.add(
-                QuizQuestionItem(
-                    id = UUID.randomUUID().toString(),
-                    skill = "vocabulary",
-                    questionType = "mcq_ar_en",
-                    promptEn = "Which English word matches: \"${q2Target.arabic}\"?",
-                    promptAr = "أي كلمة إنجليزية تعني: \"${q2Target.arabic}\"؟",
-                    options = q2Options,
-                    answerIndex = q2Options.indexOf(q2Target.text),
-                    correctText = q2Target.text,
-                    explanationAr = "الكلمة الصحيحة هي: ${q2Target.text}"
-                )
-            )
+        // -------------------------------------------------------------
+        // 1. VOCABULARY (5 Questions from today's 10 assigned words)
+        // -------------------------------------------------------------
+        val assignedWords = mutableListOf<EntryEntity>()
+        if (studyPlanRepository != null && profile != null) {
+            try {
+                val selection = studyPlanRepository.selectNewWordsForProfile(profile, 10)
+                assignedWords.addAll(selection.words.filter { it.text.isNotBlank() && it.arabic.isNotBlank() })
+            } catch (_: Exception) {
+                // Ignore and fall back to database entries
+            }
+        }
+        if (assignedWords.isEmpty()) {
+            val levelEntries = dao.getAllTranslatedEntries()
+                .filter { it.level.equals(userLevel, ignoreCase = true) && it.text.isNotBlank() && it.arabic.isNotBlank() }
+            assignedWords.addAll(levelEntries.take(10))
+        }
+        if (assignedWords.size < 5) {
+            val anyTranslated = dao.getAllTranslatedEntries()
+                .filter { it.text.isNotBlank() && it.arabic.isNotBlank() }
+            assignedWords.addAll(anyTranslated.take(10 - assignedWords.size))
         }
 
-        // 2. Grammar question
-        val grammarLessons = dao.getAllGrammarLessons()
-        val grammarQuestion = buildGrammarQuestion(grammarLessons)
-        if (grammarQuestion != null) {
-            questions.add(grammarQuestion)
+        val allTranslatedForLevel = dao.getAllTranslatedEntries()
+            .filter { it.level.equals(userLevel, ignoreCase = true) && it.arabic.isNotBlank() && it.text.isNotBlank() }
+        val distractorPool = (assignedWords + allTranslatedForLevel + dao.getAllTranslatedEntries())
+            .distinctBy { it.text.lowercase().trim() }
+
+        val vocabTargetWords = assignedWords.distinctBy { it.text.lowercase().trim() }.take(5)
+        vocabTargetWords.forEachIndexed { index, target ->
+            val otherWords = distractorPool
+                .filter { !it.text.equals(target.text, ignoreCase = true) && it.arabic != target.arabic }
+                .shuffled()
+                .take(3)
+
+            when (index % 3) {
+                0 -> {
+                    // EN -> AR
+                    val options = (listOf(target.arabic) + otherWords.map { it.arabic }).shuffled()
+                    questions.add(
+                        QuizQuestionItem(
+                            id = UUID.randomUUID().toString(),
+                            skill = "vocabulary",
+                            questionType = "mcq_en_ar",
+                            promptEn = "What is the correct Arabic meaning of \"${target.text}\"${if (target.pos.isNotBlank()) " (${target.pos})" else ""}?",
+                            promptAr = "ما المعنى العربي لكلمة اليوم: \"${target.text}\"؟",
+                            options = options,
+                            answerIndex = options.indexOf(target.arabic),
+                            correctText = target.arabic,
+                            explanationAr = "المعنى الصحيح لكلمة اليوم \"${target.text}\" هو: ${target.arabic}" +
+                                if (target.examplesEn.isNotBlank()) " • مثال: ${target.examplesEn}" else ""
+                        )
+                    )
+                }
+                1 -> {
+                    // AR -> EN
+                    val options = (listOf(target.text) + otherWords.map { it.text }).shuffled()
+                    questions.add(
+                        QuizQuestionItem(
+                            id = UUID.randomUUID().toString(),
+                            skill = "vocabulary",
+                            questionType = "mcq_ar_en",
+                            promptEn = "Which English word matches: \"${target.arabic}\"?",
+                            promptAr = "أي كلمة إنجليزية تطابق: \"${target.arabic}\"؟",
+                            options = options,
+                            answerIndex = options.indexOf(target.text),
+                            correctText = target.text,
+                            explanationAr = "الكلمة المطابقة للمعنى العربي \"${target.arabic}\" هي: ${target.text}"
+                        )
+                    )
+                }
+                else -> {
+                    // Listening (if TTS available) or Contextual Fill-in
+                    if (isTtsAvailable) {
+                        val options = (listOf(target.text) + otherWords.map { it.text }).shuffled()
+                        questions.add(
+                            QuizQuestionItem(
+                                id = UUID.randomUUID().toString(),
+                                skill = "vocabulary",
+                                questionType = "listening",
+                                promptEn = "Listen to today's assigned word and select the correct match:",
+                                promptAr = "استمع للكلمة المقررة اليوم واختر الكلمة الصحيحة:",
+                                options = options,
+                                answerIndex = options.indexOf(target.text),
+                                correctText = target.text,
+                                audioText = target.text,
+                                explanationAr = "الكلمة المنطوقة هي: ${target.text} (${target.arabic})"
+                            )
+                        )
+                    } else {
+                        val options = (listOf(target.arabic) + otherWords.map { it.arabic }).shuffled()
+                        questions.add(
+                            QuizQuestionItem(
+                                id = UUID.randomUUID().toString(),
+                                skill = "vocabulary",
+                                questionType = "mcq_en_ar",
+                                promptEn = "Today's Vocabulary: Meaning of \"${target.text}\"",
+                                promptAr = "مفردات اليوم: ما هو معنى \"${target.text}\"؟",
+                                options = options,
+                                answerIndex = options.indexOf(target.arabic),
+                                correctText = target.arabic,
+                                explanationAr = "المعنى الصحيح هو: ${target.arabic}"
+                            )
+                        )
+                    }
+                }
+            }
         }
 
-        // 3. Reading / Cloze Context question
-        val readingQuestion = buildReadingContextQuestion()
-        if (readingQuestion != null) {
-            questions.add(readingQuestion)
-        }
-
-        // 4. Listening question (if TTS available, otherwise vocab/reading)
-        if (isTtsAvailable && vocabCandidates.size >= 3) {
-            val listenTarget = vocabCandidates[2]
-            val distractors = vocabCandidates.filter { it.id != listenTarget.id && it.text != listenTarget.text }.shuffled().take(3)
-            val options = (listOf(listenTarget.text) + distractors.map { it.text }).shuffled()
-            questions.add(
-                QuizQuestionItem(
-                    id = UUID.randomUUID().toString(),
-                    skill = "listening",
-                    questionType = "listening",
-                    promptEn = "Listen to the audio and choose the correct English word:",
-                    promptAr = "استمع للمقطع الصوتي واختر الكلمة الإنجليزية الصحيحة:",
-                    options = options,
-                    answerIndex = options.indexOf(listenTarget.text),
-                    correctText = listenTarget.text,
-                    audioText = listenTarget.text,
-                    explanationAr = "الكلمة المنطوقة هي: ${listenTarget.text} (${listenTarget.arabic})"
+        // Fill up to 5 vocabulary if fewer targets were available
+        while (questions.count { it.skill == "vocabulary" } < 5) {
+            val fallbackTarget = distractorPool.firstOrNull { candidate -> questions.none { it.correctText == candidate.arabic || it.correctText == candidate.text } }
+                ?: distractorPool.firstOrNull()
+            if (fallbackTarget != null) {
+                val opts = (listOf(fallbackTarget.arabic) + distractorPool.filter { it.id != fallbackTarget.id }.take(3).map { it.arabic }).shuffled()
+                questions.add(
+                    QuizQuestionItem(
+                        id = UUID.randomUUID().toString(),
+                        skill = "vocabulary",
+                        questionType = "mcq_en_ar",
+                        promptEn = "Vocabulary Review: What is the Arabic meaning of \"${fallbackTarget.text}\"?",
+                        promptAr = "مراجعة مفردات: ما معنى \"${fallbackTarget.text}\"؟",
+                        options = opts,
+                        answerIndex = opts.indexOf(fallbackTarget.arabic),
+                        correctText = fallbackTarget.arabic,
+                        explanationAr = "المعنى الصحيح هو: ${fallbackTarget.arabic}"
+                    )
                 )
-            )
-        } else if (vocabCandidates.size >= 4) {
-            val qTarget = vocabCandidates[3]
-            val distractors = vocabCandidates.filter { it.id != qTarget.id }.shuffled().take(3)
-            val options = (listOf(qTarget.arabic) + distractors.map { it.arabic }).shuffled()
-            questions.add(
-                QuizQuestionItem(
-                    id = UUID.randomUUID().toString(),
-                    skill = "vocabulary",
-                    questionType = "mcq_en_ar",
-                    promptEn = "Meaning of: \"${qTarget.text}\"",
-                    promptAr = "ما معنى: \"${qTarget.text}\"؟",
-                    options = options,
-                    answerIndex = options.indexOf(qTarget.arabic),
-                    correctText = qTarget.arabic,
-                    explanationAr = "المعنى الصحيح هو: ${qTarget.arabic}"
-                )
-            )
+            } else {
+                break
+            }
         }
 
-        return questions.take(5)
+        // -------------------------------------------------------------
+        // 2. GRAMMAR (3 Questions strictly from today's assigned grammar lesson)
+        // -------------------------------------------------------------
+        val grammarLessonId = grammarTask?.linkedId.orEmpty().ifBlank {
+            dao.getUncompletedGrammarLessonsForLevel(userLevel).firstOrNull()?.id
+                ?: dao.getAllGrammarLessons().firstOrNull { it.level.equals(userLevel, ignoreCase = true) }?.id
+                ?: dao.getAllGrammarLessons().firstOrNull()?.id
+                .orEmpty()
+        }
+        val assignedGrammarLesson = if (grammarLessonId.isNotBlank()) dao.getGrammarLessonById(grammarLessonId) else null
+
+        if (assignedGrammarLesson != null) {
+            val exercises: List<GrammarExerciseItem> = try {
+                json.decodeFromString(assignedGrammarLesson.exercisesJson)
+            } catch (_: Exception) { emptyList() }
+
+            val candidateExercises = exercises.filter { it.prompt.isNotBlank() && it.answer.isNotBlank() }
+            val targetExercises = candidateExercises.take(3)
+            targetExercises.forEach { ex ->
+                val exType = ex.type.lowercase().trim()
+                val isReorder = exType == "reorder" ||
+                    (ex.options.size >= 3 && !ex.options.contains(ex.answer) && ex.answer.trim().contains(" "))
+
+                if (isReorder) {
+                    val wordTokens = if (ex.options.size >= 2) {
+                        ex.options.shuffled()
+                    } else {
+                        ex.answer.trim().split(Regex("\\s+")).filter { it.isNotBlank() }.shuffled()
+                    }
+                    questions.add(
+                        QuizQuestionItem(
+                            id = UUID.randomUUID().toString(),
+                            skill = "grammar",
+                            questionType = "grammar_reorder",
+                            promptEn = ex.prompt,
+                            promptAr = "قواعد: ${assignedGrammarLesson.titleAr}",
+                            options = wordTokens,
+                            answerIndex = 0,
+                            correctText = ex.answer.trim(),
+                            explanationAr = ex.explanationAr.ifBlank { "القاعدة من درس اليوم: ${assignedGrammarLesson.titleAr} (${assignedGrammarLesson.titleEn})" }
+                        )
+                    )
+                } else {
+                    val options = if (ex.options.size >= 2 && ex.options.contains(ex.answer)) {
+                        ex.options.shuffled()
+                    } else {
+                        val otherAnswers = candidateExercises.map { it.answer.trim() }
+                            .filter { it.isNotBlank() && !it.equals(ex.answer.trim(), ignoreCase = true) }
+                        val fallbackPool = (otherAnswers + listOf("is", "was", "been", "have", "had", "would")).distinct()
+                            .filter { !it.equals(ex.answer.trim(), ignoreCase = true) }
+                            .take(3)
+                        (listOf(ex.answer) + fallbackPool).shuffled()
+                    }
+                    questions.add(
+                        QuizQuestionItem(
+                            id = UUID.randomUUID().toString(),
+                            skill = "grammar",
+                            questionType = "grammar_mcq",
+                            promptEn = ex.prompt,
+                            promptAr = "قواعد: ${assignedGrammarLesson.titleAr}",
+                            options = options,
+                            answerIndex = options.indexOf(ex.answer).coerceAtLeast(0),
+                            correctText = ex.answer,
+                            explanationAr = ex.explanationAr.ifBlank { "القاعدة من درس اليوم: ${assignedGrammarLesson.titleAr} (${assignedGrammarLesson.titleEn})" }
+                        )
+                    )
+                }
+            }
+        }
+
+        // Fill up to 3 grammar questions if exercises were fewer than 3
+        while (questions.count { it.skill == "grammar" } < 3) {
+            val fallbackQ = buildGrammarQuestion(if (assignedGrammarLesson != null) listOf(assignedGrammarLesson) else dao.getAllGrammarLessons())
+            if (fallbackQ != null) {
+                questions.add(fallbackQ.copy(id = UUID.randomUUID().toString()))
+            } else {
+                break
+            }
+        }
+
+        // -------------------------------------------------------------
+        // 3. READING (2 Questions strictly from today's assigned reading text)
+        // -------------------------------------------------------------
+        val readingTextId = readingTask?.linkedId.orEmpty().ifBlank {
+            if (grammarLessonId.isNotBlank()) {
+                val num = grammarLessonId.filter { it.isDigit() }
+                if (num.isNotEmpty()) "r$num" else grammarLessonId.replaceFirst("g", "r")
+            } else ""
+        }
+        val assignedReadingText = (if (readingTextId.isNotBlank()) dao.getReadingTextById(readingTextId) else null)
+            ?: dao.getAllReadingTexts().firstOrNull { it.level.equals(userLevel, ignoreCase = true) }
+            ?: dao.getAllReadingTexts().firstOrNull()
+
+        if (assignedReadingText != null) {
+            val readingQuestions: List<ReadingQuestionItem> = try {
+                json.decodeFromString(assignedReadingText.questionsJson)
+            } catch (_: Exception) { emptyList() }
+
+            val validReadingQuestions = readingQuestions.filter { it.options.size >= 2 }
+            val targetReadingQuestions = validReadingQuestions.take(2)
+            targetReadingQuestions.forEach { q ->
+                questions.add(
+                    QuizQuestionItem(
+                        id = UUID.randomUUID().toString(),
+                        skill = "reading",
+                        questionType = "reading_context",
+                        promptEn = "[Reading: ${assignedReadingText.titleEn}] ${q.prompt}",
+                        promptAr = "من نص اليوم: ${assignedReadingText.titleAr}",
+                        options = q.options,
+                        answerIndex = q.answerIndex.coerceIn(0, q.options.size - 1),
+                        correctText = q.options.getOrNull(q.answerIndex) ?: "",
+                        explanationAr = "من نص اليوم (${assignedReadingText.titleAr}): ${q.explanationAr}"
+                    )
+                )
+            }
+        }
+
+        // Fill up to 2 reading questions if assigned text had fewer
+        while (questions.count { it.skill == "reading" } < 2) {
+            val fallbackQ = if (assignedReadingText != null) {
+                buildReadingContextQuestionFromText(assignedReadingText)
+            } else {
+                buildReadingContextQuestion()
+            }
+            if (fallbackQ != null) {
+                questions.add(fallbackQ.copy(id = UUID.randomUUID().toString()))
+            } else {
+                break
+            }
+        }
+
+        val finalQuestions = questions.take(10)
+
+        val scopeInfo = DailyQuizScopeInfo(
+            vocabTitle = vocabTask?.titleEn ?: "Learn 10 New Words ($userLevel)",
+            vocabCompleted = vocabTask?.isCompleted ?: false,
+            grammarLessonId = assignedGrammarLesson?.id ?: "",
+            grammarTitle = assignedGrammarLesson?.titleEn ?: (grammarTask?.titleEn ?: "Grammar Lesson"),
+            grammarTitleAr = assignedGrammarLesson?.titleAr ?: (grammarTask?.titleAr ?: "درس القواعد"),
+            grammarCompleted = grammarTask?.isCompleted ?: false,
+            readingStoryId = assignedReadingText?.id ?: "",
+            readingTitle = assignedReadingText?.titleEn ?: (readingTask?.titleEn ?: "Reading Story"),
+            readingTitleAr = assignedReadingText?.titleAr ?: (readingTask?.titleAr ?: "قصة القراءة"),
+            readingCompleted = readingTask?.isCompleted ?: false,
+            allCompleted = (vocabTask?.isCompleted == true) && (grammarTask?.isCompleted == true) && (readingTask?.isCompleted == true)
+        )
+
+        return AlignedDailyQuizResult(
+            questions = finalQuestions,
+            scopeInfo = scopeInfo
+        )
     }
 
     /**
@@ -394,7 +643,8 @@ class LocalQuizEngine(
     }
 
     /**
-     * Records quiz performance per skill in quiz_results table.
+     * Records quiz performance per skill in `quiz_results` and per question in `attempts`
+     * within a single Room transaction.
      */
     suspend fun recordQuizSubmission(
         quizType: String,
@@ -405,6 +655,24 @@ class LocalQuizEngine(
         val skills = listOf("vocabulary", "grammar", "reading", "listening")
         val skillAccuracy = mutableMapOf<String, Float>()
         val now = timeProvider.currentTimeMillis()
+        val resultsToInsert = mutableListOf<QuizResultEntity>()
+        val attemptsToInsert = mutableListOf<AttemptEntity>()
+
+        for (q in questions) {
+            val userIdx = userAnswers[q.id]
+            val isCorrect = userIdx != null && userIdx == q.answerIndex
+            attemptsToInsert.add(
+                AttemptEntity(
+                    activityType = "quiz_question",
+                    itemId = "${quizType}:${q.skill}:${q.id}",
+                    timestamp = now,
+                    sm2Rating = null,
+                    isCorrect = isCorrect,
+                    score = if (isCorrect) 100f else 0f,
+                    deck = null
+                )
+            )
+        }
 
         for (skill in skills) {
             val skillQuestions = questions.filter { it.skill == skill }
@@ -416,7 +684,7 @@ class LocalQuizEngine(
                 val accuracy = (correctCount.toFloat() / skillQuestions.size.toFloat()) * 100f
                 skillAccuracy[skill] = accuracy
 
-                dao.insertQuizResult(
+                resultsToInsert.add(
                     QuizResultEntity(
                         date = date,
                         quizType = quizType,
@@ -431,6 +699,7 @@ class LocalQuizEngine(
             }
         }
 
+        dao.insertQuizResultsWithAttempts(resultsToInsert, attemptsToInsert)
         return skillAccuracy
     }
 }

@@ -3,10 +3,12 @@ package com.example.data.plan
 import android.content.Context
 import com.example.data.local.DailyChecklistEntity
 import com.example.data.local.DailyTaskItem
+import com.example.data.local.EntryEntity
 import com.example.data.local.GrammarLessonEntity
 import com.example.data.local.PlanDailyTemplate
 import com.example.data.local.PlanStudyGoals
 import com.example.data.local.PlanWeekGoal
+import com.example.data.local.PracticeAccuracySummary
 import com.example.data.local.ReadingTextEntity
 import com.example.data.local.StudyPlanEntity
 import com.example.data.local.StudyPlanJson
@@ -149,6 +151,7 @@ class StudyPlanRepository(
         val safeDecks = selectedDecks.ifEmpty { listOf("oxford5000", "oxford_opal") }
         val updated = existing.copy(
             selectedDecksJson = json.encodeToString(safeDecks),
+            startAtUserLevel = startAtUserLevel,
             updatedAt = timeProvider.currentTimeMillis()
         )
         dao.upsertStudyPlanProfile(updated)
@@ -401,67 +404,145 @@ class StudyPlanRepository(
 
         val tasks = mutableListOf<DailyTaskItem>()
         val now = timeProvider.currentTimeMillis()
+        val dueTodayCutoff = timeProvider.dueTodayCutoff(now)
+        val dueNowCutoff = timeProvider.dueNowCutoff(now)
 
         val minutes = profile.minutesPerDay
-        // Task 1: Flashcards (scaled by minutes per day)
-        val flashcardBaseTarget = when {
-            minutes <= 15 -> 5
-            minutes <= 30 -> 10
-            minutes <= 45 -> 15
-            else -> 20
+        val deckNames = selectedDecks.map { formatDeckLabel(it) }.joinToString(" & ")
+
+        // Priority 1: Due Flashcards Review (Time budget: ~10s / 0.17 min per card)
+        val dueNow = if (selectedDecks.isNotEmpty()) {
+            dao.getDueNowCardsCountForDecks(dueNowCutoff, selectedDecks)
+        } else {
+            dao.getDueNowCardsCount(dueNowCutoff)
         }
-        val dueCount = dao.getDueCardsCount(now)
-        val flashcardTarget = if (isRestDay) 5 else if (dueCount > 0) minOf(dueCount, flashcardBaseTarget * 2) else flashcardBaseTarget
-        val flashcardMinutes = when {
-            minutes <= 15 -> 4
-            minutes <= 30 -> 8
-            minutes <= 45 -> 12
-            else -> 15
+        val dueToday = if (selectedDecks.isNotEmpty()) {
+            dao.getReviewDueTodayCountForDecks(dueTodayCutoff, selectedDecks)
+        } else {
+            dao.getReviewDueTodayCount(dueTodayCutoff)
         }
+        val waitingLaterToday = maxOf(0, dueToday - dueNow)
+        val totalDue = maxOf(dueToday, dueNow)
+
+        val maxScheduledReviewsCap = when {
+            minutes <= 15 -> 25
+            minutes <= 30 -> 50
+            minutes <= 45 -> 75
+            else -> 100
+        }
+
+        val flashcardTarget: Int
+        val backlogRemaining: Int
+        if (totalDue > maxScheduledReviewsCap) {
+            flashcardTarget = maxScheduledReviewsCap
+            backlogRemaining = totalDue - maxScheduledReviewsCap
+        } else if (totalDue > 0) {
+            flashcardTarget = totalDue
+            backlogRemaining = 0
+        } else {
+            flashcardTarget = if (isRestDay) 5 else when {
+                minutes <= 15 -> 5
+                minutes <= 30 -> 10
+                minutes <= 45 -> 15
+                else -> 20
+            }
+            backlogRemaining = 0
+        }
+
+        val flashcardMinutes = maxOf(1, (flashcardTarget * 0.17f).roundToInt())
+        val flashcardReason = if (backlogRemaining > 0) {
+            "$flashcardTarget of $totalDue due reviews scheduled today to fit your ${minutes}-min goal ($backlogRemaining remaining in backlog)"
+        } else if (totalDue > 0) {
+            if (waitingLaterToday > 0) "$dueNow due now + $waitingLaterToday later today in $deckNames (~$flashcardMinutes min)"
+            else "$dueNow due now in $deckNames (~$flashcardMinutes min)"
+        } else {
+            "Daily retention practice for $deckNames (~$flashcardMinutes min)"
+        }
+
         tasks.add(
             DailyTaskItem(
                 id = "task_flashcards",
                 type = "flashcards",
-                titleEn = if (isRestDay) "Flashcards (Rest Day Light Review)" else if (dueCount > 0) "Review Due Flashcards" else "Flashcards Review Practice",
-                titleAr = if (isRestDay) "مراجعة بطاقات خفيفة ليوم الراحة" else if (dueCount > 0) "مراجعة البطاقات المستحقة ($flashcardTarget بطاقة)" else "مراجعة البطاقات التعليمية ($flashcardTarget بطاقات)",
-                subtitleEn = if (dueCount > 0) "$flashcardTarget cards due today • $flashcardMinutes min" else "$flashcardTarget practice cards • Tap to review ${formatDeckLabel(primaryDeck)}",
+                titleEn = if (isRestDay) "Flashcards (Rest Day Light Review)" else if (totalDue > 0) "Review Due Flashcards" else "Flashcards Review Practice",
+                titleAr = if (isRestDay) "مراجعة بطاقات خفيفة ليوم الراحة" else if (totalDue > 0) "مراجعة البطاقات المستحقة ($flashcardTarget بطاقة)" else "مراجعة البطاقات التعليمية ($flashcardTarget بطاقات)",
+                subtitleEn = if (backlogRemaining > 0) "$flashcardTarget of $totalDue due reviews scheduled today to fit your ${minutes}-min goal ($backlogRemaining remaining in backlog)" else if (totalDue > 0) "$flashcardTarget cards due today • $flashcardMinutes min" else "$flashcardTarget practice cards • Tap to review ${formatDeckLabel(primaryDeck)}",
                 targetCount = flashcardTarget,
                 completedCount = 0,
                 isCompleted = false,
                 linkedRoute = "flashcards",
                 linkedId = primaryDeck,
-                explanationAr = "التكرار المتباعد يحفظ الكلمات في الذاكرة طويلة المدى."
+                explanationAr = "التكرار المتباعد يحفظ الكلمات في الذاكرة طويلة المدى.",
+                reason = flashcardReason,
+                estimatedMinutes = flashcardMinutes,
+                backlogRemaining = backlogRemaining
             )
         )
 
-        // Task 2: New Words (scaled by minutes per day, reduced after missed days, not hard-coded 10)
+        // Priority 2: Due Correction Reviews (Time budget: ~20s / 0.33 min per item)
+        val dueCorrections = dao.getDueCorrectionReviewsCount(now)
+        if (dueCorrections > 0) {
+            val correctionMinutes = maxOf(1, (dueCorrections * 0.33f).roundToInt())
+            val correctionReason = "$dueCorrections saved sentence corrections are due for review today"
+            tasks.add(
+                DailyTaskItem(
+                    id = "task_correction_reviews",
+                    type = "correction_reviews",
+                    titleEn = "Review Due Sentence Corrections",
+                    titleAr = "مراجعة تصحيحات الجمل المستحقة ($dueCorrections)",
+                    subtitleEn = "$dueCorrections corrections due for review • ~$correctionMinutes min",
+                    targetCount = dueCorrections,
+                    completedCount = 0,
+                    isCompleted = false,
+                    linkedRoute = "sentences",
+                    linkedId = "correction_notebook",
+                    explanationAr = "مراجعة الجمل التي قمت بتصحيحها لترسيخ الصياغة السليمة في الذاكرة.",
+                    reason = correctionReason,
+                    estimatedMinutes = correctionMinutes,
+                    backlogRemaining = 0
+                )
+            )
+        }
+
+        // Priority 3: New Words (scaled by minutes per day, deck-weighted, closeness-ordered, deterministic)
         val baseNewWords = when {
             minutes <= 15 -> 5
             minutes <= 30 -> 10
             minutes <= 45 -> 15
             else -> 20
         }
+        val isReviewsHeavy = (backlogRemaining > 0 || totalDue >= 25)
         val newWordsTarget = if (isRestDay) {
             3
+        } else if (isReviewsHeavy) {
+            maxOf(3, (baseNewWords * 0.6f).roundToInt())
         } else if (isAdjustedAfterMissedDay) {
             maxOf(3, baseNewWords / 2)
         } else {
             baseNewWords
         }
 
-        val preferredLevels = levelsForUserProfile(profile.level)
-        val candidateWords = dao.getNewWordsForLevelsAndDecks(preferredLevels, selectedDecks, newWordsTarget)
-            .ifEmpty { dao.getNewWordsForLevelsAndDecks(listOf("A1", "A2", "B1", "B2", "C1"), selectedDecks, newWordsTarget) }
+        val selectionResult = selectNewWordsForProfile(profile, newWordsTarget)
+        val candidateWords = selectionResult.words
         val samplePreview = candidateWords.take(3).joinToString(", ") { it.text }
+        val actualWordCount = candidateWords.size.coerceAtLeast(1)
+        val newWordsTime = maxOf(1, (actualWordCount * 0.75f).roundToInt())
+        val newWordsReason = if (isReviewsHeavy) {
+            "Fewer new words today: $totalDue reviews are due"
+        } else if (selectionResult.reasonString != null) {
+            selectionResult.reasonString
+        } else {
+            "$actualWordCount ${profile.level} words matched to your ${formatGoalBadge(profile.goal)} goal (~$newWordsTime min)"
+        }
+        val reasonPrefix = if (selectionResult.reasonString != null) "${selectionResult.reasonString} • " else ""
 
         tasks.add(
             DailyTaskItem(
                 id = "task_new_words",
                 type = "new_words",
-                titleEn = if (isRestDay) "Learn $newWordsTarget Light Words (Rest Day)" else "Learn $newWordsTarget New Words (${profile.level})",
-                titleAr = if (isRestDay) "تعلم $newWordsTarget مفردات خفيفة (يوم راحة)" else "تعلم $newWordsTarget مفردات جديدة (مستوى ${profile.level})",
-                subtitleEn = if (samplePreview.isNotBlank()) "Focus: $samplePreview" else "Deck: ${formatDeckLabel(primaryDeck)}",
-                targetCount = newWordsTarget,
+                titleEn = if (isRestDay) "Learn ${candidateWords.size} Light Words (Rest Day)" else "Learn ${candidateWords.size} New Words (${profile.level})",
+                titleAr = if (isRestDay) "تعلم ${candidateWords.size} مفردات خفيفة (يوم راحة)" else "تعلم ${candidateWords.size} مفردات جديدة (مستوى ${profile.level})",
+                subtitleEn = if (samplePreview.isNotBlank()) "${reasonPrefix}Focus: $samplePreview" else "${reasonPrefix}Deck: ${formatDeckLabel(primaryDeck)}",
+                targetCount = candidateWords.size.coerceAtLeast(1),
                 completedCount = 0,
                 isCompleted = false,
                 linkedRoute = "word_books",
@@ -472,13 +553,17 @@ class StudyPlanRepository(
                     "مفردات خفيفة اختيارية للحفاظ على استمرارية التعلّم في يوم الراحة."
                 } else {
                     "دراسة كلمات جديدة تناسب مستواك ${profile.level} مع أمثلتها."
-                }
+                },
+                reason = newWordsReason,
+                estimatedMinutes = newWordsTime,
+                backlogRemaining = 0
             )
         )
 
-        // Task 3 & 4: Grammar Lesson & Linked Reading Text Pairing (gXXX with rXXX, same number)
-        val levelsOrder = listOf("A1", "A2", "B1", "B2", "C1")
-        val searchLevels = listOf(profile.level) + levelsOrder.filter { it != profile.level }
+        // Priority 4 & 5: Grammar Lesson & Reading OR Short Sentence Practice
+        val closenessSearch = levelsByCloseness(profile.level, profile.startAtUserLevel)
+        val allCefrLevels = listOf("A1", "A2", "B1", "B2", "C1")
+        val searchLevels = (closenessSearch + allCefrLevels).distinct()
         var targetLesson: GrammarLessonEntity? = null
         for (lvl in searchLevels) {
             val uncompleted = dao.getUncompletedGrammarLessonsForLevel(lvl)
@@ -500,6 +585,7 @@ class StudyPlanRepository(
         if (targetLesson != null) {
             val grammarProgress = dao.getGrammarProgress(targetLesson.id)
             val isGrammarDone = (grammarProgress != null && (grammarProgress.completedExercises > 0 || grammarProgress.isCompleted)) || targetLesson.isCompleted
+            val grammarReason = if (isGrammarExhausted) "Review of ${targetLesson.level} lesson ${targetLesson.id} (~$grammarTime min)" else "Unfinished ${targetLesson.level} lesson ${targetLesson.id} (~$grammarTime min)"
             tasks.add(
                 DailyTaskItem(
                     id = "task_grammar_${targetLesson.id}",
@@ -512,37 +598,128 @@ class StudyPlanRepository(
                     isCompleted = isGrammarDone,
                     linkedRoute = "grammar",
                     linkedId = targetLesson.id,
-                    explanationAr = if (isGrammarExhausted) "مراجعة ذكية لترسيخ القواعد بعد إتمام دروس المستوى." else "دراسة درس القواعد وحل تمارينه التفاعلية."
+                    explanationAr = if (isGrammarExhausted) "مراجعة ذكية لترسيخ القواعد بعد إتمام دروس المستوى." else "دراسة درس القواعد وحل تمارينه التفاعلية.",
+                    reason = grammarReason,
+                    estimatedMinutes = grammarTime,
+                    backlogRemaining = 0
                 )
             )
 
-            // Pair reading text (gXXX with rXXX, same number)
-            val pairedNumber = targetLesson.id.filter { it.isDigit() }
-            val directPairedId = if (pairedNumber.isNotEmpty()) "r$pairedNumber" else targetLesson.id.replaceFirst("g", "r")
-            val directPairedText = dao.getReadingTextById(directPairedId)
-
-            val pairedText = directPairedText
-                ?: dao.getAllReadingTexts().firstOrNull { it.grammarIdsJson.contains(targetLesson.id) }
-                ?: dao.getUncompletedReadingTextsForLevel(targetLesson.level).firstOrNull()
-                ?: dao.getLowestScoringReadingTexts(1).firstOrNull()
-                ?: dao.getAllReadingTexts().firstOrNull()
-
-            if (pairedText != null) {
-                val readingProgress = dao.getReadingProgress(pairedText.id)
-                val isReadingDone = readingProgress != null && (readingProgress.completedQuestions > 0 || readingProgress.isCompleted)
+            // Priority 5: Short sentence practice for A1/A2 or rotating on tight budget days, else paired reading
+            val preferSentencePractice = profile.level.uppercase(Locale.US) in listOf("A1", "A2") || (minutes <= 15 && targetDayOfWeek % 2 == 0)
+            if (preferSentencePractice) {
+                val sentenceReason = "Sentence production practice matched to level ${profile.level} (~3 min)"
                 tasks.add(
                     DailyTaskItem(
-                        id = "task_reading_${pairedText.id}",
-                        type = "reading",
-                        titleEn = "Reading: ${pairedText.titleEn}",
-                        titleAr = "قراءة: ${pairedText.titleAr}",
-                        subtitleEn = if (minutes <= 15) "Short text • Level: ${pairedText.level} ($readingTime min)" else "Level: ${pairedText.level} • Paired with ${targetLesson.titleEn} ($readingTime min)",
-                        targetCount = 1,
-                        completedCount = if (isReadingDone) 1 else 0,
-                        isCompleted = isReadingDone,
-                        linkedRoute = "reading",
-                        linkedId = pairedText.id,
-                        explanationAr = if (isGrammarExhausted) "قراءة متقدمة لترسيخ المفردات والقواعد." else "قراءة النص في سياق درس القواعد والإجابة على أسئلة الفهم."
+                        id = "task_sentence_practice",
+                        type = "sentences",
+                        titleEn = "Daily Sentence Practice",
+                        titleAr = "تطبيق الجمل اليومي (٣ جمل)",
+                        subtitleEn = "Practice building real sentences • Level ${profile.level} (3 min)",
+                        targetCount = 3,
+                        completedCount = 0,
+                        isCompleted = false,
+                        linkedRoute = "sentences",
+                        linkedId = "",
+                        explanationAr = "تطبيق عملي على صياغة الجمل لترسيخ القواعد والمفردات في سياق واقعي.",
+                        reason = sentenceReason,
+                        estimatedMinutes = 3,
+                        backlogRemaining = 0
+                    )
+                )
+            } else {
+                // Pair reading text (gXXX with rXXX, same number)
+                val pairedNumber = targetLesson.id.filter { it.isDigit() }
+                val directPairedId = if (pairedNumber.isNotEmpty()) "r$pairedNumber" else targetLesson.id.replaceFirst("g", "r")
+                val directPairedText = dao.getReadingTextById(directPairedId)
+
+                val pairedText = directPairedText
+                    ?: dao.getAllReadingTexts().firstOrNull { it.grammarIdsJson.contains(targetLesson.id) }
+                    ?: dao.getUncompletedReadingTextsForLevel(targetLesson.level).firstOrNull()
+                    ?: dao.getLowestScoringReadingTexts(1).firstOrNull()
+                    ?: dao.getAllReadingTexts().firstOrNull()
+
+                if (pairedText != null) {
+                    val readingProgress = dao.getReadingProgress(pairedText.id)
+                    val isReadingDone = readingProgress != null && (readingProgress.completedQuestions > 0 || readingProgress.isCompleted)
+                    val readingReason = "Paired with grammar lesson ${targetLesson.titleEn} (~$readingTime min)"
+                    tasks.add(
+                        DailyTaskItem(
+                            id = "task_reading_${pairedText.id}",
+                            type = "reading",
+                            titleEn = "Reading: ${pairedText.titleEn}",
+                            titleAr = "قراءة: ${pairedText.titleAr}",
+                            subtitleEn = if (minutes <= 15) "Short text • Level: ${pairedText.level} ($readingTime min)" else "Level: ${pairedText.level} • Paired with ${targetLesson.titleEn} ($readingTime min)",
+                            targetCount = 1,
+                            completedCount = if (isReadingDone) 1 else 0,
+                            isCompleted = isReadingDone,
+                            linkedRoute = "reading",
+                            linkedId = pairedText.id,
+                            explanationAr = if (isGrammarExhausted) "قراءة متقدمة لترسيخ المفردات والقواعد." else "قراءة النص في سياق درس القواعد والإجابة على أسئلة الفهم.",
+                            reason = readingReason,
+                            estimatedMinutes = readingTime,
+                            backlogRemaining = 0
+                        )
+                    )
+                } else {
+                    tasks.add(
+                        DailyTaskItem(
+                            id = "task_reading_fallback",
+                            type = "reading",
+                            titleEn = "Reading: Graded Stories",
+                            titleAr = "قراءة: نصوص متدرجة",
+                            subtitleEn = "Bilingual texts • Level: ${profile.level} ($readingTime min)",
+                            targetCount = 1,
+                            completedCount = 0,
+                            isCompleted = false,
+                            linkedRoute = "reading",
+                            linkedId = "",
+                            explanationAr = "جميع نصوص المستوى مكتملة • يمكنك مراجعة أي نص لترسيخ الطلاقة.",
+                            reason = "Graded reading practice • Level ${profile.level} (~$readingTime min)",
+                            estimatedMinutes = readingTime,
+                            backlogRemaining = 0
+                        )
+                    )
+                }
+            }
+        } else {
+            tasks.add(
+                DailyTaskItem(
+                    id = "task_grammar_fallback",
+                    type = "grammar",
+                    titleEn = "Grammar: Master Rules Review",
+                    titleAr = "قواعد: مراجعة شاملة",
+                    subtitleEn = "Comprehensive review • Level ${profile.level} ($grammarTime min)",
+                    targetCount = 1,
+                    completedCount = 0,
+                    isCompleted = false,
+                    linkedRoute = "grammar",
+                    linkedId = "",
+                    explanationAr = "تمت جميع دروس المستوى بنجاح • استمر في تثبيت القواعد.",
+                    reason = "Comprehensive review • Level ${profile.level} (~$grammarTime min)",
+                    estimatedMinutes = grammarTime,
+                    backlogRemaining = 0
+                )
+            )
+            val preferSentencePractice = profile.level.uppercase(Locale.US) in listOf("A1", "A2") || (minutes <= 15 && targetDayOfWeek % 2 == 0)
+            if (preferSentencePractice) {
+                val sentenceReason = "Sentence production practice matched to level ${profile.level} (~3 min)"
+                tasks.add(
+                    DailyTaskItem(
+                        id = "task_sentence_practice",
+                        type = "sentences",
+                        titleEn = "Daily Sentence Practice",
+                        titleAr = "تطبيق الجمل اليومي (٣ جمل)",
+                        subtitleEn = "Practice building real sentences • Level ${profile.level} (3 min)",
+                        targetCount = 3,
+                        completedCount = 0,
+                        isCompleted = false,
+                        linkedRoute = "sentences",
+                        linkedId = "",
+                        explanationAr = "تطبيق عملي على صياغة الجمل لترسيخ القواعد والمفردات في سياق واقعي.",
+                        reason = sentenceReason,
+                        estimatedMinutes = 3,
+                        backlogRemaining = 0
                     )
                 )
             } else {
@@ -558,58 +735,35 @@ class StudyPlanRepository(
                         isCompleted = false,
                         linkedRoute = "reading",
                         linkedId = "",
-                        explanationAr = "جميع نصوص المستوى مكتملة • يمكنك مراجعة أي نص لترسيخ الطلاقة."
+                        explanationAr = "جميع نصوص المستوى مكتملة • يمكنك مراجعة أي نص لترسيخ الطلاقة.",
+                        reason = "Graded reading practice • Level ${profile.level} (~$readingTime min)",
+                        estimatedMinutes = readingTime,
+                        backlogRemaining = 0
                     )
                 )
             }
-        } else {
-            tasks.add(
-                DailyTaskItem(
-                    id = "task_grammar_fallback",
-                    type = "grammar",
-                    titleEn = "Grammar: Master Rules Review",
-                    titleAr = "قواعد: مراجعة شاملة",
-                    subtitleEn = "Comprehensive review • Level ${profile.level} ($grammarTime min)",
-                    targetCount = 1,
-                    completedCount = 0,
-                    isCompleted = false,
-                    linkedRoute = "grammar",
-                    linkedId = "",
-                    explanationAr = "تمت جميع دروس المستوى بنجاح • استمر في تثبيت القواعد."
-                )
-            )
-            tasks.add(
-                DailyTaskItem(
-                    id = "task_reading_fallback",
-                    type = "reading",
-                    titleEn = "Reading: Graded Stories",
-                    titleAr = "قراءة: نصوص متدرجة",
-                    subtitleEn = "Bilingual texts • Level: ${profile.level} ($readingTime min)",
-                    targetCount = 1,
-                    completedCount = 0,
-                    isCompleted = false,
-                    linkedRoute = "reading",
-                    linkedId = "",
-                    explanationAr = "جميع نصوص المستوى مكتملة • يمكنك مراجعة أي نص لترسيخ الطلاقة."
-                )
-            )
         }
 
-        // Task 5: Daily Mini-Quiz
-        val quizQuestions = if (minutes <= 15) 3 else 5
-        val quizMin = if (minutes <= 15) 2 else 3
+        // Priority 6: Daily Mini-Quiz (Aligned 10-Question Assessment)
+        val quizQuestions = 10
+        val quizMin = 5
+        val quizReason = "Aligned assessment: 5 Vocab, 3 Grammar, 2 Reading (~$quizMin min)"
         tasks.add(
             DailyTaskItem(
                 id = "task_daily_quiz",
                 type = "quiz",
-                titleEn = "Daily Mini-Quiz ($quizQuestions Questions)",
-                titleAr = "الاختبار اليومي السريع ($quizQuestions أسئلة)",
-                subtitleEn = "Vocabulary, Grammar, Reading & Listening ($quizMin min)",
+                titleEn = "Daily Mini-Quiz (10 Questions)",
+                titleAr = "الاختبار اليومي (١٠ أسئلة)",
+                subtitleEn = "5 Vocab • 3 Grammar • 2 Reading ($quizMin min)",
                 targetCount = quizQuestions,
                 completedCount = 0,
                 isCompleted = false,
                 linkedRoute = "quiz",
-                explanationAr = "اختبار قصير يقيس تقدمك في المهارات الأربع."
+                linkedId = "quiz",
+                explanationAr = "اختبار يومي مباشر يقيّم كلمات اليوم وقاعدتها ونص القراءة.",
+                reason = quizReason,
+                estimatedMinutes = quizMin,
+                backlogRemaining = 0
             )
         )
 
@@ -639,8 +793,8 @@ class StudyPlanRepository(
 
         val startOfDay = timeProvider.startOfDayMillis(checklist.date)
         val now = timeProvider.currentTimeMillis()
-        val cardsRatedToday = dao.getCardsRatedTodayCount(startOfDay)
-        val wordsStudiedToday = dao.getStudiedTodayCount(startOfDay)
+        val reviewCardsRatedToday = dao.getReviewCardsRatedTodayCount(startOfDay)
+        val newWordsLearnedToday = dao.getNewWordsRatedTodayCount(startOfDay)
         val quizResultsToday = dao.getQuizResultsForDate(checklist.date)
         val dueCorrectionCount = dao.getDueCorrectionReviewsCount(now)
 
@@ -648,19 +802,19 @@ class StudyPlanRepository(
             when (task.type) {
                 "flashcards" -> {
                     val normalizedTarget = if (task.targetCount <= 0) 10 else task.targetCount
-                    val isDone = task.isCompleted || (cardsRatedToday >= normalizedTarget)
+                    val isDone = task.isCompleted || (reviewCardsRatedToday >= normalizedTarget)
                     task.copy(
                         targetCount = normalizedTarget,
-                        completedCount = if (isDone) normalizedTarget else minOf(cardsRatedToday, normalizedTarget),
+                        completedCount = if (isDone) normalizedTarget else minOf(reviewCardsRatedToday, normalizedTarget),
                         isCompleted = isDone
                     )
                 }
                 "new_words" -> {
                     val normalizedTarget = if (task.targetCount <= 0) 5 else task.targetCount
-                    val isDone = task.isCompleted || (wordsStudiedToday >= normalizedTarget)
+                    val isDone = task.isCompleted || (newWordsLearnedToday >= normalizedTarget)
                     task.copy(
                         targetCount = normalizedTarget,
-                        completedCount = if (isDone) normalizedTarget else minOf(wordsStudiedToday, normalizedTarget),
+                        completedCount = if (isDone) normalizedTarget else minOf(newWordsLearnedToday, normalizedTarget),
                         isCompleted = isDone
                     )
                 }
@@ -683,11 +837,19 @@ class StudyPlanRepository(
                         isCompleted = isDone
                     )
                 }
-                "sentences" -> task
-                "correction_reviews" -> {
-                    val isDone = task.isCompleted || (dueCorrectionCount == 0)
+                "sentences" -> {
+                    val attemptCount = dao.getAttemptsInRange(startOfDay, now).count { it.activityType == "sentence_practice" || it.activityType == "sentences" }
+                    val isDone = task.isCompleted || (attemptCount >= task.targetCount)
                     task.copy(
-                        completedCount = if (isDone) task.targetCount else (task.targetCount - dueCorrectionCount).coerceAtLeast(0),
+                        completedCount = if (isDone) task.targetCount else minOf(attemptCount, task.targetCount),
+                        isCompleted = isDone
+                    )
+                }
+                "correction_reviews" -> {
+                    val correctionAttempts = dao.getAttemptsInRange(startOfDay, now).count { it.activityType == "correction_review" }
+                    val isDone = task.isCompleted || (dueCorrectionCount == 0 && (correctionAttempts > 0 || task.targetCount == 0)) || (correctionAttempts >= task.targetCount)
+                    task.copy(
+                        completedCount = if (isDone) task.targetCount else minOf(correctionAttempts, task.targetCount),
                         isCompleted = isDone
                     )
                 }
@@ -827,15 +989,471 @@ class StudyPlanRepository(
         )
     }
 
-    private fun levelsForUserProfile(level: String): List<String> {
-        return when (level.uppercase(Locale.US)) {
-            "A1" -> listOf("A1", "A2")
-            "A2" -> listOf("A2", "A1", "B1")
-            "B1" -> listOf("B1", "A2", "B2")
-            "B2" -> listOf("B2", "B1", "C1")
-            "C1" -> listOf("C1", "B2")
-            else -> listOf("B1", "B2", "C1")
+    /**
+     * Computes real stored practice accuracy, mastery, and due-now vs due-today metrics
+     * strictly separated from daily task completion counts.
+     */
+    suspend fun getPracticeAccuracySummary(): PracticeAccuracySummary {
+        val now = timeProvider.currentTimeMillis()
+        val startOfToday = timeProvider.startOfDayMillis(timeProvider.todayDateString())
+        val endOfToday = timeProvider.dueTodayCutoff(now)
+        val dueNowCutoff = timeProvider.dueNowCutoff(now)
+        val sevenDaysAgo = startOfToday - 6L * 86_400_000L
+
+        val profile = getOrCreateProfile()
+        val selectedDecks: List<String> = try {
+            json.decodeFromString<List<String>>(profile.selectedDecksJson).ifEmpty {
+                listOf("oxford5000", "oxford_opal")
+            }
+        } catch (_: Exception) {
+            listOf("oxford5000", "oxford_opal")
         }
+
+        val newWordsToday = dao.getNewWordsLearnedInRangeCount(startOfToday, endOfToday)
+        val reviewsToday = dao.getReviewCardsRatedInRangeCount(startOfToday, endOfToday)
+        val todayAttempts = dao.getAttemptsInRange(startOfToday, endOfToday)
+        val sevenDayAttempts = dao.getAttemptsInRange(sevenDaysAgo, endOfToday)
+
+        val todayGraded = todayAttempts.filter { it.isCorrect != null }
+        val todayAccuracy = if (todayGraded.isNotEmpty()) {
+            ((todayGraded.count { it.isCorrect == true }.toFloat() / todayGraded.size.toFloat()) * 100f).roundToInt()
+        } else {
+            null
+        }
+
+        val sevenDayGraded = sevenDayAttempts.filter { it.isCorrect != null }
+        val sevenDayAccuracy = if (sevenDayGraded.isNotEmpty()) {
+            ((sevenDayGraded.count { it.isCorrect == true }.toFloat() / sevenDayGraded.size.toFloat()) * 100f).roundToInt()
+        } else {
+            null
+        }
+
+        val allProgress = dao.getAllWordProgressList()
+        val totalMastered = allProgress.count { it.isMastered }
+
+        val dueNow = if (selectedDecks.isNotEmpty()) {
+            dao.getDueNowCardsCountForDecks(dueNowCutoff, selectedDecks)
+        } else {
+            dao.getDueNowCardsCount(dueNowCutoff)
+        }
+        val dueToday = if (selectedDecks.isNotEmpty()) {
+            dao.getReviewDueTodayCountForDecks(endOfToday, selectedDecks)
+        } else {
+            dao.getReviewDueTodayCount(endOfToday)
+        }
+        val waitingLaterToday = if (selectedDecks.isNotEmpty()) {
+            dao.getLaterTodayCardsCountForDecks(dueNowCutoff, endOfToday, selectedDecks)
+        } else {
+            dao.getLaterTodayCardsCount(dueNowCutoff, endOfToday)
+        }
+
+        return PracticeAccuracySummary(
+            newWordsLearnedToday = newWordsToday,
+            reviewAttemptsToday = reviewsToday,
+            totalAttemptsToday = todayAttempts.size,
+            todayRecallAccuracyPercent = todayAccuracy,
+            sevenDayRecallAccuracyPercent = sevenDayAccuracy,
+            totalMasteredWords = totalMastered,
+            dueNowCount = dueNow,
+            dueTodayCount = dueToday,
+            waitingLaterTodayCount = waitingLaterToday
+        )
+    }
+
+    val deckWeightsConfig = DeckMixWeightsConfig()
+
+    /**
+     * 2. Order levels by closeness to the user's level:
+     * - When `startAtUserLevel = true` ("At My Level"):
+     *   - A1 user: A1, A2
+     *   - A2 user: A2, B1, A1
+     *   - B1 user: B1, B2, A2
+     *   - B2 user: B2, C1, B1
+     *   - C1 user: C1, B2
+     *   (never silently jump to far-higher levels).
+     * - When `startAtUserLevel = false` ("From A1"):
+     *   Starts at A1 and progresses toward the selected level (plus at most 1 level above A1).
+     */
+    fun levelsByCloseness(userLevel: String, startAtUserLevel: Boolean = true): List<String> {
+        val clean = userLevel.trim().uppercase(Locale.US)
+        if (!startAtUserLevel) {
+            return when (clean) {
+                "A1" -> listOf("A1", "A2")
+                "A2" -> listOf("A1", "A2", "B1")
+                "B1" -> listOf("A1", "A2", "B1", "B2")
+                "B2" -> listOf("A1", "A2", "B1", "B2", "C1")
+                "C1" -> listOf("A1", "A2", "B1", "B2", "C1")
+                else -> listOf("A1", "A2", "B1", "B2", "C1")
+            }
+        }
+        return when (clean) {
+            "A1" -> listOf("A1", "A2")
+            "A2" -> listOf("A2", "B1", "A1")
+            "B1" -> listOf("B1", "B2", "A2")
+            "B2" -> listOf("B2", "C1", "B1")
+            "C1" -> listOf("C1", "B2")
+            else -> listOf(clean)
+        }
+    }
+
+    /**
+     * 3. Deck mix by weights, not by ID order:
+     * Split the daily target across the selected decks by weights.
+     */
+    fun calculateDeckQuotas(
+        selectedDecks: List<String>,
+        goal: String,
+        totalTarget: Int,
+        config: DeckMixWeightsConfig = deckWeightsConfig
+    ): Map<String, Int> {
+        if (selectedDecks.isEmpty() || totalTarget <= 0) return emptyMap()
+        if (selectedDecks.size == 1) return mapOf(selectedDecks.first() to totalTarget)
+
+        val cleanGoal = goal.trim().lowercase(Locale.US)
+        val goalWeights = config.goalDeckWeights[cleanGoal] ?: emptyMap()
+
+        val rawWeights = selectedDecks.associateWith { deck ->
+            goalWeights[deck] ?: config.defaultDeckWeights[deck] ?: (1.0f / selectedDecks.size)
+        }
+        val totalWeight = rawWeights.values.sum().coerceAtLeast(0.0001f)
+        val normalizedWeights = rawWeights.mapValues { it.value / totalWeight }
+
+        val quotas = mutableMapOf<String, Int>()
+        var allocated = 0
+        val sortedByWeightDesc = selectedDecks.sortedByDescending { normalizedWeights[it] ?: 0f }
+
+        for (deck in sortedByWeightDesc) {
+            val count = (totalTarget * (normalizedWeights[deck] ?: 0f)).roundToInt()
+            quotas[deck] = count
+            allocated += count
+        }
+
+        var diff = totalTarget - allocated
+        var i = 0
+        while (diff != 0 && i < sortedByWeightDesc.size * 2) {
+            val deck = sortedByWeightDesc[i % sortedByWeightDesc.size]
+            val current = quotas[deck] ?: 0
+            if (diff > 0) {
+                quotas[deck] = current + 1
+                diff--
+            } else if (diff < 0 && current > 0) {
+                quotas[deck] = current - 1
+                diff++
+            }
+            i++
+        }
+
+        return quotas
+    }
+
+    /**
+     * Selects new words honoring all Phase 1 selection requirements:
+     * 1. Uses `entries.effective_level` (Oxford 5000 headword match, else graded deck level for `oxford5000`/`oxford_phrases`/`cefr_c1`, else `NULL`).
+     * 2. Orders levels by closeness to user level (`levelsByCloseness(cleanLevel, profile.startAtUserLevel)`), and orders words numerically (`CAST(e.id AS INTEGER)`).
+     * 3. Picks one deterministic entry per lowercase headword (preferring the target level, then closeness rank, then lowest numeric ID).
+     * 4. `NULL`-level words form a specialty share (default 30%, 40% IELTS, 45% IT career) used ONLY for `B1+` users;
+     *    for `A1`/`A2` users, only words whose `effective_level` is in `closenessLevels` (at most 1 level above theirs) are eligible.
+     * 5. If a selected deck has nothing near the user's level, fills ONLY from other `selectedDecks` (never unselected decks, never all levels),
+     *    else returns fewer words with a clear reason string.
+     * 6. Matches studied words by `entry_id`.
+     */
+    suspend fun selectNewWordsForProfile(
+        profile: StudyPlanProfileEntity,
+        targetCount: Int,
+        weightsConfig: DeckMixWeightsConfig = deckWeightsConfig
+    ): WordSelectionResult {
+        if (targetCount <= 0) return WordSelectionResult(emptyList(), null)
+
+        val cleanLevel = profile.level.trim().uppercase(Locale.US).ifBlank { "B2" }
+        val cleanGoal = profile.goal.trim().lowercase(Locale.US).ifBlank { "general_fluency" }
+        val selectedDecks: List<String> = try {
+            json.decodeFromString<List<String>>(profile.selectedDecksJson).ifEmpty {
+                listOf("oxford5000", "oxford_opal")
+            }
+        } catch (_: Exception) {
+            listOf("oxford5000", "oxford_opal")
+        }
+
+        val closenessLevels = levelsByCloseness(cleanLevel, profile.startAtUserLevel)
+        val preferredLevel = closenessLevels.firstOrNull() ?: cleanLevel
+        val isB1Plus = cleanLevel in setOf("B1", "B2", "C1", "C2")
+        val deckQuotas = calculateDeckQuotas(selectedDecks, cleanGoal, targetCount, weightsConfig)
+
+        // Total NULL-level specialty share allowed across the daily selection (only for B1+ users)
+        val totalSpecialtyBudget = if (isB1Plus) {
+            (targetCount * weightsConfig.specialtyShareForGoal(cleanGoal))
+                .roundToInt()
+                .coerceIn(0, targetCount)
+        } else {
+            0
+        }
+        var remainingSpecialtyBudget = totalSpecialtyBudget
+
+        val ungradedSelectedDecks = selectedDecks.filter { it !in EntryEntity.GRADED_DECKS }
+        val totalUngradedQuota = ungradedSelectedDecks.sumOf { deckQuotas[it] ?: 0 }
+
+        // Pre-fetch and deduplicate unstudied candidates per selected deck
+        val gradedByDeck = LinkedHashMap<String, List<EntryEntity>>()
+        val nullLevelByDeck = LinkedHashMap<String, List<EntryEntity>>()
+
+        for (deck in selectedDecks) {
+            val rawCandidates = dao.getUnstudiedEntriesForDeckAndEffectiveLevels(
+                deck = deck,
+                levels = closenessLevels,
+                includeNullLevel = if (isB1Plus) 1 else 0
+            )
+            val dedupedDeckCandidates = deduplicateCandidatesForDeck(
+                entries = rawCandidates,
+                closenessLevels = closenessLevels
+            )
+            gradedByDeck[deck] = dedupedDeckCandidates.filter { it.effectiveLevel != null }
+            nullLevelByDeck[deck] = if (isB1Plus) {
+                dedupedDeckCandidates.filter { it.effectiveLevel == null }
+            } else {
+                emptyList()
+            }
+        }
+
+        val collectedEntries = mutableListOf<EntryEntity>()
+        val usedIds = HashSet<String>()
+        val usedHeadwords = HashSet<String>()
+        val countPerDeck = mutableMapOf<String, Int>()
+
+        fun takeFromList(source: List<EntryEntity>, maxCount: Int): List<EntryEntity> {
+            if (maxCount <= 0) return emptyList()
+            val picked = ArrayList<EntryEntity>(maxCount)
+            for (item in source) {
+                if (picked.size >= maxCount) break
+                val headword = item.text.trim().lowercase(Locale.US)
+                if (item.id !in usedIds && headword !in usedHeadwords) {
+                    usedIds.add(item.id)
+                    usedHeadwords.add(headword)
+                    picked.add(item)
+                }
+            }
+            return picked
+        }
+
+        // Pass 1: Fill each selected deck's quota
+        for (deck in selectedDecks) {
+            val quota = deckQuotas[deck] ?: 0
+            if (quota <= 0) continue
+
+            val deckPicked = mutableListOf<EntryEntity>()
+            val isUngradedDeck = deck !in EntryEntity.GRADED_DECKS
+
+            if (isB1Plus && isUngradedDeck && remainingSpecialtyBudget > 0) {
+                val proportionalSpecialty = if (totalUngradedQuota > 0) {
+                    ((totalSpecialtyBudget.toFloat() * quota.toFloat()) / totalUngradedQuota.toFloat())
+                        .roundToInt()
+                        .coerceIn(1, minOf(quota, remainingSpecialtyBudget))
+                } else {
+                    minOf(quota, remainingSpecialtyBudget)
+                }
+                val specialtyPicked = takeFromList(
+                    source = nullLevelByDeck[deck].orEmpty(),
+                    maxCount = proportionalSpecialty
+                )
+                deckPicked.addAll(specialtyPicked)
+                remainingSpecialtyBudget -= specialtyPicked.size
+            }
+
+            // Fill remaining quota for this deck from effective_level IN closenessLevels
+            val neededGraded = quota - deckPicked.size
+            if (neededGraded > 0) {
+                val gradedPicked = takeFromList(
+                    source = gradedByDeck[deck].orEmpty(),
+                    maxCount = neededGraded
+                )
+                deckPicked.addAll(gradedPicked)
+            }
+
+            // If B1+ and this ungraded deck has no graded words left (e.g. idioms/expressions),
+            // allow filling up to remainingSpecialtyBudget from its NULL-level pool
+            val stillShortInDeck = quota - deckPicked.size
+            if (isB1Plus && isUngradedDeck && stillShortInDeck > 0 && remainingSpecialtyBudget > 0) {
+                val extraSpecialty = takeFromList(
+                    source = nullLevelByDeck[deck].orEmpty(),
+                    maxCount = minOf(stillShortInDeck, remainingSpecialtyBudget)
+                )
+                deckPicked.addAll(extraSpecialty)
+                remainingSpecialtyBudget -= extraSpecialty.size
+            }
+
+            countPerDeck[deck] = deckPicked.size
+            collectedEntries.addAll(deckPicked)
+        }
+
+        val emptyDecks = selectedDecks.filter { (countPerDeck[it] ?: 0) == 0 }
+        val shortDecks = selectedDecks.filter { (countPerDeck[it] ?: 0) < (deckQuotas[it] ?: 0) }
+
+        // Pass 2: If any selected deck was short, fill ONLY from OTHER selectedDecks (never unselected decks)
+        if (collectedEntries.size < targetCount) {
+            for (altDeck in selectedDecks) {
+                val stillNeeded = targetCount - collectedEntries.size
+                if (stillNeeded <= 0) break
+                val moreGraded = takeFromList(
+                    source = gradedByDeck[altDeck].orEmpty(),
+                    maxCount = stillNeeded
+                )
+                collectedEntries.addAll(moreGraded)
+                countPerDeck[altDeck] = (countPerDeck[altDeck] ?: 0) + moreGraded.size
+            }
+
+            if (isB1Plus && collectedEntries.size < targetCount && remainingSpecialtyBudget > 0) {
+                for (altDeck in selectedDecks) {
+                    val stillNeeded = minOf(targetCount - collectedEntries.size, remainingSpecialtyBudget)
+                    if (stillNeeded <= 0) break
+                    val moreNull = takeFromList(
+                        source = nullLevelByDeck[altDeck].orEmpty(),
+                        maxCount = stillNeeded
+                    )
+                    collectedEntries.addAll(moreNull)
+                    remainingSpecialtyBudget -= moreNull.size
+                    countPerDeck[altDeck] = (countPerDeck[altDeck] ?: 0) + moreNull.size
+                }
+            }
+        }
+
+        val finalWords = deduplicateAndPickDeterministicEntry(collectedEntries, preferredLevel)
+            .take(targetCount)
+
+        val reasonString: String? = when {
+            finalWords.size < targetCount && emptyDecks.isNotEmpty() -> {
+                "Fewer words today (${finalWords.size}/$targetCount): no $cleanLevel words in ${emptyDecks.joinToString(", ") { formatDeckLabel(it) }}"
+            }
+            finalWords.size < targetCount -> {
+                "Fewer words today (${finalWords.size}/$targetCount): showing all available words near $cleanLevel in selected decks"
+            }
+            emptyDecks.isNotEmpty() -> {
+                val donorDecks = selectedDecks.filter { it !in emptyDecks && (countPerDeck[it] ?: 0) > 0 }
+                "No $cleanLevel words in ${emptyDecks.joinToString(", ") { formatDeckLabel(it) }}; filled from ${donorDecks.joinToString(", ") { formatDeckLabel(it) }}"
+            }
+            shortDecks.isNotEmpty() -> {
+                val donorDecks = selectedDecks.filter { it !in shortDecks && (countPerDeck[it] ?: 0) > (deckQuotas[it] ?: 0) }
+                if (donorDecks.isNotEmpty()) {
+                    "Limited $cleanLevel words in ${shortDecks.joinToString(", ") { formatDeckLabel(it) }}; filled from ${donorDecks.joinToString(", ") { formatDeckLabel(it) }}"
+                } else null
+            }
+            else -> null
+        }
+
+        return WordSelectionResult(
+            words = finalWords,
+            reasonString = reasonString
+        )
+    }
+
+    private fun computeCandidateSequenceHash(word: String, deck: String): Int {
+        val cleanWord = word.trim().lowercase(Locale.US)
+        var h = cleanWord.hashCode() xor deck.lowercase(Locale.US).hashCode()
+        h = h xor (h ushr 16)
+        h *= 0x85ebca6b.toInt()
+        h = h xor (h ushr 13)
+        h *= 0xc2b2ae35.toInt()
+        return h xor (h ushr 16)
+    }
+
+    private fun deduplicateCandidatesForDeck(
+        entries: List<EntryEntity>,
+        closenessLevels: List<String>
+    ): List<EntryEntity> {
+        val rankMap = closenessLevels.withIndex().associate { (idx, lvl) -> lvl.uppercase(Locale.US) to idx }
+        val grouped = entries.groupBy { it.text.trim().lowercase(Locale.US) }
+        val deduped = ArrayList<EntryEntity>(grouped.size)
+        for ((_, variants) in grouped) {
+            val best = variants.minWithOrNull(
+                Comparator<EntryEntity> { a, b ->
+                    val rankA = a.effectiveLevel?.uppercase(Locale.US)?.let { rankMap[it] ?: 99 } ?: 100
+                    val rankB = b.effectiveLevel?.uppercase(Locale.US)?.let { rankMap[it] ?: 99 } ?: 100
+                    if (rankA != rankB) {
+                        rankA.compareTo(rankB)
+                    } else {
+                        val hashA = computeCandidateSequenceHash(a.text, a.deck)
+                        val hashB = computeCandidateSequenceHash(b.text, b.deck)
+                        hashA.compareTo(hashB)
+                    }
+                }
+            )
+            if (best != null) {
+                deduped.add(best)
+            }
+        }
+        return deduped.sortedWith(
+            Comparator<EntryEntity> { a, b ->
+                val aIsNull = a.effectiveLevel == null
+                val bIsNull = b.effectiveLevel == null
+                if (aIsNull != bIsNull) {
+                    if (aIsNull) 1 else -1
+                } else if (!aIsNull) {
+                    val rankA = rankMap[a.effectiveLevel?.uppercase(Locale.US)] ?: 99
+                    val rankB = rankMap[b.effectiveLevel?.uppercase(Locale.US)] ?: 99
+                    if (rankA != rankB) {
+                        rankA.compareTo(rankB)
+                    } else {
+                        val hashA = computeCandidateSequenceHash(a.text, a.deck)
+                        val hashB = computeCandidateSequenceHash(b.text, b.deck)
+                        hashA.compareTo(hashB)
+                    }
+                } else {
+                    val hashA = computeCandidateSequenceHash(a.text, a.deck)
+                    val hashB = computeCandidateSequenceHash(b.text, b.deck)
+                    hashA.compareTo(hashB)
+                }
+            }
+        )
+    }
+
+    /**
+     * Deduplicates candidate entries so there is strictly 1 entry per lowercase word:
+     * prefers row whose effectiveLevel (or level) matches user's preferredLevel,
+     * then uses uniform hash distribution across A-Z instead of strict alphabetical ID order.
+     */
+    fun deduplicateAndPickDeterministicEntry(
+        entries: List<EntryEntity>,
+        userLevel: String
+    ): List<EntryEntity> {
+        val grouped = entries.groupBy { it.text.trim().lowercase(Locale.US) }
+        val result = mutableListOf<EntryEntity>()
+        for ((_, variants) in grouped) {
+            val best = variants.minWithOrNull(
+                Comparator<EntryEntity> { a, b ->
+                    val aEff = a.effectiveLevel ?: a.level
+                    val bEff = b.effectiveLevel ?: b.level
+                    val aMatchesLevel = aEff.equals(userLevel, ignoreCase = true)
+                    val bMatchesLevel = bEff.equals(userLevel, ignoreCase = true)
+                    when {
+                        aMatchesLevel && !bMatchesLevel -> -1
+                        !aMatchesLevel && bMatchesLevel -> 1
+                        else -> {
+                            val hashA = computeCandidateSequenceHash(a.text, a.deck)
+                            val hashB = computeCandidateSequenceHash(b.text, b.deck)
+                            hashA.compareTo(hashB)
+                        }
+                    }
+                }
+            )
+            if (best != null) {
+                result.add(best)
+            }
+        }
+        return result.sortedWith(
+            Comparator<EntryEntity> { a, b ->
+                val aEff = a.effectiveLevel ?: a.level
+                val bEff = b.effectiveLevel ?: b.level
+                val aMatchesLevel = aEff.equals(userLevel, ignoreCase = true)
+                val bMatchesLevel = bEff.equals(userLevel, ignoreCase = true)
+                when {
+                    aMatchesLevel && !bMatchesLevel -> -1
+                    !aMatchesLevel && bMatchesLevel -> 1
+                    else -> {
+                        val hashA = computeCandidateSequenceHash(a.text, a.deck)
+                        val hashB = computeCandidateSequenceHash(b.text, b.deck)
+                        hashA.compareTo(hashB)
+                    }
+                }
+            }
+        )
     }
 
     private fun formatDeckLabel(deckId: String): String {
@@ -856,14 +1474,34 @@ class StudyPlanRepository(
         }
     }
 
-    private fun shouldScheduleOnDay(dayOfWeek: Int, targetPerWeek: Int, studyDays: Int): Boolean {
-        return when (targetPerWeek) {
-            1 -> dayOfWeek == Calendar.MONDAY
-            2 -> dayOfWeek == Calendar.MONDAY || dayOfWeek == Calendar.THURSDAY
-            3 -> dayOfWeek == Calendar.MONDAY || dayOfWeek == Calendar.WEDNESDAY || dayOfWeek == Calendar.SATURDAY
-            4 -> dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.MONDAY || dayOfWeek == Calendar.WEDNESDAY || dayOfWeek == Calendar.THURSDAY
-            else -> true
+    fun formatGoalBadge(goal: String?): String {
+        return when (goal?.trim()?.lowercase(Locale.US)) {
+            "ielts" -> "IELTS Prep"
+            "it_career" -> "IT Career"
+            else -> "General English"
         }
+    }
+
+    suspend fun getWeeklyChecklists(referenceDate: String = timeProvider.todayDateString()): List<DailyChecklistEntity?> {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        val cal = Calendar.getInstance()
+        try {
+            sdf.parse(referenceDate)?.let { cal.time = it }
+        } catch (_: Exception) {}
+
+        // Monday to Sunday alignment
+        val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
+        val offset = if (dayOfWeek == Calendar.SUNDAY) -6 else Calendar.MONDAY - dayOfWeek
+        cal.add(Calendar.DAY_OF_MONTH, offset)
+
+        val result = mutableListOf<DailyChecklistEntity?>()
+        for (i in 0 until 7) {
+            val dStr = sdf.format(cal.time)
+            val checklist = dao.getDailyChecklist(dStr)
+            result.add(checklist)
+            cal.add(Calendar.DAY_OF_MONTH, 1)
+        }
+        return result
     }
 
     private fun adaptBasePlanThemesToGoal(base: StudyPlanJson, profile: StudyPlanProfileEntity): StudyPlanJson {
@@ -920,3 +1558,66 @@ class StudyPlanRepository(
         )
     }
 }
+
+/**
+ * 3. Centralized config object for deck mix weights and NULL-level specialty share.
+ */
+data class DeckMixWeightsConfig(
+    val defaultSpecialtyShare: Float = 0.30f,
+    val goalSpecialtyShares: Map<String, Float> = mapOf(
+        "general_fluency" to 0.30f,
+        "ielts" to 0.40f,
+        "it_career" to 0.45f
+    ),
+    val defaultDeckWeights: Map<String, Float> = mapOf(
+        "oxford5000" to 0.45f,
+        "oxford_opal" to 0.35f,
+        "oxford_phrases" to 0.25f,
+        "everyday_expressions" to 0.20f,
+        "essential_idioms" to 0.15f,
+        "ielts_core" to 0.35f,
+        "it_industry" to 0.35f,
+        "cefr_c1" to 0.30f,
+        "pte_academic" to 0.35f,
+        "business_english" to 0.25f,
+        "career_interview" to 0.25f,
+        "medical_healthcare" to 0.25f
+    ),
+    val goalDeckWeights: Map<String, Map<String, Float>> = mapOf(
+        "it_career" to mapOf(
+            "it_industry" to 0.35f,
+            "ielts_core" to 0.65f,
+            "oxford5000" to 0.40f,
+            "oxford_opal" to 0.25f,
+            "business_english" to 0.30f,
+            "career_interview" to 0.30f,
+            "pte_academic" to 0.25f
+        ),
+        "ielts" to mapOf(
+            "ielts_core" to 0.45f,
+            "oxford_opal" to 0.35f,
+            "pte_academic" to 0.35f,
+            "oxford5000" to 0.20f,
+            "oxford_phrases" to 0.20f,
+            "cefr_c1" to 0.25f
+        ),
+        "general_fluency" to mapOf(
+            "oxford5000" to 0.50f,
+            "oxford_opal" to 0.50f,
+            "oxford_phrases" to 0.25f,
+            "everyday_expressions" to 0.20f,
+            "essential_idioms" to 0.15f,
+            "pte_academic" to 0.25f
+        )
+    )
+) {
+    fun specialtyShareForGoal(goal: String): Float {
+        return goalSpecialtyShares[goal.trim().lowercase(Locale.US)] ?: defaultSpecialtyShare
+    }
+}
+
+data class WordSelectionResult(
+    val words: List<EntryEntity>,
+    val reasonString: String? = null
+)
+

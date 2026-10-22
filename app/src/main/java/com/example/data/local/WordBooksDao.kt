@@ -29,6 +29,7 @@ interface WordBooksDao {
             text = CASE WHEN :text != '' THEN :text ELSE text END,
             pos = :pos,
             level = :level,
+            effective_level = :effectiveLevel,
             definition_en = CASE WHEN :definitionEn != '' THEN :definitionEn ELSE definition_en END,
             note_en = CASE WHEN :noteEn != '' THEN :noteEn ELSE note_en END,
             examples_en = CASE WHEN :examplesEn != '' THEN :examplesEn ELSE examples_en END,
@@ -57,6 +58,7 @@ interface WordBooksDao {
         text: String,
         pos: String,
         level: String,
+        effectiveLevel: String?,
         definitionEn: String,
         noteEn: String,
         examplesEn: String,
@@ -68,6 +70,47 @@ interface WordBooksDao {
         arabicSource: String,
         dataVersion: Int
     )
+
+    @Query(
+        """
+        UPDATE entries
+        SET effective_level = CASE
+            WHEN deck = 'oxford5000' AND UPPER(TRIM(level)) IN ('A1', 'A2', 'B1', 'B2', 'C1')
+                THEN UPPER(TRIM(level))
+            WHEN EXISTS (
+                SELECT 1 FROM entries ox
+                WHERE ox.deck = 'oxford5000'
+                  AND LOWER(TRIM(ox.text)) = LOWER(TRIM(entries.text))
+                  AND UPPER(TRIM(ox.level)) IN ('A1', 'A2', 'B1', 'B2', 'C1')
+            ) THEN (
+                SELECT UPPER(TRIM(ox.level)) FROM entries ox
+                WHERE ox.deck = 'oxford5000'
+                  AND LOWER(TRIM(ox.text)) = LOWER(TRIM(entries.text))
+                  AND UPPER(TRIM(ox.level)) IN ('A1', 'A2', 'B1', 'B2', 'C1')
+                ORDER BY
+                    CASE UPPER(TRIM(ox.level))
+                        WHEN 'A1' THEN 1
+                        WHEN 'A2' THEN 2
+                        WHEN 'B1' THEN 3
+                        WHEN 'B2' THEN 4
+                        WHEN 'C1' THEN 5
+                        ELSE 6
+                    END ASC,
+                    CAST(ox.id AS INTEGER) ASC,
+                    ox.id ASC
+                LIMIT 1
+            )
+            WHEN deck IN ('oxford5000', 'oxford_phrases', 'cefr_c1')
+                 AND UPPER(TRIM(level)) IN ('A1', 'A2', 'B1', 'B2', 'C1')
+                THEN UPPER(TRIM(level))
+            ELSE NULL
+        END
+        """
+    )
+    suspend fun backfillEffectiveLevels()
+
+    @Query("SELECT * FROM entries WHERE deck = 'oxford5000' AND UPPER(TRIM(level)) IN ('A1', 'A2', 'B1', 'B2', 'C1')")
+    suspend fun getOxfordGradedEntries(): List<EntryEntity>
 
     @Transaction
     suspend fun upsertEntryContentById(entry: EntryEntity) {
@@ -85,6 +128,7 @@ interface WordBooksDao {
                 text = entry.text,
                 pos = entry.pos,
                 level = entry.level,
+                effectiveLevel = entry.effectiveLevel,
                 definitionEn = entry.definitionEn,
                 noteEn = entry.noteEn,
                 examplesEn = entry.examplesEn,
@@ -105,11 +149,6 @@ interface WordBooksDao {
         for (i in entries.indices) {
             if (results[i] == -1L) {
                 val entry = entries[i]
-                val hasEnrichedContent = entry.arabic.isNotBlank() ||
-                    entry.ipa.isNotBlank() ||
-                    entry.examplesAr.isNotBlank()
-                if (!hasEnrichedContent) continue
-
                 val resolvedSource = if (entry.arabic.isNotBlank()) {
                     entry.arabicSource.ifBlank { "file" }
                 } else {
@@ -122,6 +161,7 @@ interface WordBooksDao {
                     text = entry.text,
                     pos = entry.pos,
                     level = entry.level,
+                    effectiveLevel = entry.effectiveLevel,
                     definitionEn = entry.definitionEn,
                     noteEn = entry.noteEn,
                     examplesEn = entry.examplesEn,
@@ -134,6 +174,9 @@ interface WordBooksDao {
                     dataVersion = entry.dataVersion
                 )
             }
+        }
+        if (entries.size < 100 && getTotalEntryCount() < 1000) {
+            backfillEffectiveLevels()
         }
     }
 
@@ -866,12 +909,47 @@ interface WordBooksDao {
         """
         SELECT e.* FROM entries e
         INNER JOIN word_progress wp
-            ON wp.deck = e.deck AND wp.text = LOWER(e.text)
+            ON (wp.entry_id = e.id OR (wp.entry_id IS NULL AND wp.deck = e.deck AND wp.text = LOWER(e.text)))
         WHERE wp.is_mastered = 0 AND wp.due_timestamp > 0 AND wp.due_timestamp <= :endOfTodayMillis
         ORDER BY wp.due_timestamp ASC, LOWER(e.text) ASC, CAST(e.id AS INTEGER) ASC
         """
     )
     suspend fun getDueTodayEntriesOrdered(endOfTodayMillis: Long): List<EntryEntity>
+
+    @Query(
+        """
+        SELECT e.* FROM entries e
+        INNER JOIN word_progress wp
+            ON (wp.entry_id = e.id OR (wp.entry_id IS NULL AND wp.deck = e.deck AND wp.text = LOWER(e.text)))
+        WHERE wp.is_mastered = 0 AND wp.due_timestamp > 0 AND wp.due_timestamp <= :endOfTodayMillis
+          AND wp.deck IN (:decks)
+        ORDER BY wp.due_timestamp ASC, LOWER(e.text) ASC, CAST(e.id AS INTEGER) ASC
+        """
+    )
+    suspend fun getDueTodayEntriesForDecksOrdered(endOfTodayMillis: Long, decks: List<String>): List<EntryEntity>
+
+    @Query(
+        """
+        SELECT e.* FROM entries e
+        INNER JOIN word_progress wp
+            ON (wp.entry_id = e.id OR (wp.entry_id IS NULL AND wp.deck = e.deck AND wp.text = LOWER(e.text)))
+        WHERE wp.is_mastered = 0 AND wp.due_timestamp > 0 AND wp.due_timestamp <= :nowMillis
+        ORDER BY wp.due_timestamp ASC, LOWER(e.text) ASC, CAST(e.id AS INTEGER) ASC
+        """
+    )
+    suspend fun getDueNowEntriesOrdered(nowMillis: Long): List<EntryEntity>
+
+    @Query(
+        """
+        SELECT e.* FROM entries e
+        INNER JOIN word_progress wp
+            ON (wp.entry_id = e.id OR (wp.entry_id IS NULL AND wp.deck = e.deck AND wp.text = LOWER(e.text)))
+        WHERE wp.is_mastered = 0 AND wp.due_timestamp > 0 AND wp.due_timestamp <= :nowMillis
+          AND wp.deck IN (:decks)
+        ORDER BY wp.due_timestamp ASC, LOWER(e.text) ASC, CAST(e.id AS INTEGER) ASC
+        """
+    )
+    suspend fun getDueNowEntriesForDecksOrdered(nowMillis: Long, decks: List<String>): List<EntryEntity>
 
     @Query("SELECT * FROM word_progress")
     fun observeAllWordProgress(): Flow<List<WordProgressEntity>>
@@ -894,13 +972,55 @@ interface WordBooksDao {
     @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > 0 AND due_timestamp <= :endOfTodayMillis")
     fun observeReviewDueTodayCount(endOfTodayMillis: Long): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > 0 AND due_timestamp <= :endOfTodayMillis AND deck IN (:decks)")
+    fun observeReviewDueTodayCountForDecks(endOfTodayMillis: Long, decks: List<String>): Flow<Int>
+
     @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > 0 AND due_timestamp <= :endOfTodayMillis")
     suspend fun getReviewDueTodayCount(endOfTodayMillis: Long): Int
 
-    @Query("SELECT COUNT(*) FROM word_progress WHERE last_reviewed_timestamp >= :startOfTodayMillis")
+    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > 0 AND due_timestamp <= :endOfTodayMillis AND deck IN (:decks)")
+    suspend fun getReviewDueTodayCountForDecks(endOfTodayMillis: Long, decks: List<String>): Int
+
+    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > 0 AND due_timestamp <= :nowMillis")
+    fun observeDueNowCount(nowMillis: Long): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > 0 AND due_timestamp <= :nowMillis AND deck IN (:decks)")
+    fun observeDueNowCountForDecks(nowMillis: Long, decks: List<String>): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > 0 AND due_timestamp <= :nowMillis")
+    suspend fun getDueNowCardsCount(nowMillis: Long): Int
+
+    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > 0 AND due_timestamp <= :nowMillis AND deck IN (:decks)")
+    suspend fun getDueNowCardsCountForDecks(nowMillis: Long, decks: List<String>): Int
+
+    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > :nowMillis AND due_timestamp <= :endOfTodayMillis")
+    suspend fun getLaterTodayCardsCount(nowMillis: Long, endOfTodayMillis: Long): Int
+
+    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > :nowMillis AND due_timestamp <= :endOfTodayMillis AND deck IN (:decks)")
+    suspend fun getLaterTodayCardsCountForDecks(nowMillis: Long, endOfTodayMillis: Long, decks: List<String>): Int
+
+    @Query("SELECT MIN(due_timestamp) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > :nowMillis AND due_timestamp <= :endOfTodayMillis")
+    suspend fun getNextLaterTodayDueTimestamp(nowMillis: Long, endOfTodayMillis: Long): Long?
+
+    @Query("SELECT MIN(due_timestamp) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > :nowMillis AND due_timestamp <= :endOfTodayMillis AND deck IN (:decks)")
+    suspend fun getNextLaterTodayDueTimestampForDecks(nowMillis: Long, endOfTodayMillis: Long, decks: List<String>): Long?
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM word_progress
+        WHERE first_learned_timestamp >= :startOfTodayMillis
+           OR (first_learned_timestamp = 0 AND last_reviewed_timestamp >= :startOfTodayMillis AND (repetitions > 0 OR again_count > 0))
+        """
+    )
     fun observeStudiedTodayCount(startOfTodayMillis: Long): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM word_progress WHERE last_reviewed_timestamp >= :startOfTodayMillis")
+    @Query(
+        """
+        SELECT COUNT(*) FROM word_progress
+        WHERE first_learned_timestamp >= :startOfTodayMillis
+           OR (first_learned_timestamp = 0 AND last_reviewed_timestamp >= :startOfTodayMillis AND (repetitions > 0 OR again_count > 0))
+        """
+    )
     suspend fun getStudiedTodayCount(startOfTodayMillis: Long): Int
 
     @Query("SELECT COUNT(*) FROM word_progress WHERE deck = :deckId AND is_mastered = 1")
@@ -1221,6 +1341,13 @@ interface WordBooksDao {
     suspend fun getDueCardsCount(currentTime: Long): Int
 
     @Query("""
+        SELECT COUNT(*) FROM word_progress
+        WHERE due_timestamp > 0 AND due_timestamp <= :currentTime AND is_mastered = 0
+          AND deck IN (:decks)
+    """)
+    suspend fun getDueCardsCountForDecks(currentTime: Long, decks: List<String>): Int
+
+    @Query("""
         SELECT * FROM word_progress
         WHERE due_timestamp > 0 AND due_timestamp <= :currentTime AND is_mastered = 0
         ORDER BY due_timestamp ASC
@@ -1231,25 +1358,227 @@ interface WordBooksDao {
     @Query("""
         SELECT COUNT(*) FROM word_progress
         WHERE last_reviewed_timestamp >= :startOfDayMillis
+          AND (first_learned_timestamp > 0 OR repetitions > 0 OR again_count > 0)
     """)
     suspend fun getCardsRatedTodayCount(startOfDayMillis: Long): Int
 
+    /**
+     * Counts new words introduced (given their first real SM-2 rating) on or after [startOfDayMillis].
+     * Uses `first_learned_timestamp` (with a fallback for legacy/test rows that set repetitions=1 without first_learned_timestamp).
+     * Never counts favorite-only or manual-mastery-only rows (`last_reviewed_timestamp = 0` and `first_learned_timestamp = 0`).
+     */
     @Query("""
         SELECT COUNT(*) FROM word_progress
-        WHERE last_reviewed_timestamp >= :startOfDayMillis AND repetitions = 1
+        WHERE (first_learned_timestamp >= :startOfDayMillis)
+           OR (first_learned_timestamp = 0 AND last_reviewed_timestamp >= :startOfDayMillis AND repetitions = 1 AND again_count = 0)
     """)
     suspend fun getNewWordsRatedTodayCount(startOfDayMillis: Long): Int
 
     @Query("""
+        SELECT COUNT(*) FROM word_progress
+        WHERE (first_learned_timestamp >= :startMillis AND first_learned_timestamp <= :endMillis)
+           OR (first_learned_timestamp = 0 AND last_reviewed_timestamp >= :startMillis AND last_reviewed_timestamp <= :endMillis AND repetitions = 1 AND again_count = 0)
+    """)
+    suspend fun getNewWordsLearnedInRangeCount(startMillis: Long, endMillis: Long): Int
+
+    @Query("""
+        SELECT COUNT(*) FROM word_progress
+        WHERE (first_learned_timestamp >= :startOfDayMillis)
+           OR (first_learned_timestamp = 0 AND last_reviewed_timestamp >= :startOfDayMillis AND repetitions = 1 AND again_count = 0)
+    """)
+    fun observeNewWordsLearnedTodayCount(startOfDayMillis: Long): Flow<Int>
+
+    /**
+     * Counts review ratings completed on or after [startOfDayMillis], strictly separated from new words.
+     * Sums `flashcard_review` attempts from `attempts` plus any legacy/test `word_progress` review row
+     * without a corresponding attempt row.
+     */
+    @Query("""
+        SELECT (
+            (SELECT COUNT(*) FROM attempts WHERE activity_type = 'flashcard_review' AND timestamp >= :startOfDayMillis)
+            +
+            (SELECT COUNT(*) FROM word_progress wp
+             WHERE wp.last_reviewed_timestamp >= :startOfDayMillis
+               AND (
+                   (wp.first_learned_timestamp > 0 AND wp.first_learned_timestamp < :startOfDayMillis)
+                   OR (wp.first_learned_timestamp = 0 AND wp.repetitions > 1)
+               )
+               AND NOT EXISTS (
+                   SELECT 1 FROM attempts a
+                   WHERE a.activity_type = 'flashcard_review'
+                     AND a.item_id = wp.card_key
+                     AND a.timestamp >= :startOfDayMillis
+               )
+            )
+        )
+    """)
+    suspend fun getReviewCardsRatedTodayCount(startOfDayMillis: Long): Int
+
+    @Query("""
+        SELECT (
+            (SELECT COUNT(*) FROM attempts WHERE activity_type = 'flashcard_review' AND timestamp >= :startMillis AND timestamp <= :endMillis)
+            +
+            (SELECT COUNT(*) FROM word_progress wp
+             WHERE wp.last_reviewed_timestamp >= :startMillis AND wp.last_reviewed_timestamp <= :endMillis
+               AND (
+                   (wp.first_learned_timestamp > 0 AND wp.first_learned_timestamp < :startMillis)
+                   OR (wp.first_learned_timestamp = 0 AND wp.repetitions > 1)
+               )
+               AND NOT EXISTS (
+                   SELECT 1 FROM attempts a
+                   WHERE a.activity_type = 'flashcard_review'
+                     AND a.item_id = wp.card_key
+                     AND a.timestamp >= :startMillis AND a.timestamp <= :endMillis
+               )
+            )
+        )
+    """)
+    suspend fun getReviewCardsRatedInRangeCount(startMillis: Long, endMillis: Long): Int
+
+    @Query("""
+        SELECT COUNT(*) FROM attempts
+        WHERE activity_type = 'flashcard_review' AND timestamp >= :startOfDayMillis
+    """)
+    fun observeReviewAttemptsTodayCount(startOfDayMillis: Long): Flow<Int>
+
+    // --- ATTEMPTS TABLE & TRANSACTIONAL PRACTICE LOGGING ---
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAttempt(attempt: AttemptEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAttempts(attempts: List<AttemptEntity>)
+
+    @Query("SELECT * FROM attempts ORDER BY timestamp ASC, id ASC")
+    suspend fun getAllAttempts(): List<AttemptEntity>
+
+    @Query("SELECT * FROM attempts ORDER BY timestamp DESC, id DESC")
+    fun observeAllAttempts(): Flow<List<AttemptEntity>>
+
+    @Query("SELECT * FROM attempts WHERE timestamp >= :startMillis AND timestamp <= :endMillis ORDER BY timestamp ASC, id ASC")
+    suspend fun getAttemptsInRange(startMillis: Long, endMillis: Long): List<AttemptEntity>
+
+    @Query("SELECT * FROM attempts WHERE activity_type = :activityType AND item_id = :itemId ORDER BY timestamp ASC, id ASC")
+    suspend fun getAttemptsForItem(activityType: String, itemId: String): List<AttemptEntity>
+
+    @Query("SELECT COUNT(*) FROM attempts")
+    suspend fun getTotalAttemptsCount(): Int
+
+    @Transaction
+    suspend fun upsertWordProgressWithAttempt(progress: WordProgressEntity, attempt: AttemptEntity) {
+        upsertWordProgress(progress)
+        insertAttempt(attempt)
+    }
+
+    @Transaction
+    suspend fun upsertGrammarProgressWithAttempt(progress: GrammarProgressEntity, attempt: AttemptEntity) {
+        upsertGrammarProgress(progress)
+        insertAttempt(attempt)
+    }
+
+    @Transaction
+    suspend fun upsertReadingProgressWithAttempt(progress: ReadingProgressEntity, attempt: AttemptEntity) {
+        upsertReadingProgress(progress)
+        insertAttempt(attempt)
+    }
+
+    @Transaction
+    suspend fun upsertCorrectionWithAttempt(entry: CorrectionNotebookEntity, attempt: AttemptEntity): Long {
+        val id = upsertCorrectionEntry(entry)
+        val resolvedAttempt = if (attempt.itemId.isBlank() || attempt.itemId == "0") {
+            attempt.copy(itemId = id.toString())
+        } else {
+            attempt
+        }
+        insertAttempt(resolvedAttempt)
+        return id
+    }
+
+    @Transaction
+    suspend fun insertQuizResultsWithAttempts(results: List<QuizResultEntity>, attempts: List<AttemptEntity>) {
+        for (result in results) {
+            insertQuizResult(result)
+        }
+        if (attempts.isNotEmpty()) {
+            insertAttempts(attempts)
+        }
+    }
+
+    // --- BATCH BACKUP / RESTORE HELPERS ---
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertWordProgressBatch(items: List<WordProgressEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertSentencesBatch(items: List<SentenceEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertGrammarProgressBatch(items: List<GrammarProgressEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertReadingProgressBatch(items: List<ReadingProgressEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertCorrectionEntriesBatch(items: List<CorrectionNotebookEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertDailyChecklistsBatch(items: List<DailyChecklistEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertQuizResultsBatch(items: List<QuizResultEntity>)
+
+    @Query("SELECT * FROM grammar_progress")
+    suspend fun getAllGrammarProgressList(): List<GrammarProgressEntity>
+
+    @Query("SELECT * FROM correction_notebook ORDER BY id ASC")
+    suspend fun getAllCorrectionEntriesList(): List<CorrectionNotebookEntity>
+
+    @Query("SELECT * FROM quiz_results ORDER BY id ASC")
+    suspend fun getAllQuizResultsList(): List<QuizResultEntity>
+
+    @Transaction
+    suspend fun restoreUserBackupPayload(payload: UserBackupPayload) {
+        if (payload.wordProgress.isNotEmpty()) {
+            upsertWordProgressBatch(payload.wordProgress)
+        }
+        if (payload.attempts.isNotEmpty()) {
+            insertAttempts(payload.attempts)
+        }
+        if (payload.sentences.isNotEmpty()) {
+            upsertSentencesBatch(payload.sentences)
+        }
+        if (payload.grammarProgress.isNotEmpty()) {
+            upsertGrammarProgressBatch(payload.grammarProgress)
+        }
+        if (payload.readingProgress.isNotEmpty()) {
+            upsertReadingProgressBatch(payload.readingProgress)
+        }
+        if (payload.correctionNotebook.isNotEmpty()) {
+            upsertCorrectionEntriesBatch(payload.correctionNotebook)
+        }
+        if (payload.studyPlanProfile != null) {
+            upsertStudyPlanProfile(payload.studyPlanProfile)
+        }
+        if (payload.dailyChecklists.isNotEmpty()) {
+            upsertDailyChecklistsBatch(payload.dailyChecklists)
+        }
+        if (payload.quizResults.isNotEmpty()) {
+            upsertQuizResultsBatch(payload.quizResults)
+        }
+    }
+
+    @Query("""
         SELECT e.* FROM entries e
-        LEFT JOIN word_progress wp ON e.deck = wp.deck AND LOWER(e.text) = LOWER(wp.text)
-        WHERE (wp.card_key IS NULL OR wp.last_reviewed_timestamp = 0)
-          AND e.level IN (:levels)
+        WHERE (
+            e.effective_level IN (:levels)
+            OR (e.deck = 'oxford_opal' AND e.effective_level IS NULL)
+          )
           AND e.deck IN (:decks)
           AND TRIM(e.arabic) != ''
-        GROUP BY LOWER(e.text)
+          AND NOT EXISTS (
+              SELECT 1 FROM word_progress wp
+              WHERE wp.entry_id = e.id AND (wp.first_learned_timestamp > 0 OR wp.last_reviewed_timestamp > 0)
+          )
         ORDER BY
-          CASE e.level
+          CASE UPPER(TRIM(COALESCE(e.effective_level, '')))
             WHEN 'A1' THEN 1
             WHEN 'A2' THEN 2
             WHEN 'B1' THEN 3
@@ -1258,10 +1587,64 @@ interface WordBooksDao {
             WHEN 'C2' THEN 6
             ELSE 7
           END ASC,
+          CAST(e.id AS INTEGER) ASC,
           e.id ASC
         LIMIT :limit
     """)
     suspend fun getNewWordsForLevelsAndDecks(levels: List<String>, decks: List<String>, limit: Int): List<EntryEntity>
+
+    @Query("""
+        SELECT e.* FROM entries e
+        WHERE e.deck = :deck
+          AND (
+            (:includeUnlevelled = 1 AND e.effective_level IS NULL)
+            OR (:level != '' AND UPPER(TRIM(e.effective_level)) = UPPER(TRIM(:level)))
+            OR (:level = '' AND :includeUnlevelled = 0)
+          )
+          AND TRIM(e.arabic) != ''
+          AND NOT EXISTS (
+              SELECT 1 FROM word_progress wp
+              LEFT JOIN entries e_studied ON wp.entry_id = e_studied.id
+              WHERE (wp.first_learned_timestamp > 0 OR wp.last_reviewed_timestamp > 0)
+                AND (
+                    wp.entry_id = e.id
+                    OR (e_studied.id IS NOT NULL AND LOWER(TRIM(e_studied.text)) = LOWER(TRIM(e.text)))
+                )
+          )
+        ORDER BY ((CAST(e.id AS INTEGER) * 2654435761) % 4294967296) ASC, e.id ASC
+        LIMIT :limit
+    """)
+    suspend fun getUnstudiedEntriesForDeckAndLevel(
+        deck: String,
+        level: String,
+        includeUnlevelled: Int,
+        limit: Int
+    ): List<EntryEntity>
+
+    @Query("""
+        SELECT e.* FROM entries e
+        WHERE e.deck = :deck
+          AND (
+            e.effective_level IN (:levels)
+            OR (:includeNullLevel = 1 AND e.effective_level IS NULL)
+          )
+          AND TRIM(e.arabic) != ''
+          AND NOT EXISTS (
+              SELECT 1 FROM word_progress wp
+              LEFT JOIN entries e_studied ON wp.entry_id = e_studied.id
+              WHERE (wp.first_learned_timestamp > 0 OR wp.last_reviewed_timestamp > 0)
+                AND (
+                    wp.entry_id = e.id
+                    OR (e_studied.id IS NOT NULL AND LOWER(TRIM(e_studied.text)) = LOWER(TRIM(e.text)))
+                )
+          )
+        ORDER BY ((CAST(e.id AS INTEGER) * 2654435761) % 4294967296) ASC, e.id ASC
+    """)
+    suspend fun getUnstudiedEntriesForDeckAndEffectiveLevels(
+        deck: String,
+        levels: List<String>,
+        includeNullLevel: Int
+    ): List<EntryEntity>
 
     @Query("""
         SELECT gl.* FROM grammar_lessons gl
@@ -1344,7 +1727,7 @@ interface WordBooksDao {
         ORDER BY
           CASE WHEN deck IN ('oxford5000', 'oxford_opal') THEN 0 ELSE 1 END ASC,
           CASE WHEN LOWER(TRIM(pos)) IN ('noun', 'verb', 'adjective', 'adverb') THEN 0 ELSE 1 END ASC,
-          CAST(id AS INTEGER) ASC,
+          ((CAST(id AS INTEGER) * 2654435761) % 4294967296) ASC,
           id ASC
         LIMIT :limit
         """
@@ -1388,7 +1771,7 @@ interface WordBooksDao {
     @Query(
         """
         SELECT * FROM entries
-        WHERE (UPPER(TRIM(level)) = UPPER(TRIM(:level)) OR :level = '')
+        WHERE (UPPER(TRIM(COALESCE(NULLIF(TRIM(effective_level), ''), level))) = UPPER(TRIM(:level)) OR :level = '')
           AND TRIM(text) != ''
         ORDER BY LOWER(text) ASC, pos ASC
         LIMIT :limit
@@ -1400,7 +1783,7 @@ interface WordBooksDao {
         """
         SELECT * FROM entries
         WHERE (:deckId = '' OR deck = :deckId)
-          AND (UPPER(TRIM(level)) = UPPER(TRIM(:level)) OR :level = '')
+          AND (UPPER(TRIM(COALESCE(NULLIF(TRIM(effective_level), ''), level))) = UPPER(TRIM(:level)) OR :level = '')
           AND TRIM(text) != ''
         ORDER BY LOWER(text) ASC, pos ASC
         """

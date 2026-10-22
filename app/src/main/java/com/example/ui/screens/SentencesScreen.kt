@@ -167,6 +167,7 @@ fun SentencesScreen(
     onUpdateAutoPlayPracticeAudio: (Boolean) -> Unit,
     onNavigateToWordBooks: () -> Unit,
     onNavigateToFlashcards: () -> Unit,
+    onRecordSentencePracticeAttempt: (String, Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -325,6 +326,7 @@ fun SentencesScreen(
                             onIndexChange = { practiceIndex = it },
                             onPlayNormalTts = { text -> onSpeakSentenceTts(text, null) },
                             onPlaySlowTts = { text -> onSpeakSentenceTts(text, 0.72f) },
+                            onRecordAttempt = onRecordSentencePracticeAttempt,
                             onSwitchToFavorites = { activeTab = SentencesTab.FAVORITES }
                         )
                     }
@@ -338,6 +340,7 @@ fun SentencesScreen(
                             currentlyPlayingText = currentlyPlayingText,
                             onIndexChange = { practiceIndex = it },
                             onPlayNormalTts = { text -> onSpeakSentenceTts(text, null) },
+                            onRecordAttempt = onRecordSentencePracticeAttempt,
                             onSwitchToFavorites = { activeTab = SentencesTab.FAVORITES }
                         )
                     }
@@ -1038,6 +1041,7 @@ private fun DictationTabContent(
     onIndexChange: (Int) -> Unit,
     onPlayNormalTts: (String) -> Unit,
     onPlaySlowTts: (String) -> Unit,
+    onRecordAttempt: (String, Int) -> Unit = { _, _ -> },
     onSwitchToFavorites: () -> Unit
 ) {
     if (savedSentences.isEmpty()) {
@@ -1221,11 +1225,18 @@ private fun DictationTabContent(
                 ) {
                     Button(
                         onClick = {
-                            diffResult = SentencePracticeUtils.computeSentenceDiff(
+                            val computed = SentencePracticeUtils.computeSentenceDiff(
                                 expected = currentSentence.englishText,
                                 actual = typedInput,
                                 ignorePunctuation = ignorePunctuation
                             )
+                            diffResult = computed
+                            val itemId = if (currentSentence.id > 0L) {
+                                "sentence:${currentSentence.id}"
+                            } else {
+                                currentSentence.englishText
+                            }
+                            onRecordAttempt(itemId, computed.accuracyPercent)
                         },
                         enabled = typedInput.isNotBlank(),
                         colors = ButtonDefaults.buttonColors(
@@ -1279,6 +1290,7 @@ private fun SpeakingTabContent(
     currentlyPlayingText: String?,
     onIndexChange: (Int) -> Unit,
     onPlayNormalTts: (String) -> Unit,
+    onRecordAttempt: (String, Int) -> Unit = { _, _ -> },
     onSwitchToFavorites: () -> Unit
 ) {
     val context = LocalContext.current
@@ -1391,11 +1403,18 @@ private fun SpeakingTabContent(
                         spokenTranscript = bestMatch
                         if (bestMatch.isNotEmpty()) {
                             recognitionStatusText = "Heard: \"$bestMatch\""
-                            speakingDiff = SentencePracticeUtils.computeSentenceDiff(
+                            val computed = SentencePracticeUtils.computeSentenceDiff(
                                 expected = currentSentence.englishText,
                                 actual = bestMatch,
                                 ignorePunctuation = ignorePunctuation
                             )
+                            speakingDiff = computed
+                            val itemId = if (currentSentence.id > 0L) {
+                                "sentence:${currentSentence.id}"
+                            } else {
+                                currentSentence.englishText
+                            }
+                            onRecordAttempt(itemId, computed.accuracyPercent)
                         } else {
                             recognitionStatusText = "No speech detected. Please try again."
                         }

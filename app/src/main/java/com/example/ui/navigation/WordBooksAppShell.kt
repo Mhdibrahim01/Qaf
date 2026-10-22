@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -44,6 +45,9 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.rememberCoroutineScope
+import com.example.ui.screens.QuizDialog
+import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.runtime.getValue
@@ -169,7 +173,12 @@ fun WordBooksAppShell(
     val studyStreak by wordBooksViewModel.studyStreak.collectAsStateWithLifecycle()
     val quizHistory by wordBooksViewModel.quizHistory.collectAsStateWithLifecycle()
     val weakAreas by wordBooksViewModel.weakAreas.collectAsStateWithLifecycle()
+    val practiceAccuracySummary by wordBooksViewModel.practiceAccuracySummary.collectAsStateWithLifecycle()
+    val waitingLaterTodayCount by wordBooksViewModel.waitingLaterTodayCount.collectAsStateWithLifecycle()
+    val nextWaitingDueTimestamp by wordBooksViewModel.nextWaitingDueTimestamp.collectAsStateWithLifecycle()
     val monthlyChecklists by wordBooksViewModel.monthlyChecklists.collectAsStateWithLifecycle()
+    val recentAttempts by wordBooksViewModel.recentAttempts.collectAsStateWithLifecycle()
+    val totalAttemptsCount by wordBooksViewModel.totalAttemptsCount.collectAsStateWithLifecycle()
     val currentAiWordDetail by wordBooksViewModel.currentAiWordDetail.collectAsStateWithLifecycle()
     val isAiDetailLoading by wordBooksViewModel.isAiDetailLoading.collectAsStateWithLifecycle()
     val aiDetailError by wordBooksViewModel.aiDetailError.collectAsStateWithLifecycle()
@@ -179,6 +188,9 @@ fun WordBooksAppShell(
     val isKickoffDismissed by wordBooksViewModel.isKickoffDismissed.collectAsStateWithLifecycle()
     val recommendedWordsForLevel by wordBooksViewModel.recommendedWordsForLevel.collectAsStateWithLifecycle()
     val userLevel = studyPlanProfile?.level?.ifBlank { "B2" } ?: "B2"
+    val activeQuizSession by wordBooksViewModel.activeQuizSession.collectAsStateWithLifecycle()
+    val isQuizLoading by wordBooksViewModel.isQuizLoading.collectAsStateWithLifecycle()
+    val coroutineScope = rememberCoroutineScope()
     var isSettingsOpen by remember { mutableStateOf(false) }
     var isApiKeyDialogOpen by remember { mutableStateOf(false) }
     val apiKeyTrigger by wordBooksViewModel.apiKeyUpdatedTrigger.collectAsStateWithLifecycle()
@@ -395,6 +407,7 @@ fun WordBooksAppShell(
                         masteredCount = masteredCount,
                         deckStudyStates = deckStudyStates,
                         todayChecklist = todayChecklist,
+                        weeklyChecklists = monthlyChecklists,
                         studyStreak = studyStreak,
                         studyPlanProfile = studyPlanProfile,
                         onOpenDeck = { deckId ->
@@ -409,13 +422,17 @@ fun WordBooksAppShell(
                             navController.navigate(AppRoute.Plan) { launchSingleTop = true }
                         },
                         onNavigateToTask = { route, linkedId ->
-                            wordBooksViewModel.preparePlanTaskNavigation(route, linkedId)
-                            when (route) {
-                                "flashcards", "new_words" -> navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
-                                "word_books", "database" -> navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
-                                "reading" -> navController.navigate(AppRoute.Reading) { launchSingleTop = true }
-                                "grammar" -> navController.navigate(AppRoute.Grammar) { launchSingleTop = true }
-                                else -> navController.navigate(AppRoute.Plan) { launchSingleTop = true }
+                            if (route == "quiz") {
+                                wordBooksViewModel.startDailyMiniQuiz()
+                            } else {
+                                wordBooksViewModel.preparePlanTaskNavigation(route, linkedId)
+                                when (route) {
+                                    "flashcards", "new_words" -> navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
+                                    "word_books", "database" -> navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
+                                    "reading" -> navController.navigate(AppRoute.Reading) { launchSingleTop = true }
+                                    "grammar" -> navController.navigate(AppRoute.Grammar) { launchSingleTop = true }
+                                    else -> navController.navigate(AppRoute.Plan) { launchSingleTop = true }
+                                }
                             }
                         },
                         onToggleTaskCompleted = wordBooksViewModel::toggleTaskCompleted
@@ -541,7 +558,9 @@ fun WordBooksAppShell(
                         showCoachTipFlip = onboardingState?.coachTipFlipDismissed == false,
                         showCoachTipRate = onboardingState?.coachTipRateDismissed == false,
                         onDismissCoachTipFlip = wordBooksViewModel::dismissCoachTipFlip,
-                        onDismissCoachTipRate = wordBooksViewModel::dismissCoachTipRate
+                        onDismissCoachTipRate = wordBooksViewModel::dismissCoachTipRate,
+                        waitingLaterTodayCount = waitingLaterTodayCount,
+                        nextWaitingDueTimestamp = nextWaitingDueTimestamp
                     )
                 }
                 composable<AppRoute.Sentences> {
@@ -572,7 +591,8 @@ fun WordBooksAppShell(
                         },
                         onNavigateToFlashcards = {
                             navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
-                        }
+                        },
+                        onRecordSentencePracticeAttempt = wordBooksViewModel::recordSentencePracticeAttempt
                     )
                 }
                 composable<AppRoute.Grammar> {
@@ -690,6 +710,13 @@ fun WordBooksAppShell(
                             emptyArabicCount = emptyArabicCount,
                             deckArabicStats = deckArabicStats,
                             grammarLessonsCount = grammarLessons.size,
+                            studyPlanProfile = studyPlanProfile,
+                            todayChecklist = todayChecklist,
+                            recentAttempts = recentAttempts,
+                            totalAttemptsCount = totalAttemptsCount,
+                            reviewDueTodayCount = reviewDueTodayCount,
+                            onSimulateBacklog42 = wordBooksViewModel::simulateReviewBacklog42,
+                            onRebuildTodayPlan = wordBooksViewModel::forceRebuildTodayPlan,
                             onReimportDatabase = { wordBooksViewModel.startImportIfNeeded(forceRecheck = true) },
                             onResetAndReimport = wordBooksViewModel::clearAndReimportDatabase,
                             onImportJsonUris = wordBooksViewModel::importJsonUris,
@@ -749,6 +776,7 @@ fun WordBooksAppShell(
                         quizHistory = quizHistory,
                         weakAreas = weakAreas,
                         monthlyChecklists = monthlyChecklists,
+                        practiceAccuracySummary = practiceAccuracySummary,
                         onSaveProfile = wordBooksViewModel::savePlanProfile,
                         onGeneratePlanWithAi = wordBooksViewModel::generatePlanWithAi,
                         onGenerateDailyQuiz = wordBooksViewModel::generateDailyQuiz,
@@ -758,20 +786,25 @@ fun WordBooksAppShell(
                         onSubmitQuizAnswers = wordBooksViewModel::submitQuizAnswers,
                         onPlayAudio = { text: String -> wordBooksViewModel.speakSentenceTts(text) },
                         onToggleTaskCompleted = wordBooksViewModel::toggleTaskCompleted,
+                        onStartDirectDailyQuiz = wordBooksViewModel::startDailyMiniQuiz,
                         onNavigateToTaskRoute = { route: String, linkedId: String ->
-                            wordBooksViewModel.preparePlanTaskNavigation(route, linkedId)
-                            when (route) {
-                                "flashcards", "new_words" -> navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
-                                "word_books", "database" -> navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
-                                "grammar" -> navController.navigate(AppRoute.Grammar) { launchSingleTop = true }
-                                "reading" -> navController.navigate(AppRoute.Reading) { launchSingleTop = true }
-                                "sentences" -> navController.navigate(AppRoute.Sentences) { launchSingleTop = true }
-                                "correction_notebook" -> {
-                                    navController.navigate(AppRoute.CorrectionNotebook) {
-                                        launchSingleTop = true
+                            if (route == "quiz") {
+                                wordBooksViewModel.startDailyMiniQuiz()
+                            } else {
+                                wordBooksViewModel.preparePlanTaskNavigation(route, linkedId)
+                                when (route) {
+                                    "flashcards", "new_words" -> navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
+                                    "word_books", "database" -> navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
+                                    "grammar" -> navController.navigate(AppRoute.Grammar) { launchSingleTop = true }
+                                    "reading" -> navController.navigate(AppRoute.Reading) { launchSingleTop = true }
+                                    "sentences" -> navController.navigate(AppRoute.Sentences) { launchSingleTop = true }
+                                    "correction_notebook" -> {
+                                        navController.navigate(AppRoute.CorrectionNotebook) {
+                                            launchSingleTop = true
+                                        }
                                     }
+                                    else -> navController.navigate(AppRoute.Plan) { launchSingleTop = true }
                                 }
-                                else -> navController.navigate(AppRoute.Plan) { launchSingleTop = true }
                             }
                         },
                         onOpenDictionaryWord = { word ->
@@ -997,6 +1030,59 @@ fun WordBooksAppShell(
             onSaveKey = { key -> wordBooksViewModel.setCustomApiKey(key) },
             onResetToDefault = { wordBooksViewModel.clearCustomApiKey() },
             onDismiss = { isApiKeyDialogOpen = false }
+        )
+    }
+
+    if (activeQuizSession != null) {
+        QuizDialog(
+            title = activeQuizSession!!.title,
+            quizType = activeQuizSession!!.quizType,
+            questions = activeQuizSession!!.questions,
+            onPlayAudio = { text -> wordBooksViewModel.speakSentenceTts(text) },
+            onQuizCompleted = { answers ->
+                coroutineScope.launch {
+                    wordBooksViewModel.submitActiveQuiz(answers)
+                }
+            },
+            onOpenDictionaryWord = { word ->
+                wordBooksViewModel.openDetailedDefinition("", word)
+            },
+            scopeInfo = activeQuizSession!!.scopeInfo,
+            onDismiss = { wordBooksViewModel.dismissActiveQuiz() }
+        )
+    }
+
+    if (isQuizLoading) {
+        AlertDialog(
+            onDismissRequest = {},
+            containerColor = SurfaceDark,
+            title = {
+                Text(
+                    text = "Preparing Daily Mini-Quiz...",
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator(
+                        color = GoldAccent,
+                        modifier = Modifier.size(36.dp)
+                    )
+                    Text(
+                        text = "Aligning 10 questions with today's vocabulary, grammar, and reading...",
+                        color = TextSecondary,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            },
+            confirmButton = {}
         )
     }
 }

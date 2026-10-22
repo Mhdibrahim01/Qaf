@@ -17,6 +17,7 @@ import com.example.data.importer.DataImportRepository
 import com.example.data.importer.FlashcardDirection
 import com.example.data.importer.GroupedWordCard
 import com.example.data.importer.ImportProgressState
+import com.example.data.importer.Sm2Algorithm
 import com.example.data.importer.Sm2Rating
 import com.example.data.importer.WordFilterState
 import com.example.data.importer.WordSortOrder
@@ -32,9 +33,11 @@ import com.example.data.local.GrammarExerciseItem
 import com.example.data.local.GrammarLessonEntity
 import com.example.data.local.GrammarProgressEntity
 import com.example.data.local.GrammarSentenceCheckResult
+import com.example.data.local.PracticeAccuracySummary
 import com.example.data.local.SentenceEntity
 import com.example.data.local.WordBooksDatabase
 import com.example.data.local.WordProgressEntity
+import com.example.data.local.AttemptEntity
 import com.example.data.local.DailyChecklistEntity
 import com.example.data.local.DailyTaskItem
 import com.example.data.local.QuizQuestionItem
@@ -108,7 +111,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         apiKeysProvider = { com.example.data.ai.GeminiApiKeyManager.getAllConfiguredKeys(application) }
     )
     val studyPlanRepository = StudyPlanRepository(application, database.wordBooksDao())
-    val localQuizEngine = LocalQuizEngine(database.wordBooksDao(), studyPlanRepository.timeProvider)
+    val localQuizEngine = LocalQuizEngine(database.wordBooksDao(), studyPlanRepository.timeProvider, studyPlanRepository)
     val studyPlanAiService = StudyPlanAiService(
         repository = studyPlanRepository,
         dao = database.wordBooksDao(),
@@ -267,11 +270,43 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         initialValue = 0
     )
 
-    val reviewDueTodayCount: StateFlow<Int> = repository.observeReviewDueTodayCount().stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = 0
-    )
+    private fun parseSelectedDecks(profile: StudyPlanProfileEntity?): List<String> {
+        val raw = profile?.selectedDecksJson.orEmpty()
+        if (raw.isBlank()) return emptyList()
+        return try {
+            kotlinx.serialization.json.Json.decodeFromString<List<String>>(raw)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    val reviewDueTodayCount: StateFlow<Int> = studyPlanRepository.profileFlow
+        .flatMapLatest { profile ->
+            val decks = parseSelectedDecks(profile)
+            repository.observeReviewDueTodayCount(selectedDecks = decks)
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 0
+        )
+
+    val reviewDueNowCount: StateFlow<Int> = studyPlanRepository.profileFlow
+        .flatMapLatest { profile ->
+            val decks = parseSelectedDecks(profile)
+            repository.observeReviewDueNowCount(selectedDecks = decks)
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 0
+        )
+
+    private val _waitingLaterTodayCount = MutableStateFlow(0)
+    val waitingLaterTodayCount: StateFlow<Int> = _waitingLaterTodayCount.asStateFlow()
+
+    private val _nextWaitingDueTimestamp = MutableStateFlow<Long?>(null)
+    val nextWaitingDueTimestamp: StateFlow<Long?> = _nextWaitingDueTimestamp.asStateFlow()
 
     val studiedTodayCount: StateFlow<Int> = repository.observeStudiedTodayCount().stateIn(
         scope = viewModelScope,
@@ -408,6 +443,9 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     private val _weakAreas = MutableStateFlow(WeakAreasState())
     val weakAreas: StateFlow<WeakAreasState> = _weakAreas.asStateFlow()
 
+    private val _practiceAccuracySummary = MutableStateFlow(PracticeAccuracySummary())
+    val practiceAccuracySummary: StateFlow<PracticeAccuracySummary> = _practiceAccuracySummary.asStateFlow()
+
     val monthlyChecklists: StateFlow<List<DailyChecklistEntity>> = database.wordBooksDao().observeChecklistsForMonth(
         studyPlanRepository.timeProvider.currentMonthString()
     ).stateIn(
@@ -415,6 +453,22 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+
+    val recentAttempts: StateFlow<List<AttemptEntity>> = database.wordBooksDao().observeAllAttempts()
+        .map { it.take(8) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    val totalAttemptsCount: StateFlow<Int> = database.wordBooksDao().observeAllAttempts()
+        .map { it.size }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 0
+        )
 
     // --- LETTER OFFSETS IN-MEMORY CACHE FOR A-Z JUMP ---
     private val _letterOffsetsCache = MutableStateFlow<Map<Char, Int>>(emptyMap())
@@ -1037,11 +1091,24 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             _isFlashcardsLoading.value = true
             try {
-                val (cards, studyState) = repository.loadFlashcardDeckCards(deckId)
+                val selectedDecks = parseSelectedDecks(studyPlanProfile.value)
+                val (cards, studyState) = repository.loadFlashcardDeckCards(
+                    deckId = deckId,
+                    selectedDecks = selectedDecks
+                )
                 _flashcardCards.value = cards
                 val restoredIndex = if (cards.isEmpty()) 0 else studyState.lastCardIndex.coerceIn(0, cards.size - 1)
                 _flashcardIndex.value = restoredIndex
                 _isCurrentCardFlipped.value = false
+                val nowMillis = System.currentTimeMillis()
+                _waitingLaterTodayCount.value = repository.getLaterTodayCardsCount(
+                    nowMillis = nowMillis,
+                    selectedDecks = selectedDecks
+                )
+                _nextWaitingDueTimestamp.value = repository.getNextLaterTodayDueTimestamp(
+                    nowMillis = nowMillis,
+                    selectedDecks = selectedDecks
+                )
             } finally {
                 _isFlashcardsLoading.value = false
             }
@@ -1091,12 +1158,49 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         val currentIndex = _flashcardIndex.value
         val currentCard = cards.getOrNull(currentIndex) ?: return
         val activeDeckId = _flashcardDeckId.value
-        val nextIndex = repository.findNextDueCardIndex(
-            cards = cards,
-            currentIndex = currentIndex,
-            progressMap = progressMap.value
+        val nowMillis = System.currentTimeMillis()
+
+        // Compute optimistic updated SM-2 progress FIRST so Again (+10m) and first-Hard (+4h)
+        // are immediately excluded from due-now eligibility until their dueTimestamp is reached.
+        val existingProgress = progressMap.value[currentCard.cardKey] ?: WordProgressEntity(
+            cardKey = currentCard.cardKey,
+            deck = currentCard.deck,
+            text = currentCard.text.trim().lowercase()
         )
-        val nextWordText = cards.getOrNull(nextIndex)?.text ?: currentCard.text
+        val optimisticUpdated = Sm2Algorithm.applyRating(
+            progress = existingProgress,
+            rating = rating,
+            nowMillis = nowMillis
+        )
+        val updatedProgressMap = progressMap.value + (currentCard.cardKey to optimisticUpdated)
+
+        val remainingCards: List<GroupedWordCard>
+        val nextIndex: Int
+        if (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID && optimisticUpdated.dueTimestamp > nowMillis) {
+            // Hide rated card from active due-session until dueTimestamp <= nowMillis
+            remainingCards = cards.filterIndexed { index, _ -> index != currentIndex }
+            nextIndex = if (remainingCards.isEmpty()) {
+                0
+            } else {
+                val candidateStart = (currentIndex - 1).coerceAtLeast(-1)
+                repository.findNextDueCardIndex(
+                    cards = remainingCards,
+                    currentIndex = candidateStart.coerceAtLeast(0),
+                    progressMap = updatedProgressMap,
+                    nowMillis = nowMillis
+                ).coerceIn(0, remainingCards.size - 1)
+            }
+            _flashcardCards.value = remainingCards
+        } else {
+            remainingCards = cards
+            nextIndex = repository.findNextDueCardIndex(
+                cards = cards,
+                currentIndex = currentIndex,
+                progressMap = updatedProgressMap,
+                nowMillis = nowMillis
+            )
+        }
+        val nextWordText = remainingCards.getOrNull(nextIndex)?.text ?: currentCard.text
 
         _isCurrentCardFlipped.value = false
         _flashcardIndex.value = nextIndex
@@ -1104,13 +1208,23 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             repository.applySm2Review(
                 deckId = currentCard.deck,
                 wordText = currentCard.text,
-                rating = rating
+                rating = rating,
+                nowMillis = nowMillis
             )
             repository.saveDeckStudyPosition(
                 deckId = activeDeckId,
                 cardIndex = nextIndex,
                 wordText = nextWordText,
                 incrementStudied = true
+            )
+            val selectedDecks = parseSelectedDecks(studyPlanProfile.value)
+            _waitingLaterTodayCount.value = repository.getLaterTodayCardsCount(
+                nowMillis = nowMillis,
+                selectedDecks = selectedDecks
+            )
+            _nextWaitingDueTimestamp.value = repository.getNextLaterTodayDueTimestamp(
+                nowMillis = nowMillis,
+                selectedDecks = selectedDecks
             )
             refreshDailyChecklist()
         }
@@ -1920,32 +2034,51 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         return grammarRepository.getLessonById(lessonId)
     }
 
-    fun startFocusedReviewPracticeSession() {
+    fun startFocusedReviewPracticeSession(targetCountOverride: Int? = null) {
         viewModelScope.launch {
             _isFlashcardsLoading.value = true
             try {
-                val userLevel = studyPlanProfile.value?.level?.ifBlank { "B2" }?.uppercase() ?: "B2"
-                val nowMillis = System.currentTimeMillis()
-                val endOfToday = DataImportRepository.computeEndOfTodayMillis(nowMillis)
+                val checklist = _todayChecklist.value
+                val taskCount = targetCountOverride ?: run {
+                    if (checklist != null && checklist.tasksJson.isNotBlank()) {
+                        val tasks = try {
+                            kotlinx.serialization.json.Json.decodeFromString<List<DailyTaskItem>>(checklist.tasksJson)
+                        } catch (_: Exception) { emptyList() }
+                        val flashcardTask = tasks.find { it.type == "flashcards" }
+                        if (flashcardTask != null && flashcardTask.targetCount > 0) {
+                            (flashcardTask.targetCount - flashcardTask.completedCount).coerceAtLeast(1)
+                        } else null
+                    } else null
+                } ?: 25
 
-                val dueEntries = database.wordBooksDao().getDueTodayEntriesOrdered(endOfToday)
+                val userLevel = studyPlanProfile.value?.level?.ifBlank { "B2" }?.uppercase() ?: "B2"
+                val selectedDecks = parseSelectedDecks(studyPlanProfile.value)
+                val nowMillis = System.currentTimeMillis()
+                val dueNowCutoff = DataImportRepository.computeDueNowCutoff(nowMillis)
+
+                val dueEntries = if (selectedDecks.isNotEmpty()) {
+                    database.wordBooksDao().getDueNowEntriesForDecksOrdered(dueNowCutoff, selectedDecks)
+                } else {
+                    database.wordBooksDao().getDueNowEntriesOrdered(dueNowCutoff)
+                }
                 val allProgress = database.wordBooksDao().getAllWordProgressList()
                 val progressMap = allProgress.associateBy { it.cardKey }
 
-                val candidates = database.wordBooksDao().getPlacementVocabularyCandidatesForLevel(userLevel, limit = 100)
+                val candidates = database.wordBooksDao().getPlacementVocabularyCandidatesForLevel(userLevel, limit = 150)
                 val reviewedLevelEntries = candidates.filter { entry ->
                     val key = "${entry.deck}:${entry.text.trim().lowercase()}"
                     val p = progressMap[key]
-                    p != null && p.lastReviewedTimestamp > 0 && !p.isMastered
+                    p != null && p.lastReviewedTimestamp > 0 && !p.isMastered &&
+                        (p.dueTimestamp == 0L || p.dueTimestamp <= dueNowCutoff)
                 }
 
                 val combined = (dueEntries + reviewedLevelEntries).distinctBy { "${it.deck}:${it.text.trim().lowercase()}" }
 
-                val finalEntries = if (combined.size < 10) {
+                val finalEntries = if (combined.size < taskCount) {
                     val unmasteredLevelEntries = candidates.filter { entry ->
                         val key = "${entry.deck}:${entry.text.trim().lowercase()}"
                         val p = progressMap[key]
-                        p == null || !p.isMastered
+                        p == null || (!p.isMastered && (p.dueTimestamp == 0L || p.dueTimestamp <= dueNowCutoff))
                     }
                     (combined + unmasteredLevelEntries).distinctBy { "${it.deck}:${it.text.trim().lowercase()}" }
                 } else {
@@ -1953,14 +2086,25 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 }
 
                 val groupedMap = LinkedHashMap<String, MutableList<EntryEntity>>()
-                for (entry in finalEntries.take(15)) {
+                for (entry in finalEntries) {
                     val key = "${entry.deck}:${entry.text.trim().lowercase()}"
-                    groupedMap.getOrPut(key) { ArrayList(2) }.add(entry)
+                    val list = groupedMap.getOrPut(key) { ArrayList(2) }
+                    list.add(entry)
+                    if (groupedMap.size >= taskCount) break
                 }
 
                 val cards: List<GroupedWordCard> = groupedMap.map { (cardKey, variants) ->
                     repository.buildGroupedCardFromEntries(variants, progressMap[cardKey])
-                }.take(10)
+                }.take(taskCount)
+
+                _waitingLaterTodayCount.value = repository.getLaterTodayCardsCount(
+                    nowMillis = nowMillis,
+                    selectedDecks = selectedDecks
+                )
+                _nextWaitingDueTimestamp.value = repository.getNextLaterTodayDueTimestamp(
+                    nowMillis = nowMillis,
+                    selectedDecks = selectedDecks
+                )
 
                 if (cards.isNotEmpty()) {
                     _flashcardCards.value = cards
@@ -1978,10 +2122,23 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun startFocusedNewWordsSession() {
+    fun startFocusedNewWordsSession(targetCountOverride: Int? = null) {
         viewModelScope.launch {
             _isFlashcardsLoading.value = true
             try {
+                val checklist = _todayChecklist.value
+                val taskCount = targetCountOverride ?: run {
+                    if (checklist != null && checklist.tasksJson.isNotBlank()) {
+                        val tasks = try {
+                            kotlinx.serialization.json.Json.decodeFromString<List<DailyTaskItem>>(checklist.tasksJson)
+                        } catch (_: Exception) { emptyList() }
+                        val newWordsTask = tasks.find { it.type == "new_words" }
+                        if (newWordsTask != null && newWordsTask.targetCount > 0) {
+                            (newWordsTask.targetCount - newWordsTask.completedCount).coerceAtLeast(1)
+                        } else null
+                    } else null
+                } ?: 10
+
                 val userLevel = studyPlanProfile.value?.level?.ifBlank { "B2" }?.uppercase() ?: "B2"
                 val selectedDecks = try {
                     studyPlanProfile.value?.selectedDecksJson?.let {
@@ -1993,24 +2150,26 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                     listOf("oxford5000", "oxford_opal")
                 }
 
-                val newEntries = database.wordBooksDao().getNewWordsForLevelsAndDecks(
-                    levels = listOf(userLevel),
-                    decks = selectedDecks.ifEmpty { listOf("oxford5000", "oxford_opal") },
-                    limit = 20
-                ).ifEmpty {
-                    database.wordBooksDao().getPlacementVocabularyCandidatesForLevel(userLevel, limit = 20)
+                val activeProfile = studyPlanProfile.value ?: studyPlanRepository.getOrCreateProfile()
+                val newEntries = studyPlanRepository.selectNewWordsForProfile(
+                    profile = activeProfile,
+                    targetCount = taskCount * 2
+                ).words.ifEmpty {
+                    database.wordBooksDao().getPlacementVocabularyCandidatesForLevel(userLevel, limit = taskCount * 2)
                 }
 
                 val allProgress = database.wordBooksDao().getAllWordProgressList().associateBy { it.cardKey }
                 val groupedMap = LinkedHashMap<String, MutableList<EntryEntity>>()
                 for (entry in newEntries) {
                     val key = "${entry.deck}:${entry.text.trim().lowercase()}"
-                    groupedMap.getOrPut(key) { ArrayList(2) }.add(entry)
+                    val list = groupedMap.getOrPut(key) { ArrayList(2) }
+                    list.add(entry)
+                    if (groupedMap.size >= taskCount) break
                 }
 
                 val cards: List<GroupedWordCard> = groupedMap.map { (cardKey, variants) ->
                     repository.buildGroupedCardFromEntries(variants, allProgress[cardKey])
-                }.take(10)
+                }.take(taskCount)
 
                 if (cards.isNotEmpty()) {
                     _flashcardCards.value = cards
@@ -2030,12 +2189,27 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun preparePlanTaskNavigation(route: String, linkedId: String?) {
         val safeLinkedId = linkedId.orEmpty()
+        val checklist = _todayChecklist.value
+        val tasks = if (checklist != null && checklist.tasksJson.isNotBlank()) {
+            try {
+                kotlinx.serialization.json.Json.decodeFromString<List<DailyTaskItem>>(checklist.tasksJson)
+            } catch (_: Exception) { emptyList() }
+        } else emptyList()
+
+        val matchingTask = tasks.find { it.id == safeLinkedId || it.linkedId == safeLinkedId || it.type == route }
+        val remainingCount = matchingTask?.let {
+            (it.targetCount - it.completedCount).coerceAtLeast(1)
+        }
+
         when {
+            route == "quiz" || safeLinkedId.contains("quiz") -> {
+                startDailyMiniQuiz()
+            }
             route == "flashcards" || safeLinkedId.contains("flashcard") || safeLinkedId.contains("review") -> {
-                startFocusedReviewPracticeSession()
+                startFocusedReviewPracticeSession(remainingCount)
             }
             route == "new_words" || safeLinkedId.contains("new_words") || safeLinkedId.contains("learn") -> {
-                startFocusedNewWordsSession()
+                startFocusedNewWordsSession(remainingCount)
             }
             route == "word_books" || route == "database" -> {
                 val parts = safeLinkedId.split("|")
@@ -2088,7 +2262,89 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             _todayChecklist.value = checklist
             _studyStreak.value = studyPlanRepository.computeStreak()
             _weakAreas.value = studyPlanRepository.getWeakAreas()
+            _practiceAccuracySummary.value = studyPlanRepository.getPracticeAccuracySummary()
+            val nowMillis = System.currentTimeMillis()
+            val selectedDecks = parseSelectedDecks(studyPlanProfile.value)
+            _waitingLaterTodayCount.value = repository.getLaterTodayCardsCount(
+                nowMillis = nowMillis,
+                selectedDecks = selectedDecks
+            )
+            _nextWaitingDueTimestamp.value = repository.getNextLaterTodayDueTimestamp(
+                nowMillis = nowMillis,
+                selectedDecks = selectedDecks
+            )
         }
+    }
+
+    fun recordSentencePracticeAttempt(sentenceIdOrText: String, scorePercent: Int) {
+        viewModelScope.launch {
+            repository.recordSentencePracticeAttempt(
+                sentenceIdOrText = sentenceIdOrText,
+                scorePercent = scorePercent
+            )
+            refreshDailyChecklist()
+        }
+    }
+
+    fun forceRebuildTodayPlan() {
+        viewModelScope.launch {
+            val updated = studyPlanRepository.regenerateChecklistForUpdatedPlan()
+            _todayChecklist.value = updated
+            refreshDailyChecklist()
+        }
+    }
+
+    fun simulateReviewBacklog42() {
+        viewModelScope.launch {
+            val now = studyPlanRepository.timeProvider.currentTimeMillis()
+            val yesterday = now - 86_400_000L
+            val profile = studyPlanProfile.value ?: studyPlanRepository.getOrCreateProfile()
+            val decks = parseSelectedDecks(profile).ifEmpty { listOf("oxford5000") }
+            val primaryDeck = decks.first()
+            val candidates = database.wordBooksDao().getPlacementVocabularyCandidatesForLevel(
+                level = profile.level.ifBlank { "B1" },
+                limit = 45
+            )
+            val entriesToSeed = if (candidates.size >= 42) {
+                candidates.take(42)
+            } else {
+                database.wordBooksDao().getRecommendedWordsForLevel("", limit = 42)
+            }
+            val progressBatch = entriesToSeed.mapIndexed { idx, entry ->
+                val wordText = entry.text.trim().lowercase()
+                val deck = entry.deck.ifBlank { primaryDeck }
+                WordProgressEntity(
+                    cardKey = "$deck:$wordText",
+                    entryId = entry.id,
+                    deck = deck,
+                    text = wordText,
+                    easeFactor = 2.5f,
+                    intervalDays = 3,
+                    repetitions = 2,
+                    dueTimestamp = now - (idx + 1) * 60_000L,
+                    lastReviewedTimestamp = yesterday,
+                    firstLearnedTimestamp = yesterday - 86_400_000L
+                )
+            }
+            if (progressBatch.isNotEmpty()) {
+                database.wordBooksDao().upsertWordProgressBatch(progressBatch)
+            }
+            val updated = studyPlanRepository.regenerateChecklistForUpdatedPlan()
+            _todayChecklist.value = updated
+            refreshDailyChecklist()
+        }
+    }
+
+    suspend fun exportUserBackupJson(): String {
+        return repository.exportUserBackupJson()
+    }
+
+    suspend fun importUserBackupJson(jsonText: String): Boolean {
+        val ok = repository.importUserBackupJson(jsonText)
+        if (ok) {
+            refreshDailyChecklist()
+        }
+        return ok
     }
 
     fun savePlanProfile(profile: StudyPlanProfileEntity) {
@@ -2108,8 +2364,91 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    private val _activeQuizSession = MutableStateFlow<ActiveQuizSession?>(null)
+    val activeQuizSession: StateFlow<ActiveQuizSession?> = _activeQuizSession.asStateFlow()
+
+    private val _isQuizLoading = MutableStateFlow(false)
+    val isQuizLoading: StateFlow<Boolean> = _isQuizLoading.asStateFlow()
+
+    fun startDailyMiniQuiz() {
+        viewModelScope.launch {
+            _isQuizLoading.value = true
+            try {
+                val checklist = _todayChecklist.value ?: studyPlanRepository.getOrCreateDailyChecklist()
+                val profile = studyPlanProfile.value ?: studyPlanRepository.getOrCreateProfile()
+                val alignedResult = localQuizEngine.generateAlignedDailyQuiz(checklist, profile, isTtsAvailable = true)
+                _activeQuizSession.value = ActiveQuizSession(
+                    title = "Daily Mini-Quiz",
+                    quizType = "daily_mini",
+                    questions = alignedResult.questions,
+                    scopeInfo = alignedResult.scopeInfo
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("WordBooksViewModel", "Error creating daily mini quiz", e)
+            } finally {
+                _isQuizLoading.value = false
+            }
+        }
+    }
+
+    fun startWeeklyQuiz() {
+        viewModelScope.launch {
+            _isQuizLoading.value = true
+            try {
+                val questions = localQuizEngine.generateWeeklyQuiz(isTtsAvailable = true)
+                _activeQuizSession.value = ActiveQuizSession(
+                    title = "Weekly Comprehensive Quiz",
+                    quizType = "weekly",
+                    questions = questions,
+                    scopeInfo = null
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("WordBooksViewModel", "Error creating weekly quiz", e)
+            } finally {
+                _isQuizLoading.value = false
+            }
+        }
+    }
+
+    fun startWeakAreasQuiz() {
+        viewModelScope.launch {
+            _isQuizLoading.value = true
+            try {
+                val level = studyPlanProfile.value?.level ?: "B2"
+                val questions = localQuizEngine.generateWeakAreasQuiz(targetLevel = level, isTtsAvailable = true)
+                _activeQuizSession.value = ActiveQuizSession(
+                    title = "Weak Areas Targeted Practice",
+                    quizType = "weak_areas",
+                    questions = questions,
+                    scopeInfo = null
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("WordBooksViewModel", "Error creating weak areas quiz", e)
+            } finally {
+                _isQuizLoading.value = false
+            }
+        }
+    }
+
+    fun dismissActiveQuiz() {
+        _activeQuizSession.value = null
+    }
+
+    suspend fun submitActiveQuiz(answers: Map<String, Int>): Map<String, Float> {
+        val session = _activeQuizSession.value ?: return emptyMap()
+        val result = localQuizEngine.recordQuizSubmission(session.quizType, session.questions, answers)
+        if (session.quizType == "daily_mini") {
+            val today = studyPlanRepository.timeProvider.todayDateString()
+            studyPlanRepository.markTaskCompletedManually(today, "task_daily_quiz")
+        }
+        refreshDailyChecklist()
+        return result
+    }
+
     suspend fun generateDailyQuiz(): List<QuizQuestionItem> {
-        return localQuizEngine.generateDailyMiniQuiz(isTtsAvailable = true)
+        val checklist = _todayChecklist.value ?: studyPlanRepository.getOrCreateDailyChecklist()
+        val profile = studyPlanProfile.value ?: studyPlanRepository.getOrCreateProfile()
+        return localQuizEngine.generateAlignedDailyQuiz(checklist, profile, isTtsAvailable = true).questions
     }
 
     suspend fun generateWeeklyQuiz(): List<QuizQuestionItem> {
@@ -2127,6 +2466,10 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         answers: Map<String, Int>
     ): Map<String, Float> {
         val result = localQuizEngine.recordQuizSubmission(quizType, questions, answers)
+        if (quizType == "daily_mini") {
+            val today = studyPlanRepository.timeProvider.todayDateString()
+            studyPlanRepository.markTaskCompletedManually(today, "task_daily_quiz")
+        }
         refreshDailyChecklist()
         return result
     }
@@ -2167,3 +2510,10 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         audioPlayer.release()
     }
 }
+
+data class ActiveQuizSession(
+    val title: String,
+    val quizType: String,
+    val questions: List<com.example.data.local.QuizQuestionItem>,
+    val scopeInfo: com.example.data.plan.DailyQuizScopeInfo? = null
+)

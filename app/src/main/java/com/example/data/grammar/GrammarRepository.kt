@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import com.example.data.local.AiCacheEntity
 import com.example.data.local.AiHistoryEntity
+import com.example.data.local.AttemptEntity
 import com.example.data.local.GrammarExampleItem
 import com.example.data.local.GrammarExerciseItem
 import com.example.data.local.GrammarLessonEntity
@@ -356,21 +357,30 @@ class GrammarRepository(
         completedExercises: Int,
         totalExercises: Int,
         score: Int,
-        isCompleted: Boolean
+        isCompleted: Boolean,
+        nowMillis: Long = System.currentTimeMillis()
     ) = withContext(Dispatchers.IO) {
         val existing = dao.getGrammarProgress(lessonId)
         val bestScore = maxOf(existing?.bestScore ?: 0, score)
-        dao.upsertGrammarProgress(
-            GrammarProgressEntity(
-                lessonId = lessonId,
-                completedExercises = completedExercises,
-                totalExercises = totalExercises,
-                bestScore = bestScore,
-                lastScore = score,
-                isCompleted = isCompleted || (existing?.isCompleted == true),
-                updatedAt = System.currentTimeMillis()
-            )
+        val progress = GrammarProgressEntity(
+            lessonId = lessonId,
+            completedExercises = completedExercises,
+            totalExercises = totalExercises,
+            bestScore = bestScore,
+            lastScore = score,
+            isCompleted = isCompleted || (existing?.isCompleted == true),
+            updatedAt = nowMillis
         )
+        val attempt = AttemptEntity(
+            activityType = "grammar_quiz",
+            itemId = lessonId,
+            timestamp = nowMillis,
+            sm2Rating = null,
+            isCorrect = score >= 60,
+            score = score.toFloat(),
+            deck = null
+        )
+        dao.upsertGrammarProgressWithAttempt(progress, attempt)
     }
 
     suspend fun appendExercisesToLesson(

@@ -69,6 +69,7 @@ import com.example.data.local.DailyChecklistEntity
 import com.example.data.local.DailyTaskItem
 import com.example.data.local.PlanDailyTemplate
 import com.example.data.local.PlanWeekGoal
+import com.example.data.local.PracticeAccuracySummary
 import com.example.data.local.QuizQuestionItem
 import com.example.data.local.QuizResultEntity
 import com.example.data.local.StudyPlanEntity
@@ -112,6 +113,7 @@ fun PlanScreen(
     quizHistory: List<QuizResultEntity>,
     weakAreas: WeakAreasState,
     monthlyChecklists: List<DailyChecklistEntity>,
+    practiceAccuracySummary: PracticeAccuracySummary = PracticeAccuracySummary(),
     onSaveProfile: (StudyPlanProfileEntity) -> Unit,
     onGeneratePlanWithAi: suspend (month: String) -> Result<Unit>,
     onGenerateDailyQuiz: suspend () -> List<QuizQuestionItem>,
@@ -123,6 +125,7 @@ fun PlanScreen(
     onToggleTaskCompleted: (date: String, taskId: String) -> Unit,
     onNavigateToTaskRoute: (route: String, id: String) -> Unit,
     onOpenDictionaryWord: ((String) -> Unit)? = null,
+    onStartDirectDailyQuiz: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -261,11 +264,15 @@ fun PlanScreen(
                 onToggleTask = onToggleTaskCompleted,
                 onOpenTask = onNavigateToTaskRoute,
                 onStartMiniQuiz = {
-                    scope.launch {
-                        val questions = onGenerateDailyQuiz()
-                        activeQuizQuestions = questions
-                        activeQuizTitle = "Daily Mini-Quiz"
-                        activeQuizType = "daily_mini"
+                    if (onStartDirectDailyQuiz != null) {
+                        onStartDirectDailyQuiz()
+                    } else {
+                        scope.launch {
+                            val questions = onGenerateDailyQuiz()
+                            activeQuizQuestions = questions
+                            activeQuizTitle = "Daily Mini-Quiz"
+                            activeQuizType = "daily_mini"
+                        }
                     }
                 },
                 onStartWeakAreasQuiz = {
@@ -302,6 +309,7 @@ fun PlanScreen(
                 monthlyChecklists = monthlyChecklists,
                 quizHistory = quizHistory,
                 weakAreas = weakAreas,
+                practiceAccuracySummary = practiceAccuracySummary,
                 onStartWeeklyQuiz = {
                     scope.launch {
                         val questions = onGenerateWeeklyQuiz()
@@ -488,7 +496,7 @@ private fun TodayTabContent(
             key = { it.id },
             contentType = { "daily_task_row" }
         ) { task ->
-            val canOpenRoute = task.type != "quiz" && task.linkedRoute.isNotBlank()
+            val canOpenRoute = task.linkedRoute.isNotBlank() || task.type == "quiz"
             val taskProgress = if (task.targetCount > 0) {
                 (task.completedCount.toFloat() / task.targetCount.toFloat()).coerceIn(0f, 1f)
             } else {
@@ -501,7 +509,13 @@ private fun TodayTabContent(
                     .testTag("task_item_${task.type}")
                     .then(
                         if (canOpenRoute) {
-                            Modifier.clickable { onOpenTask(task.linkedRoute, task.linkedId) }
+                            Modifier.clickable {
+                                if (task.type == "quiz") {
+                                    onStartMiniQuiz()
+                                } else {
+                                    onOpenTask(task.linkedRoute, task.linkedId)
+                                }
+                            }
                         } else {
                             Modifier
                         }
@@ -551,6 +565,32 @@ private fun TodayTabContent(
                                     ),
                                     modifier = Modifier.weight(1f, fill = false)
                                 )
+                                if (task.estimatedMinutes > 0) {
+                                    Surface(
+                                        color = SurfaceElevatedDark,
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        Text(
+                                            text = "${task.estimatedMinutes} min",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                                            color = TextSecondary,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                                if (task.backlogRemaining > 0) {
+                                    Surface(
+                                        color = CoralAccent.copy(alpha = 0.15f),
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        Text(
+                                            text = "${task.backlogRemaining} backlog",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = CoralAccent,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
                                 if (task.targetCount > 1) {
                                     Surface(
                                         color = if (task.isCompleted) EmeraldAccent.copy(alpha = 0.15f) else SurfaceElevatedDark,
@@ -576,6 +616,19 @@ private fun TodayTabContent(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = GoldAccent
                                 )
+                            }
+                            if (task.reason.isNotBlank()) {
+                                Surface(
+                                    color = SurfaceElevatedDark.copy(alpha = 0.6f),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = task.reason,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                        color = GoldAccent,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
                             }
                         }
 
@@ -928,11 +981,13 @@ private fun PaceBadge(label: String, value: String) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AnalyticsTabContent(
     monthlyChecklists: List<DailyChecklistEntity>,
     quizHistory: List<QuizResultEntity>,
     weakAreas: WeakAreasState,
+    practiceAccuracySummary: PracticeAccuracySummary = PracticeAccuracySummary(),
     onStartWeeklyQuiz: () -> Unit,
     onStartWeakAreasQuiz: () -> Unit,
     onOpenTask: (route: String, id: String) -> Unit
@@ -954,6 +1009,64 @@ private fun AnalyticsTabContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // 0. Honest Practice & Recall Accuracy Summary (Separated from Task Completion)
+        item(key = "analytics_practice_accuracy") {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("card_practice_accuracy_summary"),
+                color = SurfaceDark,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, GoldAccentBorder)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Practice & Recall Metrics",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = TextPrimary
+                        )
+                        val accuracyText = if (practiceAccuracySummary.sevenDayRecallAccuracyPercent != null) {
+                            "${practiceAccuracySummary.sevenDayRecallAccuracyPercent}% recall (7d)"
+                        } else {
+                            "No 7d ratings yet"
+                        }
+                        Text(
+                            text = accuracyText,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = GoldAccent
+                        )
+                    }
+                    BidiText(
+                        text = "الكلمات الجديدة تُحسب عند أول تقييم فعلي فقط، والمراجعات والإتقان تُعرض بشكل مستقل عن إنجاز المهام.",
+                        style = ArabicTypography.labelSmall,
+                        color = TextSecondary
+                    )
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        PaceBadge("New Today", "${practiceAccuracySummary.newWordsLearnedToday}")
+                        PaceBadge("Reviews Today", "${practiceAccuracySummary.reviewAttemptsToday}")
+                        PaceBadge("Mastered", "${practiceAccuracySummary.totalMasteredWords}")
+                        PaceBadge("Due Now", "${practiceAccuracySummary.dueNowCount}")
+                        PaceBadge("Due Today", "${practiceAccuracySummary.dueTodayCount}")
+                        if (practiceAccuracySummary.todayRecallAccuracyPercent != null) {
+                            PaceBadge("Recall Today", "${practiceAccuracySummary.todayRecallAccuracyPercent}%")
+                        }
+                    }
+                }
+            }
+        }
+
         // 1. Monthly Activity & Consistency Card
         item {
             Surface(

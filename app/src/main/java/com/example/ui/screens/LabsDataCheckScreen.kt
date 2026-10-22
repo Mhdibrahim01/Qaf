@@ -60,10 +60,15 @@ import androidx.compose.ui.unit.dp
 import com.example.data.ai.AiTaskStatus
 import com.example.data.importer.DataImportRepository
 import com.example.data.importer.ImportProgressState
+import com.example.data.local.AttemptEntity
+import com.example.data.local.DailyChecklistEntity
+import com.example.data.local.DailyTaskItem
 import com.example.data.local.DeckArabicStats
 import com.example.data.local.DeckEntity
+import com.example.data.local.StudyPlanProfileEntity
 import com.example.ui.components.ArabicText
 import com.example.ui.components.GoldBadge
+import kotlinx.serialization.json.Json
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
@@ -117,6 +122,13 @@ fun LabsDataCheckScreen(
     emptyArabicCount: Int,
     deckArabicStats: List<DeckArabicStats> = emptyList(),
     grammarLessonsCount: Int = 0,
+    studyPlanProfile: StudyPlanProfileEntity? = null,
+    todayChecklist: DailyChecklistEntity? = null,
+    recentAttempts: List<AttemptEntity> = emptyList(),
+    totalAttemptsCount: Int = 0,
+    reviewDueTodayCount: Int = 0,
+    onSimulateBacklog42: () -> Unit = {},
+    onRebuildTodayPlan: () -> Unit = {},
     onReimportDatabase: () -> Unit,
     onResetAndReimport: () -> Unit,
     onImportJsonUris: (List<Uri>) -> Unit,
@@ -127,6 +139,15 @@ fun LabsDataCheckScreen(
     modifier: Modifier = Modifier
 ) {
     val formatter = remember { NumberFormat.getIntegerInstance(Locale.US) }
+    val todayTasks = remember(todayChecklist?.tasksJson) {
+        val raw = todayChecklist?.tasksJson.orEmpty()
+        if (raw.isBlank()) emptyList()
+        else try {
+            Json { ignoreUnknownKeys = true }.decodeFromString<List<DailyTaskItem>>(raw)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
     val deckCountMap = remember(decks) { decks.associateBy({ it.id }, { it.rowCount }) }
     val statsByDeck = remember(deckArabicStats) { deckArabicStats.associateBy { it.deck } }
     val enabledStates = remember { mutableStateMapOf<String, Boolean>() }
@@ -171,6 +192,211 @@ fun LabsDataCheckScreen(
             contentPadding = PaddingValues(18.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // 0. ADAPTIVE ENGINE DIAGNOSTICS & PHASE 1-3 VERIFIER CARD
+            item {
+                val totalEstimatedMinutes = todayTasks.sumOf { it.estimatedMinutes }
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("labs_adaptive_verifier_card"),
+                    color = SurfaceDark,
+                    shape = MaterialTheme.shapes.large,
+                    border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.65f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Verified,
+                                    contentDescription = "Adaptive Engine Status",
+                                    tint = EmeraldAccent,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Column {
+                                    Text(
+                                        text = "Adaptive Engine Verifier (Phases 1–3)",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = TextPrimary
+                                    )
+                                    Text(
+                                        text = "فحص مباشر للخطة الذكية، تقسيم المراجعات، وسجل المحاولات (v15)",
+                                        style = ArabicTypography.labelMedium,
+                                        color = GoldAccent
+                                    )
+                                }
+                            }
+                            GoldBadge(text = "DB v15 ACTIVE")
+                        }
+
+                        HorizontalDivider(color = BorderDark)
+
+                        // Live metrics summary
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = SurfaceElevatedDark,
+                            shape = MaterialTheme.shapes.medium,
+                            border = BorderStroke(1.dp, BorderDark)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                ProvenanceCounterChip(
+                                    label = "Level / Goal",
+                                    count = "${studyPlanProfile?.level ?: "B1"} • ${studyPlanProfile?.minutesPerDay ?: 15}m",
+                                    color = GoldAccent,
+                                    testTag = "verifier_level_goal"
+                                )
+                                ProvenanceCounterChip(
+                                    label = "Due Reviews",
+                                    count = formatter.format(reviewDueTodayCount),
+                                    color = if (reviewDueTodayCount > 25) CoralAccent else EmeraldAccent,
+                                    testTag = "verifier_due_reviews"
+                                )
+                                ProvenanceCounterChip(
+                                    label = "Plan Est. Time",
+                                    count = "~${totalEstimatedMinutes}m (${todayTasks.size} tasks)",
+                                    color = EmeraldAccent,
+                                    testTag = "verifier_plan_time"
+                                )
+                                ProvenanceCounterChip(
+                                    label = "Attempts Log",
+                                    count = formatter.format(totalAttemptsCount),
+                                    color = TextPrimary,
+                                    testTag = "verifier_attempts_count"
+                                )
+                            }
+                        }
+
+                        // Today's Scheduled Tasks & Data-Backed Reasons
+                        Text(
+                            text = "Today's Scheduled Tasks & Reasons (${todayChecklist?.completedCount ?: 0}/${todayTasks.size} done):",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                            color = TextPrimary
+                        )
+
+                        if (todayTasks.isEmpty()) {
+                            Text(
+                                text = "No checklist generated yet — tap 'Rebuild Today's Plan' below.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                        } else {
+                            todayTasks.forEach { task ->
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = SurfaceElevatedDark.copy(alpha = 0.6f),
+                                    shape = RoundedCornerShape(10.dp),
+                                    border = BorderStroke(1.dp, BorderDark)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(10.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "${task.titleEn} (${task.completedCount}/${task.targetCount})",
+                                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                                color = if (task.isCompleted) EmeraldAccent else TextPrimary,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                if (task.backlogRemaining > 0) {
+                                                    GoldBadge(text = "+${task.backlogRemaining} backlog")
+                                                }
+                                                GoldBadge(text = "~${task.estimatedMinutes}m")
+                                            }
+                                        }
+                                        if (task.reason.isNotBlank()) {
+                                            Text(
+                                                text = "Reason: ${task.reason}",
+                                                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                                                color = GoldAccent
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Recent Attempts Log (Phase 2 verification)
+                        if (recentAttempts.isNotEmpty()) {
+                            HorizontalDivider(color = BorderDark)
+                            Text(
+                                text = "Latest Recorded Attempts (Phase 2 `attempts` table):",
+                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                                color = TextPrimary
+                            )
+                            recentAttempts.take(4).forEach { att ->
+                                Text(
+                                    text = "• [${att.activityType}] item=${att.itemId} • rating=${att.sm2Rating ?: "-"} • score=${att.score ?: "-"}",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+
+                        // Interactive Simulation Buttons
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Button(
+                                onClick = onSimulateBacklog42,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = GoldAccent,
+                                    contentColor = BackgroundDark
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("labs_simulate_backlog_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Science,
+                                    contentDescription = "Simulate 42 Due Reviews",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Simulate 42 Due Reviews", fontWeight = FontWeight.Bold)
+                            }
+
+                            OutlinedButton(
+                                onClick = onRebuildTodayPlan,
+                                border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.7f)),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("labs_rebuild_plan_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Rebuild Today's Plan",
+                                    tint = EmeraldAccent,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Rebuild Today's Plan", color = EmeraldAccent, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                }
+            }
+
             // 1. DATA CHECK CARD (Real SQLite counts & per-deck Arabic provenance)
             item {
                 Surface(

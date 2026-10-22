@@ -3004,24 +3004,18 @@ fun LevelProgressSummaryBanner(
         else -> displayLevel
     }
 
-    val levelWords = remember(recommendedWords, currentDeckId, displayLevel) {
-        val byDeckAndLevel = recommendedWords.filter { word ->
+    val uniqueLevelCards = remember(recommendedWords, currentDeckId, displayLevel) {
+        val filtered = recommendedWords.filter { word ->
+            val wordLevel = word.effectiveLevel?.ifBlank { word.level } ?: word.level
             (currentDeckId.isBlank() || word.deck.equals(currentDeckId, ignoreCase = true)) &&
-                (word.level.isBlank() || word.level.trim().equals(displayLevel, ignoreCase = true))
+                (wordLevel.isBlank() || wordLevel.trim().equals(displayLevel, ignoreCase = true))
         }
-        if (byDeckAndLevel.isNotEmpty()) {
-            byDeckAndLevel
-        } else {
-            val byLevel = recommendedWords.filter { word ->
-                word.level.isBlank() || word.level.trim().equals(displayLevel, ignoreCase = true)
-            }
-            if (byLevel.isNotEmpty()) byLevel else recommendedWords
-        }
+        filtered.distinctBy { "${it.deck}:${it.text.trim().lowercase()}" }
     }
 
-    val totalCount = levelWords.size
-    val masteredCount = remember(levelWords, progressMap) {
-        levelWords.count { word ->
+    val totalCount = uniqueLevelCards.size
+    val masteredCount = remember(uniqueLevelCards, progressMap) {
+        uniqueLevelCards.count { word ->
             val keyColon = "${word.deck}:${word.text.trim().lowercase()}"
             val keyUnderscore = "${word.deck}_${word.text}"
             progressMap[keyColon]?.isMastered == true ||

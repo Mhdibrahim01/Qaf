@@ -11,6 +11,17 @@ interface TimeProvider {
     fun currentMonthString(): String // YYYY-MM
     fun dayOfWeek(): Int // Calendar.SUNDAY ... Calendar.SATURDAY
     fun startOfDayMillis(dateString: String = todayDateString()): Long
+    fun endOfDayMillis(nowMillis: Long = currentTimeMillis()): Long {
+        val cal = Calendar.getInstance()
+        cal.timeInMillis = nowMillis
+        cal.set(Calendar.HOUR_OF_DAY, 23)
+        cal.set(Calendar.MINUTE, 59)
+        cal.set(Calendar.SECOND, 59)
+        cal.set(Calendar.MILLISECOND, 999)
+        return cal.timeInMillis
+    }
+    fun dueNowCutoff(nowMillis: Long = currentTimeMillis()): Long = nowMillis
+    fun dueTodayCutoff(nowMillis: Long = currentTimeMillis()): Long = endOfDayMillis(nowMillis)
 }
 
 class SystemTimeProvider : TimeProvider {
@@ -66,5 +77,9 @@ class TestTimeProvider(
 
     fun advanceDays(days: Int) {
         fixedTimeMillis += days * 86_400_000L
+    }
+
+    fun advanceMillis(deltaMillis: Long) {
+        fixedTimeMillis += deltaMillis
     }
 }

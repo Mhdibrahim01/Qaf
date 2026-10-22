@@ -135,6 +135,7 @@ fun HomeScreen(
     masteredCount: Int = 0,
     deckStudyStates: List<DeckStudyStateEntity> = emptyList(),
     todayChecklist: DailyChecklistEntity? = null,
+    weeklyChecklists: List<DailyChecklistEntity> = emptyList(),
     studyStreak: Int = 0,
     studyPlanProfile: StudyPlanProfileEntity? = null,
     onOpenDeck: (String) -> Unit = {},
@@ -214,7 +215,9 @@ fun HomeScreen(
                             studiedTodayCount = studiedTodayCount,
                             studyStreak = studyStreak,
                             masteredCount = masteredCount,
-                            totalEntriesCount = totalEntriesCount
+                            totalEntriesCount = totalEntriesCount,
+                            todayChecklist = todayChecklist,
+                            weeklyChecklists = weeklyChecklists
                         )
                     }
 
@@ -278,7 +281,9 @@ fun HomeScreen(
                     studiedTodayCount = studiedTodayCount,
                     studyStreak = studyStreak,
                     masteredCount = masteredCount,
-                    totalEntriesCount = totalEntriesCount
+                    totalEntriesCount = totalEntriesCount,
+                    todayChecklist = todayChecklist,
+                    weeklyChecklists = weeklyChecklists
                 )
             }
 
@@ -521,7 +526,7 @@ private fun TodayPlanCard(
     }
 
     val displayTasks = if (tasks.isNotEmpty()) {
-        tasks.take(4)
+        tasks
     } else {
         listOf(
             DailyTaskItem(id = "task_flashcards", type = "flashcards", titleEn = "Review due flashcards", titleAr = "مراجعة البطاقات المستحقة", targetCount = 20, isCompleted = false),
@@ -629,7 +634,7 @@ private fun TodayPlanCard(
                                 "new_words" -> "new_words"
                                 "reading" -> "reading"
                                 "grammar" -> "grammar"
-                                "quiz" -> "plan"
+                                "quiz" -> "quiz"
                                 else -> "plan"
                             }
                             onNavigateToTask(targetRoute, task.linkedId.ifBlank { task.id })
@@ -764,6 +769,20 @@ private fun TaskCheckRow(
                             modifier = Modifier.weight(1f, fill = false)
                         )
 
+                        if (task.estimatedMinutes > 0) {
+                            Surface(
+                                color = SurfaceDark,
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = "${task.estimatedMinutes}m",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium, fontSize = 10.sp),
+                                    color = TextSecondary,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+
                         if (task.targetCount > 1) {
                             Surface(
                                 color = if (task.isCompleted) EmeraldAccent.copy(alpha = 0.15f) else SurfaceDark,
@@ -795,6 +814,16 @@ private fun TaskCheckRow(
                             text = task.subtitleEn,
                             style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                             color = GoldAccent
+                        )
+                    }
+
+                    if (task.reason.isNotBlank()) {
+                        Text(
+                            text = task.reason,
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            color = GoldAccent.copy(alpha = 0.85f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -1291,6 +1320,8 @@ private fun WeeklyProgressSummaryCard(
     studyStreak: Int,
     masteredCount: Int,
     totalEntriesCount: Int,
+    todayChecklist: DailyChecklistEntity? = null,
+    weeklyChecklists: List<DailyChecklistEntity> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     val dayNames = listOf("M", "T", "W", "T", "F", "S", "S")
@@ -1299,6 +1330,9 @@ private fun WeeklyProgressSummaryCard(
         val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
         if (dayOfWeek == Calendar.SUNDAY) 6 else dayOfWeek - 2
     }
+
+    val goalCompleted = todayChecklist?.completedCount ?: studiedTodayCount
+    val goalTarget = todayChecklist?.totalCount ?: 20
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -1324,7 +1358,7 @@ private fun WeeklyProgressSummaryCard(
                     color = TextPrimary
                 )
                 Text(
-                    text = "Daily Goal: $studiedTodayCount / 20",
+                    text = "Daily Goal: $goalCompleted / $goalTarget",
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontWeight = FontWeight.SemiBold,
                         color = GoldAccent
@@ -1333,6 +1367,9 @@ private fun WeeklyProgressSummaryCard(
             }
 
             // 7-day row
+            val sdf = remember { SimpleDateFormat("yyyy-MM-dd", Locale.US) }
+            val baseCal = remember { Calendar.getInstance() }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -1340,7 +1377,15 @@ private fun WeeklyProgressSummaryCard(
                 dayNames.forEachIndexed { index, dayLetter ->
                     val isToday = index == currentDayIndex
                     val isPast = index <= currentDayIndex
-                    val isCompleted = isPast && studyStreak > 0
+
+                    val calForDay = Calendar.getInstance().apply {
+                        time = baseCal.time
+                        add(Calendar.DAY_OF_MONTH, index - currentDayIndex)
+                    }
+                    val dateStr = sdf.format(calForDay.time)
+                    val checklistForDay = weeklyChecklists.firstOrNull { it.date == dateStr } ?: if (isToday) todayChecklist else null
+                    val isCompleted = checklistForDay?.isCompleted == true || (checklistForDay != null && checklistForDay.totalCount > 0 && checklistForDay.completedCount >= checklistForDay.totalCount)
+                    val hasPartialActivity = (checklistForDay != null && checklistForDay.completedCount > 0) || (isToday && studiedTodayCount > 0)
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1360,6 +1405,7 @@ private fun WeeklyProgressSummaryCard(
                                 .background(
                                     when {
                                         isCompleted -> EmeraldAccent.copy(alpha = 0.2f)
+                                        hasPartialActivity -> GoldAccentDim
                                         isToday -> GoldAccentDim
                                         else -> SurfaceElevatedDark
                                     }
@@ -1367,8 +1413,9 @@ private fun WeeklyProgressSummaryCard(
                                 .border(
                                     width = 1.dp,
                                     color = when {
-                                        isToday -> GoldAccent
                                         isCompleted -> EmeraldAccent
+                                        isToday -> GoldAccent
+                                        hasPartialActivity -> GoldAccentBorder
                                         else -> BorderDark
                                     },
                                     shape = CircleShape
@@ -1382,7 +1429,7 @@ private fun WeeklyProgressSummaryCard(
                                     tint = EmeraldAccent,
                                     modifier = Modifier.size(14.dp)
                                 )
-                            } else if (isToday) {
+                            } else if (hasPartialActivity || isToday) {
                                 Box(
                                     modifier = Modifier
                                         .size(6.dp)

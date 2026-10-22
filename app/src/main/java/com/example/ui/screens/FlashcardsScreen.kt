@@ -170,6 +170,8 @@ fun FlashcardsScreen(
     showCoachTipRate: Boolean = false,
     onDismissCoachTipFlip: () -> Unit = {},
     onDismissCoachTipRate: () -> Unit = {},
+    waitingLaterTodayCount: Int = 0,
+    nextWaitingDueTimestamp: Long? = null,
     modifier: Modifier = Modifier
 ) {
     val formatter = remember { NumberFormat.getIntegerInstance(Locale.US) }
@@ -439,6 +441,11 @@ fun FlashcardsScreen(
                     )
                 }
             } else if (cards.isEmpty()) {
+                val waitingMinutes = remember(nextWaitingDueTimestamp) {
+                    val nextTs = nextWaitingDueTimestamp ?: return@remember null
+                    val diffMs = (nextTs - System.currentTimeMillis()).coerceAtLeast(60_000L)
+                    (diffMs / 60_000L).toInt().coerceAtLeast(1)
+                }
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -447,16 +454,28 @@ fun FlashcardsScreen(
                 ) {
                     EmptyState(
                         titleEn = if (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID) {
-                            "All due reviews completed for today!"
+                            if (waitingLaterTodayCount > 0) {
+                                "All due-now reviews done! ($waitingLaterTodayCount scheduled for later today)"
+                            } else {
+                                "All due reviews completed for today!"
+                            }
                         } else {
                             "No cards in this deck yet"
                         },
                         titleAr = if (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID) {
-                            "تم إكمال جميع مراجعات اليوم بنجاح!"
+                            if (waitingLaterTodayCount > 0) {
+                                "تم إكمال المراجعات المستحقة الآن! ($waitingLaterTodayCount بطاقة مجدولة لوقت لاحق اليوم)"
+                            } else {
+                                "تم إكمال جميع مراجعات اليوم بنجاح!"
+                            }
                         } else {
                             "لا توجد بطاقات في هذا الكتاب بعد"
                         },
-                        descriptionEn = "Select Oxford 5000 or another Word Book above to study.",
+                        descriptionEn = if (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID && waitingLaterTodayCount > 0 && waitingMinutes != null) {
+                            "Short-interval cards are hidden until their timer finishes (~${waitingMinutes}m). Or select a Word Book above to study."
+                        } else {
+                            "Select Oxford 5000 or another Word Book above to study."
+                        },
                         icon = Icons.AutoMirrored.Filled.MenuBook
                     )
                 }

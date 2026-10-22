@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import com.example.data.local.AiCacheEntity
 import com.example.data.local.AiHistoryEntity
+import com.example.data.local.AttemptEntity
 import com.example.data.local.CorrectionNotebookEntity
 import com.example.data.local.EntryEntity
 import com.example.data.local.ReadingProgressEntity
@@ -287,21 +288,30 @@ class ReadingRepository(
         completedQuestions: Int,
         totalQuestions: Int,
         score: Int,
-        isCompleted: Boolean
+        isCompleted: Boolean,
+        nowMillis: Long = System.currentTimeMillis()
     ) = withContext(Dispatchers.IO) {
         val existing = dao.getReadingProgress(textId)
         val bestScore = maxOf(existing?.bestScore ?: 0, score)
-        dao.upsertReadingProgress(
-            ReadingProgressEntity(
-                textId = textId,
-                completedQuestions = completedQuestions,
-                totalQuestions = totalQuestions,
-                bestScore = bestScore,
-                lastScore = score,
-                isCompleted = isCompleted || (existing?.isCompleted == true),
-                updatedAt = System.currentTimeMillis()
-            )
+        val progress = ReadingProgressEntity(
+            textId = textId,
+            completedQuestions = completedQuestions,
+            totalQuestions = totalQuestions,
+            bestScore = bestScore,
+            lastScore = score,
+            isCompleted = isCompleted || (existing?.isCompleted == true),
+            updatedAt = nowMillis
         )
+        val attempt = AttemptEntity(
+            activityType = "reading_quiz",
+            itemId = textId,
+            timestamp = nowMillis,
+            sm2Rating = null,
+            isCorrect = score >= 60,
+            score = score.toFloat(),
+            deck = null
+        )
+        dao.upsertReadingProgressWithAttempt(progress, attempt)
     }
 
     /**
@@ -343,23 +353,32 @@ class ReadingRepository(
         emptyList()
     }
 
+    /**
+     * Saves favorite flag for a word looked up from Reading without touching `lastReviewedTimestamp`
+     * or `firstLearnedTimestamp` and without creating an `AttemptEntity`.
+     */
     suspend fun saveWordFavorite(deckId: String, wordText: String, isFavorite: Boolean) = withContext(Dispatchers.IO) {
         val clean = cleanWordForLookup(wordText).lowercase()
-        val existing = dao.getWordProgress("${deckId}_${clean}")
+        val cardKey = "${deckId.trim()}:${clean}"
+        val existing = dao.getWordProgress(cardKey) ?: dao.getWordProgress("${deckId}_${clean}")
+        val resolvedEntryId = existing?.entryId ?: dao.getPrimaryEntryIdForCard(deckId, clean)
         val updated = (existing ?: WordProgressEntity(
-            cardKey = "${deckId}_${clean}",
+            cardKey = cardKey,
+            entryId = resolvedEntryId,
             deck = deckId,
             text = clean
         )).copy(
-            isFavorite = isFavorite,
-            lastReviewedTimestamp = System.currentTimeMillis()
+            cardKey = cardKey,
+            entryId = resolvedEntryId,
+            isFavorite = isFavorite
         )
         dao.upsertWordProgress(updated)
     }
 
     suspend fun getWordFavoriteStatus(deckId: String, wordText: String): Boolean = withContext(Dispatchers.IO) {
         val clean = cleanWordForLookup(wordText).lowercase()
-        dao.getWordProgress("${deckId}_${clean}")?.isFavorite == true
+        val cardKey = "${deckId.trim()}:${clean}"
+        (dao.getWordProgress(cardKey) ?: dao.getWordProgress("${deckId}_${clean}"))?.isFavorite == true
     }
 
     suspend fun getSavedTargetWords(limit: Int = 15): List<String> = withContext(Dispatchers.IO) {
@@ -686,21 +705,21 @@ class ReadingRepository(
     suspend fun recordSpacedReviewAttempt(
         id: Long,
         newSentence: String,
-        isSuccess: Boolean = true
+        isSuccess: Boolean = true,
+        nowMillis: Long = System.currentTimeMillis()
     ): CorrectionNotebookEntity? = withContext(Dispatchers.IO) {
         val existing = dao.getCorrectionEntryById(id) ?: return@withContext null
-        val nextStep = existing.reviewStep + 1
+        val nextStep = if (isSuccess) existing.reviewStep + 1 else maxOf(0, existing.reviewStep)
         val nextAttempts = existing.attemptsCount + 1
-        val now = System.currentTimeMillis()
 
         val (nextIntervalDays, nextStatus) = when {
-            nextStep >= 3 -> Pair(0L, "mastered")
+            isSuccess && nextStep >= 3 -> Pair(0L, "mastered")
             nextStep == 2 -> Pair(21L, "checked")
             nextStep == 1 -> Pair(7L, "checked")
             else -> Pair(3L, "checked")
         }
 
-        val nextTimestamp = if (nextIntervalDays > 0) now + nextIntervalDays * 24 * 60 * 60 * 1000L else 0L
+        val nextTimestamp = if (nextIntervalDays > 0) nowMillis + nextIntervalDays * 24 * 60 * 60 * 1000L else 0L
         val updated = existing.copy(
             originalSentence = if (newSentence.isNotBlank()) newSentence.trim() else existing.originalSentence,
             reviewStep = nextStep,
@@ -708,9 +727,18 @@ class ReadingRepository(
             status = nextStatus,
             nextReviewTimestamp = nextTimestamp,
             situationPrompt = if (nextStatus != "mastered") EVERYDAY_SITUATIONS.random() else existing.situationPrompt,
-            updatedAt = now
+            updatedAt = nowMillis
         )
-        dao.upsertCorrectionEntry(updated)
+        val attempt = AttemptEntity(
+            activityType = "correction_review",
+            itemId = existing.id.toString(),
+            timestamp = nowMillis,
+            sm2Rating = null,
+            isCorrect = isSuccess,
+            score = if (isSuccess) 100f else 0f,
+            deck = null
+        )
+        dao.upsertCorrectionWithAttempt(updated, attempt)
         updated
     }
 

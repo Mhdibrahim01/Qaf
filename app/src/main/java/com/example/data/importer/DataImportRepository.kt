@@ -7,6 +7,7 @@ import androidx.compose.runtime.Immutable
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import com.example.data.local.AttemptEntity
 import com.example.data.local.DeckArabicStats
 import com.example.data.local.DeckEntity
 import com.example.data.local.DeckStudyStateEntity
@@ -14,6 +15,7 @@ import com.example.data.local.EntryEntity
 import com.example.data.local.FeatureFlagEntity
 import com.example.data.local.RawJsonEntry
 import com.example.data.local.SentenceEntity
+import com.example.data.local.UserBackupPayload
 import com.example.data.local.WordBooksDao
 import com.example.data.local.WordBooksDatabase
 import com.example.data.local.WordDetailEntity
@@ -31,17 +33,23 @@ import java.io.InputStream
 import java.util.Calendar
 import kotlin.math.roundToInt
 
-enum class Sm2Rating(val labelEn: String, val labelAr: String, val quality: Int) {
-    AGAIN("Again", "مرّة أخرى", 1),
-    HARD("Hard", "صعب", 3),
-    GOOD("Good", "جيد", 4),
-    EASY("Easy", "سهل", 5)
+enum class Sm2Rating(
+    val labelEn: String,
+    val labelAr: String,
+    val quality: Int,
+    val attemptCode: Int,
+    val isRecallSuccess: Boolean
+) {
+    AGAIN("Again", "مرّة أخرى", 1, 0, false),
+    HARD("Hard", "صعب", 3, 1, true),
+    GOOD("Good", "جيد", 4, 2, true),
+    EASY("Easy", "سهل", 5, 3, true)
 }
 
 @Immutable
 data class Sm2IntervalPreview(
-    val againLabel: String = "<10m",
-    val hardLabel: String = "Today",
+    val againLabel: String = "10m",
+    val hardLabel: String = "4h",
     val goodLabel: String = "1d",
     val easyLabel: String = "4d"
 )
@@ -192,24 +200,93 @@ class DataImportRepository(
     val sentencesOldestFirstFlow: Flow<List<SentenceEntity>> = dao.observeSentencesOldestFirst()
     val savedSentencesCountFlow: Flow<Int> = dao.observeSavedSentencesCount()
 
-    fun observeReviewDueTodayCount(nowMillis: Long = System.currentTimeMillis()): Flow<Int> {
-        return dao.observeReviewDueTodayCount(computeEndOfTodayMillis(nowMillis))
+    fun observeReviewDueTodayCount(
+        nowMillis: Long = System.currentTimeMillis(),
+        selectedDecks: List<String> = emptyList()
+    ): Flow<Int> {
+        val endOfToday = computeDueTodayCutoff(nowMillis)
+        return if (selectedDecks.isNotEmpty()) {
+            dao.observeReviewDueTodayCountForDecks(endOfToday, selectedDecks)
+        } else {
+            dao.observeReviewDueTodayCount(endOfToday)
+        }
+    }
+
+    fun observeReviewDueNowCount(
+        nowMillis: Long = System.currentTimeMillis(),
+        selectedDecks: List<String> = emptyList()
+    ): Flow<Int> {
+        val dueNow = computeDueNowCutoff(nowMillis)
+        return if (selectedDecks.isNotEmpty()) {
+            dao.observeDueNowCountForDecks(dueNow, selectedDecks)
+        } else {
+            dao.observeDueNowCount(dueNow)
+        }
     }
 
     fun observeStudiedTodayCount(nowMillis: Long = System.currentTimeMillis()): Flow<Int> {
         return dao.observeStudiedTodayCount(computeStartOfTodayMillis(nowMillis))
     }
 
-    suspend fun getReviewDueTodayCount(nowMillis: Long = System.currentTimeMillis()): Int =
+    suspend fun getReviewDueTodayCount(
+        nowMillis: Long = System.currentTimeMillis(),
+        selectedDecks: List<String> = emptyList()
+    ): Int =
         withContext(Dispatchers.IO) {
-            dao.getReviewDueTodayCount(computeEndOfTodayMillis(nowMillis))
+            val endOfToday = computeDueTodayCutoff(nowMillis)
+            if (selectedDecks.isNotEmpty()) {
+                dao.getReviewDueTodayCountForDecks(endOfToday, selectedDecks)
+            } else {
+                dao.getReviewDueTodayCount(endOfToday)
+            }
+        }
+
+    suspend fun getReviewDueNowCount(
+        nowMillis: Long = System.currentTimeMillis(),
+        selectedDecks: List<String> = emptyList()
+    ): Int =
+        withContext(Dispatchers.IO) {
+            val dueNow = computeDueNowCutoff(nowMillis)
+            if (selectedDecks.isNotEmpty()) {
+                dao.getDueNowCardsCountForDecks(dueNow, selectedDecks)
+            } else {
+                dao.getDueNowCardsCount(dueNow)
+            }
+        }
+
+    suspend fun getLaterTodayCardsCount(
+        nowMillis: Long = System.currentTimeMillis(),
+        selectedDecks: List<String> = emptyList()
+    ): Int =
+        withContext(Dispatchers.IO) {
+            val dueNow = computeDueNowCutoff(nowMillis)
+            val endOfToday = computeDueTodayCutoff(nowMillis)
+            if (selectedDecks.isNotEmpty()) {
+                dao.getLaterTodayCardsCountForDecks(dueNow, endOfToday, selectedDecks)
+            } else {
+                dao.getLaterTodayCardsCount(dueNow, endOfToday)
+            }
+        }
+
+    suspend fun getNextLaterTodayDueTimestamp(
+        nowMillis: Long = System.currentTimeMillis(),
+        selectedDecks: List<String> = emptyList()
+    ): Long? =
+        withContext(Dispatchers.IO) {
+            val dueNow = computeDueNowCutoff(nowMillis)
+            val endOfToday = computeDueTodayCutoff(nowMillis)
+            if (selectedDecks.isNotEmpty()) {
+                dao.getNextLaterTodayDueTimestampForDecks(dueNow, endOfToday, selectedDecks)
+            } else {
+                dao.getNextLaterTodayDueTimestamp(dueNow, endOfToday)
+            }
         }
 
     companion object {
         const val BATCH_SIZE = 500
         const val CORE_EXPECTED_ROWS = 9862
         const val TOTAL_EXPECTED_ROWS = 21624
-        const val DATA_VERSION = 3
+        const val DATA_VERSION = 4
         const val SAVED_WORDS_DECK_ID = "saved_words"
         const val DUE_TODAY_DECK_ID = "due_today"
         const val DAY_MILLIS = 24L * 60L * 60L * 1000L
@@ -225,6 +302,10 @@ class DataImportRepository(
             return cal.timeInMillis
         }
 
+        /**
+         * Returns the exact end of the calendar day (23:59:59.999) for [nowMillis].
+         * Does NOT add a +12h overshoot into tomorrow.
+         */
         fun computeEndOfTodayMillis(nowMillis: Long = System.currentTimeMillis()): Long {
             val cal = Calendar.getInstance().apply {
                 timeInMillis = nowMillis
@@ -233,8 +314,21 @@ class DataImportRepository(
                 set(Calendar.SECOND, 59)
                 set(Calendar.MILLISECOND, 999)
             }
-            return maxOf(cal.timeInMillis, nowMillis + 12L * 3600_000L)
+            return cal.timeInMillis
         }
+
+        /**
+         * Unified "due now" cutoff (`due_timestamp <= nowMillis`).
+         * Cards rated Again (+10 min) or first-time Hard (+4h) have `due_timestamp > nowMillis`
+         * and wait until their timer expires.
+         */
+        fun computeDueNowCutoff(nowMillis: Long = System.currentTimeMillis()): Long = nowMillis
+
+        /**
+         * Unified "due today" cutoff (`due_timestamp <= endOfDayMillis(nowMillis)`).
+         */
+        fun computeDueTodayCutoff(nowMillis: Long = System.currentTimeMillis()): Long =
+            computeEndOfTodayMillis(nowMillis)
 
         fun computeSm2IntervalPreview(progress: WordProgressEntity?): Sm2IntervalPreview {
             return Sm2Algorithm.previewIntervals(
@@ -308,10 +402,18 @@ class DataImportRepository(
      */
     suspend fun loadFlashcardDeckCards(
         deckId: String,
-        nowMillis: Long = System.currentTimeMillis()
+        nowMillis: Long = System.currentTimeMillis(),
+        selectedDecks: List<String> = emptyList()
     ): Pair<List<GroupedWordCard>, DeckStudyStateEntity> = withContext(Dispatchers.IO) {
         val rawEntries = when (deckId) {
-            DUE_TODAY_DECK_ID -> dao.getDueTodayEntriesOrdered(computeEndOfTodayMillis(nowMillis))
+            DUE_TODAY_DECK_ID -> {
+                val dueNow = computeDueNowCutoff(nowMillis)
+                if (selectedDecks.isNotEmpty()) {
+                    dao.getDueNowEntriesForDecksOrdered(dueNow, selectedDecks)
+                } else {
+                    dao.getDueNowEntriesOrdered(dueNow)
+                }
+            }
             else -> dao.getEntriesForDeckOrdered(deckId)
         }
         val progressByKey = if (deckId == DUE_TODAY_DECK_ID) {
@@ -377,12 +479,13 @@ class DataImportRepository(
 
     /**
      * Applies SM-2 spaced repetition algorithm (`Again`, `Hard`, `Good`, `Easy`) to the given word card
-     * and persists the updated `WordProgressEntity` in Room SQLite.
+     * and persists both the updated `WordProgressEntity` and an append-only `AttemptEntity`
+     * in a single Room database transaction.
      *
-     * - `AGAIN`: resets repetitions to 0, sets intervalDays = 0, due in 10 minutes (counted in "Review due today").
-     * - `HARD`: on first review sets intervalDays = 0 (due later today, counted in "Review due today"), otherwise 1.2x interval.
-     * - `GOOD`: 1d -> 3d -> round(interval * easeFactor) days.
-     * - `EASY`: 4d -> 7d -> round(interval * easeFactor * 1.3) days, +0.15 easeFactor.
+     * - `AGAIN`: resets repetitions to 0, sets intervalDays = 0, due in 10 minutes (waits until dueTimestamp <= nowMillis).
+     * - `HARD`: on first review (reps == 0) sets intervalDays = 0, due in 4 hours; otherwise round(interval * 1.2) days.
+     * - `GOOD`: 1d -> 6d -> round(interval * easeFactor) days.
+     * - `EASY`: 4d -> 7d -> round(interval * easeFactor * 1.3) days, +0.15 easeFactor (capped at 3.0).
      */
     suspend fun applySm2Review(
         deckId: String,
@@ -393,6 +496,12 @@ class DataImportRepository(
     ): WordProgressEntity = withContext(Dispatchers.IO) {
         val cardKey = buildCardKey(deckId, wordText)
         val existing = dao.getWordProgress(cardKey)
+        val isFirstRating = existing == null || (
+            existing.firstLearnedTimestamp == 0L &&
+                existing.repetitions == 0 &&
+                existing.againCount == 0 &&
+                existing.lastReviewedTimestamp == 0L
+            )
         val resolvedEntryId = entryId
             ?.takeIf { it.isNotBlank() }
             ?: existing?.entryId
@@ -404,15 +513,30 @@ class DataImportRepository(
             text = wordText.trim().lowercase()
         )).copy(entryId = resolvedEntryId)
         val updated = Sm2Algorithm.applyRating(current, rating, nowMillis).copy(entryId = resolvedEntryId)
-        dao.upsertWordProgress(updated)
+        val attempt = AttemptEntity(
+            activityType = if (isFirstRating) "flashcard_new" else "flashcard_review",
+            itemId = cardKey,
+            timestamp = nowMillis,
+            sm2Rating = rating.attemptCode,
+            isCorrect = rating.isRecallSuccess,
+            score = when (rating) {
+                Sm2Rating.AGAIN -> 0f
+                Sm2Rating.HARD -> 60f
+                Sm2Rating.GOOD -> 85f
+                Sm2Rating.EASY -> 100f
+            },
+            deck = deckId
+        )
+        dao.upsertWordProgressWithAttempt(updated, attempt)
         updated
     }
 
     /**
-     * Finds the next due (or unreviewed) card index in [cards] after [currentIndex].
-     * Unreviewed cards (`dueTimestamp == 0L`) and cards due today (`dueTimestamp <= endOfToday`)
-     * that are not mastered are prioritized. If all remaining cards are future-scheduled or mastered,
-     * falls back to the immediate next card index so navigation always advances cleanly.
+     * Finds the next due-now (or unreviewed) card index in [cards] after [currentIndex].
+     * Unreviewed cards (`dueTimestamp == 0L`) and cards due now (`dueTimestamp <= nowMillis`)
+     * that are not mastered are eligible. Cards rated Again (+10 min) or first-time Hard (+4h)
+     * have `dueTimestamp > nowMillis` and are NOT eligible until their timer expires.
+     * Wraps around to `0..currentIndex` if needed.
      */
     fun findNextDueCardIndex(
         cards: List<GroupedWordCard>,
@@ -421,21 +545,88 @@ class DataImportRepository(
         nowMillis: Long = System.currentTimeMillis()
     ): Int {
         if (cards.isEmpty()) return 0
-        if (currentIndex + 1 >= cards.size) return currentIndex.coerceIn(0, cards.size - 1)
-        val endOfToday = computeEndOfTodayMillis(nowMillis)
+        val dueNowCutoff = computeDueNowCutoff(nowMillis)
+        val safeCurrent = currentIndex.coerceIn(0, cards.size - 1)
 
-        for (idx in (currentIndex + 1) until cards.size) {
+        // 1. Search forward from currentIndex + 1 to end
+        for (idx in (safeCurrent + 1) until cards.size) {
             val card = cards[idx]
             val p = progressMap[card.cardKey]
             val isMastered = p?.isMastered ?: card.isMastered
             if (!isMastered) {
                 val due = p?.dueTimestamp ?: 0L
-                if (due == 0L || due <= endOfToday) {
+                if (due == 0L || due <= dueNowCutoff) {
                     return idx
                 }
             }
         }
-        return (currentIndex + 1).coerceIn(0, cards.size - 1)
+
+        // 2. Wrap around from 0 up to safeCurrent
+        for (idx in 0..safeCurrent) {
+            val card = cards[idx]
+            val p = progressMap[card.cardKey]
+            val isMastered = p?.isMastered ?: card.isMastered
+            if (!isMastered) {
+                val due = p?.dueTimestamp ?: 0L
+                if (due == 0L || due <= dueNowCutoff) {
+                    return idx
+                }
+            }
+        }
+
+        return (safeCurrent + 1).coerceIn(0, cards.size - 1)
+    }
+
+    /**
+     * Returns true if at least one non-mastered card in [cards] is unreviewed (`due == 0L`)
+     * or due right now (`due <= nowMillis`).
+     */
+    fun hasAnyCardDueNow(
+        cards: List<GroupedWordCard>,
+        progressMap: Map<String, WordProgressEntity>,
+        nowMillis: Long = System.currentTimeMillis()
+    ): Boolean {
+        val dueNowCutoff = computeDueNowCutoff(nowMillis)
+        return cards.any { card ->
+            val p = progressMap[card.cardKey]
+            val isMastered = p?.isMastered ?: card.isMastered
+            val due = p?.dueTimestamp ?: 0L
+            !isMastered && (due == 0L || due <= dueNowCutoff)
+        }
+    }
+
+    /**
+     * Counts cards in [cards] that are scheduled for later today (`nowMillis < due <= endOfToday`),
+     * e.g., cards rated Again (+10m) or first-time Hard (+4h) waiting for their timer.
+     */
+    fun countCardsWaitingLaterToday(
+        cards: List<GroupedWordCard>,
+        progressMap: Map<String, WordProgressEntity>,
+        nowMillis: Long = System.currentTimeMillis()
+    ): Int {
+        val dueNowCutoff = computeDueNowCutoff(nowMillis)
+        val dueTodayCutoff = computeDueTodayCutoff(nowMillis)
+        return cards.count { card ->
+            val p = progressMap[card.cardKey]
+            val isMastered = p?.isMastered ?: card.isMastered
+            val due = p?.dueTimestamp ?: 0L
+            !isMastered && due > dueNowCutoff && due <= dueTodayCutoff
+        }
+    }
+
+    fun earliestWaitingDueTimestamp(
+        cards: List<GroupedWordCard>,
+        progressMap: Map<String, WordProgressEntity>,
+        nowMillis: Long = System.currentTimeMillis()
+    ): Long? {
+        val dueNowCutoff = computeDueNowCutoff(nowMillis)
+        val dueTodayCutoff = computeDueTodayCutoff(nowMillis)
+        return cards.mapNotNull { card ->
+            val p = progressMap[card.cardKey]
+            val isMastered = p?.isMastered ?: card.isMastered
+            val due = p?.dueTimestamp ?: 0L
+            if (!isMastered && due > dueNowCutoff && due <= dueTodayCutoff) due else null
+        }.minOrNull()
     }
 
     /**
@@ -592,28 +783,61 @@ class DataImportRepository(
     suspend fun toggleFavorite(deckId: String, wordText: String) = withContext(Dispatchers.IO) {
         val cardKey = buildCardKey(deckId, wordText)
         val existing = dao.getWordProgress(cardKey)
+        val resolvedEntryId = existing?.entryId ?: dao.getPrimaryEntryIdForCard(deckId, wordText)
         val updated = (existing ?: WordProgressEntity(
             cardKey = cardKey,
+            entryId = resolvedEntryId,
             deck = deckId,
             text = wordText.trim().lowercase()
-        )).copy(isFavorite = !(existing?.isFavorite ?: false))
+        )).copy(
+            entryId = resolvedEntryId,
+            isFavorite = !(existing?.isFavorite ?: false)
+        )
         dao.upsertWordProgress(updated)
         refreshDeckProgressCounts(deckId)
     }
 
+    /**
+     * Toggles manual mastery flag without modifying `lastReviewedTimestamp` or `firstLearnedTimestamp`
+     * and without creating an `AttemptEntity`.
+     */
     suspend fun toggleMastered(deckId: String, wordText: String) = withContext(Dispatchers.IO) {
         val cardKey = buildCardKey(deckId, wordText)
         val existing = dao.getWordProgress(cardKey)
+        val resolvedEntryId = existing?.entryId ?: dao.getPrimaryEntryIdForCard(deckId, wordText)
         val updated = (existing ?: WordProgressEntity(
             cardKey = cardKey,
+            entryId = resolvedEntryId,
             deck = deckId,
             text = wordText.trim().lowercase()
         )).copy(
-            isMastered = !(existing?.isMastered ?: false),
-            lastReviewedTimestamp = System.currentTimeMillis()
+            entryId = resolvedEntryId,
+            isMastered = !(existing?.isMastered ?: false)
         )
         dao.upsertWordProgress(updated)
         refreshDeckProgressCounts(deckId)
+    }
+
+    /**
+     * Logs a sentence dictation / speaking practice attempt in `attempts`.
+     */
+    suspend fun recordSentencePracticeAttempt(
+        sentenceIdOrText: String,
+        scorePercent: Int,
+        nowMillis: Long = System.currentTimeMillis()
+    ): AttemptEntity = withContext(Dispatchers.IO) {
+        val cleanScore = scorePercent.coerceIn(0, 100)
+        val attempt = AttemptEntity(
+            activityType = "sentence_practice",
+            itemId = sentenceIdOrText.trim().ifBlank { "sentence" },
+            timestamp = nowMillis,
+            sm2Rating = null,
+            isCorrect = cleanScore >= 70,
+            score = cleanScore.toFloat(),
+            deck = null
+        )
+        val id = dao.insertAttempt(attempt)
+        attempt.copy(id = id)
     }
 
     /**
@@ -980,6 +1204,21 @@ class DataImportRepository(
             var runningTotalProcessed = 0
             var batchCounter = 0
 
+            val oxfordHeadwordLevels = HashMap<String, String>(6000)
+            val oxfordHeadwordSortKeys = HashMap<String, Long>(6000)
+            if (oxfordCount > 0) {
+                for (ox in dao.getOxfordGradedEntries()) {
+                    val key = ox.text.trim().lowercase(java.util.Locale.US)
+                    val lvl = ox.level.trim().uppercase(java.util.Locale.US)
+                    val sortKey = cefrSortRank(lvl) * 1_000_000_000L + (ox.id.toLongOrNull() ?: Long.MAX_VALUE / 10)
+                    val prevKey = oxfordHeadwordSortKeys[key]
+                    if (prevKey == null || sortKey < prevKey) {
+                        oxfordHeadwordSortKeys[key] = sortKey
+                        oxfordHeadwordLevels[key] = lvl
+                    }
+                }
+            }
+
             for (source in resolvedSources) {
                 _importState.value = ImportProgressState(
                     isImporting = true,
@@ -994,6 +1233,8 @@ class DataImportRepository(
 
                 val processedInFile = importJsonStreamInBatches(
                     source = source,
+                    oxfordHeadwordLevels = oxfordHeadwordLevels,
+                    oxfordHeadwordSortKeys = oxfordHeadwordSortKeys,
                     onBatchCommitted = { batchRowsCount ->
                         runningTotalProcessed += batchRowsCount
                         batchCounter++
@@ -1037,19 +1278,46 @@ class DataImportRepository(
         }
     }
 
+    private fun cefrSortRank(level: String): Long = when (level) {
+        "A1" -> 1L
+        "A2" -> 2L
+        "B1" -> 3L
+        "B2" -> 4L
+        "C1" -> 5L
+        else -> 6L
+    }
+
     private suspend fun importJsonStreamInBatches(
         source: ResolvedJsonSource,
+        oxfordHeadwordLevels: MutableMap<String, String>,
+        oxfordHeadwordSortKeys: MutableMap<String, Long>,
         onBatchCommitted: (Int) -> Unit
     ): Int {
         val rawText = source.openStream().bufferedReader(Charsets.UTF_8).use { it.readText() }
         val rawEntries = json.decodeFromString<List<RawJsonEntry>>(rawText)
+
+        if (source.fileName.startsWith("oxford5000", ignoreCase = true)) {
+            for (raw in rawEntries) {
+                val lvl = raw.level.trim().uppercase(java.util.Locale.US)
+                if (lvl in EntryEntity.VALID_CEFR_LEVELS) {
+                    val key = raw.text.trim().lowercase(java.util.Locale.US)
+                    val idNum = raw.id.content.trim().toLongOrNull() ?: (Long.MAX_VALUE / 10)
+                    val sortKey = cefrSortRank(lvl) * 1_000_000_000L + idNum
+                    val prevKey = oxfordHeadwordSortKeys[key]
+                    if (prevKey == null || sortKey < prevKey) {
+                        oxfordHeadwordSortKeys[key] = sortKey
+                        oxfordHeadwordLevels[key] = lvl
+                    }
+                }
+            }
+        }
 
         var totalProcessed = 0
         val chunks = rawEntries.chunked(BATCH_SIZE)
 
         for (chunk in chunks) {
             val entities = chunk.mapNotNull { raw ->
-                mapRawToEntity(raw, source.fileName)
+                mapRawToEntity(raw, source.fileName, oxfordHeadwordLevels)
             }
             if (entities.isNotEmpty()) {
                 dao.upsertEntriesBatchPreservingUserEdits(entities)
@@ -1065,10 +1333,15 @@ class DataImportRepository(
      * - Uses `raw.id.content` as `id` (preserved as-is)
      * - Uses `raw.text` as `text` (no suffixes or numbers)
      * - Merges `oxford5000_part1/2/3.json` into deck `"oxford5000"`
+     * - Computes `effectiveLevel` from the Oxford 5000 headword level (if present), else graded deck level, else NULL
      * - Marks `arabicSource = "file"` whenever `arabic` is non-empty in the file (unless explicitly set to "ai" or "user")
      * - Sets `dataVersion = DATA_VERSION`
      */
-    private fun mapRawToEntity(raw: RawJsonEntry, fallbackFileName: String): EntryEntity? {
+    private fun mapRawToEntity(
+        raw: RawJsonEntry,
+        fallbackFileName: String,
+        oxfordHeadwordLevels: Map<String, String>
+    ): EntryEntity? {
         val idTrimmed = raw.id.content.trim()
         val textTrimmed = raw.text.trim()
         if (idTrimmed.isEmpty() || textTrimmed.isEmpty()) return null
@@ -1091,6 +1364,13 @@ class DataImportRepository(
             ""
         }
 
+        val oxLevel = oxfordHeadwordLevels[textTrimmed.lowercase(java.util.Locale.US)]
+        val effectiveLevel = EntryEntity.computeInitialEffectiveLevel(
+            deck = normalizedDeck,
+            level = raw.level,
+            oxfordHeadwordLevel = oxLevel
+        )
+
         return EntryEntity(
             id = idTrimmed,
             type = raw.type.ifBlank { "word" },
@@ -1098,6 +1378,7 @@ class DataImportRepository(
             text = textTrimmed,
             pos = raw.pos,
             level = raw.level,
+            effectiveLevel = effectiveLevel,
             definitionEn = raw.definitionEn,
             noteEn = raw.noteEn,
             examplesEn = raw.examplesEn,
@@ -1468,6 +1749,42 @@ class DataImportRepository(
         }
         val countAfter = dao.getWordDetailsCount()
         (countAfter - countBefore).coerceAtLeast(0)
+    }
+
+    /**
+     * Exports all user progress, favorites, notebook entries, checklists, quiz results, study profile,
+     * and the append-only `attempts` history to a single JSON string for local backup.
+     */
+    suspend fun exportUserBackupJson(nowMillis: Long = System.currentTimeMillis()): String =
+        withContext(Dispatchers.IO) {
+            val payload = UserBackupPayload(
+                schemaVersion = 15,
+                exportedAt = nowMillis,
+                wordProgress = dao.getAllWordProgressList(),
+                attempts = dao.getAllAttempts(),
+                sentences = dao.getAllSentencesNewestFirst(),
+                grammarProgress = dao.getAllGrammarProgressList(),
+                readingProgress = dao.getAllReadingProgress(),
+                correctionNotebook = dao.getAllCorrectionEntriesList(),
+                studyPlanProfile = dao.getStudyPlanProfile(),
+                dailyChecklists = dao.getAllDailyChecklists(),
+                quizResults = dao.getAllQuizResultsList()
+            )
+            json.encodeToString(payload)
+        }
+
+    /**
+     * Restores a `UserBackupPayload` JSON string transactionally, preserving `attempts`, `word_progress`
+     * (including `first_learned_timestamp`), favorites, mastery, notebook, checklists, and quiz history.
+     */
+    suspend fun importUserBackupJson(jsonText: String): Boolean = withContext(Dispatchers.IO) {
+        val payload = runCatching { json.decodeFromString<UserBackupPayload>(jsonText) }.getOrNull()
+            ?: return@withContext false
+        dao.restoreUserBackupPayload(payload)
+        dao.getDecksList().forEach { deck ->
+            refreshDeckProgressCounts(deck.id)
+        }
+        true
     }
 }
 

@@ -24,8 +24,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Refresh
+import com.example.data.plan.DailyQuizScopeInfo
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -89,6 +94,7 @@ fun QuizDialog(
     onPlayAudio: (String) -> Unit,
     onQuizCompleted: (userAnswers: Map<String, Int>) -> Unit,
     onOpenDictionaryWord: ((String) -> Unit)? = null,
+    scopeInfo: DailyQuizScopeInfo? = null,
     onDismiss: () -> Unit
 ) {
     if (questions.isEmpty()) {
@@ -166,6 +172,10 @@ fun QuizDialog(
                         color = GoldAccent,
                         trackColor = SurfaceElevatedDark
                     )
+
+                    if (scopeInfo != null) {
+                        DailyQuizScopeBanner(scopeInfo = scopeInfo)
+                    }
 
                     // Prompt Card
                     Surface(
@@ -496,19 +506,116 @@ fun QuizDialog(
                         color = TextSecondary
                     )
 
-                    // Skill breakdown
+                    // Skill breakdown with Progress Bars & Actionable Recommendations
                     val skills = listOf("vocabulary", "grammar", "reading", "listening")
-                    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("quiz_results_skills_breakdown"),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = "Performance by Skill",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = TextPrimary
+                        )
+
+                        val skillScores = mutableMapOf<String, Pair<Int, Int>>()
                         skills.forEach { skill ->
                             val sQuestions = questions.filter { it.skill == skill }
                             if (sQuestions.isNotEmpty()) {
                                 val sCorrect = sQuestions.count { userAnswers[it.id] == it.answerIndex }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                skillScores[skill] = Pair(sCorrect, sQuestions.size)
+                                val fraction = (sCorrect.toFloat() / sQuestions.size.toFloat()).coerceIn(0f, 1f)
+                                val percent = (fraction * 100f).toInt()
+
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = when (skill) {
+                                                "vocabulary" -> "📚 Vocabulary"
+                                                "grammar" -> "📐 Grammar"
+                                                "reading" -> "📖 Reading"
+                                                else -> "🎧 Listening"
+                                            },
+                                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                            color = TextPrimary
+                                        )
+                                        Text(
+                                            text = "$sCorrect / ${sQuestions.size} ($percent%)",
+                                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                            color = if (percent >= 70) EmeraldAccent else GoldAccent
+                                        )
+                                    }
+                                    LinearProgressIndicator(
+                                        progress = { fraction },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(6.dp)
+                                            .clip(RoundedCornerShape(3.dp)),
+                                        color = if (percent >= 70) EmeraldAccent else GoldAccent,
+                                        trackColor = SurfaceDark
+                                    )
+                                }
+                            }
+                        }
+
+                        // Actionable recommendations based on results
+                        val vocabStats = skillScores["vocabulary"]
+                        val grammarStats = skillScores["grammar"]
+                        val readingStats = skillScores["reading"]
+
+                        val needsVocabReview = vocabStats != null && vocabStats.first < vocabStats.second
+                        val needsGrammarReview = grammarStats != null && grammarStats.first < grammarStats.second
+                        val needsReadingReview = readingStats != null && readingStats.first < readingStats.second
+
+                        if (needsVocabReview || needsGrammarReview || needsReadingReview) {
+                            Surface(
+                                color = SurfaceElevatedDark,
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, GoldAccentBorder),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    Text(skill.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall, color = TextPrimary)
-                                    Text("$sCorrect / ${sQuestions.size}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = GoldAccent)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Icon(Icons.Filled.Lightbulb, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(16.dp))
+                                        Text(
+                                            text = "Recommended Focus for Today",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = GoldAccent
+                                        )
+                                    }
+                                    if (needsVocabReview) {
+                                        Text(
+                                            text = "• راجع بطاقات مفردات اليوم في قسم الفلاش كارد لتعزيز حفظ الكلمات التي أخطأت بها.",
+                                            style = ArabicTypography.labelSmall.copy(fontSize = 11.sp),
+                                            color = TextSecondary
+                                        )
+                                    }
+                                    if (needsGrammarReview) {
+                                        Text(
+                                            text = "• أعد مراجعة درس القواعد المقرر اليوم وقراءة أمثلته لترسيخ الصياغة الصحيحة.",
+                                            style = ArabicTypography.labelSmall.copy(fontSize = 11.sp),
+                                            color = TextSecondary
+                                        )
+                                    }
+                                    if (needsReadingReview) {
+                                        Text(
+                                            text = "• تصفح قصة القراءة اليوم مرة أخرى في قسم القراءة للتركيز على السياق والتفاصيل.",
+                                            style = ArabicTypography.labelSmall.copy(fontSize = 11.sp),
+                                            color = TextSecondary
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -700,3 +807,135 @@ fun QuizDialog(
         }
     )
 }
+
+@Composable
+private fun DailyQuizScopeBanner(
+    scopeInfo: DailyQuizScopeInfo,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("quiz_scope_banner"),
+        shape = RoundedCornerShape(12.dp),
+        color = SurfaceElevatedDark,
+        border = BorderStroke(1.dp, if (scopeInfo.allCompleted) EmeraldAccent.copy(alpha = 0.5f) else GoldAccentBorder)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = if (scopeInfo.allCompleted) Icons.Filled.CheckCircle else Icons.Filled.Info,
+                        contentDescription = null,
+                        tint = if (scopeInfo.allCompleted) EmeraldAccent else GoldAccent,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "Today's Assessment Scope",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = TextPrimary
+                    )
+                }
+                Text(
+                    text = if (scopeInfo.allCompleted) "Ready ✓" else "Preview",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = if (scopeInfo.allCompleted) EmeraldAccent else GoldAccent
+                )
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                ScopeItemRow(
+                    label = "5 Vocab:",
+                    detail = scopeInfo.vocabTitle,
+                    isCompleted = scopeInfo.vocabCompleted
+                )
+                ScopeItemRow(
+                    label = "3 Grammar:",
+                    detail = "${scopeInfo.grammarTitle} (${scopeInfo.grammarTitleAr})",
+                    isCompleted = scopeInfo.grammarCompleted
+                )
+                ScopeItemRow(
+                    label = "2 Reading:",
+                    detail = "${scopeInfo.readingTitle} (${scopeInfo.readingTitleAr})",
+                    isCompleted = scopeInfo.readingCompleted
+                )
+            }
+
+            if (!scopeInfo.allCompleted) {
+                Surface(
+                    color = GoldAccentDim.copy(alpha = 0.25f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "لم تكمل جميع دروس اليوم بعد — يمكنك بدء الاختبار الآن لتشخيص استيعابك، أو إكمال الدروس أولاً.",
+                        style = ArabicTypography.labelSmall.copy(fontSize = 11.sp),
+                        color = GoldAccent,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                    )
+                }
+            } else {
+                Surface(
+                    color = EmeraldAccent.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "أحسنت! أكملت دروس اليوم المقررة — اختبر إتقانك الآن لجميع المهارات.",
+                        style = ArabicTypography.labelSmall.copy(fontSize = 11.sp),
+                        color = EmeraldAccent,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScopeItemRow(
+    label: String,
+    detail: String,
+    isCompleted: Boolean
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                color = GoldAccent
+            )
+            Text(
+                text = detail,
+                style = MaterialTheme.typography.labelSmall,
+                color = TextSecondary,
+                maxLines = 1
+            )
+        }
+        Icon(
+            imageVector = if (isCompleted) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
+            contentDescription = if (isCompleted) "Completed" else "Pending",
+            tint = if (isCompleted) EmeraldAccent else TextMuted,
+            modifier = Modifier.size(14.dp)
+        )
+    }
+}
+

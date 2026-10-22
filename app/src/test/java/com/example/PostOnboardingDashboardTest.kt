@@ -139,8 +139,7 @@ class PostOnboardingDashboardTest {
             WordBooksTheme {
                 HomeScreen(
                     studyStreak = 3,
-                    studyPlanProfile = profile,
-                    kickoffWords = emptyList()
+                    studyPlanProfile = profile
                 )
             }
         }
@@ -157,57 +156,6 @@ class PostOnboardingDashboardTest {
 
         composeTestRule.onNodeWithTag("home_study_streak_badge").assertIsDisplayed()
         composeTestRule.onNodeWithText("3 day streak").assertIsDisplayed()
-    }
-
-    @Test
-    fun postOnboardingDashboard_displaysKickoffStarterCardAndNavigates() {
-        val profile = StudyPlanProfileEntity(
-            id = 1,
-            level = "B2",
-            goal = "general_fluency",
-            minutesPerDay = 30,
-            studyDaysPerWeek = 6,
-            startDate = "2026-10-21",
-            selectedDecksJson = json.encodeToString(listOf("oxford5000")),
-            restDaysJson = json.encodeToString(listOf(6)),
-            updatedAt = System.currentTimeMillis()
-        )
-
-        var kickoffStarted = false
-        var kickoffDismissed = false
-
-        composeTestRule.setContent {
-            WordBooksTheme {
-                HomeScreen(
-                    studyStreak = 1,
-                    studyPlanProfile = profile,
-                    kickoffWords = sampleKickoffWords,
-                    isKickoffDismissed = false,
-                    onStartKickoffSession = { kickoffStarted = true },
-                    onDismissKickoffSession = { kickoffDismissed = true }
-                )
-            }
-        }
-
-        // Verify starter card is displayed
-        composeTestRule.onNodeWithTag("home_kickoff_starter_card").assertIsDisplayed()
-        composeTestRule.onNodeWithText("5-Min Kickoff Session").assertIsDisplayed()
-
-        // Verify word chips
-        composeTestRule.onNodeWithTag("kickoff_word_chip_0").assertIsDisplayed()
-        composeTestRule.onNodeWithText("abandon").assertIsDisplayed()
-        composeTestRule.onNodeWithText("يتخلى عن / يترك").assertIsDisplayed()
-
-        composeTestRule.onNodeWithTag("kickoff_word_chip_1").assertIsDisplayed()
-        composeTestRule.onNodeWithText("abrupt").assertIsDisplayed()
-
-        // Click Start 5-Min Session
-        composeTestRule.onNodeWithTag("btn_start_kickoff_session").performClick()
-        assertTrue("onStartKickoffSession should have been called", kickoffStarted)
-
-        // Click dismiss button
-        composeTestRule.onNodeWithTag("btn_dismiss_kickoff_session").performClick()
-        assertTrue("onDismissKickoffSession should have been called", kickoffDismissed)
     }
 
     @Test
