@@ -138,7 +138,7 @@ class AiWordDetailService(
             }
         }
 
-        Result.failure(aiError ?: IllegalStateException("Could not load word definition"))
+        Result.failure(aiError)
     }
 
     private suspend fun saveAndEnrichWordDetail(

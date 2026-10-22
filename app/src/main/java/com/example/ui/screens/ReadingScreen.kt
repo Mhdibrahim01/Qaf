@@ -40,29 +40,26 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Quiz
-import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.UploadFile
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -72,13 +69,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -90,11 +84,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -110,21 +101,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.CompositionLocalProvider
+import com.example.data.local.AiHistoryEntity
+import com.example.data.local.CorrectionNotebookEntity
+import com.example.data.local.EntryEntity
+import com.example.data.local.GrammarExerciseItem
+import com.example.data.local.GrammarLessonEntity
+import com.example.data.local.ReadingProgressEntity
+import com.example.data.local.ReadingQuestionItem
+import com.example.data.local.ReadingSentenceItem
+import com.example.data.local.ReadingTextEntity
 import com.example.ui.components.BidiText
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.EmeraldAccent
@@ -135,17 +131,6 @@ import com.example.ui.theme.SkyAccent
 import com.example.ui.theme.SkyAccentBg
 import com.example.ui.theme.VioletAccent
 import com.example.ui.theme.VioletAccentBg
-import com.example.data.local.AiHistoryEntity
-import com.example.data.local.CorrectionNotebookEntity
-import com.example.data.local.EntryEntity
-import com.example.data.local.GrammarExerciseItem
-import com.example.data.local.GrammarLessonEntity
-import com.example.data.local.ReadingProgressEntity
-import com.example.data.local.ReadingQuestionItem
-import com.example.data.local.ReadingSentenceItem
-import com.example.data.local.ReadingTextEntity
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.School
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -985,7 +970,7 @@ fun ReadingTextCard(
                             )
                             Spacer(Modifier.width(4.dp))
                             Text(
-                                text = "${progress?.bestScore ?: 0}/$questionsCount",
+                                text = "${progress.bestScore ?: 0}/$questionsCount",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF34D399)
@@ -1778,7 +1763,7 @@ fun ReadingSentenceBlock(
                     .testTag("sentence_speak_${sentenceIndex}")
             ) {
                 Icon(
-                    imageVector = Icons.Default.VolumeUp,
+                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                     contentDescription = "Speak sentence",
                     tint = if (isHighlighted) Color(0xFFE5C158) else Color(0xFFD1D5DB),
                     modifier = Modifier.size(18.dp)
@@ -1805,11 +1790,7 @@ fun ReadingSentenceBlock(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                for (item in parsedTokens) {
-                    val token = item.token
-                    val cleanWord = item.cleanWord
-                    val isTarget = item.isTarget
-                    val isGrammar = item.isGrammar
+                for ((token, cleanWord, isTarget, isGrammar) in parsedTokens) {
 
                     Box(
                         modifier = Modifier
@@ -2407,10 +2388,36 @@ fun YourTurnGrammarCard(
     var isCheckingAi by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val situationPrompt = remember(text.id) {
+    val situationPrompt = remember(text.id, primaryLessonId) {
         when (text.id) {
             "r054" -> "You planned to attend an important interview, but you woke up late and missed the early train."
-            else -> "You planned an important event, but something unexpected happened in the past."
+            "r091" -> "Describe a normal Friday morning in your routine using the present simple."
+            "r092" -> "Describe your home or neighborhood using there is or there are."
+            "r093" -> "Describe what you usually cook and what you are making today."
+            "r094" -> "Describe what happened on a trip when you missed a train."
+            "r095" -> "Describe how often you play football and what happened in your last match."
+            "r096" -> "Describe what happened when a device you use stopped working."
+            "r097" -> "Describe a repetitive work task that software has automated."
+            "r098" -> "Explain what can happen when patients misuse antibiotics."
+            "r099" -> "Explain how indexes help a database and what happens when there are too many."
+            "r100" -> "Explain how wearable devices monitor and protect patient data."
+            else -> when (primaryLessonId) {
+                "g006" -> "Describe what is in a room or neighborhood using there is or there are."
+                "g007" -> "Describe a normal part of your day using the present simple."
+                "g008" -> "Describe what someone is doing right now using the present continuous."
+                "g014" -> "Describe where you were and how you felt yesterday."
+                "g015" -> "Write what happened on your last trip using the past simple."
+                "g018" -> "Compare two phones, homes, or places using a comparative adjective."
+                "g023" -> "Describe how often you play a sport or do another activity."
+                "g030" -> "Describe how long you have used a tool or followed a routine using since or for."
+                "g036" -> "Explain what happens when a patient follows or stops a treatment."
+                "g037" -> "Explain how a team automates or transfers data using the passive voice."
+                "g057" -> "Explain how database indexes are created or maintained using the passive voice."
+                "g065" -> "Describe one benefit and one drawback, using a linking word such as however or consequently."
+                "g079" -> "Explain how patient data is collected and protected using the passive voice."
+                "g084" -> "Summarize the topic in a formal sentence using a noun such as integration or assessment."
+                else -> "Write one sentence about this reading using the target grammar rule."
+            }
         }
     }
 
@@ -2483,7 +2490,7 @@ fun YourTurnGrammarCard(
                     errorMessage = null
                 },
                 label = { Text("Write your sentence here") },
-                placeholder = { Text("e.g., If I had set two alarms, I would have caught the train.") },
+                placeholder = { Text("Write one sentence using $lessonTitle.") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("your_turn_sentence_input"),
@@ -2656,7 +2663,7 @@ fun WordLookupBottomSheet(
                         modifier = Modifier.testTag("word_sheet_speak_button")
                     ) {
                         Icon(
-                            imageVector = Icons.Default.VolumeUp,
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                             contentDescription = "Speak",
                             tint = MaterialTheme.colorScheme.primary
                         )
@@ -3522,7 +3529,7 @@ fun AddReadingTextDialog(
     )
 }
 
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TabCreateWithAi(
     onDismiss: () -> Unit,

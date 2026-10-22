@@ -2131,9 +2131,7 @@ fun isGrammarAnswerCorrect(userAnswer: String, expectedAnswer: String): Boolean 
     if (expand(u) == expand(e)) return true
     val uNoPunct = u.trimEnd('.', '?', '!')
     val eNoPunct = e.trimEnd('.', '?', '!')
-    if (uNoPunct == eNoPunct || expand(uNoPunct) == expand(eNoPunct)) return true
-
-    return false
+    return uNoPunct == eNoPunct || expand(uNoPunct) == expand(eNoPunct)
 }
 
 /**

@@ -194,11 +194,7 @@ fun isLtrDominantLine(line: String): Boolean {
     val beforeFirstArabic = withoutParens.takeWhile { !isArabicLetter(it) }
     val latinCountBeforeArabic = beforeFirstArabic.count { isLatinChar(it) }
     val totalArabicLetters = withoutParens.count { isArabicLetter(it) }
-    if (latinCountBeforeArabic >= 10 && (beforeFirstArabic.contains('+') || beforeFirstArabic.contains("->")) && totalArabicLetters <= 18) {
-        return true
-    }
-
-    return false
+    return latinCountBeforeArabic >= 10 && (beforeFirstArabic.contains('+') || beforeFirstArabic.contains("->")) && totalArabicLetters <= 18
 }
 
 /**
@@ -539,8 +535,7 @@ fun BidiText(
  * are separated cleanly into pure Arabic phrases, preventing RTL/LTR bidirectional jumbling.
  */
 fun cleanGrammarArabicTitle(rawTitleAr: String): String {
-    val trimmed = rawTitleAr.trim()
-    return when (trimmed) {
+    return when (val trimmed = rawTitleAr.trim()) {
         "القدرة: can و can't" -> "القدرة والاستطاعة"
         "الفعل to be: am, is, are" -> "فعل الكينونة (to be)"
         "أدوات التعريف والتنكير: a, an, the" -> "أدوات التعريف والتنكير"

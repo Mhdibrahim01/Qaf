@@ -554,7 +554,7 @@ class LocalQuizEngine(
         return questions.take(8)
     }
 
-    private suspend fun buildGrammarQuestion(lessons: List<com.example.data.local.GrammarLessonEntity>): QuizQuestionItem? {
+    private suspend fun buildGrammarQuestion(lessons: List<GrammarLessonEntity>): QuizQuestionItem? {
         val lesson = lessons.shuffled().firstOrNull() ?: return null
         val exercises: List<GrammarExerciseItem> = try {
             json.decodeFromString(lesson.exercisesJson)
@@ -611,8 +611,8 @@ class LocalQuizEngine(
         )
     }
 
-    private fun buildReadingContextQuestionFromText(text: com.example.data.local.ReadingTextEntity): QuizQuestionItem? {
-        val questionsList: List<com.example.data.local.ReadingQuestionItem> = try {
+    private fun buildReadingContextQuestionFromText(text: ReadingTextEntity): QuizQuestionItem? {
+        val questionsList: List<ReadingQuestionItem> = try {
             json.decodeFromString(text.questionsJson)
         } catch (e: Exception) {
             emptyList()

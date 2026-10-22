@@ -906,7 +906,7 @@ private fun MonthlyPlanTabContent(
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                             color = GoldAccent
                         )
-                        BidiText(text = currentPlan?.tipsAr ?: "", style = ArabicTypography.bodySmall, color = TextPrimary)
+                        BidiText(text = currentPlan.tipsAr ?: "", style = ArabicTypography.bodySmall, color = TextPrimary)
                     }
                 }
             }

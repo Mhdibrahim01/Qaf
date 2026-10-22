@@ -1386,7 +1386,7 @@ class StudyPlanRepository(
                 if (aIsNull != bIsNull) {
                     if (aIsNull) 1 else -1
                 } else if (!aIsNull) {
-                    val rankA = rankMap[a.effectiveLevel?.uppercase(Locale.US)] ?: 99
+                    val rankA = rankMap[a.effectiveLevel.uppercase(Locale.US)] ?: 99
                     val rankB = rankMap[b.effectiveLevel?.uppercase(Locale.US)] ?: 99
                     if (rankA != rankB) {
                         rankA.compareTo(rankB)

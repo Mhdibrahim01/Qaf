@@ -2,6 +2,7 @@ package com.example.ui.viewmodel
 
 import android.app.Application
 import android.net.Uri
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
@@ -62,6 +63,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.Dispatchers
@@ -73,6 +75,16 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+@Immutable
+data class LevelProgressSummary(
+    val level: String = "B2",
+    val isDefaultLevelSelection: Boolean = true,
+    val hasRecommendedWords: Boolean = false,
+    val totalCount: Int = 0,
+    val masteredCount: Int = 0,
+    val deckTotalMasteredCount: Int = 0
+)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WordBooksViewModel(application: Application) : AndroidViewModel(application) {
@@ -488,7 +500,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 val level = profile?.level.orEmpty()
                 val decks = try {
                     if (!profile?.selectedDecksJson.isNullOrBlank()) {
-                        kotlinx.serialization.json.Json.decodeFromString<List<String>>(profile!!.selectedDecksJson)
+                        kotlinx.serialization.json.Json.decodeFromString<List<String>>(profile.selectedDecksJson)
                     } else emptyList()
                 } catch (e: Exception) {
                     emptyList()
@@ -508,7 +520,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             initialValue = emptyList()
         )
 
-    val recommendedWordsForLevel: StateFlow<List<EntryEntity>> = kotlinx.coroutines.flow.combine(
+    val recommendedWordsForLevel: StateFlow<List<EntryEntity>> = combine(
         studyPlanProfile,
         _selectedDeckId,
         _filterState
@@ -539,6 +551,50 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
+    )
+
+    val levelProgressSummary: StateFlow<LevelProgressSummary> = combine(
+        recommendedWordsForLevel,
+        progressMap,
+        _filterState,
+        _selectedDeckId,
+        studyPlanProfile
+    ) { recommendedWords, progress, filter, selectedDeck, profile ->
+        val displayLevel = if (filter.levelFilter.isNotBlank() && !filter.levelFilter.equals("All", ignoreCase = true)) {
+            filter.levelFilter.uppercase()
+        } else {
+            profile?.level?.ifBlank { "B2" }?.uppercase() ?: "B2"
+        }
+        val rawDeck = filter.deckId.ifBlank { selectedDeck.orEmpty() }
+        val currentDeckId = if (rawDeck == DataImportRepository.SAVED_WORDS_DECK_ID) "" else rawDeck
+        val uniqueLevelCards = recommendedWords.asSequence()
+            .filter { word ->
+                val wordLevel = word.effectiveLevel?.ifBlank { word.level } ?: word.level
+                (currentDeckId.isBlank() || word.deck.equals(currentDeckId, ignoreCase = true)) &&
+                    (wordLevel.isBlank() || wordLevel.trim().equals(displayLevel, ignoreCase = true))
+            }
+            .distinctBy { "${it.deck}:${it.text.trim().lowercase()}" }
+            .toList()
+        val masteredCount = uniqueLevelCards.count { word ->
+            val keyColon = "${word.deck}:${word.text.trim().lowercase()}"
+            val keyUnderscore = "${word.deck}_${word.text}"
+            progress[keyColon]?.isMastered == true || progress[keyUnderscore]?.isMastered == true
+        }
+        val deckTotalMasteredCount = progress.values.count {
+            (currentDeckId.isBlank() || it.deck.equals(currentDeckId, ignoreCase = true)) && it.isMastered
+        }
+        LevelProgressSummary(
+            level = displayLevel,
+            isDefaultLevelSelection = filter.levelFilter.isBlank() || filter.levelFilter.equals("All", ignoreCase = true),
+            hasRecommendedWords = recommendedWords.isNotEmpty(),
+            totalCount = uniqueLevelCards.size,
+            masteredCount = masteredCount,
+            deckTotalMasteredCount = deckTotalMasteredCount
+        )
+    }.flowOn(Dispatchers.Default).stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = LevelProgressSummary()
     )
 
     fun startKickoffStarterSession(starterDeckId: String? = null) {
@@ -1586,7 +1642,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             it.copy(
                 onlyMastered = isMasteredOnly,
                 onlyLearning = false,
-                onlyFavorites = if (isMasteredOnly) false else (it.deckId == DataImportRepository.SAVED_WORDS_DECK_ID)
+                onlyFavorites = !isMasteredOnly && (it.deckId == DataImportRepository.SAVED_WORDS_DECK_ID)
             )
         }
     }
@@ -2514,6 +2570,6 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
 data class ActiveQuizSession(
     val title: String,
     val quizType: String,
-    val questions: List<com.example.data.local.QuizQuestionItem>,
+    val questions: List<QuizQuestionItem>,
     val scopeInfo: com.example.data.plan.DailyQuizScopeInfo? = null
 )

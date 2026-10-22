@@ -207,8 +207,8 @@ class OnboardingStep4Test {
 
         assertNotNull(completedDecks)
         assertTrue(completedDecks!!.contains("business_english"))
-        assertTrue(completedDecks!!.contains("ielts_core"))
-        assertTrue(completedDecks!!.contains("oxford5000"))
+        assertTrue(completedDecks.contains("ielts_core"))
+        assertTrue(completedDecks.contains("oxford5000"))
         assertEquals(false, completedStartAtLevel)
 
         // 5. Verify Back button to Step 3 works

@@ -50,7 +50,7 @@ class BatchTranslateForegroundService : Service() {
             }
         } catch (_: Exception) {
             // In restricted background contexts, fallback to updating NotificationManager directly
-            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            val nm = getSystemService(NOTIFICATION_SERVICE) as? NotificationManager
             nm?.notify(NOTIFICATION_ID, notification)
         }
 
@@ -61,7 +61,7 @@ class BatchTranslateForegroundService : Service() {
 
     private fun ensureChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+            val nm = getSystemService(NOTIFICATION_SERVICE) as? NotificationManager ?: return
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Batch Vocabulary Translation",

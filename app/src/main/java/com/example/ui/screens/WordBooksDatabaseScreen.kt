@@ -107,6 +107,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -132,6 +134,7 @@ import com.example.data.local.DeckEntity
 import com.example.data.local.EntryEntity
 import com.example.data.local.GroupedWordCard
 import com.example.data.local.WordProgressEntity
+import com.example.ui.viewmodel.LevelProgressSummary
 import com.example.ui.components.ArabicText
 import com.example.ui.components.BooksModeSwitcher
 import com.example.ui.components.EmptyState
@@ -299,7 +302,7 @@ fun ImportProgressBanner(
                 }
             }
         }
-    }
+        }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -359,7 +362,7 @@ fun WordBooksDatabaseScreen(
     showCoachTipWordTap: Boolean = false,
     onDismissCoachTipWordTap: () -> Unit = {},
     userLevel: String = "B2",
-    recommendedWords: List<EntryEntity> = emptyList(),
+    levelProgressSummary: LevelProgressSummary = LevelProgressSummary(),
     modifier: Modifier = Modifier
 ) {
     val handleOpenAll = onOpenAllWords ?: {
@@ -433,7 +436,7 @@ fun WordBooksDatabaseScreen(
                             onOpenFilteredFlashcards = onOpenFilteredFlashcards,
                             onGetLetterIndex = onGetLetterIndex,
                             userLevel = userLevel,
-                            recommendedWords = recommendedWords
+                            levelProgressSummary = levelProgressSummary
                         )
                     } else {
                         DecksLibraryGrid(
@@ -541,7 +544,7 @@ fun WordBooksDatabaseScreen(
                         onOpenFilteredFlashcards = onOpenFilteredFlashcards,
                         onGetLetterIndex = onGetLetterIndex,
                         userLevel = userLevel,
-                        recommendedWords = recommendedWords
+                        levelProgressSummary = levelProgressSummary
                     )
                 } else {
                     DecksLibraryGrid(
@@ -1032,7 +1035,7 @@ private fun PagedDeckWordListScreen(
     onOpenFilteredFlashcards: ((String, WordFilterState) -> Unit)? = null,
     onGetLetterIndex: (suspend (String?, Char) -> Int)? = null,
     userLevel: String = "B2",
-    recommendedWords: List<EntryEntity> = emptyList(),
+    levelProgressSummary: LevelProgressSummary = LevelProgressSummary(),
     modifier: Modifier = Modifier
 ) {
     var showSortMenu by remember { mutableStateOf(false) }
@@ -1084,7 +1087,7 @@ private fun PagedDeckWordListScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp)
         ) {
             // Header + Search + LEVEL/STATUS Filter Card + Count/Sort Bar
-            item(key = "word_book_header_and_filters", contentType = "header_and_filters") {
+            item(key = "header", contentType = "header") {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -1504,18 +1507,9 @@ private fun PagedDeckWordListScreen(
                             }
                         }
                     }
-                }
-            }
-
-            // 4a. Level Progress Summary Banner
-            if (recommendedWords.isNotEmpty()) {
-                item(key = "recommended_words_section", contentType = "recommended_words") {
+                if (levelProgressSummary.hasRecommendedWords) {
                     LevelProgressSummaryBanner(
-                        userLevel = userLevel,
-                        activeLevelFilter = filterState.levelFilter,
-                        currentDeckId = currentDeckId,
-                        recommendedWords = recommendedWords,
-                        progressMap = progressMap,
+                        summary = levelProgressSummary,
                         onFilterToLevel = { targetLvl ->
                             if (!filterState.levelFilter.equals(targetLvl, ignoreCase = true)) {
                                 onLevelFilterChange(targetLvl)
@@ -1537,107 +1531,107 @@ private fun PagedDeckWordListScreen(
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
                 }
-            }
 
-            // 4b. Checkpoint Banner
-            if (hasCheckpoint) {
-                item(key = "checkpoint_banner", contentType = "checkpoint_banner") {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 12.dp)
-                            .clip(RoundedCornerShape(12.dp)),
-                        shape = RoundedCornerShape(12.dp),
-                        color = GoldAccentDim,
-                        border = BorderStroke(1.dp, GoldAccentBorder)
-                    ) {
-                        Row(
+                if (hasCheckpoint) {
+                        Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                                .padding(bottom = 12.dp)
+                                .clip(RoundedCornerShape(12.dp)),
+                            shape = RoundedCornerShape(12.dp),
+                            color = GoldAccentDim,
+                            border = BorderStroke(1.dp, GoldAccentBorder)
                         ) {
                             Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.weight(1f)
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text(
-                                    text = "📍",
-                                    fontSize = 18.sp
-                                )
-                                Column {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
                                     Text(
-                                        text = "LAST STUDIED CHECKPOINT",
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            fontSize = 9.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            letterSpacing = 1.sp,
-                                            color = GoldAccent
-                                        )
+                                        text = "📍",
+                                        fontSize = 18.sp
                                     )
-                                    val lastIndex = (currentStudyState?.lastCardIndex ?: 0) + 1
-                                    val totalCount = deck?.rowCount ?: totalEntriesCount
-                                    val percent = if (totalCount > 0) (lastIndex * 100 / totalCount).coerceIn(0, 100) else 0
+                                    Column {
+                                        Text(
+                                            text = "LAST STUDIED CHECKPOINT",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                letterSpacing = 1.sp,
+                                                color = GoldAccent
+                                            )
+                                        )
+                                        val lastIndex = (currentStudyState?.lastCardIndex ?: 0) + 1
+                                        val totalCount = deck?.rowCount ?: totalEntriesCount
+                                        val percent = if (totalCount > 0) (lastIndex * 100 / totalCount).coerceIn(0, 100) else 0
+                                        Text(
+                                            text = "\"$checkpointWord\" • Card #$lastIndex of ${formatNumber(totalCount)} ($percent%)",
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = TextPrimary
+                                            ),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+
+                                Button(
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            var foundIdx: Int? = null
+                                            for (i in 0 until pagedEntries.itemCount) {
+                                                val item = pagedEntries.peek(i)
+                                                if (item?.text.equals(checkpointWord, ignoreCase = true)) {
+                                                    foundIdx = i
+                                                    break
+                                                }
+                                            }
+                                            val targetIdx = foundIdx ?: currentStudyState?.lastCardIndex?.takeIf { it in 0 until (deck?.rowCount ?: totalEntriesCount) }
+                                            if (targetIdx != null) {
+                                                val totalCount = pagedEntries.itemCount
+                                                if (totalCount > 0) {
+                                                    val clampedIdx = targetIdx.coerceIn(0, totalCount - 1)
+                                                    val headerItemsCount = 1
+                                                    pagedEntries[clampedIdx]
+                                                    listState.scrollToItem((clampedIdx + headerItemsCount).coerceAtLeast(0))
+                                                }
+                                            }
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = GoldAccent,
+                                        contentColor = BackgroundDark
+                                    ),
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                    modifier = Modifier.heightIn(min = 32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
                                     Text(
-                                        text = "\"$checkpointWord\" • Card #$lastIndex of ${formatNumber(totalCount)} ($percent%)",
-                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            color = TextPrimary
-                                        ),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        text = "Resume →",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = FontWeight.Bold
+                                        )
                                     )
                                 }
                             }
-
-                            Button(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        var foundIdx: Int? = null
-                                        for (i in 0 until pagedEntries.itemCount) {
-                                            val item = pagedEntries.peek(i)
-                                            if (item?.text.equals(checkpointWord, ignoreCase = true)) {
-                                                foundIdx = i
-                                                break
-                                            }
-                                        }
-                                        val targetIdx = foundIdx ?: currentStudyState?.lastCardIndex?.takeIf { it in 0 until (deck?.rowCount ?: totalEntriesCount) }
-                                        if (targetIdx != null) {
-                                            val totalCount = pagedEntries.itemCount
-                                            if (totalCount > 0) {
-                                                val clampedIdx = targetIdx.coerceIn(0, totalCount - 1)
-                                                val headerItemsCount = if (hasCheckpoint) 2 else 1
-                                                pagedEntries[clampedIdx]
-                                                listState.scrollToItem((clampedIdx + headerItemsCount).coerceAtLeast(0))
-                                            }
-                                        }
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = GoldAccent,
-                                    contentColor = BackgroundDark
-                                ),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                modifier = Modifier.heightIn(min = 32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.AutoAwesome,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    text = "Resume →",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                )
-                            }
                         }
-                    }
+                }
+
+
                 }
             }
 
@@ -1719,7 +1713,7 @@ private fun PagedDeckWordListScreen(
                     items(
                         count = itemCount,
                         key = pagedEntries.itemKey { it.id },
-                        contentType = pagedEntries.itemContentType { "word_entry_row" }
+                        contentType = pagedEntries.itemContentType { "word_card" }
                     ) { index ->
                         val entry = pagedEntries[index]
                         if (entry != null) {
@@ -1728,22 +1722,22 @@ private fun PagedDeckWordListScreen(
                             val isFirst = index == 0
                             val isLast = index == itemCount - 1
                             val isCurrentCheckpoint = hasCheckpoint && entry.text.equals(checkpointWord, ignoreCase = true)
-                            val onPlayAudioLambda = remember(entry.text, entry.audioUrl, entry.deck, index) {
+                            val onPlayAudioLambda = remember(entry.text, entry.audioUrl, entry.deck, index, onPlayAudio, onSetCheckpoint) {
                                 {
                                     onPlayAudio(entry.text, entry.audioUrl)
                                     onSetCheckpoint(entry.deck, entry.text, index)
                                 }
                             }
-                            val onToggleMasteredLambda = remember(entry.deck, entry.text) {
+                            val onToggleMasteredLambda = remember(entry.deck, entry.text, onToggleMastered) {
                                 { onToggleMastered(entry.deck, entry.text) }
                             }
-                            val onToggleFavoriteLambda = remember(entry.deck, entry.text) {
+                            val onToggleFavoriteLambda = remember(entry.deck, entry.text, onToggleFavorite) {
                                 { onToggleFavorite(entry.deck, entry.text) }
                             }
-                            val onSetCheckpointLambda = remember(entry.deck, entry.text, index) {
+                            val onSetCheckpointLambda = remember(entry.deck, entry.text, index, onSetCheckpoint) {
                                 { onSetCheckpoint(entry.deck, entry.text, index) }
                             }
-                            val onOpenDetailLambda = remember(entry.deck, entry.text, index) {
+                            val onOpenDetailLambda = remember(entry.deck, entry.text, index, onOpenDetailedDefinition, onSetCheckpoint) {
                                 {
                                     onOpenDetailedDefinition(entry.deck, entry.text)
                                     onSetCheckpoint(entry.deck, entry.text, index)
@@ -1832,7 +1826,7 @@ private fun PagedDeckWordListScreen(
                                                 if (totalCount > 0) {
                                                     val targetIdx = onGetLetterIndex?.invoke(currentDeckId, letter) ?: 0
                                                     val clampedIdx = targetIdx.coerceIn(0, totalCount - 1)
-                                                    val headerItemsCount = if (hasCheckpoint) 2 else 1
+                                                    val headerItemsCount = 1
                                                     pagedEntries[clampedIdx]
                                                     listState.scrollToItem((clampedIdx + headerItemsCount).coerceAtLeast(0))
                                                 }
@@ -1893,8 +1887,7 @@ private fun WordBookFilterPill(
 }
 
 fun posShortLabel(pos: String): String {
-    val clean = pos.trim().lowercase().removeSuffix(".")
-    return when (clean) {
+    return when (val clean = pos.trim().lowercase().removeSuffix(".")) {
         "n", "noun" -> "n."
         "v", "verb", "phrasal verb" -> "v."
         "adj", "adjective" -> "adj."
@@ -1944,8 +1937,7 @@ fun parseArabicMeaningGroups(pos: String, arabic: String): List<Pair<String, Str
 }
 
 fun posFullName(pos: String): String {
-    val clean = pos.trim().lowercase().removeSuffix(".")
-    return when (clean) {
+    return when (val clean = pos.trim().lowercase().removeSuffix(".")) {
         "n", "noun" -> "Noun"
         "v", "verb", "phrasal verb" -> "Verb"
         "adj", "adjective" -> "Adjective"
@@ -2069,6 +2061,7 @@ fun WordBookEntryRow(
     val posLower = remember(entry.pos) {
         posFullName(entry.pos).lowercase()
     }
+    val displayLevel = remember(entry.level) { entry.level.uppercase() }
     val ipaAndPos = remember(entry.ipa, posLower) {
         when {
             entry.ipa.isNotBlank() && posLower.isNotBlank() -> "${entry.ipa}  •  $posLower"
@@ -2088,18 +2081,21 @@ fun WordBookEntryRow(
         formattedArabic.any { (it in 'a'..'z') || (it in 'A'..'Z') }
     }
 
-    Surface(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(rowShape)
-            .clickable(onClick = onOpenDetail)
+            .background(SurfaceDark)
+            .border(1.dp, BorderDark, rowShape)
+            .clickable(
+                interactionSource = null,
+                indication = null,
+                role = Role.Button,
+                onClick = onOpenDetail
+            )
             .testTag("word_row_${entry.id}"),
-        color = SurfaceDark,
-        shape = rowShape,
-        border = BorderStroke(1.dp, BorderDark)
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
+        Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -2107,24 +2103,27 @@ fun WordBookEntryRow(
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // Left: Rounded-square speaker button
-                Surface(
+                Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(48.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .clickable(onClick = onPlayAudio)
-                        .testTag("ipa_speaker_${entry.id}"),
-                    color = if (isPlayingAudio) GoldAccentDim else SurfaceElevatedDark,
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, if (isPlayingAudio) GoldAccentBorder else BorderDark)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                            contentDescription = "Play pronunciation for ${entry.text}",
-                            tint = if (isPlayingAudio) GoldAccent else TextSecondary,
-                            modifier = Modifier.size(18.dp)
+                        .background(if (isPlayingAudio) GoldAccentDim else SurfaceElevatedDark)
+                        .border(1.dp, if (isPlayingAudio) GoldAccentBorder else BorderDark, RoundedCornerShape(10.dp))
+                        .clickable(
+                            interactionSource = null,
+                            indication = null,
+                            role = Role.Button,
+                            onClick = onPlayAudio
                         )
-                    }
+                        .testTag("ipa_speaker_${entry.id}"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                        contentDescription = "Play pronunciation for ${entry.text}",
+                        tint = if (isPlayingAudio) GoldAccent else TextSecondary,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
 
                 // Middle: Word + Level Badge, IPA • POS, Arabic Meaning
@@ -2148,20 +2147,22 @@ fun WordBookEntryRow(
                         )
 
                         if (entry.level.isNotBlank()) {
-                            Surface(
-                                color = GoldAccentDim,
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
-                                Text(
-                                    text = entry.level.uppercase(),
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 10.sp
-                                    ),
-                                    color = GoldAccent,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
+                            Text(
+                                text = displayLevel,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp
+                                ),
+                                color = GoldAccent,
+                                modifier = Modifier
+                                    .drawBehind {
+                                        drawRoundRect(
+                                            color = GoldAccentDim,
+                                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(6.dp.toPx())
+                                        )
+                                    }
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
                         }
 
                     }
@@ -2227,11 +2228,17 @@ fun WordBookEntryRow(
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     if (onSetCheckpoint != null) {
-                        IconButton(
-                            onClick = onSetCheckpoint,
+                        Box(
                             modifier = Modifier
-                                .size(36.dp)
-                                .testTag("checkpoint_pin_${entry.id}")
+                                .size(48.dp)
+                                .clickable(
+                                    interactionSource = null,
+                                    indication = null,
+                                    role = Role.Button,
+                                    onClick = onSetCheckpoint
+                                )
+                                .testTag("checkpoint_pin_${entry.id}"),
+                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = if (isCheckpoint) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
@@ -2242,11 +2249,17 @@ fun WordBookEntryRow(
                         }
                     }
 
-                    IconButton(
-                        onClick = onToggleMastered,
+                    Box(
                         modifier = Modifier
                             .size(48.dp)
-                            .testTag("mastered_check_${entry.id}")
+                            .clickable(
+                                interactionSource = null,
+                                indication = null,
+                                role = Role.Button,
+                                onClick = onToggleMastered
+                            )
+                            .testTag("mastered_check_${entry.id}"),
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = if (isMastered) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
@@ -2256,11 +2269,17 @@ fun WordBookEntryRow(
                         )
                     }
 
-                    IconButton(
-                        onClick = onToggleFavorite,
+                    Box(
                         modifier = Modifier
-                            .size(36.dp)
-                            .testTag("favorite_heart_${entry.id}")
+                            .size(48.dp)
+                            .clickable(
+                                interactionSource = null,
+                                indication = null,
+                                role = Role.Button,
+                                onClick = onToggleFavorite
+                            )
+                            .testTag("favorite_heart_${entry.id}"),
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
@@ -2272,7 +2291,6 @@ fun WordBookEntryRow(
                 }
             }
         }
-    }
 }
 
 
@@ -3006,7 +3024,7 @@ private fun formatProgressPercent(count: Int, total: Int): String {
     return when {
         rawPercent < 0.1 -> "<0.1%"
         rawPercent < 10.0 -> {
-            val oneDecimal = String.format(java.util.Locale.US, "%.1f", rawPercent)
+            val oneDecimal = String.format(Locale.US, "%.1f", rawPercent)
             if (oneDecimal.endsWith(".0")) "${rawPercent.toInt()}%" else "$oneDecimal%"
         }
         else -> "${rawPercent.toInt()}%"
@@ -3015,22 +3033,14 @@ private fun formatProgressPercent(count: Int, total: Int): String {
 
 @Composable
 fun LevelProgressSummaryBanner(
-    userLevel: String,
-    activeLevelFilter: String,
-    recommendedWords: List<EntryEntity>,
-    progressMap: Map<String, WordProgressEntity>,
+    summary: LevelProgressSummary,
     onQuickPractice: () -> Unit,
-    currentDeckId: String = "",
     onFilterToLevel: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    if (recommendedWords.isEmpty()) return
+    if (!summary.hasRecommendedWords) return
 
-    val displayLevel = if (activeLevelFilter.isNotBlank() && !activeLevelFilter.equals("All", ignoreCase = true)) {
-        activeLevelFilter.uppercase()
-    } else {
-        userLevel.ifBlank { "B2" }.uppercase()
-    }
+    val displayLevel = summary.level
 
     val levelColor = when (displayLevel) {
         "A1", "A2" -> EmeraldAccent
@@ -3052,29 +3062,9 @@ fun LevelProgressSummaryBanner(
         else -> displayLevel
     }
 
-    val uniqueLevelCards = remember(recommendedWords, currentDeckId, displayLevel) {
-        val filtered = recommendedWords.filter { word ->
-            val wordLevel = word.effectiveLevel?.ifBlank { word.level } ?: word.level
-            (currentDeckId.isBlank() || word.deck.equals(currentDeckId, ignoreCase = true)) &&
-                (wordLevel.isBlank() || wordLevel.trim().equals(displayLevel, ignoreCase = true))
-        }
-        filtered.distinctBy { "${it.deck}:${it.text.trim().lowercase()}" }
-    }
-
-    val totalCount = uniqueLevelCards.size
-    val masteredCount = remember(uniqueLevelCards, progressMap) {
-        uniqueLevelCards.count { word ->
-            val keyColon = "${word.deck}:${word.text.trim().lowercase()}"
-            val keyUnderscore = "${word.deck}_${word.text}"
-            progressMap[keyColon]?.isMastered == true ||
-                progressMap[keyUnderscore]?.isMastered == true
-        }
-    }
-    val deckTotalMasteredCount = remember(currentDeckId, progressMap) {
-        progressMap.values.count {
-            (currentDeckId.isBlank() || it.deck.equals(currentDeckId, ignoreCase = true)) && it.isMastered
-        }
-    }
+    val totalCount = summary.totalCount
+    val masteredCount = summary.masteredCount
+    val deckTotalMasteredCount = summary.deckTotalMasteredCount
     val progressFraction = if (totalCount > 0) (masteredCount.toFloat() / totalCount.toFloat()).coerceIn(0f, 1f) else 0f
     val visualProgressFraction = if (masteredCount > 0) progressFraction.coerceIn(0.025f, 1f) else 0f
     val progressPercentText = formatProgressPercent(masteredCount, totalCount)
@@ -3171,7 +3161,7 @@ fun LevelProgressSummaryBanner(
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                             color = TextPrimary
                         )
-                        if (deckTotalMasteredCount > masteredCount && (activeLevelFilter.isBlank() || activeLevelFilter.equals("All", ignoreCase = true))) {
+                        if (deckTotalMasteredCount > masteredCount && summary.isDefaultLevelSelection) {
                             Text(
                                 text = "${formatNumber(masteredCount)} $displayLevel mastered • ${formatNumber(deckTotalMasteredCount)} total mastered in book",
                                 style = MaterialTheme.typography.labelSmall,

@@ -392,8 +392,7 @@ object GeminiApiKeyManager {
     }
 
     fun isConfigured(context: Context): Boolean {
-        if (getEngineMode(context) == TranslationEngineMode.FREE_API_ONLY) return true
-        return getAllConfiguredKeys(context).isNotEmpty()
+        return getEngineMode(context) == TranslationEngineMode.FREE_API_ONLY || getAllConfiguredKeys(context).isNotEmpty()
     }
 
     fun getKeySource(context: Context): String {

@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
@@ -17,10 +18,15 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,8 +37,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -77,18 +81,27 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.key
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -126,12 +139,12 @@ import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.distinctUntilChanged
 import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.sign
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun FlashcardsScreen(
     decks: List<DeckEntity>,
@@ -188,10 +201,6 @@ fun FlashcardsScreen(
     val studyDecks = remember(decks) {
         decks.filter { it.id != DataImportRepository.SAVED_WORDS_DECK_ID && it.rowCount > 0 }
     }
-
-    var showSettingsDialog by remember { mutableStateOf(false) }
-    var isDistractionFreeMode by remember { mutableStateOf(false) }
-
     val safeIndex = if (cards.isEmpty()) 0 else currentIndex.coerceIn(0, cards.size - 1)
     val activeCard = cards.getOrNull(safeIndex)
     val activeProgress = activeCard?.let { progressMap[it.cardKey] }
@@ -199,17 +208,156 @@ fun FlashcardsScreen(
         DataImportRepository.computeSm2IntervalPreview(activeProgress)
     }
 
+    var showSettingsDialog by remember { mutableStateOf(false) }
+    var isDistractionFreeMode by remember { mutableStateOf(false) }
+    var isAnimatingRating by remember { mutableStateOf(false) }
+    var ratingStamp by remember { mutableStateOf<Sm2Rating?>(null) }
+    var ratingCardSnapshot by remember { mutableStateOf<GroupedWordCard?>(null) }
+    var flippedCardKey by remember { mutableStateOf<String?>(null) }
+    var dragOffsetX by remember { mutableFloatStateOf(0f) }
+    var cardTransitionToken by remember { mutableIntStateOf(0) }
+    var lastActiveCardKey by remember { mutableStateOf(activeCard?.cardKey) }
+    val coroutineScope = rememberCoroutineScope()
+    val translationX = remember { Animatable(0f) }
+    val translationY = remember { Animatable(0f) }
+    val rotationZ = remember { Animatable(0f) }
+    val cardAlpha = remember { Animatable(1f) }
+    val cardScale = remember { Animatable(1f) }
+    val stampScale = remember { Animatable(0.6f) }
+    val stampAlpha = remember { Animatable(0f) }
+    val density = LocalDensity.current
+    val hardExitOffsetY = with(density) { 150.dp.toPx() }
+    val easyExitOffsetY = with(density) { -150.dp.toPx() }
+    val screenWidthPx = with(density) { LocalConfiguration.current.screenWidthDp.dp.toPx() }
+    val isActiveCardFlipped = activeCard?.cardKey != null &&
+        flippedCardKey == activeCard.cardKey && isCardFlipped
+    val displayedCard = ratingCardSnapshot ?: activeCard
+
+    LaunchedEffect(activeCard?.cardKey, isCardFlipped) {
+        if (!isCardFlipped) {
+            flippedCardKey = null
+        } else if (flippedCardKey == null) {
+            flippedCardKey = activeCard?.cardKey
+        }
+    }
+
     // 5-second Auto-show answer timer (off by default; when enabled, flips card automatically after 5s)
-    LaunchedEffect(activeCard?.cardKey, safeIndex, isCardFlipped, autoShowAnswer, isLoading) {
-        if (autoShowAnswer && !isCardFlipped && !isLoading && activeCard != null) {
+    LaunchedEffect(activeCard?.cardKey, safeIndex, isActiveCardFlipped, autoShowAnswer, isLoading) {
+        if (autoShowAnswer && !isActiveCardFlipped && !isLoading && activeCard != null) {
             delay(5000)
             onSetCardFlipped(true)
         }
     }
 
     val handleRateCard: (Sm2Rating) -> Unit = { rating ->
-        onRateCard(rating)
-        onSetCardFlipped(false)
+        val cardBeingRated = activeCard
+        if (isActiveCardFlipped && !isAnimatingRating && cardBeingRated != null) {
+            isAnimatingRating = true
+            ratingCardSnapshot = cardBeingRated
+            ratingStamp = rating
+            val initialDragOffset = dragOffsetX
+            coroutineScope.launch {
+                var ratingSubmitted = false
+                try {
+                    translationX.snapTo(initialDragOffset)
+                    dragOffsetX = 0f
+                    translationY.snapTo(0f)
+                    rotationZ.snapTo(0f)
+                    cardAlpha.snapTo(1f)
+                    stampScale.snapTo(0.6f)
+                    stampAlpha.snapTo(0f)
+                    val exitX = when (rating) {
+                        Sm2Rating.AGAIN -> -screenWidthPx
+                        Sm2Rating.HARD -> -screenWidthPx * 0.6f
+                        Sm2Rating.GOOD, Sm2Rating.EASY -> screenWidthPx
+                    }
+                    val exitY = when (rating) {
+                        Sm2Rating.HARD -> hardExitOffsetY
+                        Sm2Rating.EASY -> easyExitOffsetY
+                        else -> 0f
+                    }
+                    val exitRotation = when (rating) {
+                        Sm2Rating.AGAIN -> -12f
+                        Sm2Rating.HARD -> -6f
+                        Sm2Rating.GOOD -> 10f
+                        Sm2Rating.EASY -> 14f
+                    }
+                    launch {
+                        stampScale.animateTo(
+                            targetValue = 1f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = 1000f
+                            )
+                        )
+                    }
+                    launch { stampAlpha.animateTo(1f, tween(durationMillis = 120)) }
+                    val exitAnimation = launch {
+                        translationX.animateTo(exitX, tween(durationMillis = 280, easing = FastOutLinearInEasing))
+                    }
+                    val verticalAnimation = launch {
+                        translationY.animateTo(exitY, tween(durationMillis = 280, easing = FastOutLinearInEasing))
+                    }
+                    val rotationAnimation = launch {
+                        rotationZ.animateTo(exitRotation, tween(durationMillis = 280, easing = FastOutLinearInEasing))
+                    }
+                    val fadeAnimation = launch {
+                        cardAlpha.animateTo(
+                            targetValue = 0f,
+                            animationSpec = tween(durationMillis = 150, delayMillis = 130, easing = FastOutLinearInEasing)
+                        )
+                    }
+                    exitAnimation.join()
+                    verticalAnimation.join()
+                    rotationAnimation.join()
+                    fadeAnimation.join()
+
+                    onSetCardFlipped(false)
+                    flippedCardKey = null
+                    onRateCard(rating)
+                    ratingSubmitted = true
+                } finally {
+                    withContext(NonCancellable) {
+                        translationX.snapTo(0f)
+                        translationY.snapTo(0f)
+                        rotationZ.snapTo(0f)
+                        cardAlpha.snapTo(1f)
+                        stampScale.snapTo(0.6f)
+                        stampAlpha.snapTo(0f)
+                    }
+                    dragOffsetX = 0f
+                    ratingStamp = null
+                    ratingCardSnapshot = null
+                    if (ratingSubmitted) cardTransitionToken++
+                    isAnimatingRating = false
+                    if (!ratingSubmitted) {
+                        onSetCardFlipped(false)
+                        flippedCardKey = null
+                    }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(activeCard?.cardKey, cardTransitionToken) {
+        val activeCardKey = activeCard?.cardKey
+        if (activeCardKey != lastActiveCardKey || cardTransitionToken > 0) {
+            lastActiveCardKey = activeCardKey
+            translationX.snapTo(0f)
+            translationY.snapTo(0f)
+            rotationZ.snapTo(0f)
+            cardAlpha.snapTo(1f)
+            dragOffsetX = 0f
+            ratingStamp = null
+            stampScale.snapTo(0.6f)
+            stampAlpha.snapTo(0f)
+            if (activeCard != null) {
+                cardScale.snapTo(0.92f)
+                cardScale.animateTo(1f, spring(dampingRatio = 0.85f, stiffness = 450f))
+            } else {
+                cardScale.snapTo(1f)
+            }
+        }
     }
 
     Box(
@@ -232,7 +380,7 @@ fun FlashcardsScreen(
                     BooksModeSwitcher(
                         isFlashcardsActive = true,
                         dueTodayCount = reviewDueTodayCount,
-                        onSelectBooksMode = onSwitchToBooks,
+                        onSelectBooksMode = { if (!isAnimatingRating) onSwitchToBooks() },
                         onSelectFlashcardsMode = {}
                     )
 
@@ -253,7 +401,8 @@ fun FlashcardsScreen(
                                 val isDueSelected = activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID
                                 FilterChip(
                                     selected = isDueSelected,
-                                    onClick = { onSelectDeck(DataImportRepository.DUE_TODAY_DECK_ID) },
+                                    onClick = { if (!isAnimatingRating) onSelectDeck(DataImportRepository.DUE_TODAY_DECK_ID) },
+                                    enabled = !isAnimatingRating,
                                     label = {
                                         Text(
                                             text = "Due Today ($reviewDueTodayCount)",
@@ -267,7 +416,7 @@ fun FlashcardsScreen(
                                         labelColor = TextSecondary
                                     ),
                                     border = FilterChipDefaults.filterChipBorder(
-                                        enabled = true,
+                                        enabled = !isAnimatingRating,
                                         selected = isDueSelected,
                                         borderColor = BorderDark,
                                         selectedBorderColor = GoldAccent
@@ -280,7 +429,8 @@ fun FlashcardsScreen(
                                 val isSelected = deck.id == activeDeckId
                                 FilterChip(
                                     selected = isSelected,
-                                    onClick = { onSelectDeck(deck.id) },
+                                    onClick = { if (!isAnimatingRating) onSelectDeck(deck.id) },
+                                    enabled = !isAnimatingRating,
                                     label = {
                                         Text(
                                             text = deck.title,
@@ -294,7 +444,7 @@ fun FlashcardsScreen(
                                         labelColor = TextSecondary
                                     ),
                                     border = FilterChipDefaults.filterChipBorder(
-                                        enabled = true,
+                                        enabled = !isAnimatingRating,
                                         selected = isSelected,
                                         borderColor = BorderDark,
                                         selectedBorderColor = GoldAccent
@@ -308,7 +458,7 @@ fun FlashcardsScreen(
                         Surface(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
-                                .clickable { showSettingsDialog = true }
+                                .clickable(enabled = !isAnimatingRating) { showSettingsDialog = true }
                                 .testTag("flashcard_settings_button"),
                             color = if (cardDirection != FlashcardDirection.ENGLISH_TO_ARABIC || autoShowAnswer) {
                                 GoldAccentDim
@@ -367,8 +517,8 @@ fun FlashcardsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(
-                            onClick = { if (safeIndex > 0) onIndexChanged(safeIndex - 1) },
-                            enabled = safeIndex > 0,
+                            onClick = { if (safeIndex > 0 && !isAnimatingRating) onIndexChanged(safeIndex - 1) },
+                            enabled = safeIndex > 0 && !isAnimatingRating,
                             modifier = Modifier
                                 .size(38.dp)
                                 .testTag("flashcard_prev_button")
@@ -450,8 +600,8 @@ fun FlashcardsScreen(
                             }
 
                             IconButton(
-                                onClick = { if (safeIndex + 1 < cards.size) onIndexChanged(safeIndex + 1) },
-                                enabled = safeIndex + 1 < cards.size,
+                                onClick = { if (safeIndex + 1 < cards.size && !isAnimatingRating) onIndexChanged(safeIndex + 1) },
+                                enabled = safeIndex + 1 < cards.size && !isAnimatingRating,
                                 modifier = Modifier
                                     .size(38.dp)
                                     .testTag("flashcard_next_button")
@@ -535,55 +685,17 @@ fun FlashcardsScreen(
                     )
                 }
             } else {
-                val pagerState = rememberPagerState(
-                    initialPage = safeIndex,
-                    pageCount = { cards.size }
-                )
-
-                // Keep pager synced when currentIndex changes via SM-2 rating or restored state
-                LaunchedEffect(safeIndex, cards.size) {
-                    if (pagerState.currentPage != safeIndex && safeIndex in cards.indices) {
-                        pagerState.animateScrollToPage(
-                            page = safeIndex,
-                            animationSpec = tween(durationMillis = 360, easing = FastOutSlowInEasing)
-                        )
-                    }
-                }
-
-                // Notify ViewModel when user swipes left/right
-                LaunchedEffect(pagerState) {
-                    snapshotFlow { pagerState.settledPage }
-                        .distinctUntilChanged()
-                        .collect { page ->
-                            if (page != safeIndex && page in cards.indices) {
-                                onIndexChanged(page)
-                            }
-                        }
-                }
-
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .testTag("flashcard_pager"),
-                    pageSpacing = 14.dp,
-                    key = { index -> cards.getOrNull(index)?.cardKey ?: index }
-                ) { pageIndex ->
-                    val card = cards[pageIndex]
+                val card = displayedCard
+                if (card != null) {
                     val cardProgress = progressMap[card.cardKey]
                     val isMastered = cardProgress?.isMastered ?: card.isMastered
                     val isFavorite = cardProgress?.isFavorite ?: card.isFavorite
-                    val isCurrentPage = pageIndex == safeIndex
-                    val pageFlipped = if (isCurrentPage) isCardFlipped else false
-
-                    // Resolve effective direction for this card (supports Mixed mode deterministically)
-                    val effectiveDirection = remember(card.cardKey, cardDirection, pageIndex) {
+                    val effectiveDirection = remember(card.cardKey, cardDirection, safeIndex) {
                         when (cardDirection) {
                             FlashcardDirection.ENGLISH_TO_ARABIC -> FlashcardDirection.ENGLISH_TO_ARABIC
                             FlashcardDirection.ARABIC_TO_ENGLISH -> FlashcardDirection.ARABIC_TO_ENGLISH
                             FlashcardDirection.MIXED -> {
-                                if (abs(card.cardKey.hashCode() + pageIndex) % 2 == 1) {
+                                if (abs(card.cardKey.hashCode() + safeIndex) % 2 == 1) {
                                     FlashcardDirection.ARABIC_TO_ENGLISH
                                 } else {
                                     FlashcardDirection.ENGLISH_TO_ARABIC
@@ -592,32 +704,130 @@ fun FlashcardsScreen(
                         }
                     }
 
-                    FlipFlashcardItem(
-                        card = card,
-                        isFlipped = pageFlipped,
-                        effectiveDirection = effectiveDirection,
-                        autoShowAnswer = autoShowAnswer,
-                        isMastered = isMastered,
-                        isFavorite = isFavorite,
-                        isPlayingAudio = currentlyPlayingWord == card.text,
-                        savedSentenceKeys = savedSentenceKeys,
-                        onFlipCard = onFlipCard,
-                        onPlayAudio = {
-                            val audioUrl = card.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl.orEmpty()
-                            onPlayAudio(card.text, audioUrl)
-                        },
-                        onToggleFavorite = onToggleFavorite,
-                        onToggleSaveSentence = { en, ar ->
-                            onToggleSaveSentence(en, ar, card.text)
-                        },
-                        onOpenDetailedDefinition = {
-                            onOpenDetailedDefinition(card.deck, card.text)
-                        }
-                    )
-                }
+                    BoxWithConstraints(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .testTag("flashcard_rating_area"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val cardWidthPx = with(LocalDensity.current) { maxWidth.toPx() }
+                        val swipeDistanceThresholdPx = with(LocalDensity.current) { 120.dp.toPx() }
+                        val swipeVelocityThresholdPxPerSecond = with(LocalDensity.current) { 1000.dp.toPx() }
+                        val swipeModifier = if (isActiveCardFlipped && !isAnimatingRating) {
+                            Modifier.pointerInput(
+                                card.cardKey,
+                                isActiveCardFlipped,
+                                isAnimatingRating,
+                                cardWidthPx,
+                                swipeDistanceThresholdPx,
+                                swipeVelocityThresholdPxPerSecond
+                            ) {
+                                awaitEachGesture {
+                                    val down = awaitFirstDown(requireUnconsumed = false)
+                                    val velocityTracker = VelocityTracker().apply {
+                                        addPosition(down.uptimeMillis, down.position)
+                                    }
+                                    val pointerId = down.id
+                                    val slopChange = awaitHorizontalTouchSlopOrCancellation(pointerId) { change, overSlop ->
+                                        velocityTracker.addPosition(change.uptimeMillis, change.position)
+                                        dragOffsetX = (dragOffsetX + overSlop)
+                                            .coerceIn(-cardWidthPx * 0.75f, cardWidthPx * 0.75f)
+                                        change.consume()
+                                    }
 
+                                    val dragCompleted = if (slopChange != null) {
+                                        horizontalDrag(pointerId) { change ->
+                                            velocityTracker.addPosition(change.uptimeMillis, change.position)
+                                            dragOffsetX = (dragOffsetX + change.positionChange().x)
+                                                .coerceIn(-cardWidthPx * 0.75f, cardWidthPx * 0.75f)
+                                            change.consume()
+                                        }
+                                    } else {
+                                        false
+                                    }
+
+                                    val dragDirection = if (abs(dragOffsetX) >= swipeDistanceThresholdPx) {
+                                        dragOffsetX.sign
+                                    } else {
+                                        0f
+                                    }
+                                    val releaseVelocityX = velocityTracker.calculateVelocity().x
+                                    val flingDirection = if (abs(releaseVelocityX) >= swipeVelocityThresholdPxPerSecond) {
+                                        releaseVelocityX.sign
+                                    } else {
+                                        0f
+                                    }
+                                    val committedDirection = if (dragDirection != 0f) dragDirection else flingDirection
+
+                                    if (dragCompleted && committedDirection != 0f) {
+                                        handleRateCard(if (committedDirection < 0f) Sm2Rating.AGAIN else Sm2Rating.GOOD)
+                                    } else if (dragOffsetX != 0f) {
+                                        coroutineScope.launch {
+                                            val returnAnimation = Animatable(dragOffsetX)
+                                            returnAnimation.animateTo(0f, spring(dampingRatio = 0.6f, stiffness = 650f)) {
+                                                dragOffsetX = value
+                                            }
+                                            dragOffsetX = 0f
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            Modifier
+                        }
+
+                        val translationXAnimatable = translationX
+                        val translationYAnimatable = translationY
+                        val rotationZAnimatable = rotationZ
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    this.translationX = translationXAnimatable.value + dragOffsetX
+                                    this.translationY = translationYAnimatable.value
+                                    this.rotationZ = rotationZAnimatable.value
+                                    alpha = cardAlpha.value
+                                    scaleX = cardScale.value
+                                    scaleY = cardScale.value
+                                }
+                                .then(swipeModifier),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            key(card.cardKey) {
+                                FlipFlashcardItem(
+                                    card = card,
+                                    isFlipped = isActiveCardFlipped,
+                                    effectiveDirection = effectiveDirection,
+                                    autoShowAnswer = autoShowAnswer,
+                                    isMastered = isMastered,
+                                    isFavorite = isFavorite,
+                                    isPlayingAudio = currentlyPlayingWord == card.text,
+                                    savedSentenceKeys = savedSentenceKeys,
+                                    ratingColor = ratingStamp?.ratingAccent(),
+                                    onFlipCard = { if (!isAnimatingRating) onFlipCard() },
+                                    onPlayAudio = {
+                                        val audioUrl = card.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl.orEmpty()
+                                        onPlayAudio(card.text, audioUrl)
+                                    },
+                                    onToggleFavorite = onToggleFavorite,
+                                    onToggleSaveSentence = { en, ar -> onToggleSaveSentence(en, ar, card.text) },
+                                    onOpenDetailedDefinition = { onOpenDetailedDefinition(card.deck, card.text) }
+                                )
+                            }
+                            ratingStamp?.let { rating ->
+                                RatingStampOverlay(
+                                    rating = rating,
+                                    scaleProvider = { stampScale.value },
+                                    alphaProvider = { stampAlpha.value },
+                                    modifier = Modifier.align(Alignment.TopCenter)
+                                )
+                            }
+                        }
+                    }
+                }
                 // First-session Coach Tip guidance (dismissible on tap or flip/rate)
-                if (showCoachTipFlip && !isCardFlipped) {
+                if (showCoachTipFlip && !isActiveCardFlipped) {
                     com.example.ui.components.CoachTipBanner(
                         icon = Icons.Filled.Flip,
                         messageEn = "Tap card anywhere to reveal Arabic meaning & examples",
@@ -626,7 +836,7 @@ fun FlashcardsScreen(
                         onDismiss = onDismissCoachTipFlip,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                     )
-                } else if (showCoachTipRate && isCardFlipped) {
+                } else if (showCoachTipRate && isActiveCardFlipped) {
                     com.example.ui.components.CoachTipBanner(
                         icon = Icons.Filled.Timer,
                         messageEn = "Rate your recall (Again, Hard, Good, Easy) to schedule spaced repetition",
@@ -640,15 +850,17 @@ fun FlashcardsScreen(
                 // 4. Bottom Action Bar:
                 // Mark Mastered & Detailed Definition stay ALWAYS visible.
                 // Again / Hard / Good / Easy (with intervals) appear ONLY after the card is flipped!
-                if (activeCard != null) {
-                    val isCurrentMastered = activeProgress?.isMastered ?: activeCard.isMastered
+                val cardForActions = displayedCard
+                if (cardForActions != null) {
+                    val isCurrentMastered = progressMap[cardForActions.cardKey]?.isMastered ?: cardForActions.isMastered
                     FlashcardBottomActionsBar(
-                        isCardFlipped = isCardFlipped,
+                        isCardFlipped = isActiveCardFlipped,
+                        isRatingLocked = isAnimatingRating,
                         isMastered = isCurrentMastered,
                         intervalPreview = intervalPreview,
                         onToggleMastered = onToggleMastered,
                         onOpenDetailedDefinition = {
-                            onOpenDetailedDefinition(activeCard.deck, activeCard.text)
+                            onOpenDetailedDefinition(cardForActions.deck, cardForActions.text)
                         },
                         onRateCard = handleRateCard
                     )
@@ -727,6 +939,7 @@ private fun FlipFlashcardItem(
     isMastered: Boolean,
     isFavorite: Boolean,
     isPlayingAudio: Boolean,
+    ratingColor: Color? = null,
     savedSentenceKeys: Set<String>,
     onFlipCard: () -> Unit,
     onPlayAudio: () -> Unit,
@@ -764,7 +977,7 @@ private fun FlipFlashcardItem(
             shape = RoundedCornerShape(24.dp),
             border = BorderStroke(
                 width = 1.dp,
-                color = if (isMastered) EmeraldAccent.copy(alpha = 0.65f) else GoldAccentBorder
+                color = ratingColor ?: if (isMastered) EmeraldAccent.copy(alpha = 0.65f) else GoldAccentBorder
             )
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
@@ -802,6 +1015,13 @@ private fun FlipFlashcardItem(
             }
         }
     }
+}
+
+private fun Sm2Rating.ratingAccent(): Color = when (this) {
+    Sm2Rating.AGAIN -> CoralAccent
+    Sm2Rating.HARD -> Color(0xFFF59E0B)
+    Sm2Rating.GOOD -> EmeraldAccent
+    Sm2Rating.EASY -> EmeraldAccent
 }
 
 /**
@@ -1339,6 +1559,7 @@ private fun FlashcardBackFace(
 @Composable
 private fun FlashcardBottomActionsBar(
     isCardFlipped: Boolean,
+    isRatingLocked: Boolean,
     isMastered: Boolean,
     intervalPreview: com.example.data.importer.Sm2IntervalPreview,
     onToggleMastered: () -> Unit,
@@ -1431,7 +1652,7 @@ private fun FlashcardBottomActionsBar(
         // Row 2: SM-2 Spaced Repetition Buttons (Again / Hard / Good / Easy)
         // Appear ONLY after the card is flipped!
         val sm2Alpha by animateFloatAsState(
-            targetValue = if (isCardFlipped) 1f else 0f,
+            targetValue = if (isCardFlipped && !isRatingLocked) 1f else 0f,
             animationSpec = tween(durationMillis = 280),
             label = "sm2ButtonsAlpha"
         )
@@ -1448,8 +1669,8 @@ private fun FlashcardBottomActionsBar(
                 intervalText = intervalPreview.againLabel,
                 accentColor = CoralAccent,
                 testTag = "sm2_button_again",
-                enabled = isCardFlipped,
-                onClick = { if (isCardFlipped) onRateCard(Sm2Rating.AGAIN) },
+                enabled = isCardFlipped && !isRatingLocked,
+                onClick = { if (isCardFlipped && !isRatingLocked) onRateCard(Sm2Rating.AGAIN) },
                 modifier = Modifier.weight(1f)
             )
             Sm2RateButton(
@@ -1457,17 +1678,17 @@ private fun FlashcardBottomActionsBar(
                 intervalText = intervalPreview.hardLabel,
                 accentColor = Color(0xFFF59E0B),
                 testTag = "sm2_button_hard",
-                enabled = isCardFlipped,
-                onClick = { if (isCardFlipped) onRateCard(Sm2Rating.HARD) },
+                enabled = isCardFlipped && !isRatingLocked,
+                onClick = { if (isCardFlipped && !isRatingLocked) onRateCard(Sm2Rating.HARD) },
                 modifier = Modifier.weight(1f)
             )
             Sm2RateButton(
                 label = "Good",
                 intervalText = intervalPreview.goodLabel,
-                accentColor = GoldAccent,
+                accentColor = EmeraldAccent,
                 testTag = "sm2_button_good",
-                enabled = isCardFlipped,
-                onClick = { if (isCardFlipped) onRateCard(Sm2Rating.GOOD) },
+                enabled = isCardFlipped && !isRatingLocked,
+                onClick = { if (isCardFlipped && !isRatingLocked) onRateCard(Sm2Rating.GOOD) },
                 modifier = Modifier.weight(1f)
             )
             Sm2RateButton(
@@ -1475,8 +1696,8 @@ private fun FlashcardBottomActionsBar(
                 intervalText = intervalPreview.easyLabel,
                 accentColor = EmeraldAccent,
                 testTag = "sm2_button_easy",
-                enabled = isCardFlipped,
-                onClick = { if (isCardFlipped) onRateCard(Sm2Rating.EASY) },
+                enabled = isCardFlipped && !isRatingLocked,
+                onClick = { if (isCardFlipped && !isRatingLocked) onRateCard(Sm2Rating.EASY) },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -1627,22 +1848,30 @@ private fun FlashcardSettingsDialog(
 @Composable
 private fun RatingStampOverlay(
     rating: Sm2Rating,
-    intervalText: String
+    scaleProvider: () -> Float,
+    alphaProvider: () -> Float,
+    modifier: Modifier = Modifier,
+    intervalText: String = ""
 ) {
     val (label, color, icon) = when (rating) {
         Sm2Rating.AGAIN -> Triple("AGAIN", CoralAccent, Icons.Default.Refresh)
         Sm2Rating.HARD -> Triple("HARD", Color(0xFFF59E0B), Icons.Default.FitnessCenter)
-        Sm2Rating.GOOD -> Triple("GOOD", GoldAccent, Icons.Default.ThumbUp)
+        Sm2Rating.GOOD -> Triple("GOOD", EmeraldAccent, Icons.Default.ThumbUp)
         Sm2Rating.EASY -> Triple("EASY", EmeraldAccent, Icons.Default.AutoAwesome)
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
-            .padding(top = 18.dp),
+            .padding(top = 10.dp),
         contentAlignment = Alignment.TopCenter
     ) {
         Surface(
+            modifier = Modifier.graphicsLayer {
+                scaleX = scaleProvider()
+                scaleY = scaleProvider()
+                alpha = alphaProvider()
+            },
             color = SurfaceElevatedDark.copy(alpha = 0.95f),
             shape = RoundedCornerShape(20.dp),
             border = BorderStroke(1.5.dp, color),
