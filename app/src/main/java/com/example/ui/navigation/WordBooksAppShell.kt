@@ -186,7 +186,7 @@ fun WordBooksAppShell(
     val placementQuizState by wordBooksViewModel.placementQuizState.collectAsStateWithLifecycle()
     val kickoffWords by wordBooksViewModel.kickoffWords.collectAsStateWithLifecycle()
     val isKickoffDismissed by wordBooksViewModel.isKickoffDismissed.collectAsStateWithLifecycle()
-    val recommendedWordsForLevel by wordBooksViewModel.recommendedWordsForLevel.collectAsStateWithLifecycle()
+    val levelProgressSummary by wordBooksViewModel.levelProgressSummary.collectAsStateWithLifecycle()
     val userLevel = studyPlanProfile?.level?.ifBlank { "B2" } ?: "B2"
     val activeQuizSession by wordBooksViewModel.activeQuizSession.collectAsStateWithLifecycle()
     val isQuizLoading by wordBooksViewModel.isQuizLoading.collectAsStateWithLifecycle()
@@ -500,7 +500,7 @@ fun WordBooksAppShell(
                         onOpenMasteredWords = wordBooksViewModel::openMasteredWords,
                         onOpenFavoriteWords = wordBooksViewModel::openFavoriteWords,
                         userLevel = userLevel,
-                        recommendedWords = recommendedWordsForLevel
+                        levelProgressSummary = levelProgressSummary
                     )
                 }
                 composable<AppRoute.Flashcards> {

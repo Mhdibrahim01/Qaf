@@ -608,8 +608,7 @@ $itemsJson
     }
 
     private fun containsArabicScript(text: String): Boolean {
-        if (text.isBlank()) return false
-        return text.any { ch -> ch in '\u0600'..'\u06FF' || ch in '\u0750'..'\u077F' || ch in '\uFB50'..'\uFDFF' || ch in '\uFE70'..'\uFEFF' }
+        return text.isNotBlank() && text.any { ch -> ch in '\u0600'..'\u06FF' || ch in '\u0750'..'\u077F' || ch in '\uFB50'..'\uFDFF' || ch in '\uFE70'..'\uFEFF' }
     }
 
     private fun isValidArabicMeaning(arabic: String): Boolean {
@@ -648,7 +647,7 @@ $itemsJson
      * Uses the Free Dictionary & Translation Engine (Google GTX Dictionary & Batch API + LibreTranslate + MyMemory + dictionaryapi.dev)
      * to translate words, examples, and missing IPAs with zero Gemini quota required.
      */
-    suspend fun translateWithMyMemoryFallback(entries: List<com.example.data.local.EntryEntity>): List<com.example.data.local.AiBatchSavePayload> {
+    suspend fun translateWithMyMemoryFallback(entries: List<EntryEntity>): List<com.example.data.local.AiBatchSavePayload> {
         return FreeDictionaryAndTranslationEngine.translateEntriesBatchFree(entries)
     }
 

@@ -766,12 +766,11 @@ object FreeDictionaryAndTranslationEngine {
     }
 
     private fun containsArabicScript(text: String): Boolean {
-        if (text.isBlank()) return false
-        return text.any { ch ->
+        return text.isNotBlank() && text.any { ch ->
             ch in '\u0600'..'\u06FF' ||
-                ch in '\u0750'..'\u077F' ||
-                ch in '\uFB50'..'\uFDFF' ||
-                ch in '\uFE70'..'\uFEFF'
+                    ch in '\u0750'..'\u077F' ||
+                    ch in '\uFB50'..'\uFDFF' ||
+                    ch in '\uFE70'..'\uFEFF'
         }
     }
 }

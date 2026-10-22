@@ -117,8 +117,7 @@ object OnboardingPlacementQuiz {
         isImportCompleted: Boolean,
         minEntries: Int = MIN_ENTRIES_PER_LEVEL
     ): Boolean {
-        if (isImportCompleted) return true
-        return dao.getEntryCountForLevelWithArabic(level) >= minEntries
+        return isImportCompleted || dao.getEntryCountForLevelWithArabic(level) >= minEntries
     }
 
     /**

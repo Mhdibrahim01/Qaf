@@ -13,9 +13,32 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        requestHighestSupportedRefreshRate()
         setContent {
             WordBooksTheme {
                 WordBooksAppShell()
+            }
+        }
+    }
+
+    /** Ask Android for the fastest mode available at the display's current resolution. */
+    @Suppress("DEPRECATION")
+    private fun requestHighestSupportedRefreshRate() {
+        val display = windowManager.defaultDisplay ?: return
+        val currentMode = display.mode ?: return
+        val fastestMode = display.supportedModes
+            .asSequence()
+            .filter {
+                it.physicalWidth == currentMode.physicalWidth &&
+                    it.physicalHeight == currentMode.physicalHeight
+            }
+            .maxByOrNull { it.refreshRate }
+            ?: return
+
+        if (fastestMode.refreshRate > currentMode.refreshRate) {
+            window.attributes = window.attributes.apply {
+                preferredDisplayModeId = fastestMode.modeId
+                preferredRefreshRate = fastestMode.refreshRate
             }
         }
     }

@@ -598,7 +598,7 @@ class ExampleRobolectricTest {
 
         // 1. OFFLINE (Airplane Mode): Import from assets and verify sample lessons
         var isOnlineMock = false
-        val grammarRepo = com.example.data.grammar.GrammarRepository(context, dao)
+        val grammarRepo = GrammarRepository(context, dao)
         grammarRepo.importGrammarLessonsIfNeeded(force = true)
 
         val lessons = dao.getAllGrammarLessons()
@@ -611,8 +611,8 @@ class ExampleRobolectricTest {
         assertEquals("file", lesson1.source)
         assertTrue(lesson1.explanationAr.isNotBlank())
 
-        val jsonHelper = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
-        val exercises = jsonHelper.decodeFromString<List<com.example.data.local.GrammarExerciseItem>>(lesson1.exercisesJson)
+        val jsonHelper = Json { ignoreUnknownKeys = true }
+        val exercises = jsonHelper.decodeFromString<List<GrammarExerciseItem>>(lesson1.exercisesJson)
         assertTrue(exercises.size >= 3)
         assertEquals("mcq", exercises[0].type)
 
@@ -659,7 +659,7 @@ class ExampleRobolectricTest {
         assertEquals(true, progressAfterReimport.isCompleted)
 
         // Offline AI check: in airplane mode, AI action throws/fails gracefully
-        val grammarAiService = com.example.data.grammar.GrammarAiService(
+        val grammarAiService = GrammarAiService(
             repository = grammarRepo,
             isAllowAiEnabled = { true },
             isOnline = { isOnlineMock }
@@ -716,7 +716,7 @@ class ExampleRobolectricTest {
         assertTrue(chatResult.isSuccess)
         assertTrue(chatResult.getOrThrow().contains("does"))
 
-        val chatHistory = dao.getAiHistory(com.example.data.grammar.GrammarRepository.CONTEXT_CHAT, lesson1.id)
+        val chatHistory = dao.getAiHistory(GrammarRepository.CONTEXT_CHAT, lesson1.id)
         assertEquals(2, chatHistory.size)
         assertEquals("user", chatHistory[0].role)
         assertEquals("assistant", chatHistory[1].role)
