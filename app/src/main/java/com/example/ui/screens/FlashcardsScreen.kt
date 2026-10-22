@@ -1,8 +1,12 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -38,13 +42,17 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Flip
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Info
@@ -70,8 +78,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -180,6 +190,7 @@ fun FlashcardsScreen(
     }
 
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var isDistractionFreeMode by remember { mutableStateOf(false) }
 
     val safeIndex = if (cards.isEmpty()) 0 else currentIndex.coerceIn(0, cards.size - 1)
     val activeCard = cards.getOrNull(safeIndex)
@@ -196,6 +207,11 @@ fun FlashcardsScreen(
         }
     }
 
+    val handleRateCard: (Sm2Rating) -> Unit = { rating ->
+        onRateCard(rating)
+        onSetCardFlipped(false)
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -210,121 +226,125 @@ fun FlashcardsScreen(
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // 0. Mode Switcher: Word Books | Flashcards
-            BooksModeSwitcher(
-                isFlashcardsActive = true,
-                dueTodayCount = reviewDueTodayCount,
-                onSelectBooksMode = onSwitchToBooks,
-                onSelectFlashcardsMode = {}
-            )
-
-            // 1. Deck selector bar + Due Today chip + Settings button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (reviewDueTodayCount > 0 || activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID) {
-                        val isDueSelected = activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID
-                        FilterChip(
-                            selected = isDueSelected,
-                            onClick = { onSelectDeck(DataImportRepository.DUE_TODAY_DECK_ID) },
-                            label = {
-                                Text(
-                                    text = "Due Today ($reviewDueTodayCount)",
-                                    fontWeight = if (isDueSelected) FontWeight.Bold else FontWeight.Medium
-                                )
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = GoldAccentDim,
-                                selectedLabelColor = GoldAccent,
-                                containerColor = SurfaceDark,
-                                labelColor = TextSecondary
-                            ),
-                            border = FilterChipDefaults.filterChipBorder(
-                                enabled = true,
-                                selected = isDueSelected,
-                                borderColor = BorderDark,
-                                selectedBorderColor = GoldAccent
-                            ),
-                            modifier = Modifier.testTag("flashcard_deck_chip_due_today")
-                        )
-                    }
-
-                    studyDecks.forEach { deck ->
-                        val isSelected = deck.id == activeDeckId
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { onSelectDeck(deck.id) },
-                            label = {
-                                Text(
-                                    text = deck.title,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                )
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = GoldAccentDim,
-                                selectedLabelColor = GoldAccent,
-                                containerColor = SurfaceDark,
-                                labelColor = TextSecondary
-                            ),
-                            border = FilterChipDefaults.filterChipBorder(
-                                enabled = true,
-                                selected = isSelected,
-                                borderColor = BorderDark,
-                                selectedBorderColor = GoldAccent
-                            ),
-                            modifier = Modifier.testTag("flashcard_deck_chip_${deck.id}")
-                        )
-                    }
-                }
-
-                // Flashcards Settings Button (Card direction + Auto-show answer)
-                Surface(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable { showSettingsDialog = true }
-                        .testTag("flashcard_settings_button"),
-                    color = if (cardDirection != FlashcardDirection.ENGLISH_TO_ARABIC || autoShowAnswer) {
-                        GoldAccentDim
-                    } else {
-                        SurfaceDark
-                    },
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(
-                        1.dp,
-                        if (cardDirection != FlashcardDirection.ENGLISH_TO_ARABIC || autoShowAnswer) {
-                            GoldAccent
-                        } else {
-                            BorderDark
-                        }
+            // 0. Mode Switcher & Deck Selector (AnimatedVisibility for Distraction-Free Mode)
+            AnimatedVisibility(visible = !isDistractionFreeMode) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    BooksModeSwitcher(
+                        isFlashcardsActive = true,
+                        dueTodayCount = reviewDueTodayCount,
+                        onSelectBooksMode = onSwitchToBooks,
+                        onSelectFlashcardsMode = {}
                     )
-                ) {
+
+                    // 1. Deck selector bar + Due Today chip + Settings button
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Settings,
-                            contentDescription = "Flashcard settings",
-                            tint = GoldAccent,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        if (autoShowAnswer) {
-                            Icon(
-                                imageVector = Icons.Default.Timer,
-                                contentDescription = "Auto-show answer active",
-                                tint = GoldAccent,
-                                modifier = Modifier.size(14.dp)
+                        Row(
+                            modifier = Modifier
+                                .weight(1f)
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (reviewDueTodayCount > 0 || activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID) {
+                                val isDueSelected = activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID
+                                FilterChip(
+                                    selected = isDueSelected,
+                                    onClick = { onSelectDeck(DataImportRepository.DUE_TODAY_DECK_ID) },
+                                    label = {
+                                        Text(
+                                            text = "Due Today ($reviewDueTodayCount)",
+                                            fontWeight = if (isDueSelected) FontWeight.Bold else FontWeight.Medium
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = GoldAccentDim,
+                                        selectedLabelColor = GoldAccent,
+                                        containerColor = SurfaceDark,
+                                        labelColor = TextSecondary
+                                    ),
+                                    border = FilterChipDefaults.filterChipBorder(
+                                        enabled = true,
+                                        selected = isDueSelected,
+                                        borderColor = BorderDark,
+                                        selectedBorderColor = GoldAccent
+                                    ),
+                                    modifier = Modifier.testTag("flashcard_deck_chip_due_today")
+                                )
+                            }
+
+                            studyDecks.forEach { deck ->
+                                val isSelected = deck.id == activeDeckId
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = { onSelectDeck(deck.id) },
+                                    label = {
+                                        Text(
+                                            text = deck.title,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = GoldAccentDim,
+                                        selectedLabelColor = GoldAccent,
+                                        containerColor = SurfaceDark,
+                                        labelColor = TextSecondary
+                                    ),
+                                    border = FilterChipDefaults.filterChipBorder(
+                                        enabled = true,
+                                        selected = isSelected,
+                                        borderColor = BorderDark,
+                                        selectedBorderColor = GoldAccent
+                                    ),
+                                    modifier = Modifier.testTag("flashcard_deck_chip_${deck.id}")
+                                )
+                            }
+                        }
+
+                        // Flashcards Settings Button (Card direction + Auto-show answer)
+                        Surface(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { showSettingsDialog = true }
+                                .testTag("flashcard_settings_button"),
+                            color = if (cardDirection != FlashcardDirection.ENGLISH_TO_ARABIC || autoShowAnswer) {
+                                GoldAccentDim
+                            } else {
+                                SurfaceDark
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(
+                                1.dp,
+                                if (cardDirection != FlashcardDirection.ENGLISH_TO_ARABIC || autoShowAnswer) {
+                                    GoldAccent
+                                } else {
+                                    BorderDark
+                                }
                             )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Settings,
+                                    contentDescription = "Flashcard settings",
+                                    tint = GoldAccent,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                if (autoShowAnswer) {
+                                    Icon(
+                                        imageVector = Icons.Default.Timer,
+                                        contentDescription = "Auto-show answer active",
+                                        tint = GoldAccent,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -395,18 +415,53 @@ fun FlashcardsScreen(
                             }
                         }
 
-                        IconButton(
-                            onClick = { if (safeIndex + 1 < cards.size) onIndexChanged(safeIndex + 1) },
-                            enabled = safeIndex + 1 < cards.size,
-                            modifier = Modifier
-                                .size(38.dp)
-                                .testTag("flashcard_next_button")
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                contentDescription = "Next card",
-                                tint = if (safeIndex + 1 < cards.size) TextPrimary else TextMuted
-                            )
+                            Surface(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { isDistractionFreeMode = !isDistractionFreeMode }
+                                    .testTag("distraction_free_toggle_btn"),
+                                color = if (isDistractionFreeMode) GoldAccentDim else SurfaceElevatedDark,
+                                border = BorderStroke(1.dp, if (isDistractionFreeMode) GoldAccent else BorderDark)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = "Toggle Focus Mode",
+                                        tint = GoldAccent,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = if (isDistractionFreeMode) "Exit Focus" else "Focus",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp,
+                                            color = GoldAccent
+                                        )
+                                    )
+                                }
+                            }
+
+                            IconButton(
+                                onClick = { if (safeIndex + 1 < cards.size) onIndexChanged(safeIndex + 1) },
+                                enabled = safeIndex + 1 < cards.size,
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .testTag("flashcard_next_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    contentDescription = "Next card",
+                                    tint = if (safeIndex + 1 < cards.size) TextPrimary else TextMuted
+                                )
+                            }
                         }
                     }
 
@@ -488,7 +543,10 @@ fun FlashcardsScreen(
                 // Keep pager synced when currentIndex changes via SM-2 rating or restored state
                 LaunchedEffect(safeIndex, cards.size) {
                     if (pagerState.currentPage != safeIndex && safeIndex in cards.indices) {
-                        pagerState.scrollToPage(safeIndex)
+                        pagerState.animateScrollToPage(
+                            page = safeIndex,
+                            animationSpec = tween(durationMillis = 360, easing = FastOutSlowInEasing)
+                        )
                     }
                 }
 
@@ -592,7 +650,7 @@ fun FlashcardsScreen(
                         onOpenDetailedDefinition = {
                             onOpenDetailedDefinition(activeCard.deck, activeCard.text)
                         },
-                        onRateCard = onRateCard
+                        onRateCard = handleRateCard
                     )
                 }
             }
@@ -674,7 +732,8 @@ private fun FlipFlashcardItem(
     onPlayAudio: () -> Unit,
     onToggleFavorite: () -> Unit,
     onToggleSaveSentence: (String, String) -> Unit,
-    onOpenDetailedDefinition: () -> Unit
+    onOpenDetailedDefinition: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val rotation by animateFloatAsState(
         targetValue = if (isFlipped) 180f else 0f,
@@ -683,56 +742,63 @@ private fun FlipFlashcardItem(
     )
     val showingBack = rotation > 90f
 
-    Surface(
-        modifier = Modifier
-            .fillMaxSize()
-            .graphicsLayer {
-                rotationY = rotation
-                cameraDistance = 14f * density
-            }
-            .clip(RoundedCornerShape(24.dp))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onFlipCard
-            )
-            .testTag("flashcard_card_${card.text}"),
-        color = SurfaceDark,
-        shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(
-            width = 1.dp,
-            color = if (isMastered) EmeraldAccent.copy(alpha = 0.65f) else GoldAccentBorder
-        )
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
     ) {
-        if (!showingBack) {
-            FlashcardFrontFace(
-                card = card,
-                effectiveDirection = effectiveDirection,
-                autoShowAnswer = autoShowAnswer,
-                isFavorite = isFavorite,
-                isPlayingAudio = isPlayingAudio,
-                onPlayAudio = onPlayAudio,
-                onToggleFavorite = onToggleFavorite,
-                onOpenDetailedDefinition = onOpenDetailedDefinition
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { rotationY = 180f }
-            ) {
-                FlashcardBackFace(
-                    card = card,
-                    effectiveDirection = effectiveDirection,
-                    isMastered = isMastered,
-                    isFavorite = isFavorite,
-                    isPlayingAudio = isPlayingAudio,
-                    savedSentenceKeys = savedSentenceKeys,
-                    onPlayAudio = onPlayAudio,
-                    onToggleFavorite = onToggleFavorite,
-                    onToggleSaveSentence = onToggleSaveSentence,
-                    onOpenDetailedDefinition = onOpenDetailedDefinition
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    rotationY = rotation
+                    cameraDistance = 14f * density
+                }
+                .clip(RoundedCornerShape(24.dp))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onFlipCard
                 )
+                .testTag("flashcard_card_${card.text}"),
+            color = SurfaceDark,
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(
+                width = 1.dp,
+                color = if (isMastered) EmeraldAccent.copy(alpha = 0.65f) else GoldAccentBorder
+            )
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (!showingBack) {
+                    FlashcardFrontFace(
+                        card = card,
+                        effectiveDirection = effectiveDirection,
+                        autoShowAnswer = autoShowAnswer,
+                        isFavorite = isFavorite,
+                        isPlayingAudio = isPlayingAudio,
+                        onPlayAudio = onPlayAudio,
+                        onToggleFavorite = onToggleFavorite,
+                        onOpenDetailedDefinition = onOpenDetailedDefinition
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer { rotationY = 180f }
+                    ) {
+                        FlashcardBackFace(
+                            card = card,
+                            effectiveDirection = effectiveDirection,
+                            isMastered = isMastered,
+                            isFavorite = isFavorite,
+                            isPlayingAudio = isPlayingAudio,
+                            savedSentenceKeys = savedSentenceKeys,
+                            onPlayAudio = onPlayAudio,
+                            onToggleFavorite = onToggleFavorite,
+                            onToggleSaveSentence = onToggleSaveSentence,
+                            onOpenDetailedDefinition = onOpenDetailedDefinition
+                        )
+                    }
+                }
             }
         }
     }
@@ -1364,50 +1430,55 @@ private fun FlashcardBottomActionsBar(
 
         // Row 2: SM-2 Spaced Repetition Buttons (Again / Hard / Good / Easy)
         // Appear ONLY after the card is flipped!
-        AnimatedVisibility(
-            visible = isCardFlipped,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
+        val sm2Alpha by animateFloatAsState(
+            targetValue = if (isCardFlipped) 1f else 0f,
+            animationSpec = tween(durationMillis = 280),
+            label = "sm2ButtonsAlpha"
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer { alpha = sm2Alpha }
+                .testTag("flashcard_sm2_row"),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("flashcard_sm2_row"),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Sm2RateButton(
-                    label = "Again",
-                    intervalText = intervalPreview.againLabel,
-                    accentColor = CoralAccent,
-                    testTag = "sm2_button_again",
-                    onClick = { onRateCard(Sm2Rating.AGAIN) },
-                    modifier = Modifier.weight(1f)
-                )
-                Sm2RateButton(
-                    label = "Hard",
-                    intervalText = intervalPreview.hardLabel,
-                    accentColor = Color(0xFFF59E0B),
-                    testTag = "sm2_button_hard",
-                    onClick = { onRateCard(Sm2Rating.HARD) },
-                    modifier = Modifier.weight(1f)
-                )
-                Sm2RateButton(
-                    label = "Good",
-                    intervalText = intervalPreview.goodLabel,
-                    accentColor = GoldAccent,
-                    testTag = "sm2_button_good",
-                    onClick = { onRateCard(Sm2Rating.GOOD) },
-                    modifier = Modifier.weight(1f)
-                )
-                Sm2RateButton(
-                    label = "Easy",
-                    intervalText = intervalPreview.easyLabel,
-                    accentColor = EmeraldAccent,
-                    testTag = "sm2_button_easy",
-                    onClick = { onRateCard(Sm2Rating.EASY) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            Sm2RateButton(
+                label = "Again",
+                intervalText = intervalPreview.againLabel,
+                accentColor = CoralAccent,
+                testTag = "sm2_button_again",
+                enabled = isCardFlipped,
+                onClick = { if (isCardFlipped) onRateCard(Sm2Rating.AGAIN) },
+                modifier = Modifier.weight(1f)
+            )
+            Sm2RateButton(
+                label = "Hard",
+                intervalText = intervalPreview.hardLabel,
+                accentColor = Color(0xFFF59E0B),
+                testTag = "sm2_button_hard",
+                enabled = isCardFlipped,
+                onClick = { if (isCardFlipped) onRateCard(Sm2Rating.HARD) },
+                modifier = Modifier.weight(1f)
+            )
+            Sm2RateButton(
+                label = "Good",
+                intervalText = intervalPreview.goodLabel,
+                accentColor = GoldAccent,
+                testTag = "sm2_button_good",
+                enabled = isCardFlipped,
+                onClick = { if (isCardFlipped) onRateCard(Sm2Rating.GOOD) },
+                modifier = Modifier.weight(1f)
+            )
+            Sm2RateButton(
+                label = "Easy",
+                intervalText = intervalPreview.easyLabel,
+                accentColor = EmeraldAccent,
+                testTag = "sm2_button_easy",
+                enabled = isCardFlipped,
+                onClick = { if (isCardFlipped) onRateCard(Sm2Rating.EASY) },
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
@@ -1554,40 +1625,144 @@ private fun FlashcardSettingsDialog(
 }
 
 @Composable
+private fun RatingStampOverlay(
+    rating: Sm2Rating,
+    intervalText: String
+) {
+    val (label, color, icon) = when (rating) {
+        Sm2Rating.AGAIN -> Triple("AGAIN", CoralAccent, Icons.Default.Refresh)
+        Sm2Rating.HARD -> Triple("HARD", Color(0xFFF59E0B), Icons.Default.FitnessCenter)
+        Sm2Rating.GOOD -> Triple("GOOD", GoldAccent, Icons.Default.ThumbUp)
+        Sm2Rating.EASY -> Triple("EASY", EmeraldAccent, Icons.Default.AutoAwesome)
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = 18.dp),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Surface(
+            color = SurfaceElevatedDark.copy(alpha = 0.95f),
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.5.dp, color),
+            shadowElevation = 6.dp
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = color,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    ),
+                    color = color
+                )
+                if (intervalText.isNotBlank()) {
+                    Text(
+                        text = "• +$intervalText",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = FontFamily.Monospace
+                        ),
+                        color = color.copy(alpha = 0.9f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun Sm2RateButton(
     label: String,
     intervalText: String,
     accentColor: Color,
     testTag: String,
+    enabled: Boolean = true,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val icon = when (label.lowercase()) {
+        "again" -> Icons.Default.Refresh
+        "hard" -> Icons.Default.FitnessCenter
+        "good" -> Icons.Default.ThumbUp
+        else -> Icons.Default.AutoAwesome
+    }
+
+    var isPressed by remember { mutableStateOf(false) }
+    val buttonScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.88f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
+        label = "sm2RateBtnScale"
+    )
+
     Surface(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
+            .graphicsLayer {
+                scaleX = buttonScale
+                scaleY = buttonScale
+            }
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(enabled = enabled) {
+                isPressed = true
+                onClick()
+            }
             .testTag(testTag),
         color = SurfaceDark,
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.55f))
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.5.dp, accentColor.copy(alpha = 0.70f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 10.dp, horizontal = 6.dp),
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            accentColor.copy(alpha = 0.14f),
+                            SurfaceDark
+                        )
+                    )
+                )
+                .padding(vertical = 10.dp, horizontal = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
-            Text(
-                text = intervalText,
-                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
-                color = TextSecondary
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = accentColor,
+                modifier = Modifier.size(17.dp)
             )
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                 color = accentColor
             )
+            Text(
+                text = intervalText,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 11.sp
+                ),
+                color = TextSecondary
+            )
+        }
+    }
+
+    LaunchedEffect(isPressed) {
+        if (isPressed) {
+            delay(120)
+            isPressed = false
         }
     }
 }

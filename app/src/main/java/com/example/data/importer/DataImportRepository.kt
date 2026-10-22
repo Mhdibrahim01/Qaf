@@ -672,10 +672,10 @@ class DataImportRepository(
     fun getPagedEntries(filter: WordFilterState): Flow<PagingData<EntryEntity>> {
         return Pager(
             config = PagingConfig(
-                pageSize = 60,
-                prefetchDistance = 30,
+                pageSize = 40,
+                prefetchDistance = 20,
                 enablePlaceholders = true,
-                initialLoadSize = 120
+                initialLoadSize = 60
             ),
             pagingSourceFactory = {
                 if (filter.onlyFavorites || filter.deckId == SAVED_WORDS_DECK_ID) {

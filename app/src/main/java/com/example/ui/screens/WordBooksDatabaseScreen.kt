@@ -1058,8 +1058,12 @@ private fun PagedDeckWordListScreen(
         pagedEntries.loadState.refresh is LoadState.NotLoading
 
     val currentDeckId = deck?.id ?: filterState.deckId
-    val currentStudyState = deckStudyStates.find { it.deckId == currentDeckId }
-    val checkpointWord = currentStudyState?.lastWordText?.trim().orEmpty()
+    val currentStudyState = remember(deckStudyStates, currentDeckId) {
+        deckStudyStates.find { it.deckId == currentDeckId }
+    }
+    val checkpointWord = remember(currentStudyState) {
+        currentStudyState?.lastWordText?.trim().orEmpty()
+    }
     val hasCheckpoint = checkpointWord.isNotBlank()
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -1136,13 +1140,21 @@ private fun PagedDeckWordListScreen(
                             )
 
                             val totalCount = if (deck != null) deck.rowCount else totalEntriesCount
-                            val studiedWords = progressMap.values.count { 
-                                (currentDeckId.isEmpty() || it.deck == currentDeckId) && (it.isMastered || it.repetitions > 0)
-                            }.coerceAtLeast(deck?.masteredCount ?: masteredCount)
-                            val leftWords = (totalCount - studiedWords).coerceAtLeast(0)
-                            val progressFraction = if (totalCount > 0) (studiedWords.toFloat() / totalCount.toFloat()).coerceIn(0f, 1f) else 0f
-                            val visualProgressFraction = if (studiedWords > 0) progressFraction.coerceIn(0.02f, 1f) else 0f
-                            val progressPercentText = formatProgressPercent(studiedWords, totalCount)
+                            val studiedWords = remember(progressMap, currentDeckId, deck?.masteredCount, masteredCount) {
+                                progressMap.values.count { 
+                                    (currentDeckId.isEmpty() || it.deck == currentDeckId) && (it.isMastered || it.repetitions > 0)
+                                }.coerceAtLeast(deck?.masteredCount ?: masteredCount)
+                            }
+                            val leftWords = remember(totalCount, studiedWords) { (totalCount - studiedWords).coerceAtLeast(0) }
+                            val progressFraction = remember(totalCount, studiedWords) {
+                                if (totalCount > 0) (studiedWords.toFloat() / totalCount.toFloat()).coerceIn(0f, 1f) else 0f
+                            }
+                            val visualProgressFraction = remember(studiedWords, progressFraction) {
+                                if (studiedWords > 0) progressFraction.coerceIn(0.02f, 1f) else 0f
+                            }
+                            val progressPercentText = remember(studiedWords, totalCount) {
+                                formatProgressPercent(studiedWords, totalCount)
+                            }
 
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -1706,7 +1718,7 @@ private fun PagedDeckWordListScreen(
                     val itemCount = pagedEntries.itemCount
                     items(
                         count = itemCount,
-                        key = pagedEntries.itemKey { "${it.deck}_${it.id}_${it.text}" },
+                        key = pagedEntries.itemKey { it.id },
                         contentType = pagedEntries.itemContentType { "word_entry_row" }
                     ) { index ->
                         val entry = pagedEntries[index]
@@ -1716,6 +1728,28 @@ private fun PagedDeckWordListScreen(
                             val isFirst = index == 0
                             val isLast = index == itemCount - 1
                             val isCurrentCheckpoint = hasCheckpoint && entry.text.equals(checkpointWord, ignoreCase = true)
+                            val onPlayAudioLambda = remember(entry.text, entry.audioUrl, entry.deck, index) {
+                                {
+                                    onPlayAudio(entry.text, entry.audioUrl)
+                                    onSetCheckpoint(entry.deck, entry.text, index)
+                                }
+                            }
+                            val onToggleMasteredLambda = remember(entry.deck, entry.text) {
+                                { onToggleMastered(entry.deck, entry.text) }
+                            }
+                            val onToggleFavoriteLambda = remember(entry.deck, entry.text) {
+                                { onToggleFavorite(entry.deck, entry.text) }
+                            }
+                            val onSetCheckpointLambda = remember(entry.deck, entry.text, index) {
+                                { onSetCheckpoint(entry.deck, entry.text, index) }
+                            }
+                            val onOpenDetailLambda = remember(entry.deck, entry.text, index) {
+                                {
+                                    onOpenDetailedDefinition(entry.deck, entry.text)
+                                    onSetCheckpoint(entry.deck, entry.text, index)
+                                }
+                            }
+
                             WordBookEntryRow(
                                 entry = entry,
                                 isMastered = prog?.isMastered ?: false,
@@ -1725,17 +1759,11 @@ private fun PagedDeckWordListScreen(
                                 isCheckpoint = isCurrentCheckpoint,
                                 isFirstInCard = isFirst,
                                 isLastInCard = isLast,
-                                onPlayAudio = {
-                                    onPlayAudio(entry.text, entry.audioUrl)
-                                    onSetCheckpoint(entry.deck, entry.text, index)
-                                },
-                                onToggleMastered = { onToggleMastered(entry.deck, entry.text) },
-                                onToggleFavorite = { onToggleFavorite(entry.deck, entry.text) },
-                                onSetCheckpoint = { onSetCheckpoint(entry.deck, entry.text, index) },
-                                onOpenDetail = {
-                                    onOpenDetailedDefinition(entry.deck, entry.text)
-                                    onSetCheckpoint(entry.deck, entry.text, index)
-                                }
+                                onPlayAudio = onPlayAudioLambda,
+                                onToggleMastered = onToggleMasteredLambda,
+                                onToggleFavorite = onToggleFavoriteLambda,
+                                onSetCheckpoint = onSetCheckpointLambda,
+                                onOpenDetail = onOpenDetailLambda
                             )
                         } else {
                             WordBookEntryPlaceholderRow()
@@ -2056,6 +2084,9 @@ fun WordBookEntryRow(
             .take(3)
             .joinToString("، ")
     }
+    val containsLatin = remember(formattedArabic) {
+        formattedArabic.any { (it in 'a'..'z') || (it in 'A'..'Z') }
+    }
 
     Surface(
         modifier = modifier
@@ -2148,18 +2179,35 @@ fun WordBookEntryRow(
                     Spacer(modifier = Modifier.height(2.dp))
 
                     if (formattedArabic.isNotBlank()) {
-                        BidiText(
-                            text = formattedArabic,
-                            style = ArabicTypography.bodyMedium.copy(
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Medium,
-                                letterSpacing = 0.sp
-                            ),
-                            color = TextPrimary,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            fillMaxWidth = false
-                        )
+                        if (!containsLatin) {
+                            Text(
+                                text = formattedArabic,
+                                style = ArabicTypography.bodyMedium.copy(
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    letterSpacing = 0.sp,
+                                    textDirection = TextDirection.Rtl,
+                                    textAlign = TextAlign.Right
+                                ),
+                                color = TextPrimary,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        } else {
+                            BidiText(
+                                text = formattedArabic,
+                                style = ArabicTypography.bodyMedium.copy(
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    letterSpacing = 0.sp
+                                ),
+                                color = TextPrimary,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                fillMaxWidth = false
+                            )
+                        }
                     } else {
                         Text(
                             text = "Tap to look up",
