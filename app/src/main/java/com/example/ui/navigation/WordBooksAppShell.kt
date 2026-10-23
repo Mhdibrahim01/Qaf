@@ -92,6 +92,7 @@ import com.example.ui.screens.MoreScreen
 import com.example.ui.screens.PlanScreen
 import com.example.ui.screens.ReadingScreen
 import com.example.ui.screens.SentencesScreen
+import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.WordBooksDatabaseScreen
 import com.example.ui.viewmodel.WordBooksViewModel
 import com.example.ui.theme.ArabicTypography
@@ -149,6 +150,11 @@ fun WordBooksAppShell(
     val sentenceSortOrder by wordBooksViewModel.sentenceSortOrder.collectAsStateWithLifecycle()
     val showSentenceTranslation by wordBooksViewModel.showSentenceTranslation.collectAsStateWithLifecycle()
     val ttsSpeechRate by wordBooksViewModel.ttsSpeechRate.collectAsStateWithLifecycle()
+    val preferredAccentUk by wordBooksViewModel.preferredAccentUk.collectAsStateWithLifecycle()
+    val autoPlayPronunciation by wordBooksViewModel.autoPlayPronunciation.collectAsStateWithLifecycle()
+    val ttsEngineMode by wordBooksViewModel.ttsEngineMode.collectAsStateWithLifecycle()
+    val neuralVoicePackState by wordBooksViewModel.neuralVoicePackState.collectAsStateWithLifecycle()
+    val isDeveloperModeEnabled by wordBooksViewModel.isDeveloperModeEnabled.collectAsStateWithLifecycle()
     val dictationIgnorePunctuation by wordBooksViewModel.dictationIgnorePunctuation.collectAsStateWithLifecycle()
     val autoPlayPracticeAudio by wordBooksViewModel.autoPlayPracticeAudio.collectAsStateWithLifecycle()
     val explainingSentenceIds by wordBooksViewModel.explainingSentenceIds.collectAsStateWithLifecycle()
@@ -192,11 +198,12 @@ fun WordBooksAppShell(
     val activeQuizSession by wordBooksViewModel.activeQuizSession.collectAsStateWithLifecycle()
     val isQuizLoading by wordBooksViewModel.isQuizLoading.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
-    var isSettingsOpen by remember { mutableStateOf(false) }
     var isApiKeyDialogOpen by remember { mutableStateOf(false) }
     val apiKeyTrigger by wordBooksViewModel.apiKeyUpdatedTrigger.collectAsStateWithLifecycle()
     val currentKeySource = remember(apiKeyTrigger) { wordBooksViewModel.getApiKeySource() }
     val customApiKey = remember(apiKeyTrigger) { wordBooksViewModel.getCustomApiKey() }
+    val currentEngineMode = remember(apiKeyTrigger) { wordBooksViewModel.getEngineMode() }
+    val isApiKeyConfigured = remember(apiKeyTrigger) { wordBooksViewModel.isApiKeyConfigured() }
     val pagedEntries = wordBooksViewModel.pagedEntries.collectAsLazyPagingItems()
 
     val resolvedOnboarding = onboardingState
@@ -245,6 +252,7 @@ fun WordBooksAppShell(
         currentDestination?.hasRoute(AppRoute.Plan::class) == true -> AppRoute.Plan
         currentDestination?.hasRoute(AppRoute.Labs::class) == true -> AppRoute.Labs
         currentDestination?.hasRoute(AppRoute.CorrectionNotebook::class) == true -> AppRoute.CorrectionNotebook
+        currentDestination?.hasRoute(AppRoute.Settings::class) == true -> AppRoute.Settings
         currentDestination?.hasRoute(AppRoute.More::class) == true -> AppRoute.More
         else -> AppRoute.Home
     }
@@ -291,11 +299,13 @@ fun WordBooksAppShell(
                 wordBooksViewModel.selectReadingText(null)
             }
             !navController.popBackStack() -> {
-                if (currentRoute in listOf(
+                if (currentRoute == AppRoute.Labs) {
+                    navController.navigate(AppRoute.Settings) { launchSingleTop = true }
+                } else if (currentRoute in listOf(
                         AppRoute.Sentences,
                         AppRoute.Plan,
                         AppRoute.CorrectionNotebook,
-                        AppRoute.Labs
+                        AppRoute.Settings
                     )
                 ) {
                     navController.navigate(AppRoute.More) { launchSingleTop = true }
@@ -333,6 +343,7 @@ fun WordBooksAppShell(
         }
         AppRoute.Plan -> Triple("Study Plan", "Daily Adaptive Checklist", "خطة التعلم")
         AppRoute.CorrectionNotebook -> Triple("Correction Notebook", "Spaced Review", "دفتر تصحيح الأخطاء")
+        AppRoute.Settings -> Triple("Settings", "Audio, Study Goals, Backups & AI", "الإعدادات")
         AppRoute.Labs -> Triple("Labs & Diagnostics", "Database Tools", "المختبر")
     }
 
@@ -351,15 +362,19 @@ fun WordBooksAppShell(
                     canNavigateBack = canNavigateBack,
                     onNavigateBack = onNavigateBack,
                     actions = {
-                        IconButton(
-                            onClick = { isSettingsOpen = true },
-                            modifier = Modifier.testTag("btn_top_settings")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Settings,
-                                contentDescription = "Settings",
-                                tint = TextMuted
-                            )
+                        if (currentRoute != AppRoute.Settings) {
+                            IconButton(
+                                onClick = {
+                                    navController.navigate(AppRoute.Settings) { launchSingleTop = true }
+                                },
+                                modifier = Modifier.testTag("btn_top_settings")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Settings,
+                                    contentDescription = "Settings",
+                                    tint = TextMuted
+                                )
+                            }
                         }
                     }
                 )
@@ -497,6 +512,7 @@ fun WordBooksAppShell(
                         onSaveUserArabic = wordBooksViewModel::saveUserArabicForEntry,
                         onToggleSaveSentence = wordBooksViewModel::toggleSaveExampleSentence,
                         onPlayAudio = wordBooksViewModel::playAudio,
+                        onPlayAudioSlow = { word, url -> wordBooksViewModel.playAudioSlow(word, url) },
                         onPlayVoiceAudio = wordBooksViewModel::playWordVoiceAudio,
                         onSpeakSentenceTts = wordBooksViewModel::speakSentenceTts,
                         onReverifyImport = { wordBooksViewModel.startImportIfNeeded(forceRecheck = true) },
@@ -551,6 +567,7 @@ fun WordBooksAppShell(
                         onToggleMastered = wordBooksViewModel::toggleCurrentFlashcardMastered,
                         onToggleFavorite = wordBooksViewModel::toggleCurrentFlashcardFavorite,
                         onPlayAudio = wordBooksViewModel::playAudio,
+                        onPlayAudioSlow = { word, url -> wordBooksViewModel.playAudioSlow(word, url) },
                         onPlayVoiceAudio = wordBooksViewModel::playWordVoiceAudio,
                         onSpeakSentenceTts = wordBooksViewModel::speakSentenceTts,
                         onOpenDetailedDefinition = wordBooksViewModel::openDetailedDefinition,
@@ -686,6 +703,7 @@ fun WordBooksAppShell(
                         onImportJsonUris = { uris, cb -> wordBooksViewModel.importReadingTextsFromUris(uris, cb) },
                         onImportJsonText = wordBooksViewModel::importReadingTextsFromText,
                         onSpeakSentence = { wordBooksViewModel.speakSentenceTts(it) },
+                        onSpeakSentenceSlow = { wordBooksViewModel.speakSentenceSlow(it) },
                         onStopAudio = { wordBooksViewModel.stopAudio() },
                         ttsSpeechRate = ttsSpeechRate,
                         userLevel = userLevel,
@@ -853,9 +871,13 @@ fun WordBooksAppShell(
                         onNavigateToSentences = {
                             navController.navigate(AppRoute.Sentences) { launchSingleTop = true }
                         },
-                        onOpenSettings = { isSettingsOpen = true },
+                        onOpenSettings = {
+                            navController.navigate(AppRoute.Settings) { launchSingleTop = true }
+                        },
                         onNavigateToLabs = {
-                            navController.navigate(AppRoute.Labs) { launchSingleTop = true }
+                            if (isDeveloperModeEnabled) {
+                                navController.navigate(AppRoute.Labs) { launchSingleTop = true }
+                            }
                         },
                         onExportBackupToUri = wordBooksViewModel::exportUserBackupToUri,
                         onImportBackupFromUri = wordBooksViewModel::importUserBackupFromUri,
@@ -866,174 +888,53 @@ fun WordBooksAppShell(
                         studyStreak = studyStreak
                     )
                 }
+                composable<AppRoute.Settings> {
+                    SettingsScreen(
+                        preferredAccentUk = preferredAccentUk,
+                        ttsSpeechRate = ttsSpeechRate,
+                        autoPlayPronunciation = autoPlayPronunciation,
+                        ttsEngineMode = ttsEngineMode,
+                        neuralVoicePackState = neuralVoicePackState,
+                        studyPlanProfile = studyPlanProfile,
+                        totalEntriesCount = totalEntriesCount,
+                        allowAi = batchTranslateState.allowAi,
+                        engineMode = currentEngineMode,
+                        apiKeySource = currentKeySource,
+                        isApiKeyConfigured = isApiKeyConfigured,
+                        isDeveloperModeEnabled = isDeveloperModeEnabled,
+                        onSelectAccentUk = wordBooksViewModel::setPreferredAccentUk,
+                        onSelectSpeechRate = wordBooksViewModel::updateTtsSpeechRate,
+                        onToggleAutoPlayPronunciation = wordBooksViewModel::setAutoPlayPronunciation,
+                        onSelectTtsEngineMode = wordBooksViewModel::selectTtsEngineMode,
+                        onDownloadNeuralVoicePack = wordBooksViewModel::downloadNeuralVoicePack,
+                        onCancelNeuralVoiceDownload = wordBooksViewModel::cancelNeuralVoiceDownload,
+                        onDeleteNeuralVoicePack = wordBooksViewModel::deleteNeuralVoicePack,
+                        onTestVoicePreview = { sampleText ->
+                            wordBooksViewModel.speakSentenceTts(sampleText, ttsSpeechRate)
+                        },
+                        onTestVoiceSlowPreview = { sampleText ->
+                            wordBooksViewModel.speakSentenceSlow(sampleText)
+                        },
+                        onSavePlanProfile = wordBooksViewModel::savePlanProfile,
+                        onNavigateToPlan = {
+                            navController.navigate(AppRoute.Plan) { launchSingleTop = true }
+                        },
+                        onRedoOnboardingSetup = wordBooksViewModel::startRedoOnboardingSetup,
+                        onExportBackupToUri = wordBooksViewModel::exportUserBackupToUri,
+                        onImportBackupFromUri = wordBooksViewModel::importUserBackupFromUri,
+                        onToggleAllowAi = wordBooksViewModel::setBatchAllowAi,
+                        onSelectEngineMode = wordBooksViewModel::setEngineMode,
+                        onOpenApiKeyDialog = { isApiKeyDialogOpen = true },
+                        onSetDeveloperMode = wordBooksViewModel::setDeveloperModeEnabled,
+                        onNavigateToLabs = {
+                            if (isDeveloperModeEnabled) {
+                                navController.navigate(AppRoute.Labs) { launchSingleTop = true }
+                            }
+                        }
+                    )
+                }
             }
         }
-    }
-
-    if (isSettingsOpen) {
-        AlertDialog(
-            onDismissRequest = { isSettingsOpen = false },
-            containerColor = SurfaceDark,
-            shape = RoundedCornerShape(22.dp),
-            title = {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = "Settings & Preferences",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = "Configure AI features, API keys, and diagnostics",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
-                    )
-                }
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    // Allow AI Toggle Row
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(end = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Text(
-                                text = "Allow AI Features",
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = TextPrimary
-                            )
-                            Text(
-                                text = "Enable on-demand Gemini explanations and translations",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = TextSecondary
-                            )
-                        }
-                        Switch(
-                            checked = batchTranslateState.allowAi,
-                            onCheckedChange = { wordBooksViewModel.setBatchAllowAi(it) },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = BackgroundDark,
-                                checkedTrackColor = GoldAccent
-                            ),
-                            modifier = Modifier.testTag("switch_allow_ai_settings")
-                        )
-                    }
-
-                    HorizontalDivider(color = BorderDark)
-
-                    // Google Gemini API Key row
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(end = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Text(
-                                text = "Google Gemini API Key",
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = TextPrimary
-                            )
-                            Text(
-                                text = currentKeySource,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (wordBooksViewModel.isApiKeyConfigured()) EmeraldAccent else CoralAccent
-                            )
-                        }
-                        OutlinedButton(
-                            onClick = {
-                                isSettingsOpen = false
-                                isApiKeyDialogOpen = true
-                            },
-                            shape = RoundedCornerShape(10.dp),
-                            border = BorderStroke(1.dp, GoldAccentBorder),
-                            modifier = Modifier.testTag("btn_settings_change_api_key")
-                        ) {
-                            Text("Change", color = GoldAccent, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
-                        }
-                    }
-
-                    HorizontalDivider(color = BorderDark)
-
-                    // Redo Onboarding Setup
-                    OutlinedButton(
-                        onClick = {
-                            isSettingsOpen = false
-                            wordBooksViewModel.startRedoOnboardingSetup()
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("btn_settings_redo_onboarding"),
-                        border = BorderStroke(1.dp, BorderDark)
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                            modifier = Modifier.padding(vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "Redo Onboarding Setup",
-                                color = TextPrimary,
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
-                            )
-                            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                                Text(
-                                    text = "إعادة ضبط الإعداد الأولي (دون مسح تقدمك)",
-                                    style = ArabicTypography.labelSmall,
-                                    color = TextSecondary
-                                )
-                            }
-                        }
-                    }
-
-                    HorizontalDivider(color = BorderDark)
-
-                    // Labs & Data Check Navigation
-                    OutlinedButton(
-                        onClick = {
-                            isSettingsOpen = false
-                            navController.navigate(AppRoute.Labs) {
-                                launchSingleTop = true
-                            }
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("btn_settings_open_labs"),
-                        border = BorderStroke(1.dp, GoldAccentBorder)
-                    ) {
-                        Text(
-                            text = "Open Labs & Diagnostics",
-                            color = GoldAccent,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = { isSettingsOpen = false },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = GoldAccent,
-                        contentColor = BackgroundDark
-                    )
-                ) {
-                    Text("Close", fontWeight = FontWeight.Bold)
-                }
-            }
-        )
     }
 
     if (isApiKeyDialogOpen) {

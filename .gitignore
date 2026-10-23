@@ -32,3 +32,16 @@ public/
 .idea/
 .aistudio/
 *.apk
+
+.gradle/
+build/
+app/build/
+local.properties
+
+.gradle/
+build/
+app/build/
+local.properties
+
+# Prebuilt native AARs downloaded at build/configuration time
+app/libs/*.aar

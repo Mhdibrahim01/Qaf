@@ -125,6 +125,7 @@ import com.example.ui.components.BooksModeSwitcher
 import com.example.ui.components.EmptyState
 import com.example.ui.components.GoldBadge
 import com.example.ui.components.LoadingState
+import com.example.ui.components.SlowAudioTurtleButton
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
@@ -179,6 +180,7 @@ fun FlashcardsScreen(
     onToggleMastered: () -> Unit,
     onToggleFavorite: () -> Unit,
     onPlayAudio: (String, String) -> Unit,
+    onPlayAudioSlow: (String, String) -> Unit = { word, url -> onPlayAudio(word, url) },
     onPlayVoiceAudio: (String, String, Boolean) -> Unit = { word, url, _ -> onPlayAudio(word, url) },
     onSpeakSentenceTts: (String) -> Unit = {},
     onOpenDetailedDefinition: (String, String) -> Unit,
@@ -810,6 +812,10 @@ fun FlashcardsScreen(
                                         val audioUrl = card.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl.orEmpty()
                                         onPlayAudio(card.text, audioUrl)
                                     },
+                                    onPlayAudioSlow = {
+                                        val audioUrl = card.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl.orEmpty()
+                                        onPlayAudioSlow(card.text, audioUrl)
+                                    },
                                     onToggleFavorite = onToggleFavorite,
                                     onToggleSaveSentence = { en, ar -> onToggleSaveSentence(en, ar, card.text) },
                                     onOpenDetailedDefinition = { onOpenDetailedDefinition(card.deck, card.text) }
@@ -906,6 +912,10 @@ fun FlashcardsScreen(
                     val url = detailedCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: ""
                     onPlayAudio(detailedCard.text, url)
                 },
+                onPlayAudioSlow = {
+                    val url = detailedCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: ""
+                    onPlayAudioSlow(detailedCard.text, url)
+                },
                 onPlayVoiceAudio = { isGb ->
                     val url = detailedCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: ""
                     onPlayVoiceAudio(detailedCard.text, url, isGb)
@@ -943,6 +953,7 @@ private fun FlipFlashcardItem(
     savedSentenceKeys: Set<String>,
     onFlipCard: () -> Unit,
     onPlayAudio: () -> Unit,
+    onPlayAudioSlow: () -> Unit = {},
     onToggleFavorite: () -> Unit,
     onToggleSaveSentence: (String, String) -> Unit,
     onOpenDetailedDefinition: () -> Unit,
@@ -989,6 +1000,7 @@ private fun FlipFlashcardItem(
                         isFavorite = isFavorite,
                         isPlayingAudio = isPlayingAudio,
                         onPlayAudio = onPlayAudio,
+                        onPlayAudioSlow = onPlayAudioSlow,
                         onToggleFavorite = onToggleFavorite,
                         onOpenDetailedDefinition = onOpenDetailedDefinition
                     )
@@ -1006,6 +1018,7 @@ private fun FlipFlashcardItem(
                             isPlayingAudio = isPlayingAudio,
                             savedSentenceKeys = savedSentenceKeys,
                             onPlayAudio = onPlayAudio,
+                            onPlayAudioSlow = onPlayAudioSlow,
                             onToggleFavorite = onToggleFavorite,
                             onToggleSaveSentence = onToggleSaveSentence,
                             onOpenDetailedDefinition = onOpenDetailedDefinition
@@ -1039,6 +1052,7 @@ private fun FlashcardFrontFace(
     isFavorite: Boolean,
     isPlayingAudio: Boolean,
     onPlayAudio: () -> Unit,
+    onPlayAudioSlow: () -> Unit = {},
     onToggleFavorite: () -> Unit,
     onOpenDetailedDefinition: () -> Unit
 ) {
@@ -1167,20 +1181,31 @@ private fun FlashcardFrontFace(
                 )
             }
 
-            // Audio Button — consumes its own click so tapping audio NEVER flips the card
-            IconButton(
-                onClick = onPlayAudio,
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(if (isPlayingAudio) GoldAccent else GoldAccentDim)
-                    .testTag("flashcard_front_audio_button")
+            // Audio Buttons — consume their own clicks so tapping audio NEVER flips the card
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                    contentDescription = "Play pronunciation",
-                    tint = if (isPlayingAudio) BackgroundDark else GoldAccent,
-                    modifier = Modifier.size(26.dp)
+                IconButton(
+                    onClick = onPlayAudio,
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(if (isPlayingAudio) GoldAccent else GoldAccentDim)
+                        .testTag("flashcard_front_audio_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                        contentDescription = "Play pronunciation",
+                        tint = if (isPlayingAudio) BackgroundDark else GoldAccent,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+
+                SlowAudioTurtleButton(
+                    onClick = onPlayAudioSlow,
+                    showSpeedLabel = true,
+                    testTag = "flashcard_front_slow_audio_button"
                 )
             }
         }
@@ -1222,6 +1247,7 @@ private fun FlashcardBackFace(
     isPlayingAudio: Boolean,
     savedSentenceKeys: Set<String>,
     onPlayAudio: () -> Unit,
+    onPlayAudioSlow: () -> Unit = {},
     onToggleFavorite: () -> Unit,
     onToggleSaveSentence: (String, String) -> Unit,
     onOpenDetailedDefinition: () -> Unit
@@ -1314,6 +1340,11 @@ private fun FlashcardBackFace(
                         tint = if (isPlayingAudio) GoldAccent else TextSecondary
                     )
                 }
+                SlowAudioTurtleButton(
+                    onClick = onPlayAudioSlow,
+                    showSpeedLabel = false,
+                    testTag = "flashcard_back_slow_audio_button"
+                )
                 IconButton(
                     onClick = onToggleFavorite,
                     modifier = Modifier
