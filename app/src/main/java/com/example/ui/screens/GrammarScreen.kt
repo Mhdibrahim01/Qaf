@@ -21,6 +21,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -65,8 +68,10 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -2716,6 +2721,14 @@ fun LessonChatBottomSheet(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(chatHistory.size) {
+        if (chatHistory.isNotEmpty()) {
+            listState.animateScrollToItem(chatHistory.size - 1)
+        }
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -2724,7 +2737,10 @@ fun LessonChatBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 16.dp)
                 .testTag("lesson_chat_bottom_sheet"),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -2733,7 +2749,11 @@ fun LessonChatBottomSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
                     Icon(Icons.Default.QuestionAnswer, contentDescription = null, tint = GoldAccent)
                     Column {
                         Text(
@@ -2761,11 +2781,13 @@ fun LessonChatBottomSheet(
 
             HorizontalDivider(color = BorderDark)
 
-            // Message list
+            // Message list with flexible height that shrinks cleanly when keyboard opens
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(280.dp),
+                    .weight(1f, fill = false)
+                    .heightIn(min = 100.dp, max = 280.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (chatHistory.isEmpty()) {
@@ -2806,6 +2828,7 @@ fun LessonChatBottomSheet(
                 Text(text = errorMessage!!, color = CoralAccent, style = MaterialTheme.typography.bodySmall)
             }
 
+            val canSend = inputQuestion.isNotBlank() && !isSending
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -2814,20 +2837,32 @@ fun LessonChatBottomSheet(
                 OutlinedTextField(
                     value = inputQuestion,
                     onValueChange = { inputQuestion = it },
-                    placeholder = { Text("Ask a question in Arabic or English...") },
+                    placeholder = {
+                        Text(
+                            text = "Ask a question in Arabic or English...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextMuted
+                        )
+                    },
                     modifier = Modifier
                         .weight(1f)
                         .testTag("chat_input_field"),
+                    shape = RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = GoldAccent,
                         unfocusedBorderColor = BorderDark,
                         focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                        unfocusedTextColor = TextPrimary,
+                        focusedPlaceholderColor = TextMuted,
+                        unfocusedPlaceholderColor = TextMuted,
+                        cursorColor = GoldAccent,
+                        focusedContainerColor = SurfaceElevatedDark,
+                        unfocusedContainerColor = SurfaceElevatedDark
                     ),
                     maxLines = 2
                 )
 
-                IconButton(
+                FilledIconButton(
                     onClick = {
                         val q = inputQuestion.trim()
                         if (q.isNotBlank()) {
@@ -2843,17 +2878,30 @@ fun LessonChatBottomSheet(
                             }
                         }
                     },
-                    enabled = inputQuestion.isNotBlank() && !isSending,
+                    enabled = canSend,
+                    shape = CircleShape,
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = GoldAccent,
+                        contentColor = BackgroundDark,
+                        disabledContainerColor = SurfaceElevatedDark,
+                        disabledContentColor = TextMuted
+                    ),
                     modifier = Modifier
                         .size(48.dp)
-                        .clip(CircleShape)
-                        .background(GoldAccent)
                         .testTag("chat_send_button")
                 ) {
                     if (isSending) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = BackgroundDark, strokeWidth = 2.dp)
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = GoldAccent,
+                            strokeWidth = 2.dp
+                        )
                     } else {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = BackgroundDark)
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send",
+                            modifier = Modifier.size(22.dp)
+                        )
                     }
                 }
             }
