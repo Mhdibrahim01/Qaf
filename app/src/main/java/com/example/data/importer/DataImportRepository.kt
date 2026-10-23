@@ -55,11 +55,17 @@ data class Sm2IntervalPreview(
 )
 
 enum class WordSortOrder(val label: String, val sqlKey: String) {
+    MIXED("Smart Mix", "MIXED"),
     AZ("A → Z", "AZ"),
-    ZA("Z → A", "ZA"),
-    LEVEL("CEFR Level", "LEVEL");
+    LEVEL("CEFR Level", "LEVEL"),
+    ZA("Z → A", "ZA");
 
     val labelEn: String get() = label
+
+    companion object {
+        fun fromKey(key: String?): WordSortOrder =
+            entries.firstOrNull { it.sqlKey.equals(key, ignoreCase = true) } ?: MIXED
+    }
 }
 
 enum class FlashcardDirection(
@@ -187,6 +193,15 @@ class DataImportRepository(
 
     fun setFlashcardAutoShowAnswer(enabled: Boolean) {
         flashcardPrefs.edit().putBoolean("auto_show_answer", enabled).apply()
+    }
+
+    fun getPreferredWordSortOrder(): WordSortOrder {
+        val raw = flashcardPrefs.getString("preferred_word_sort_order", WordSortOrder.MIXED.sqlKey)
+        return WordSortOrder.fromKey(raw)
+    }
+
+    fun setPreferredWordSortOrder(sortOrder: WordSortOrder) {
+        flashcardPrefs.edit().putString("preferred_word_sort_order", sortOrder.sqlKey).apply()
     }
 
     val decksFlow: Flow<List<DeckEntity>> = dao.observeDecks()
@@ -435,8 +450,10 @@ class DataImportRepository(
             dao.getWordProgressForDeck(deckId).associateBy { it.cardKey }
         }
 
+        val savedState = dao.getDeckStudyState(deckId)
+
         // Group same word (`LOWER(text)`) with different `pos` in the same deck into one card with POS tabs
-        val groupedMap = LinkedHashMap<String, MutableList<EntryEntity>>()
+        val groupedMap = LinkedHashMap<String, MutableList<EntryEntity>>(rawEntries.size)
         for (entry in rawEntries) {
             val key = "${entry.deck}:${entry.text.trim().lowercase()}"
             groupedMap.getOrPut(key) { ArrayList(2) }.add(entry)
@@ -446,12 +463,12 @@ class DataImportRepository(
             buildGroupedCardFromEntries(variants, progressByKey[cardKey])
         }
 
-        val savedState = dao.getDeckStudyState(deckId)
         val clampedIndex = if (cards.isEmpty()) {
             0
         } else {
             (savedState?.lastCardIndex ?: 0).coerceIn(0, cards.size - 1)
         }
+
         val resolvedState = savedState?.copy(lastCardIndex = clampedIndex)
             ?: DeckStudyStateEntity(
                 deckId = deckId,
@@ -756,16 +773,17 @@ class DataImportRepository(
     fun getPagedEntries(filter: WordFilterState): Flow<PagingData<EntryEntity>> {
         return Pager(
             config = PagingConfig(
-                pageSize = 40,
-                prefetchDistance = 20,
+                pageSize = 60,
+                prefetchDistance = 35,
                 enablePlaceholders = true,
-                initialLoadSize = 60
+                initialLoadSize = 90
             ),
             pagingSourceFactory = {
+                val trimmedQuery = filter.searchQuery.trim()
                 if (filter.onlyFavorites || filter.deckId == SAVED_WORDS_DECK_ID) {
                     dao.getPagedFavoriteEntries(
                         deckId = if (filter.deckId == SAVED_WORDS_DECK_ID) "" else filter.deckId,
-                        searchQuery = filter.searchQuery.trim(),
+                        searchQuery = trimmedQuery,
                         typeFilter = filter.typeFilter,
                         levelFilter = filter.levelFilter,
                         posFilter = filter.posFilter,
@@ -774,7 +792,7 @@ class DataImportRepository(
                 } else if (filter.onlyMastered) {
                     dao.getPagedMasteredEntries(
                         deckId = filter.deckId,
-                        searchQuery = filter.searchQuery.trim(),
+                        searchQuery = trimmedQuery,
                         typeFilter = filter.typeFilter,
                         levelFilter = filter.levelFilter,
                         posFilter = filter.posFilter,
@@ -783,21 +801,37 @@ class DataImportRepository(
                 } else if (filter.onlyLearning) {
                     dao.getPagedLearningEntries(
                         deckId = filter.deckId,
-                        searchQuery = filter.searchQuery.trim(),
+                        searchQuery = trimmedQuery,
                         typeFilter = filter.typeFilter,
                         levelFilter = filter.levelFilter,
                         posFilter = filter.posFilter,
                         sortOrder = filter.sortOrder.sqlKey
                     )
                 } else {
-                    dao.getPagedEntries(
-                        deckId = filter.deckId,
-                        searchQuery = filter.searchQuery.trim(),
-                        typeFilter = filter.typeFilter,
-                        levelFilter = filter.levelFilter,
-                        posFilter = filter.posFilter,
-                        sortOrder = filter.sortOrder.sqlKey
-                    )
+                    when (filter.sortOrder) {
+                        WordSortOrder.AZ -> dao.getPagedEntriesFastAz(
+                            deckId = filter.deckId,
+                            searchQuery = trimmedQuery,
+                            typeFilter = filter.typeFilter,
+                            levelFilter = filter.levelFilter,
+                            posFilter = filter.posFilter
+                        )
+                        WordSortOrder.MIXED -> dao.getPagedEntriesFastMixed(
+                            deckId = filter.deckId,
+                            searchQuery = trimmedQuery,
+                            typeFilter = filter.typeFilter,
+                            levelFilter = filter.levelFilter,
+                            posFilter = filter.posFilter
+                        )
+                        else -> dao.getPagedEntries(
+                            deckId = filter.deckId,
+                            searchQuery = trimmedQuery,
+                            typeFilter = filter.typeFilter,
+                            levelFilter = filter.levelFilter,
+                            posFilter = filter.posFilter,
+                            sortOrder = filter.sortOrder.sqlKey
+                        )
+                    }
                 }
             }
         ).flow

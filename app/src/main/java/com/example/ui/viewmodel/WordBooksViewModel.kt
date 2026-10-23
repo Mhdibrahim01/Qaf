@@ -14,8 +14,6 @@ import com.example.data.ai.BatchTranslateManager
 import com.example.data.ai.BatchTranslateUiState
 import com.example.data.ai.GeminiDeckAndTranslationService
 import com.example.data.audio.AudioPlayerManager
-import com.example.data.audio.NeuralVoicePackState
-import com.example.data.audio.TtsEngineMode
 import com.example.data.importer.DataImportRepository
 import com.example.data.importer.FlashcardDirection
 import com.example.data.importer.GroupedWordCard
@@ -346,7 +344,9 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     private val _selectedDeckId = MutableStateFlow<String?>(null)
     val selectedDeckId: StateFlow<String?> = _selectedDeckId.asStateFlow()
 
-    private val _filterState = MutableStateFlow(WordFilterState())
+    private val _filterState = MutableStateFlow(
+        WordFilterState(sortOrder = repository.getPreferredWordSortOrder())
+    )
     val filterState: StateFlow<WordFilterState> = _filterState.asStateFlow()
 
     private val _detailedCard = MutableStateFlow<GroupedWordCard?>(null)
@@ -402,10 +402,6 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     private val _isDeveloperModeEnabled = MutableStateFlow(false)
     val isDeveloperModeEnabled: StateFlow<Boolean> = _isDeveloperModeEnabled.asStateFlow()
 
-    private val _ttsEngineMode = MutableStateFlow(TtsEngineMode.STANDARD_SYSTEM)
-    val ttsEngineMode: StateFlow<TtsEngineMode> = _ttsEngineMode.asStateFlow()
-
-    val neuralVoicePackState: StateFlow<NeuralVoicePackState> = audioPlayer.neuralVoicePackState
 
     private val _dictationIgnorePunctuation = MutableStateFlow(true)
     val dictationIgnorePunctuation: StateFlow<Boolean> = _dictationIgnorePunctuation.asStateFlow()
@@ -540,46 +536,11 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             initialValue = emptyList()
         )
 
-    val recommendedWordsForLevel: StateFlow<List<EntryEntity>> = combine(
+    val levelProgressSummary: StateFlow<LevelProgressSummary> = combine(
         studyPlanProfile,
         _selectedDeckId,
         _filterState
     ) { profile, selectedDeck, filter ->
-        val targetLevel = if (filter.levelFilter.isNotBlank() && !filter.levelFilter.equals("All", ignoreCase = true)) {
-            filter.levelFilter.uppercase()
-        } else {
-            profile?.level?.ifBlank { "B2" }?.uppercase() ?: "B2"
-        }
-        val rawDeck = filter.deckId.ifBlank { selectedDeck.orEmpty() }
-        val deckId = if (rawDeck == DataImportRepository.SAVED_WORDS_DECK_ID) "" else rawDeck
-        Pair(deckId, targetLevel)
-    }.flatMapLatest { (deckId, targetLevel) ->
-        database.wordBooksDao().observeWordsForDeckAndLevel(
-            deckId = deckId,
-            level = targetLevel
-        ).map { deckWords ->
-            if (deckWords.isNotEmpty() || deckId.isEmpty()) {
-                deckWords
-            } else {
-                database.wordBooksDao().getRecommendedWordsForLevel(
-                    level = targetLevel,
-                    limit = 5000
-                )
-            }
-        }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
-    )
-
-    val levelProgressSummary: StateFlow<LevelProgressSummary> = combine(
-        recommendedWordsForLevel,
-        progressMap,
-        _filterState,
-        _selectedDeckId,
-        studyPlanProfile
-    ) { recommendedWords, progress, filter, selectedDeck, profile ->
         val displayLevel = if (filter.levelFilter.isNotBlank() && !filter.levelFilter.equals("All", ignoreCase = true)) {
             filter.levelFilter.uppercase()
         } else {
@@ -587,31 +548,23 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         }
         val rawDeck = filter.deckId.ifBlank { selectedDeck.orEmpty() }
         val currentDeckId = if (rawDeck == DataImportRepository.SAVED_WORDS_DECK_ID) "" else rawDeck
-        val uniqueLevelCards = recommendedWords.asSequence()
-            .filter { word ->
-                val wordLevel = word.effectiveLevel?.ifBlank { word.level } ?: word.level
-                (currentDeckId.isBlank() || word.deck.equals(currentDeckId, ignoreCase = true)) &&
-                    (wordLevel.isBlank() || wordLevel.trim().equals(displayLevel, ignoreCase = true))
-            }
-            .distinctBy { "${it.deck}:${it.text.trim().lowercase()}" }
-            .toList()
-        val masteredCount = uniqueLevelCards.count { word ->
-            val keyColon = "${word.deck}:${word.text.trim().lowercase()}"
-            val keyUnderscore = "${word.deck}_${word.text}"
-            progress[keyColon]?.isMastered == true || progress[keyUnderscore]?.isMastered == true
+        val isDefaultLevel = filter.levelFilter.isBlank() || filter.levelFilter.equals("All", ignoreCase = true)
+        Triple(currentDeckId, displayLevel, isDefaultLevel)
+    }.flatMapLatest { (currentDeckId, displayLevel, isDefaultLevel) ->
+        database.wordBooksDao().observeLevelProgressCounts(
+            deckId = currentDeckId,
+            level = displayLevel
+        ).map { counts ->
+            LevelProgressSummary(
+                level = displayLevel,
+                isDefaultLevelSelection = isDefaultLevel,
+                hasRecommendedWords = counts.totalCount > 0,
+                totalCount = counts.totalCount,
+                masteredCount = counts.masteredCount,
+                deckTotalMasteredCount = counts.deckTotalMasteredCount
+            )
         }
-        val deckTotalMasteredCount = progress.values.count {
-            (currentDeckId.isBlank() || it.deck.equals(currentDeckId, ignoreCase = true)) && it.isMastered
-        }
-        LevelProgressSummary(
-            level = displayLevel,
-            isDefaultLevelSelection = filter.levelFilter.isBlank() || filter.levelFilter.equals("All", ignoreCase = true),
-            hasRecommendedWords = recommendedWords.isNotEmpty(),
-            totalCount = uniqueLevelCards.size,
-            masteredCount = masteredCount,
-            deckTotalMasteredCount = deckTotalMasteredCount
-        )
-    }.flowOn(Dispatchers.Default).stateIn(
+    }.flowOn(Dispatchers.IO).stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = LevelProgressSummary()
@@ -642,11 +595,8 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             _autoPlayPronunciation.value = onboardingSnap.autoPlayPronunciation
             _autoPlayPracticeAudio.value = onboardingSnap.autoPlayPronunciation
             _ttsSpeechRate.value = onboardingSnap.ttsSpeechRate
-            val initialEngineMode = TtsEngineMode.fromId(onboardingSnap.ttsEngineMode)
-            _ttsEngineMode.value = initialEngineMode
             audioPlayer.setPreferUkAccent(onboardingSnap.preferredAccentUk)
             audioPlayer.setDefaultSpeechRate(onboardingSnap.ttsSpeechRate)
-            audioPlayer.setTtsEngineMode(initialEngineMode)
             if (existingProfile != null || onboardingSnap.onboardingCompleted) {
                 val checklist = studyPlanRepository.getOrCreateDailyChecklist()
                 _todayChecklist.value = checklist
@@ -663,11 +613,8 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 _preferredAccentUk.value = prefs.preferredAccentUk
                 _autoPlayPronunciation.value = prefs.autoPlayPronunciation
                 _ttsSpeechRate.value = prefs.ttsSpeechRate
-                val mode = TtsEngineMode.fromId(prefs.ttsEngineMode)
-                _ttsEngineMode.value = mode
                 audioPlayer.setPreferUkAccent(prefs.preferredAccentUk)
                 audioPlayer.setDefaultSpeechRate(prefs.ttsSpeechRate)
-                audioPlayer.setTtsEngineMode(mode)
             }
         }
 
@@ -690,14 +637,14 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             }
             .launchIn(viewModelScope)
 
-        // 3. Observed filter state for in-memory letter offset cache for A-Z jump
+        // 3. Invalidate in-memory letter offset cache on filter change (rebuilt lazily on demand when A-Z jump is opened)
         viewModelScope.launch {
-            _filterState.collectLatest { filter ->
-                rebuildLetterOffsetsCache(filter)
+            _filterState.collectLatest {
+                clearLetterOffsetsCache()
             }
         }
 
-        // 4. Clear letter offsets cache on import completion and rebuild; also resume waiting placement quiz if active
+        // 4. Clear letter offsets cache on import completion; also resume waiting placement quiz if active
         viewModelScope.launch {
             combine(
                 repository.importState,
@@ -706,7 +653,6 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 .collectLatest { (impState, grammarBusy) ->
                     if (impState.isCompleted) {
                         clearLetterOffsetsCache()
-                        rebuildLetterOffsetsCache(_filterState.value)
                     }
                     val currentQuiz = _placementQuizState.value
                     if (currentQuiz.isQuizActive && currentQuiz.isWaitingForImport && !grammarBusy) {
@@ -1581,14 +1527,17 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun updateSortOrder(sortOrder: WordSortOrder) {
+        repository.setPreferredWordSortOrder(sortOrder)
         _filterState.update { it.copy(sortOrder = sortOrder) }
     }
 
     fun clearAllFilters() {
         val currentDeck = _selectedDeckId.value ?: ""
+        val currentSort = _filterState.value.sortOrder
         _filterState.update {
             WordFilterState(
                 deckId = currentDeck,
+                sortOrder = currentSort,
                 onlyFavorites = currentDeck == DataImportRepository.SAVED_WORDS_DECK_ID
             )
         }
@@ -1907,28 +1856,6 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun selectTtsEngineMode(mode: TtsEngineMode) {
-        _ttsEngineMode.value = mode
-        audioPlayer.setTtsEngineMode(mode)
-        viewModelScope.launch {
-            onboardingRepository.setTtsEngineMode(mode.id)
-        }
-    }
-
-    fun downloadNeuralVoicePack() {
-        audioPlayer.downloadNeuralVoicePack {
-            selectTtsEngineMode(TtsEngineMode.NATURAL_AI_OFFLINE)
-        }
-    }
-
-    fun cancelNeuralVoiceDownload() {
-        audioPlayer.cancelNeuralVoiceDownload()
-    }
-
-    fun deleteNeuralVoicePack() {
-        audioPlayer.deleteNeuralVoicePack()
-        selectTtsEngineMode(TtsEngineMode.STANDARD_SYSTEM)
-    }
 
     fun updateDictationIgnorePunctuation(ignore: Boolean) {
         _dictationIgnorePunctuation.value = ignore

@@ -10,18 +10,6 @@ plugins {
   id("org.jetbrains.kotlin.plugin.serialization") version "2.2.10"
 }
 
-val sherpaOnnxAarFile = file("$projectDir/libs/sherpa-onnx-static-link-onnxruntime-1.12.40.aar")
-if (!sherpaOnnxAarFile.exists()) {
-  sherpaOnnxAarFile.parentFile.mkdirs()
-  val sherpaUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.40/sherpa-onnx-static-link-onnxruntime-1.12.40.aar"
-  logger.lifecycle("Downloading Sherpa-ONNX Android AAR from $sherpaUrl ...")
-  URL(sherpaUrl).openStream().use { input ->
-    sherpaOnnxAarFile.outputStream().use { output ->
-      input.copyTo(output)
-    }
-  }
-}
-
 android {
   namespace = "com.example"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
@@ -34,19 +22,6 @@ android {
     versionName = "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-    ndk {
-      // Package only 64-bit ARM native libraries (used by 99% of modern Android devices)
-      // to avoid bundling 72 MB of x86/x86_64/armeabi-v7a ONNX Runtime binaries.
-      abiFilters += listOf("arm64-v8a")
-    }
-  }
-
-  packaging {
-    jniLibs {
-      // Compress native .so libraries inside the APK (shrinks libsherpa-onnx-jni.so from 23 MB to ~8.5 MB)
-      useLegacyPackaging = true
-    }
   }
 
   // Do not remove or modify these signingConfigs. They are necessary for building, installing,
@@ -120,8 +95,6 @@ ksp {
 // Some unused dependencies are commented out below instead of being removed.
 // This makes it easy to add them back in the future if needed.
 dependencies {
-  implementation(fileTree("libs") { include("*.aar") })
-  implementation("org.apache.commons:commons-compress:1.26.2")
   implementation(platform(libs.androidx.compose.bom))
   // implementation(platform(libs.firebase.bom))
   // implementation(libs.accompanist.permissions)
