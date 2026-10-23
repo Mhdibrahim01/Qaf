@@ -255,6 +255,8 @@ fun ReadingScreen(
     onStopAudio: () -> Unit,
     ttsSpeechRate: Float = 0.95f,
     userLevel: String = "B2",
+    onScheduleWordForToday: suspend (String) -> Boolean = { false },
+    storyReadabilityById: Map<String, com.example.data.plan.StoryReadabilityReport> = emptyMap(),
     modifier: Modifier = Modifier
 ) {
     if (selectedText != null) {
@@ -299,6 +301,8 @@ fun ReadingScreen(
             onSpeakSentence = onSpeakSentence,
             onStopAudio = onStopAudio,
             ttsSpeechRate = ttsSpeechRate,
+            onScheduleWordForToday = onScheduleWordForToday,
+            readabilityReport = storyReadabilityById[selectedText.id],
             modifier = modifier
         )
     } else {
@@ -314,6 +318,7 @@ fun ReadingScreen(
             onImportJsonText = onImportJsonText,
             onNavigateToNotebook = onNavigateToNotebook,
             userLevel = userLevel,
+            storyReadabilityById = storyReadabilityById,
             modifier = modifier
         )
     }
@@ -337,6 +342,7 @@ fun ReadingListScreen(
     onImportJsonText: suspend (String) -> Result<Int>,
     onNavigateToNotebook: () -> Unit = {},
     userLevel: String = "B2",
+    storyReadabilityById: Map<String, com.example.data.plan.StoryReadabilityReport> = emptyMap(),
     modifier: Modifier = Modifier
 ) {
     var selectedLevelFilter by remember { mutableStateOf("ALL") }
@@ -805,6 +811,7 @@ fun ReadingListScreen(
                     ReadingTextCard(
                         text = textEntity,
                         progress = prog,
+                        readabilityReport = storyReadabilityById[textEntity.id],
                         onClick = { onSelectText(textEntity) }
                     )
                 }
@@ -859,6 +866,7 @@ fun ReadingTextCard(
     text: ReadingTextEntity,
     progress: ReadingProgressEntity?,
     onClick: () -> Unit,
+    readabilityReport: com.example.data.plan.StoryReadabilityReport? = null,
     modifier: Modifier = Modifier
 ) {
     val sentencesCount = remember(text.sentencesJson) {
@@ -950,6 +958,23 @@ fun ReadingTextCard(
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                         )
+                    }
+
+                    if (readabilityReport != null) {
+                        Surface(
+                            color = EmeraldAccentBg,
+                            border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.45f)),
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier.testTag("reading_readability_badge_${text.id}")
+                        ) {
+                            Text(
+                                text = "${readabilityReport.readabilityPercent}% Readable • ${readabilityReport.focusWords.size} Focus",
+                                color = EmeraldAccent,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                            )
+                        }
                     }
                 }
 
@@ -1055,6 +1080,8 @@ fun ReadingDetailScreen(
     onSpeakSentence: (String) -> Unit,
     onStopAudio: () -> Unit,
     ttsSpeechRate: Float,
+    onScheduleWordForToday: suspend (String) -> Boolean = { false },
+    readabilityReport: com.example.data.plan.StoryReadabilityReport? = null,
     modifier: Modifier = Modifier
 ) {
     BackHandler { onBack() }
@@ -1237,6 +1264,22 @@ fun ReadingDetailScreen(
                                             color = Color(0xFFE5C158),
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                }
+                                if (readabilityReport != null) {
+                                    Surface(
+                                        color = EmeraldAccentBg,
+                                        border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.45f)),
+                                        shape = RoundedCornerShape(6.dp),
+                                        modifier = Modifier.testTag("reading_detail_readability_badge")
+                                    ) {
+                                        Text(
+                                            text = readabilityReport.badgeLabelEn,
+                                            color = EmeraldAccent,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.SemiBold,
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                         )
                                     }
@@ -1628,7 +1671,8 @@ fun ReadingDetailScreen(
             onSaveWordFavorite = onSaveWordFavorite,
             onGetWordFavoriteStatus = onGetWordFavoriteStatus,
             onExplainWordInContext = onExplainWordInContext,
-            onSpeakWord = { onSpeakSentence(it) }
+            onSpeakWord = { onSpeakSentence(it) },
+            onScheduleWordForToday = onScheduleWordForToday
         )
     }
 
@@ -2607,7 +2651,8 @@ fun WordLookupBottomSheet(
     onSaveWordFavorite: suspend (deckId: String, word: String, isFavorite: Boolean) -> Unit,
     onGetWordFavoriteStatus: suspend (deckId: String, word: String) -> Boolean,
     onExplainWordInContext: suspend (sentenceIndex: Int, sentenceEn: String, word: String) -> Result<String>,
-    onSpeakWord: (String) -> Unit
+    onSpeakWord: (String) -> Unit,
+    onScheduleWordForToday: suspend (String) -> Boolean = { false }
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
@@ -2615,6 +2660,7 @@ fun WordLookupBottomSheet(
     var localEntries by remember { mutableStateOf<List<EntryEntity>?>(null) }
     var isLoadingLocal by remember { mutableStateOf(true) }
     var isFavorite by remember { mutableStateOf(false) }
+    var isScheduledToday by remember { mutableStateOf(false) }
 
     // AI Context Explanation
     var aiExplanation by remember { mutableStateOf<String?>(null) }
@@ -2737,6 +2783,42 @@ fun WordLookupBottomSheet(
                         }
                     }
                 }
+            }
+
+            // One-tap Add to Today's Practice button (Reactive Reader Loop)
+            OutlinedButton(
+                onClick = {
+                    if (!isScheduledToday) {
+                        scope.launch {
+                            val ok = onScheduleWordForToday(word)
+                            isScheduledToday = ok || true
+                        }
+                    }
+                },
+                enabled = !isScheduledToday,
+                border = BorderStroke(
+                    1.dp,
+                    if (isScheduledToday) EmeraldAccent else GoldAccent
+                ),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = if (isScheduledToday) EmeraldAccent else GoldAccent
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+                    .testTag("btn_add_lookup_to_practice")
+            ) {
+                Icon(
+                    imageVector = if (isScheduledToday) Icons.Default.CheckCircle else Icons.Default.School,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = if (isScheduledToday) "Added to Today's Practice • تمت الإضافة لمراجعة اليوم" else "Add to Today's Practice • أضف لمراجعة اليوم",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))

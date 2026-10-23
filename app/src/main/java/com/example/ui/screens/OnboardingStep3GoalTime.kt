@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Schedule
@@ -35,9 +36,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,7 +56,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.example.data.plan.AdaptiveConfig
 import com.example.ui.theme.ArabicTypography
+import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
 import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.GoldAccent
@@ -113,6 +122,15 @@ object OnboardingStep3Defaults {
             subtitleAr = "هندسة البرمجيات واجتماعات الفرق التقنية والمقابلات المهنية",
             defaultDecksLabelEn = "Oxford 5000 + OPAL + IT & Tech Industry",
             icon = Icons.Filled.Code
+        ),
+        OnboardingGoalOption(
+            id = "medical",
+            titleEn = "Medical & Healthcare",
+            titleAr = "الطب والرعاية الصحية",
+            subtitleEn = "Medical terminology, clinical communication & healthcare",
+            subtitleAr = "مصطلحات الطب والمرضى والتقارير الطبية والصحية",
+            defaultDecksLabelEn = "Oxford 5000 + OPAL + Medical & Healthcare",
+            icon = Icons.Filled.LocalHospital
         )
     )
 
@@ -178,10 +196,13 @@ fun OnboardingGoalAndTimeStep(
     selectedGoal: String,
     selectedMinutesPerDay: Int,
     selectedStudyDaysPerWeek: Int,
+    initialPreferredTopics: List<String> = listOf("daily_life", "technology", "career"),
+    initialQuietModeEnabled: Boolean = false,
     onSelectGoal: (String) -> Unit,
     onSelectMinutesPerDay: (Int) -> Unit,
     onSelectStudyDaysPerWeek: (Int) -> Unit,
     onContinueStep3: (goal: String, minutesPerDay: Int, studyDaysPerWeek: Int) -> Unit,
+    onContinueStep3WithTopicsAndQuietMode: ((goal: String, minutesPerDay: Int, studyDaysPerWeek: Int, preferredTopics: List<String>, quietModeEnabled: Boolean) -> Unit)? = null,
     onStep3Back: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -196,6 +217,15 @@ fun OnboardingGoalAndTimeStep(
     } ?: OnboardingStep3Defaults.MINUTES_OPTIONS[1] // 30 min default
 
     val activeStudyDays = selectedStudyDaysPerWeek.coerceIn(3, 7)
+
+    var selectedTopics by remember(initialPreferredTopics) {
+        mutableStateOf(
+            initialPreferredTopics.ifEmpty { listOf("daily_life", "technology", "career") }.take(3)
+        )
+    }
+    var quietModeEnabled by remember(initialQuietModeEnabled) {
+        mutableStateOf(initialQuietModeEnabled)
+    }
 
     Column(
         modifier = modifier
@@ -440,6 +470,141 @@ fun OnboardingGoalAndTimeStep(
                 }
             }
 
+            // Section 4: Pick 3 Reading Topics (drives Today's Lesson story spine)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "4. Favorite Reading Topics (Pick up to 3)",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        color = GoldAccent
+                    )
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                        Text(
+                            text = "٤. مواضيع القراءة المفضلة (اختر ٣)",
+                            style = ArabicTypography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = GoldAccent
+                        )
+                    }
+                }
+
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    AdaptiveConfig.MACRO_TOPICS.forEach { (topicId, labelEn, labelAr) ->
+                        val isTopicSelected = topicId in selectedTopics
+                        Surface(
+                            modifier = Modifier
+                                .heightIn(min = 48.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable(
+                                    role = Role.Checkbox,
+                                    onClick = {
+                                        selectedTopics = if (isTopicSelected) {
+                                            if (selectedTopics.size > 1) selectedTopics - topicId else selectedTopics
+                                        } else {
+                                            if (selectedTopics.size < 3) {
+                                                selectedTopics + topicId
+                                            } else {
+                                                selectedTopics.drop(1) + topicId
+                                            }
+                                        }
+                                    }
+                                )
+                                .testTag("onboarding_topic_chip_$topicId"),
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isTopicSelected) GoldAccentDim else SurfaceDark,
+                            border = BorderStroke(
+                                width = if (isTopicSelected) 1.5.dp else 1.dp,
+                                color = if (isTopicSelected) GoldAccent else BorderDark
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = labelEn,
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = if (isTopicSelected) FontWeight.ExtraBold else FontWeight.SemiBold
+                                    ),
+                                    color = if (isTopicSelected) GoldAccent else TextPrimary
+                                )
+                                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                    Text(
+                                        text = labelAr,
+                                        style = ArabicTypography.labelSmall,
+                                        color = if (isTopicSelected) GoldAccent else TextSecondary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Section 5: Modality Preference (Quiet / No-Mic Mode)
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("onboarding_quiet_mode_card"),
+                shape = RoundedCornerShape(14.dp),
+                color = SurfaceDark,
+                border = BorderStroke(1.dp, if (quietModeEnabled) GoldAccent else BorderDark)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = "Quiet / Text-Only Mode (No Audio Required)",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            color = if (quietModeEnabled) GoldAccent else TextPrimary
+                        )
+                        Text(
+                            text = "Replaces listening & speaking tasks with silent reading and sentence exercises.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                            Text(
+                                text = "الوضع الهادئ (بدون صوت أو ميكروفون — مثالي للمواصلات والأماكن العامة)",
+                                style = ArabicTypography.labelSmall,
+                                color = TextMuted,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+
+                    Switch(
+                        checked = quietModeEnabled,
+                        onCheckedChange = { quietModeEnabled = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = BackgroundDark,
+                            checkedTrackColor = GoldAccent
+                        ),
+                        modifier = Modifier.testTag("toggle_quiet_mode")
+                    )
+                }
+            }
+
             // Live Daily Plan Preview Card
             Surface(
                 modifier = Modifier
@@ -506,11 +671,21 @@ fun OnboardingGoalAndTimeStep(
         // Primary CTA Button: Build My Study Plan & Continue to Step 4
         Button(
             onClick = {
-                onContinueStep3(
-                    activeGoalOption.id,
-                    activeMinutesOption.minutes,
-                    activeStudyDays
-                )
+                if (onContinueStep3WithTopicsAndQuietMode != null) {
+                    onContinueStep3WithTopicsAndQuietMode(
+                        activeGoalOption.id,
+                        activeMinutesOption.minutes,
+                        activeStudyDays,
+                        selectedTopics,
+                        quietModeEnabled
+                    )
+                } else {
+                    onContinueStep3(
+                        activeGoalOption.id,
+                        activeMinutesOption.minutes,
+                        activeStudyDays
+                    )
+                }
             },
             shape = SquircleCardShape,
             colors = ButtonDefaults.buttonColors(

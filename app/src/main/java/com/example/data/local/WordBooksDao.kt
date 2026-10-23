@@ -957,6 +957,9 @@ interface WordBooksDao {
     @Query("SELECT * FROM word_progress")
     suspend fun getAllWordProgressList(): List<WordProgressEntity>
 
+    @Query("UPDATE word_progress SET conquered_timestamp = 0 WHERE again_count < 2 AND conquered_timestamp > 0")
+    suspend fun clearInvalidConqueredTimestamps()
+
     @Query("SELECT * FROM word_progress WHERE deck = :deckId")
     suspend fun getWordProgressForDeck(deckId: String): List<WordProgressEntity>
 
@@ -1104,6 +1107,9 @@ interface WordBooksDao {
     @Query("SELECT * FROM grammar_lessons ORDER BY id ASC")
     suspend fun getAllGrammarLessons(): List<GrammarLessonEntity>
 
+    @Query("SELECT * FROM grammar_lessons WHERE UPPER(TRIM(level)) = UPPER(TRIM(:level)) ORDER BY id ASC")
+    suspend fun getGrammarLessonsByLevel(level: String): List<GrammarLessonEntity>
+
     @Query("SELECT * FROM grammar_lessons WHERE id = :id LIMIT 1")
     suspend fun getGrammarLessonById(id: String): GrammarLessonEntity?
 
@@ -1208,7 +1214,7 @@ interface WordBooksDao {
         UPDATE reading_texts 
         SET level = :level, topic = :topic, title_en = :titleEn, title_ar = :titleAr,
             sentences_json = :sentencesJson, questions_json = :questionsJson,
-            grammar_ids_json = :grammarIdsJson, data_version = :dataVersion
+            grammar_ids_json = :grammarIdsJson, target_words_json = :targetWordsJson, data_version = :dataVersion
         WHERE id = :id
         """
     )
@@ -1221,7 +1227,8 @@ interface WordBooksDao {
         sentencesJson: String,
         questionsJson: String,
         grammarIdsJson: String,
-        dataVersion: Int
+        dataVersion: Int,
+        targetWordsJson: String = "[]"
     )
 
     @Query("UPDATE reading_texts SET sentences_json = :sentencesJson, questions_json = :questionsJson WHERE id = :id")
@@ -1525,6 +1532,12 @@ interface WordBooksDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertQuizResultsBatch(items: List<QuizResultEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertStudyPlansBatch(items: List<StudyPlanEntity>)
+
+    @Query("SELECT * FROM study_plans ORDER BY month ASC")
+    suspend fun getAllStudyPlansList(): List<StudyPlanEntity>
+
     @Query("SELECT * FROM grammar_progress")
     suspend fun getAllGrammarProgressList(): List<GrammarProgressEntity>
 
@@ -1556,6 +1569,9 @@ interface WordBooksDao {
         }
         if (payload.studyPlanProfile != null) {
             upsertStudyPlanProfile(payload.studyPlanProfile)
+        }
+        if (payload.studyPlans.isNotEmpty()) {
+            upsertStudyPlansBatch(payload.studyPlans)
         }
         if (payload.dailyChecklists.isNotEmpty()) {
             upsertDailyChecklistsBatch(payload.dailyChecklists)
@@ -1789,4 +1805,78 @@ interface WordBooksDao {
         """
     )
     fun observeWordsForDeckAndLevel(deckId: String, level: String): Flow<List<EntryEntity>>
+
+    // --- ADAPTIVE V2 3-TIER OVERDUENESS & STORY VOCABULARY QUERIES ---
+    @Query(
+        """
+        SELECT e.* FROM entries e
+        INNER JOIN word_progress wp
+            ON (wp.entry_id = e.id OR (wp.entry_id IS NULL AND wp.deck = e.deck AND wp.text = LOWER(e.text)))
+        WHERE wp.is_mastered = 0 AND wp.due_timestamp > 0 AND wp.due_timestamp <= :endOfTodayMillis
+        ORDER BY
+            CASE WHEN wp.interval_days = 0 THEN 0 ELSE 1 END ASC,
+            CASE WHEN (wp.again_count >= 3 OR wp.last_looked_up_timestamp >= :lookupBoostCutoffMillis) THEN 0 ELSE 1 END ASC,
+            (CAST(MAX(0, :nowMillis - wp.due_timestamp) AS REAL) / (CAST(MAX(1, wp.interval_days) AS REAL) * 86400000.0)) DESC,
+            wp.ease_factor ASC,
+            CAST(e.id AS INTEGER) ASC
+        LIMIT :limit
+        """
+    )
+    suspend fun getDueTodayEntriesAdaptiveOrdered(
+        endOfTodayMillis: Long,
+        nowMillis: Long,
+        lookupBoostCutoffMillis: Long,
+        limit: Int = 30
+    ): List<EntryEntity>
+
+    @Query(
+        """
+        SELECT e.* FROM entries e
+        INNER JOIN word_progress wp
+            ON (wp.entry_id = e.id OR (wp.entry_id IS NULL AND wp.deck = e.deck AND wp.text = LOWER(e.text)))
+        WHERE wp.is_mastered = 0 AND wp.due_timestamp > 0 AND wp.due_timestamp <= :endOfTodayMillis
+          AND wp.deck IN (:decks)
+        ORDER BY
+            CASE WHEN wp.interval_days = 0 THEN 0 ELSE 1 END ASC,
+            CASE WHEN (wp.again_count >= 3 OR wp.last_looked_up_timestamp >= :lookupBoostCutoffMillis) THEN 0 ELSE 1 END ASC,
+            (CAST(MAX(0, :nowMillis - wp.due_timestamp) AS REAL) / (CAST(MAX(1, wp.interval_days) AS REAL) * 86400000.0)) DESC,
+            wp.ease_factor ASC,
+            CAST(e.id AS INTEGER) ASC
+        LIMIT :limit
+        """
+    )
+    suspend fun getDueTodayEntriesForDecksAdaptiveOrdered(
+        endOfTodayMillis: Long,
+        nowMillis: Long,
+        lookupBoostCutoffMillis: Long,
+        decks: List<String>,
+        limit: Int = 30
+    ): List<EntryEntity>
+
+    @Query(
+        """
+        SELECT e.* FROM entries e
+        WHERE LOWER(TRIM(e.text)) IN (:headwords)
+          AND e.deck IN (:decks)
+          AND TRIM(e.arabic) != ''
+        ORDER BY CAST(e.id AS INTEGER) ASC, e.id ASC
+        """
+    )
+    suspend fun getEntriesByHeadwordsInDecks(
+        headwords: List<String>,
+        decks: List<String>
+    ): List<EntryEntity>
+
+    @Query(
+        """
+        SELECT e.* FROM entries e
+        WHERE LOWER(TRIM(e.text)) IN (:headwords)
+          AND TRIM(e.arabic) != ''
+        ORDER BY
+          CASE WHEN e.deck = 'oxford5000' THEN 0 WHEN e.deck = 'oxford_opal' THEN 1 ELSE 2 END ASC,
+          CAST(e.id AS INTEGER) ASC,
+          e.id ASC
+        """
+    )
+    suspend fun getEntriesByHeadwords(headwords: List<String>): List<EntryEntity>
 }

@@ -75,7 +75,14 @@ import com.example.data.local.QuizResultEntity
 import com.example.data.local.StudyPlanEntity
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.local.WeakAreasState
+import com.example.data.plan.LearnerModelSnapshot
+import com.example.ui.components.AdaptiveInsightBannerCard
 import com.example.ui.components.BidiText
+import com.example.ui.components.CefrReadinessBarCard
+import com.example.ui.components.ConqueredWordsTrophyShelf
+import com.example.ui.components.DeckVocabularyCoverageCard
+import com.example.ui.components.WeeklyBeforeVsAfterCard
+import com.example.ui.components.WordLifecycleFunnelCard
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
@@ -114,6 +121,9 @@ fun PlanScreen(
     weakAreas: WeakAreasState,
     monthlyChecklists: List<DailyChecklistEntity>,
     practiceAccuracySummary: PracticeAccuracySummary = PracticeAccuracySummary(),
+    learnerModelSnapshot: LearnerModelSnapshot = LearnerModelSnapshot(),
+    onDismissInsight: (String) -> Unit = {},
+    onAcceptLevelUp: (String) -> Unit = {},
     onSaveProfile: (StudyPlanProfileEntity) -> Unit,
     onGeneratePlanWithAi: suspend (month: String) -> Result<Unit>,
     onGenerateDailyQuiz: suspend () -> List<QuizQuestionItem>,
@@ -261,6 +271,9 @@ fun PlanScreen(
                 todayChecklist = todayChecklist,
                 streak = streak,
                 weakAreas = weakAreas,
+                learnerModelSnapshot = learnerModelSnapshot,
+                onDismissInsight = onDismissInsight,
+                onAcceptLevelUp = onAcceptLevelUp,
                 onToggleTask = onToggleTaskCompleted,
                 onOpenTask = onNavigateToTaskRoute,
                 onStartMiniQuiz = {
@@ -310,6 +323,9 @@ fun PlanScreen(
                 quizHistory = quizHistory,
                 weakAreas = weakAreas,
                 practiceAccuracySummary = practiceAccuracySummary,
+                learnerModelSnapshot = learnerModelSnapshot,
+                onAcceptLevelUp = onAcceptLevelUp,
+                onOpenDictionaryWord = onOpenDictionaryWord,
                 onStartWeeklyQuiz = {
                     scope.launch {
                         val questions = onGenerateWeeklyQuiz()
@@ -361,6 +377,9 @@ private fun TodayTabContent(
     todayChecklist: DailyChecklistEntity?,
     streak: Int,
     weakAreas: WeakAreasState,
+    learnerModelSnapshot: LearnerModelSnapshot = LearnerModelSnapshot(),
+    onDismissInsight: (String) -> Unit = {},
+    onAcceptLevelUp: (String) -> Unit = {},
     onToggleTask: (date: String, taskId: String) -> Unit,
     onOpenTask: (route: String, id: String) -> Unit,
     onStartMiniQuiz: () -> Unit,
@@ -384,6 +403,17 @@ private fun TodayTabContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        learnerModelSnapshot.activeInsight?.let { insight ->
+            item(key = "today_adaptive_insight", contentType = "adaptive_insight") {
+                AdaptiveInsightBannerCard(
+                    insight = insight,
+                    onDismiss = onDismissInsight,
+                    onAcceptLevelUp = onAcceptLevelUp,
+                    onNavigateToRoute = { route -> onOpenTask(route, "") }
+                )
+            }
+        }
+
         // Hero Progress & Streak Card
         item(key = "today_hero_streak", contentType = "hero_streak") {
             Surface(
@@ -988,6 +1018,9 @@ private fun AnalyticsTabContent(
     quizHistory: List<QuizResultEntity>,
     weakAreas: WeakAreasState,
     practiceAccuracySummary: PracticeAccuracySummary = PracticeAccuracySummary(),
+    learnerModelSnapshot: LearnerModelSnapshot = LearnerModelSnapshot(),
+    onAcceptLevelUp: (String) -> Unit = {},
+    onOpenDictionaryWord: ((String) -> Unit)? = null,
     onStartWeeklyQuiz: () -> Unit,
     onStartWeakAreasQuiz: () -> Unit,
     onOpenTask: (route: String, id: String) -> Unit
@@ -1009,6 +1042,46 @@ private fun AnalyticsTabContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // 0a. Composite CEFR Readiness Bar
+        item(key = "analytics_cefr_readiness") {
+            CefrReadinessBarCard(
+                readiness = learnerModelSnapshot.cefrReadiness,
+                onAcceptLevelUp = onAcceptLevelUp
+            )
+        }
+
+        // 0b. Weekly "Before vs. After" Growth Card
+        item(key = "analytics_weekly_growth") {
+            WeeklyBeforeVsAfterCard(
+                weeklyGrowth = learnerModelSnapshot.weeklyGrowth
+            )
+        }
+
+        // 0c. Word Lifecycle Funnel Card
+        item(key = "analytics_word_funnel") {
+            WordLifecycleFunnelCard(
+                funnel = learnerModelSnapshot.funnel
+            )
+        }
+
+        // 0d. Conquered Words Trophy Shelf
+        item(key = "analytics_conquered_words") {
+            ConqueredWordsTrophyShelf(
+                conqueredWords = learnerModelSnapshot.conqueredWords,
+                onOpenWord = onOpenDictionaryWord
+            )
+        }
+
+        // 0e. Selected Decks Coverage Map
+        if (learnerModelSnapshot.deckCoverages.isNotEmpty()) {
+            item(key = "analytics_deck_coverage") {
+                DeckVocabularyCoverageCard(
+                    deckCoverages = learnerModelSnapshot.deckCoverages,
+                    onOpenDeck = { deckId -> onOpenTask("word_books", deckId) }
+                )
+            }
+        }
+
         // 0. Honest Practice & Recall Accuracy Summary (Separated from Task Completion)
         item(key = "analytics_practice_accuracy") {
             Surface(

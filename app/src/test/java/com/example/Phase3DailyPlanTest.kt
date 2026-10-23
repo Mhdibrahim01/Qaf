@@ -59,6 +59,8 @@ class Phase3DailyPlanTest {
 
         repo = DataImportRepository(context, db)
         repo.ensureImportedOnFirstLaunch(forceRecheck = true)
+        com.example.data.reading.ReadingRepository(context, db.wordBooksDao()).importReadingTextsIfNeeded()
+        com.example.data.grammar.GrammarRepository(context, db.wordBooksDao()).importGrammarLessonsIfNeeded()
 
         // 2026-11-02 12:00:00 UTC (Monday)
         timeProvider = TestTimeProvider(1793620800000L)

@@ -162,6 +162,7 @@ class DataImportRepository(
         ignoreUnknownKeys = true
         isLenient = true
         coerceInputValues = true
+        encodeDefaults = true
     }
 
     private val _importState = MutableStateFlow(ImportProgressState())
@@ -408,10 +409,22 @@ class DataImportRepository(
         val rawEntries = when (deckId) {
             DUE_TODAY_DECK_ID -> {
                 val dueNow = computeDueNowCutoff(nowMillis)
+                val lookupCutoff = nowMillis - 7L * 24L * 60L * 60L * 1000L
                 if (selectedDecks.isNotEmpty()) {
-                    dao.getDueNowEntriesForDecksOrdered(dueNow, selectedDecks)
+                    dao.getDueTodayEntriesForDecksAdaptiveOrdered(
+                        endOfTodayMillis = dueNow,
+                        nowMillis = nowMillis,
+                        lookupBoostCutoffMillis = lookupCutoff,
+                        decks = selectedDecks,
+                        limit = 500
+                    )
                 } else {
-                    dao.getDueNowEntriesOrdered(dueNow)
+                    dao.getDueTodayEntriesAdaptiveOrdered(
+                        endOfTodayMillis = dueNow,
+                        nowMillis = nowMillis,
+                        lookupBoostCutoffMillis = lookupCutoff,
+                        limit = 500
+                    )
                 }
             }
             else -> dao.getEntriesForDeckOrdered(deckId)
@@ -492,7 +505,8 @@ class DataImportRepository(
         wordText: String,
         rating: Sm2Rating,
         nowMillis: Long = System.currentTimeMillis(),
-        entryId: String? = null
+        entryId: String? = null,
+        elapsedMs: Long = 0L
     ): WordProgressEntity = withContext(Dispatchers.IO) {
         val cardKey = buildCardKey(deckId, wordText)
         val existing = dao.getWordProgress(cardKey)
@@ -512,7 +526,23 @@ class DataImportRepository(
             deck = deckId,
             text = wordText.trim().lowercase()
         )).copy(entryId = resolvedEntryId)
-        val updated = Sm2Algorithm.applyRating(current, rating, nowMillis).copy(entryId = resolvedEntryId)
+        val sm2Updated = Sm2Algorithm.applyRating(current, rating, nowMillis).copy(entryId = resolvedEntryId)
+        val updated = if (rating == Sm2Rating.EASY) {
+            val matureInterval = maxOf(sm2Updated.intervalDays, com.example.data.plan.AdaptiveConfig.STAGE_MATURE_MIN_INTERVAL_DAYS)
+            val conqueredTime = when {
+                sm2Updated.againCount < com.example.data.plan.AdaptiveConfig.CONQUERED_MIN_LAPSES -> 0L
+                sm2Updated.conqueredTimestamp > 0L -> sm2Updated.conqueredTimestamp
+                else -> nowMillis
+            }
+            sm2Updated.copy(
+                isMastered = true,
+                intervalDays = matureInterval,
+                dueTimestamp = nowMillis + matureInterval * Sm2Algorithm.DAY_MILLIS,
+                conqueredTimestamp = conqueredTime
+            )
+        } else {
+            sm2Updated
+        }
         val attempt = AttemptEntity(
             activityType = if (isFirstRating) "flashcard_new" else "flashcard_review",
             itemId = cardKey,
@@ -525,9 +555,63 @@ class DataImportRepository(
                 Sm2Rating.GOOD -> 85f
                 Sm2Rating.EASY -> 100f
             },
-            deck = deckId
+            deck = deckId,
+            elapsedMs = elapsedMs.coerceAtLeast(0L)
         )
         dao.upsertWordProgressWithAttempt(updated, attempt)
+        if (rating == Sm2Rating.EASY) {
+            refreshDeckProgressCounts(deckId)
+        }
+
+        // Closed-loop Leech & Conquered integration with Correction Notebook
+        if (rating == Sm2Rating.AGAIN && updated.againCount >= 3) {
+            val allNotebook = dao.getAllCorrectionEntriesList()
+            val existingLeech = allNotebook.firstOrNull {
+                it.textId == cardKey && it.status != "mastered"
+            }
+            if (existingLeech == null) {
+                val entryRow = resolvedEntryId?.let { dao.getEntryById(it) }
+                val arabicMeaning = entryRow?.arabic?.takeIf { it.isNotBlank() } ?: ""
+                val exampleEn = entryRow?.examplesEn?.lines()?.firstOrNull { it.isNotBlank() }
+                    ?: "Use '${wordText.trim()}' in a complete sentence."
+                dao.upsertCorrectionEntry(
+                    com.example.data.local.CorrectionNotebookEntity(
+                        textId = cardKey,
+                        grammarLessonId = "leech_vocab",
+                        grammarLessonTitle = "Difficult Word (Leech): ${wordText.trim()}",
+                        originalSentence = wordText.trim(),
+                        correctedSentence = exampleEn,
+                        explanationAr = if (arabicMeaning.isNotBlank()) {
+                            "كلمة متعثرة (${updated.againCount} مرات): $arabicMeaning — تدرّب عليها في جملة لتثبيتها."
+                        } else {
+                            "كلمة متعثرة (${updated.againCount} مرات) — تدرّب عليها في جملة لتثبيتها."
+                        },
+                        status = "checked",
+                        reviewStep = 0,
+                        nextReviewTimestamp = nowMillis,
+                        situationPrompt = "Write or complete a sentence using '${wordText.trim()}'",
+                        attemptsCount = updated.againCount,
+                        createdAt = nowMillis,
+                        updatedAt = nowMillis
+                    )
+                )
+            }
+        } else if (updated.conqueredTimestamp > 0L) {
+            val allNotebook = dao.getAllCorrectionEntriesList()
+            val activeLeech = allNotebook.firstOrNull {
+                it.textId == cardKey && it.status != "mastered"
+            }
+            if (activeLeech != null) {
+                dao.upsertCorrectionEntry(
+                    activeLeech.copy(
+                        status = "mastered",
+                        reviewStep = 3,
+                        updatedAt = nowMillis
+                    )
+                )
+            }
+        }
+
         updated
     }
 
@@ -805,6 +889,19 @@ class DataImportRepository(
         val cardKey = buildCardKey(deckId, wordText)
         val existing = dao.getWordProgress(cardKey)
         val resolvedEntryId = existing?.entryId ?: dao.getPrimaryEntryIdForCard(deckId, wordText)
+        val newIsMastered = !(existing?.isMastered ?: false)
+        val newInterval = if (newIsMastered) {
+            maxOf(existing?.intervalDays ?: 0, com.example.data.plan.AdaptiveConfig.STAGE_MATURE_MIN_INTERVAL_DAYS)
+        } else {
+            existing?.intervalDays ?: 0
+        }
+        val againCount = existing?.againCount ?: 0
+        val newConqueredTimestamp = when {
+            againCount < com.example.data.plan.AdaptiveConfig.CONQUERED_MIN_LAPSES -> 0L
+            newIsMastered && newInterval >= com.example.data.plan.AdaptiveConfig.CONQUERED_MIN_INTERVAL_DAYS ->
+                if ((existing?.conqueredTimestamp ?: 0L) > 0L) existing!!.conqueredTimestamp else System.currentTimeMillis()
+            else -> existing?.conqueredTimestamp ?: 0L
+        }
         val updated = (existing ?: WordProgressEntity(
             cardKey = cardKey,
             entryId = resolvedEntryId,
@@ -812,7 +909,9 @@ class DataImportRepository(
             text = wordText.trim().lowercase()
         )).copy(
             entryId = resolvedEntryId,
-            isMastered = !(existing?.isMastered ?: false)
+            isMastered = newIsMastered,
+            intervalDays = newInterval,
+            conqueredTimestamp = newConqueredTimestamp
         )
         dao.upsertWordProgress(updated)
         refreshDeckProgressCounts(deckId)
@@ -1758,7 +1857,7 @@ class DataImportRepository(
     suspend fun exportUserBackupJson(nowMillis: Long = System.currentTimeMillis()): String =
         withContext(Dispatchers.IO) {
             val payload = UserBackupPayload(
-                schemaVersion = 15,
+                schemaVersion = 16,
                 exportedAt = nowMillis,
                 wordProgress = dao.getAllWordProgressList(),
                 attempts = dao.getAllAttempts(),
@@ -1767,6 +1866,7 @@ class DataImportRepository(
                 readingProgress = dao.getAllReadingProgress(),
                 correctionNotebook = dao.getAllCorrectionEntriesList(),
                 studyPlanProfile = dao.getStudyPlanProfile(),
+                studyPlans = dao.getAllStudyPlansList(),
                 dailyChecklists = dao.getAllDailyChecklists(),
                 quizResults = dao.getAllQuizResultsList()
             )

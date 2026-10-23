@@ -1,5 +1,1133 @@
 [
   {
+    "id": "r001",
+    "level": "A1",
+    "topic": "daily routine",
+    "title_en": "A Busy Morning at Home",
+    "title_ar": "صباح مزدحم في المنزل",
+    "grammar_ids": [
+      "g001"
+    ],
+    "target_words": [
+      "morning",
+      "early",
+      "breakfast",
+      "coffee",
+      "kitchen",
+      "ready"
+    ],
+    "sentences": [
+      {
+        "en": "Salma wakes up early every morning at six o'clock.",
+        "ar": "تستيقظ سلمى مبكرًا كل صباح في الساعة السادسة.",
+        "grammar_id": "g001"
+      },
+      {
+        "en": "She goes to the kitchen and makes hot coffee.",
+        "ar": "تذهب إلى المطبخ وتعد قهوة ساخنة.",
+        "grammar_id": "g001"
+      },
+      {
+        "en": "Her brother eats healthy breakfast before school.",
+        "ar": "يأكل أخوها فطورًا صحيًا قبل المدرسة."
+      },
+      {
+        "en": "They check the weather on the phone together.",
+        "ar": "يتحققان من الطقس على الهاتف معًا."
+      },
+      {
+        "en": "Salma puts her notebook and pen in her bag.",
+        "ar": "تضع سلمى دفترها وقلمها في حقيبتها."
+      },
+      {
+        "en": "She is ready to start a new day with a smile.",
+        "ar": "هي مستعدة لبدء يوم جديد بابتسامة.",
+        "grammar_id": "g001"
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "What does Salma make in the kitchen?",
+        "options": [
+          "Cold juice",
+          "Hot coffee",
+          "Green soup",
+          "Sweet cake"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "النص يذكر أن سلمى تذهب إلى المطبخ وتعد قهوة ساخنة (hot coffee)."
+      },
+      {
+        "prompt": "What does Salma put in her bag?",
+        "options": [
+          "Her notebook and pen",
+          "Her shoes and coat",
+          "Her lunch box only",
+          "Her camera"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "الجملة تقول: Salma puts her notebook and pen in her bag."
+      }
+    ]
+  },
+  {
+    "id": "r002",
+    "level": "A1",
+    "topic": "technology",
+    "title_en": "My First Computer Class",
+    "title_ar": "درسي الأول في الحاسوب",
+    "grammar_ids": [
+      "g002"
+    ],
+    "target_words": [
+      "computer",
+      "screen",
+      "keyboard",
+      "message",
+      "password",
+      "helpful"
+    ],
+    "sentences": [
+      {
+        "en": "Today is my first computer class at the local center.",
+        "ar": "اليوم هو درسي الأول في الحاسوب في المركز المحلي.",
+        "grammar_id": "g002"
+      },
+      {
+        "en": "The teacher shows us the screen and the keyboard.",
+        "ar": "يشرح لنا المعلم الشاشة ولوحة المفاتيح."
+      },
+      {
+        "en": "I learn how to write a short email message.",
+        "ar": "أتعلم كيف أكتب رسالة بريد إلكتروني قصيرة.",
+        "grammar_id": "g002"
+      },
+      {
+        "en": "We also create a strong password for safety.",
+        "ar": "نحن أيضًا ننشئ كلمة مرور قوية للأمان."
+      },
+      {
+        "en": "The teacher is very patient and helpful with everyone.",
+        "ar": "المعلم صبور جدًا ومتعاون مع الجميع."
+      },
+      {
+        "en": "I practice typing English words every evening at home.",
+        "ar": "أتدرب على كتابة الكلمات الإنجليزية كل مساء في المنزل."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "What does the student learn to write in class?",
+        "options": [
+          "A long book",
+          "A short email message",
+          "A paper letter",
+          "A music song"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "النص يقول: I learn how to write a short email message."
+      },
+      {
+        "prompt": "Why do the students create a strong password?",
+        "options": [
+          "For safety",
+          "For games",
+          "To print photos",
+          "To turn off the screen"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "الجملة توضح أن كلمة المرور القوية هي للأمان (for safety)."
+      }
+    ]
+  },
+  {
+    "id": "r003",
+    "level": "A1",
+    "topic": "work and office",
+    "title_en": "A New Job at the Office",
+    "title_ar": "وظيفة جديدة في المكتب",
+    "grammar_ids": [
+      "g003"
+    ],
+    "target_words": [
+      "office",
+      "manager",
+      "meeting",
+      "team",
+      "desk",
+      "schedule"
+    ],
+    "sentences": [
+      {
+        "en": "Karim starts his new job at a clean modern office.",
+        "ar": "يبدأ كريم وظيفته الجديدة في مكتب حديث ونظيف.",
+        "grammar_id": "g003"
+      },
+      {
+        "en": "His desk is near a large window with bright light.",
+        "ar": "مكتبه قريب من نافذة كبيرة ذات إضاءة ساطعة."
+      },
+      {
+        "en": "The manager welcomes him and introduces the friendly team.",
+        "ar": "يرحب به المدير ويعرفه على الفريق الودود.",
+        "grammar_id": "g003"
+      },
+      {
+        "en": "They have a short morning meeting at nine o'clock.",
+        "ar": "لديهم اجتماع صباحي قصير في الساعة التاسعة."
+      },
+      {
+        "en": "Karim writes his daily schedule in a small notebook.",
+        "ar": "يكتب كريم جدوله اليومي في دفتر صغير."
+      },
+      {
+        "en": "He feels happy and excited about his new career.",
+        "ar": "يشعر بالسعادة والحماس تجاه مسيرته المهنية الجديدة."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "Where is Karim's desk located?",
+        "options": [
+          "Near the kitchen door",
+          "Near a large window",
+          "In the basement",
+          "Outside the building"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "النص يذكر أن مكتبه قريب من نافذة كبيرة (near a large window)."
+      },
+      {
+        "prompt": "When is the short morning meeting?",
+        "options": [
+          "At seven o'clock",
+          "At nine o'clock",
+          "At noon",
+          "At five o'clock"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "الاجتماع الصباحي القصير يبدأ في الساعة التاسعة (at nine o'clock)."
+      }
+    ]
+  },
+  {
+    "id": "r004",
+    "level": "A1",
+    "topic": "health",
+    "title_en": "Walking for Good Health",
+    "title_ar": "المشي من أجل صحة جيدة",
+    "grammar_ids": [
+      "g004"
+    ],
+    "target_words": [
+      "health",
+      "exercise",
+      "water",
+      "energy",
+      "doctor",
+      "healthy"
+    ],
+    "sentences": [
+      {
+        "en": "Doctor Nadia always says that simple exercise is important.",
+        "ar": "تقول الدكتورة نادية دائمًا إن التمرين البسيط مهم.",
+        "grammar_id": "g004"
+      },
+      {
+        "en": "Walking for thirty minutes every day improves our health.",
+        "ar": "المشي لمدة ثلاثين دقيقة كل يوم يحسن صحتنا."
+      },
+      {
+        "en": "I walk in the neighborhood with my neighbor after work.",
+        "ar": "أمشي في الحي مع جاري بعد العمل.",
+        "grammar_id": "g004"
+      },
+      {
+        "en": "We carry a bottle of cold water with us.",
+        "ar": "نحمل معنا زجاجة من الماء البارد."
+      },
+      {
+        "en": "Fresh air gives us positive energy and better sleep.",
+        "ar": "الهواء النقي يمنحنا طاقة إيجابية ونومًا أفضل."
+      },
+      {
+        "en": "A healthy habit is easy when you start slowly.",
+        "ar": "العادة الصحية تكون سهلة عندما تبدأ ببطء."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "How many minutes of walking every day improves health?",
+        "options": [
+          "Five minutes",
+          "Thirty minutes",
+          "Three hours",
+          "Ten seconds"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "النص يذكر المشي لمدة ثلاثين دقيقة كل يوم (thirty minutes every day)."
+      },
+      {
+        "prompt": "What does fresh air give the walkers?",
+        "options": [
+          "Positive energy and better sleep",
+          "Heavy bags",
+          "More homework",
+          "Loud noise"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "الهواء النقي يمنحهم طاقة إيجابية ونومًا أفضل (positive energy and better sleep)."
+      }
+    ]
+  },
+  {
+    "id": "r005",
+    "level": "A1",
+    "topic": "environment",
+    "title_en": "Planting Trees in Our Garden",
+    "title_ar": "زراعة الأشجار في حديقتنا",
+    "grammar_ids": [
+      "g005"
+    ],
+    "target_words": [
+      "garden",
+      "tree",
+      "plant",
+      "nature",
+      "clean",
+      "flower"
+    ],
+    "sentences": [
+      {
+        "en": "Our family loves nature and green spaces around the house.",
+        "ar": "تحب عائلتنا الطبيعة والمساحات الخضراء حول المنزل.",
+        "grammar_id": "g005"
+      },
+      {
+        "en": "Every spring, we plant new flowers in the small garden.",
+        "ar": "في كل ربيع، نزرع زهورًا جديدة في الحديقة الصغيرة."
+      },
+      {
+        "en": "Today, my father is planting a young lemon tree.",
+        "ar": "اليوم، يزرع والدي شجرة ليمون صغيرة.",
+        "grammar_id": "g005"
+      },
+      {
+        "en": "Trees keep the air clean and give cool shade in summer.",
+        "ar": "الأشجار تحافظ على نظافة الهواء وتعطي ظلًا باردًا في الصيف."
+      },
+      {
+        "en": "My sister gives water to the plants every evening.",
+        "ar": "تسقي أختي النباتات بالماء كل مساء."
+      },
+      {
+        "en": "Small actions at home help protect our environment.",
+        "ar": "الأفعال الصغيرة في المنزل تساعد في حماية بيئتنا."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "What kind of tree is the father planting today?",
+        "options": [
+          "An apple tree",
+          "A young lemon tree",
+          "A tall pine tree",
+          "A palm tree"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "النص يقول: Today, my father is planting a young lemon tree."
+      },
+      {
+        "prompt": "How do trees help in summer?",
+        "options": [
+          "They give cool shade and clean air",
+          "They make the weather hotter",
+          "They block the road",
+          "They use electricity"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "الأشجار تحافظ على نظافة الهواء وتعطي ظلًا باردًا في الصيف."
+      }
+    ]
+  },
+  {
+    "id": "r006",
+    "level": "A1",
+    "topic": "travel",
+    "title_en": "A Train Trip to the Coast",
+    "title_ar": "رحلة بالقطار إلى الساحل",
+    "grammar_ids": [
+      "g006"
+    ],
+    "target_words": [
+      "train",
+      "ticket",
+      "station",
+      "travel",
+      "window",
+      "beach"
+    ],
+    "sentences": [
+      {
+        "en": "On Saturday, we travel by train to the coastal city.",
+        "ar": "يوم السبت، نسافر بالقطار إلى المدينة الساحلية.",
+        "grammar_id": "g006"
+      },
+      {
+        "en": "We buy our train tickets online before going to the station.",
+        "ar": "نشتري تذاكر القطار عبر الإنترنت قبل الذهاب إلى المحطة."
+      },
+      {
+        "en": "The station is busy, but our train arrives on time.",
+        "ar": "المحطة مزدحمة، لكن قطارنا يصل في الوقت المحدد.",
+        "grammar_id": "g006"
+      },
+      {
+        "en": "I sit near the window and watch the green fields.",
+        "ar": "أجلس بالقرب من النافذة وأشاهد الحقول الخضراء."
+      },
+      {
+        "en": "After two hours, we see the blue sea and the beach.",
+        "ar": "بعد ساعتين، نرى البحر الأزرق والشاطئ."
+      },
+      {
+        "en": "Traveling by train is comfortable, safe, and relaxing.",
+        "ar": "السفر بالقطار مريح وآمن ويبعث على الاسترخاء."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "How do they buy their train tickets?",
+        "options": [
+          "Online before going to the station",
+          "Inside the train",
+          "At the beach",
+          "From a taxi driver"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "النص يذكر أنهم يشترون التذاكر عبر الإنترنت قبل الذهاب إلى المحطة."
+      },
+      {
+        "prompt": "What do they see after two hours?",
+        "options": [
+          "High snow mountains",
+          "The blue sea and the beach",
+          "A desert",
+          "A factory"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "الجملة تقول: After two hours, we see the blue sea and the beach."
+      }
+    ]
+  },
+  {
+    "id": "r007",
+    "level": "A1",
+    "topic": "education",
+    "title_en": "Reading English Stories Every Night",
+    "title_ar": "قراءة القصص الإنجليزية كل ليلة",
+    "grammar_ids": [
+      "g007"
+    ],
+    "target_words": [
+      "story",
+      "read",
+      "dictionary",
+      "notebook",
+      "sentence",
+      "learn"
+    ],
+    "sentences": [
+      {
+        "en": "Tariq wants to speak and read English with confidence.",
+        "ar": "يريد طارق أن يتحدث ويقرأ الإنجليزية بثقة.",
+        "grammar_id": "g007"
+      },
+      {
+        "en": "Every night, he reads one short story before bed.",
+        "ar": "كل ليلة، يقرأ قصة قصيرة واحدة قبل النوم."
+      },
+      {
+        "en": "When he sees a new word, he checks his offline dictionary.",
+        "ar": "عندما يرى كلمة جديدة، يتحقق من قاموسه دون اتصال.",
+        "grammar_id": "g007"
+      },
+      {
+        "en": "He writes the word and a clear sentence in his notebook.",
+        "ar": "يكتب الكلمة وجملة واضحة في دفتره."
+      },
+      {
+        "en": "In the morning, he reviews his cards for five minutes.",
+        "ar": "في الصباح، يراجع بطاقاته لمدة خمس دقائق."
+      },
+      {
+        "en": "Step by step, his vocabulary grows stronger every week.",
+        "ar": "خطوة بخطوة، تنمو مفرداته وتزداد قوة كل أسبوع."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "What does Tariq do when he sees a new word?",
+        "options": [
+          "He closes the book",
+          "He checks his offline dictionary",
+          "He skips the page",
+          "He calls his friend"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "عندما يرى كلمة جديدة يتحقق من قاموسه (checks his offline dictionary)."
+      },
+      {
+        "prompt": "How long does he review his cards in the morning?",
+        "options": [
+          "For five minutes",
+          "For two hours",
+          "All day",
+          "Once a month"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "يراجع بطاقاته في الصباح لمدة خمس دقائق (for five minutes)."
+      }
+    ]
+  },
+  {
+    "id": "r008",
+    "level": "A1",
+    "topic": "society and community",
+    "title_en": "The Neighborhood Library",
+    "title_ar": "مكتبة الحي",
+    "grammar_ids": [
+      "g008"
+    ],
+    "target_words": [
+      "library",
+      "quiet",
+      "book",
+      "history",
+      "borrow",
+      "student"
+    ],
+    "sentences": [
+      {
+        "en": "There is a public library in the center of our town.",
+        "ar": "توجد مكتبة عامة في وسط مدينتنا.",
+        "grammar_id": "g008"
+      },
+      {
+        "en": "The building is old, but the rooms are bright and quiet.",
+        "ar": "المبنى قديم، لكن الغرف مضيئة وهادئة."
+      },
+      {
+        "en": "Many students come here to study and read history books.",
+        "ar": "يأتي العديد من الطلاب إلى هنا للدراسة وقراءة كتب التاريخ.",
+        "grammar_id": "g008"
+      },
+      {
+        "en": "You can borrow three books for two weeks for free.",
+        "ar": "يمكنك استعارة ثلاثة كتب لمدة أسبوعين مجانًا."
+      },
+      {
+        "en": "The librarian helps visitors find useful information quickly.",
+        "ar": "يساعد أمين المكتبة الزوار في العثور على معلومات مفيدة بسرعة."
+      },
+      {
+        "en": "A good library brings the whole community together.",
+        "ar": "المكتبة الجيدة تجمع المجتمع بأكمله معًا."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "How many books can you borrow for free?",
+        "options": [
+          "One book only",
+          "Three books for two weeks",
+          "Ten books for a year",
+          "None"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "النص يذكر أنه يمكنك استعارة ثلاثة كتب لمدة أسبوعين مجانًا."
+      },
+      {
+        "prompt": "How are the rooms inside the library described?",
+        "options": [
+          "Dark and noisy",
+          "Bright and quiet",
+          "Closed and cold",
+          "Crowded and loud"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "النص يصف الغرف بأنها مضيئة وهادئة (bright and quiet)."
+      }
+    ]
+  },
+  {
+    "id": "r009",
+    "level": "A2",
+    "topic": "technology and software",
+    "title_en": "Fixing a Website Bug Before Launch",
+    "title_ar": "إصلاح خطأ برمجي في موقع قبل الإطلاق",
+    "grammar_ids": [
+      "g016"
+    ],
+    "target_words": [
+      "software",
+      "developer",
+      "system",
+      "update",
+      "error",
+      "solution",
+      "network"
+    ],
+    "sentences": [
+      {
+        "en": "Omar works as a junior software developer at a technology company.",
+        "ar": "يعمل عمر كمطور برمجيات مبتدئ في شركة تقنية.",
+        "grammar_id": "g016"
+      },
+      {
+        "en": "Yesterday evening, the team tested a new update for their mobile application.",
+        "ar": "مساء أمس، اختبر الفريق تحديثًا جديدًا لتطبيق الهاتف الخاص بهم.",
+        "grammar_id": "g016"
+      },
+      {
+        "en": "Suddenly, an unexpected error appeared on the login screen.",
+        "ar": "فجأة، ظهر خطأ غير متوقع على شاشة تسجيل الدخول."
+      },
+      {
+        "en": "Users could not connect to the database when the network was slow.",
+        "ar": "لم يتمكن المستخدمون من الاتصال بقاعدة البيانات عندما كانت الشبكة بطيئة."
+      },
+      {
+        "en": "Omar carefully checked the code and found the exact problem in ten minutes.",
+        "ar": "فحص عمر الكود بعناية ووجد المشكلة بالضبط في عشر دقائق.",
+        "grammar_id": "g016"
+      },
+      {
+        "en": "He wrote a clean solution and tested the system again with his colleague.",
+        "ar": "كتب حلًا نظيفًا واختبر النظام مرة أخرى مع زميله."
+      },
+      {
+        "en": "This morning, the application launched smoothly and received great feedback.",
+        "ar": "هذا الصباح، انطلق التطبيق بسلاسة وتلقى تقييمات رائعة."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "What problem appeared during the test yesterday evening?",
+        "options": [
+          "The office lost electricity",
+          "An error appeared on the login screen when the network was slow",
+          "The computers were stolen",
+          "The designer deleted the logo"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "ظهر خطأ غير متوقع على شاشة تسجيل الدخول ولم يتمكن المستخدمون من الاتصال عندما كانت الشبكة بطيئة."
+      },
+      {
+        "prompt": "How did Omar solve the issue?",
+        "options": [
+          "He checked the code, wrote a clean solution, and tested the system again",
+          "He canceled the application launch",
+          "He bought a new phone",
+          "He waited until next month"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "فحص عمر الكود بعناية وكتب حلًا نظيفًا ثم اختبر النظام مجددًا."
+      }
+    ]
+  },
+  {
+    "id": "r010",
+    "level": "A2",
+    "topic": "career and interview",
+    "title_en": "Preparing for a First Tech Interview",
+    "title_ar": "الاستعداد لأول مقابلة عمل تقنية",
+    "grammar_ids": [
+      "g017"
+    ],
+    "target_words": [
+      "interview",
+      "experience",
+      "project",
+      "skill",
+      "confident",
+      "company",
+      "prepare"
+    ],
+    "sentences": [
+      {
+        "en": "Next Tuesday, Lina has an important job interview with an international company.",
+        "ar": "يوم الثلاثاء القادم، لدى لينا مقابلة عمل مهمة مع شركة دولية.",
+        "grammar_id": "g017"
+      },
+      {
+        "en": "To prepare well, she researched the company's recent projects and goals.",
+        "ar": "للاستعداد جيدًا، بحثت عن مشاريع الشركة الأخيرة وأهدافها."
+      },
+      {
+        "en": "She also practiced explaining her technical skills in clear English sentences.",
+        "ar": "كما تدربت على شرح مهاراتها التقنية بجمل إنجليزية واضحة.",
+        "grammar_id": "g017"
+      },
+      {
+        "en": "Her older brother asked her common interview questions for thirty minutes.",
+        "ar": "طرح عليها أخوها الأكبر أسئلة المقابلات الشائعة لمدة ثلاثين دقيقة."
+      },
+      {
+        "en": "At first, she spoke too fast because she felt a little nervous.",
+        "ar": "في البداية، تحدثت بسرعة كبيرة لأنها شعرت ببعض التوتر."
+      },
+      {
+        "en": "After three practice rounds, her answers became calm, organized, and confident.",
+        "ar": "بعد ثلاث جولات تدريبية، أصبحت إجاباتها هادئة ومنظمة وواثقة."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "How did Lina prepare for her interview?",
+        "options": [
+          "She researched the company's projects and practiced answering in English",
+          "She memorized a dictionary without speaking",
+          "She stayed awake all night",
+          "She did not prepare at all"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "بحثت لينا عن مشاريع الشركة وتدربت على شرح مهاراتها التقنية بالإنجليزية مع أخيها."
+      },
+      {
+        "prompt": "How did Lina's answers change after three practice rounds?",
+        "options": [
+          "They became shorter and quieter",
+          "They became calm, organized, and confident",
+          "She forgot her technical skills",
+          "She decided not to attend"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "بعد ثلاث جولات تدريبية أصبحت إجاباتها هادئة ومنظمة وواثقة."
+      }
+    ]
+  },
+  {
+    "id": "r011",
+    "level": "A2",
+    "topic": "food and culture",
+    "title_en": "Friday Family Lunch at Grandmother's House",
+    "title_ar": "غداء العائلة يوم الجمعة في بيت الجدة",
+    "grammar_ids": [
+      "g018"
+    ],
+    "target_words": [
+      "tradition",
+      "recipe",
+      "delicious",
+      "conversation",
+      "prepare",
+      "together"
+    ],
+    "sentences": [
+      {
+        "en": "Every Friday afternoon, our whole family gathers at my grandmother's house.",
+        "ar": "بعد ظهر كل يوم جمعة، تجتمع عائلتنا بأكملها في منزل جدتي.",
+        "grammar_id": "g018"
+      },
+      {
+        "en": "This weekly meeting is a warm tradition that everyone enjoys.",
+        "ar": "هذا اللقاء الأسبوعي هو تقليد دافئ يستمتع به الجميع."
+      },
+      {
+        "en": "My grandmother prepares a delicious meal using a traditional family recipe.",
+        "ar": "تحضر جدتي وجبة لذيذة باستخدام وصفة عائلية تقليدية.",
+        "grammar_id": "g018"
+      },
+      {
+        "en": "The younger cousins help set the table and serve fresh mint tea.",
+        "ar": "يساعد الأبناء الأصغر سنًا في تجهيز الطاولة وتقديم شاي النعناع الطازج."
+      },
+      {
+        "en": "During lunch, we share stories about our week and laugh together.",
+        "ar": "خلال الغداء، نتبادل القصص حول أسبوعنا ونضحك معًا."
+      },
+      {
+        "en": "Spending quality time with family makes us feel supported and grateful.",
+        "ar": "قضاء وقت مميز مع العائلة يجعلنا نشعر بالدعم والامتنان."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "How does the grandmother prepare the Friday meal?",
+        "options": [
+          "She orders fast food from a restaurant",
+          "She uses a traditional family recipe",
+          "She asks the neighbors to cook",
+          "She only serves cold sandwiches"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "تحضر الجدة وجبة لذيذة باستخدام وصفة عائلية تقليدية (traditional family recipe)."
+      },
+      {
+        "prompt": "How do the younger cousins help?",
+        "options": [
+          "They set the table and serve fresh mint tea",
+          "They wash the cars outside",
+          "They go shopping during lunch",
+          "They repair the television"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "يساعدون في تجهيز الطاولة وتقديم شاي النعناع الطازج."
+      }
+    ]
+  },
+  {
+    "id": "r012",
+    "level": "A2",
+    "topic": "health and psychology",
+    "title_en": "Why Good Sleep Matters for Memory",
+    "title_ar": "لماذا يهم النوم الجيد للذاكرة",
+    "grammar_ids": [
+      "g019"
+    ],
+    "target_words": [
+      "memory",
+      "brain",
+      "focus",
+      "habit",
+      "screen",
+      "rest"
+    ],
+    "sentences": [
+      {
+        "en": "Many students stay up late when they study for important exams.",
+        "ar": "يسهر العديد من الطلاب لوقت متأخر عندما يدرسون للامتحانات المهمة.",
+        "grammar_id": "g019"
+      },
+      {
+        "en": "However, scientists explain that the brain needs deep rest to remember new information.",
+        "ar": "ومع ذلك، يوضح العلماء أن الدماغ يحتاج إلى راحة عميقة لتذكر المعلومات الجديدة."
+      },
+      {
+        "en": "While you sleep, your brain organizes the words and rules you learned during the day.",
+        "ar": "أثناء نومك، ينظم دماغك الكلمات والقواعد التي تعلمتها خلال اليوم.",
+        "grammar_id": "g019"
+      },
+      {
+        "en": "Without enough sleep, it becomes difficult to focus and solve problems the next morning.",
+        "ar": "بدون نوم كافٍ، يصبح من الصعب التركيز وحل المشكلات في صباح اليوم التالي."
+      },
+      {
+        "en": "Turning off phone screens one hour before bed builds a healthy sleep habit.",
+        "ar": "إيقاف شاشات الهاتف قبل النوم بساعة يبني عادة نوم صحية."
+      },
+      {
+        "en": "Seven to eight hours of rest can improve both your mood and your memory.",
+        "ar": "سبع إلى ثماني ساعات من الراحة يمكن أن تحسن مزاجك وذاكرتك معًا."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "What does your brain do while you sleep?",
+        "options": [
+          "It forgets everything from the day",
+          "It organizes the words and rules you learned during the day",
+          "It stops working completely",
+          "It makes you feel hungrier"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "ينظم الدماغ أثناء النوم الكلمات والقواعد التي تعلمتها خلال النهار."
+      },
+      {
+        "prompt": "What habit helps improve sleep quality?",
+        "options": [
+          "Drinking coffee at midnight",
+          "Turning off phone screens one hour before bed",
+          "Studying until four in the morning",
+          "Keeping bright lights on"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "إيقاف شاشات الهاتف قبل النوم بساعة يبني عادة نوم صحية."
+      }
+    ]
+  },
+  {
+    "id": "r013",
+    "level": "A2",
+    "topic": "environment",
+    "title_en": "Using Solar Energy in Desert Towns",
+    "title_ar": "استخدام الطاقة الشمسية في المدن الصحراوية",
+    "grammar_ids": [
+      "g020"
+    ],
+    "target_words": [
+      "energy",
+      "modern",
+      "electricity",
+      "environment",
+      "reduce",
+      "future"
+    ],
+    "sentences": [
+      {
+        "en": "Sunny desert regions receive bright sunlight for most of the year.",
+        "ar": "تتلقى المناطق الصحراوية المشمسة ضوء شمس ساطعًا معظم أيام السنة.",
+        "grammar_id": "g020"
+      },
+      {
+        "en": "Today, many towns are building solar panels to produce clean electricity.",
+        "ar": "اليوم، تقوم العديد من المدن ببناء ألواح شمسية لإنتاج كهرباء نظيفة."
+      },
+      {
+        "en": "Solar energy does not pollute the air or harm the natural environment.",
+        "ar": "الطاقة الشمسية لا تلوث الهواء ولا تضر بالبيئة الطبيعية.",
+        "grammar_id": "g020"
+      },
+      {
+        "en": "In addition, it helps families and schools reduce their monthly electricity bills.",
+        "ar": "بالإضافة إلى ذلك، فإنها تساعد العائلات والمدارس على تقليل فواتير الكهرباء الشهرية."
+      },
+      {
+        "en": "Local engineers train young technicians to maintain the modern solar systems.",
+        "ar": "يدرب المهندسون المحليون الفنيين الشباب على صيانة الأنظمة الشمسية الحديثة."
+      },
+      {
+        "en": "Investing in renewable energy creates jobs and protects the future of our planet.",
+        "ar": "الاستثمار في الطاقة المتجددة يخلق فرص عمل ويحمي مستقبل كوكبنا."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "Why are desert regions ideal for solar panels?",
+        "options": [
+          "Because they receive bright sunlight for most of the year",
+          "Because it rains every day",
+          "Because they have many rivers",
+          "Because the wind is cold"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "المناطق الصحراوية تتلقى ضوء شمس ساطعًا معظم أيام السنة."
+      },
+      {
+        "prompt": "How does solar energy help families and schools?",
+        "options": [
+          "It makes electricity bills higher",
+          "It reduces their monthly electricity bills and produces clean power",
+          "It replaces water pipes",
+          "It only works in winter"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "تساعد الطاقة الشمسية في تقليل فواتير الكهرباء الشهرية وإنتاج طاقة نظيفة."
+      }
+    ]
+  },
+  {
+    "id": "r014",
+    "level": "A2",
+    "topic": "travel",
+    "title_en": "Navigating an International Airport",
+    "title_ar": "التنقل داخل مطار دولي",
+    "grammar_ids": [
+      "g021"
+    ],
+    "target_words": [
+      "airport",
+      "flight",
+      "passport",
+      "passenger",
+      "luggage",
+      "information"
+    ],
+    "sentences": [
+      {
+        "en": "Traveling through a large international airport for the first time can feel overwhelming.",
+        "ar": "قد يبدو السفر عبر مطار دولي كبير لأول مرة أمرًا مربكًا.",
+        "grammar_id": "g021"
+      },
+      {
+        "en": "It is smart to arrive three hours before your flight departure time.",
+        "ar": "من الذكاء الوصول قبل موعد إقلاع رحلتك بثلاث ساعات."
+      },
+      {
+        "en": "First, you show your passport and ticket at the check-in desk to drop off your luggage.",
+        "ar": "أولًا، تبرز جواز سفرك وتذكرتك عند مكتب التسجيل لتسليم أمتعتك.",
+        "grammar_id": "g021"
+      },
+      {
+        "en": "Next, passengers walk through security and follow the clear English signs to their gate.",
+        "ar": "بعد ذلك، يمر المسافرون عبر الأمن ويتبعون اللافتات الإنجليزية الواضحة إلى بوابتهم."
+      },
+      {
+        "en": "If your gate number changes, the information screens display the update immediately.",
+        "ar": "إذا تغير رقم بوابتك، تعرض شاشات المعلومات التحديث فورًا."
+      },
+      {
+        "en": "Knowing basic travel vocabulary makes every international journey much smoother.",
+        "ar": "معرفة مفردات السفر الأساسية تجعل كل رحلة دولية أكثر سلاسة."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "When should you arrive at the airport for an international flight?",
+        "options": [
+          "Ten minutes before takeoff",
+          "Three hours before your flight departure time",
+          "One day after the flight",
+          "Only when the gate closes"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "ينصح النص بالوصول قبل موعد إقلاع الرحلة بثلاث ساعات."
+      },
+      {
+        "prompt": "Where can passengers see updates if their gate number changes?",
+        "options": [
+          "On the information screens",
+          "Inside their luggage",
+          "On their passport cover",
+          "In the taxi"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "شاشات المعلومات (information screens) تعرض التحديث فورًا."
+      }
+    ]
+  },
+  {
+    "id": "r015",
+    "level": "A2",
+    "topic": "education and language",
+    "title_en": "Learning From Mistakes in a Notebook",
+    "title_ar": "التعلم من الأخطاء في دفتر الملاحظات",
+    "grammar_ids": [
+      "g022"
+    ],
+    "target_words": [
+      "mistake",
+      "improve",
+      "practice",
+      "correct",
+      "progress",
+      "language"
+    ],
+    "sentences": [
+      {
+        "en": "Many language learners feel shy when they make a mistake in English.",
+        "ar": "يشعر العديد من متعلمي اللغة بالخجل عندما يرتكبون خطأً في الإنجليزية.",
+        "grammar_id": "g022"
+      },
+      {
+        "en": "In reality, mistakes are the most valuable part of the learning process.",
+        "ar": "في الواقع، الأخطاء هي الجزء الأكثر قيمة في عملية التعلم."
+      },
+      {
+        "en": "Whenever Youssef misses a grammar rule, he saves the sentence in his correction notebook.",
+        "ar": "كلما أخطأ يوسف في قاعدة نحوية، يحفظ الجملة في دفتر التصحيح الخاص به.",
+        "grammar_id": "g022"
+      },
+      {
+        "en": "He compares his original sentence with the correct form and reads the Arabic explanation.",
+        "ar": "يقارن جملته الأصلية بالصيغة الصحيحة ويقرأ الشرح العربي."
+      },
+      {
+        "en": "Three days later, the app reminds him to practice that exact rule again.",
+        "ar": "بعد ثلاثة أيام، يذكره التطبيق بالتدرب على تلك القاعدة بالذات مرة أخرى."
+      },
+      {
+        "en": "Turning errors into active review is the fastest way to make real progress.",
+        "ar": "تحويل الأخطاء إلى مراجعة نشطة هو أسرع طريقة لتحقيق تقدم حقيقي."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "What does Youssef do when he misses a grammar rule?",
+        "options": [
+          "He stops studying for a week",
+          "He saves the sentence in his correction notebook and reviews it",
+          "He deletes the app",
+          "He ignores the explanation"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "يحفظ الجملة في دفتر التصحيح ويقارنها بالصيغة الصحيحة."
+      },
+      {
+        "prompt": "According to the passage, why are mistakes valuable?",
+        "options": [
+          "Because turning errors into active review is the fastest way to make real progress",
+          "Because grammar rules never matter",
+          "Because they make tests longer",
+          "Because nobody notices them"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "تحويل الأخطاء إلى مراجعة نشطة هو أسرع طريقة لتحقيق تقدم حقيقي."
+      }
+    ]
+  },
+  {
+    "id": "r016",
+    "level": "A2",
+    "topic": "history and science",
+    "title_en": "How Ancient Scholars Preserved Knowledge",
+    "title_ar": "كيف حفظ العلماء القدماء المعرفة",
+    "grammar_ids": [
+      "g023"
+    ],
+    "target_words": [
+      "history",
+      "knowledge",
+      "science",
+      "translate",
+      "library",
+      "discover"
+    ],
+    "sentences": [
+      {
+        "en": "Over a thousand years ago, Baghdad had one of the greatest libraries in history.",
+        "ar": "قبل أكثر من ألف عام، كان في بغداد واحدة من أعظم المكتبات في التاريخ.",
+        "grammar_id": "g023"
+      },
+      {
+        "en": "Scholars traveled from many countries to study mathematics, astronomy, and medicine.",
+        "ar": "سافر العلماء من بلدان عديدة لدراسة الرياضيات والفلك والطب."
+      },
+      {
+        "en": "They translated important scientific books from Greek, Persian, and Sanskrit into Arabic.",
+        "ar": "ترجموا كتبًا علمية مهمة من اليونانية والفارسية والسنسكريتية إلى العربية.",
+        "grammar_id": "g023"
+      },
+      {
+        "en": "In addition to translating, they tested ideas through careful experiments and observations.",
+        "ar": "وبالإضافة إلى الترجمة، اختبروا الأفكار من خلال التجارب والملاحظات الدقيقة."
+      },
+      {
+        "en": "Their discoveries later helped European universities develop modern science.",
+        "ar": "ساعدت اكتشافاتهم لاحقًا الجامعات الأوروبية على تطوير العلوم الحديثة."
+      },
+      {
+        "en": "Sharing knowledge across languages always builds a stronger human civilization.",
+        "ar": "إن مشاركة المعرفة عبر اللغات تبني دائمًا حضارة إنسانية أقوى."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "What subjects did scholars study in the great library of Baghdad?",
+        "options": [
+          "Mathematics, astronomy, and medicine",
+          "Modern computer programming",
+          "Aviation and space rockets",
+          "Photography and cinema"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "سافر العلماء لدراسة الرياضيات والفلك والطب."
+      },
+      {
+        "prompt": "How did the scholars test scientific ideas?",
+        "options": [
+          "Through careful experiments and observations",
+          "By guessing without reading",
+          "By keeping books closed",
+          "By avoiding translations"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "اختبروا الأفكار من خلال التجارب والملاحظات الدقيقة (careful experiments and observations)."
+      }
+    ]
+  },
+  {
     "id": "r030",
     "level": "B1",
     "topic": "environment",
@@ -110,6 +1238,16 @@
         "answer_index": 0,
         "explanation_ar": "الهدف هو جعل الحديقة آمنة ونظيفة للأطفال مرة أخرى."
       }
+    ],
+    "target_words": [
+      "used",
+      "volunteer",
+      "since",
+      "despite",
+      "proud",
+      "make",
+      "feel",
+      "leave"
     ]
   },
   {
@@ -220,6 +1358,16 @@
         "answer_index": 1,
         "explanation_ar": "تؤمن ليلى بأن الطعام هو أفضل وسيلة للربط بين الثقافات."
       }
+    ],
+    "target_words": [
+      "explore",
+      "ingredient",
+      "making",
+      "times",
+      "chef",
+      "recipe",
+      "last",
+      "use"
     ]
   },
   {
@@ -329,6 +1477,16 @@
         "answer_index": 1,
         "explanation_ar": "ذكر النص أن سارة تشعر بسعادة غامرة لأنها تحب مساعدة أصدقائها."
       }
+    ],
+    "target_words": [
+      "since",
+      "planning",
+      "decorate",
+      "celebration",
+      "friendship",
+      "share",
+      "talk",
+      "surprise"
     ]
   },
   {
@@ -443,6 +1601,16 @@
         "answer_index": 2,
         "explanation_ar": "كانت الخزنة تحتوي على معادلة سرية لنوع جديد من الطاقة النظيفة."
       }
+    ],
+    "target_words": [
+      "laboratory",
+      "written",
+      "kind",
+      "scientific",
+      "found",
+      "enter",
+      "notice",
+      "assistant"
     ]
   },
   {
@@ -552,6 +1720,16 @@
         "answer_index": 2,
         "explanation_ar": "في نهاية النص، ذكر الكاتب أن لديه وظيفة بدوام كامل الآن وأنه يتسوق براحة أكبر."
       }
+    ],
+    "target_words": [
+      "used",
+      "deal",
+      "whenever",
+      "worth",
+      "unnecessary",
+      "still",
+      "truly",
+      "debt"
     ]
   },
   {
@@ -665,6 +1843,16 @@
         "answer_index": 1,
         "explanation_ar": "ذكرت الجملة الأخيرة أن العمل الجاد هو السر لتحقيق الأحلام."
       }
+    ],
+    "target_words": [
+      "champion",
+      "like",
+      "balance",
+      "potential",
+      "tournament",
+      "try",
+      "professional",
+      "coach"
     ]
   },
   {
@@ -775,6 +1963,16 @@
         "answer_index": 1,
         "explanation_ar": "الجملة الشرطية الصفرية توضح أن المساعدة المتبادلة هي نتيجة طبيعية للتعاون."
       }
+    ],
+    "target_words": [
+      "valuable",
+      "unless",
+      "effective",
+      "communication",
+      "workplace",
+      "employe",
+      "feel",
+      "silence"
     ]
   },
   {
@@ -889,6 +2087,16 @@
         "answer_index": 2,
         "explanation_ar": "تذكر الجملة التاسعة أن الرحلة يتم تذكرها كتجربة رائعة."
       }
+    ],
+    "target_words": [
+      "historic",
+      "souvenir",
+      "nearby",
+      "last",
+      "ancient",
+      "stone",
+      "narrow",
+      "architect"
     ]
   },
   {
@@ -994,6 +2202,16 @@
         "answer_index": 2,
         "explanation_ar": "أصبحت بيئة العمل أكثر هدوءًا وزادت الإنتاجية."
       }
+    ],
+    "target_words": [
+      "policy",
+      "announce",
+      "update",
+      "staff",
+      "mention",
+      "regarding",
+      "employe",
+      "leave"
     ]
   },
   {
@@ -1107,6 +2325,16 @@
         "answer_index": 2,
         "explanation_ar": "النص يشجع على تبني عادات صحية بسيطة لتحسين نمط الحياة."
       }
+    ],
+    "target_words": [
+      "live",
+      "essential",
+      "level",
+      "lead",
+      "vitamin",
+      "mineral",
+      "make",
+      "routine"
     ]
   },
   {
@@ -1219,6 +2447,16 @@
         "answer_index": 0,
         "explanation_ar": "قررت سارة الاتصال بشرطة المدينة لطلب المساعدة."
       }
+    ],
+    "target_words": [
+      "package",
+      "valuable",
+      "claim",
+      "hurry",
+      "downtown",
+      "mysterious",
+      "nearby",
+      "feel"
     ]
   },
   {
@@ -1332,6 +2570,16 @@
         "answer_index": 0,
         "explanation_ar": "الجملة قبل الأخيرة توضح أنهما سيدرسان معًا للاختبار النهائي."
       }
+    ],
+    "target_words": [
+      "hurry",
+      "deadline",
+      "textbook",
+      "make",
+      "working",
+      "need",
+      "finish",
+      "research"
     ]
   },
   {
@@ -1441,6 +2689,16 @@
         "answer_index": 1,
         "explanation_ar": "ذكرت الجملة السابعة أنهم قاموا بإعادة الأدوات (give back)."
       }
+    ],
+    "target_words": [
+      "generation",
+      "pick",
+      "litter",
+      "center",
+      "plastic",
+      "last",
+      "carefully",
+      "look"
     ]
   },
   {
@@ -1550,6 +2808,16 @@
         "answer_index": 1,
         "explanation_ar": "يتحدث النص عن تجربة إيجابية في مطعم مشهور رغم بطء الخدمة."
       }
+    ],
+    "target_words": [
+      "prepared",
+      "spicy",
+      "atmosphere",
+      "staff",
+      "like",
+      "curry",
+      "unique",
+      "waiting"
     ]
   },
   {
@@ -1660,6 +2928,16 @@
         "answer_index": 1,
         "explanation_ar": "الفعل hope يتبعه دائماً المصدر المسبوق بـ to."
       }
+    ],
+    "target_words": [
+      "ingredient",
+      "living",
+      "make",
+      "last",
+      "home",
+      "later",
+      "suggest",
+      "traditional"
     ]
   },
   {
@@ -1774,6 +3052,16 @@
         "answer_index": 2,
         "explanation_ar": "يتحدث النص عن مهمة فضائية ناجحة لاستكشاف كوكب جديد."
       }
+    ],
+    "target_words": [
+      "explore",
+      "advanced",
+      "surface",
+      "neither",
+      "signal",
+      "move",
+      "previous",
+      "distant"
     ]
   },
   {
@@ -1884,6 +3172,16 @@
         "answer_index": 1,
         "explanation_ar": "تستخدم جملة الزمن المستقبلية (As soon as the doors open) لتحديد وقت حدوث الفعل في المستقبل."
       }
+    ],
+    "target_words": [
+      "mall",
+      "host",
+      "deal",
+      "court",
+      "account",
+      "electronics",
+      "huge",
+      "sale"
     ]
   },
   {
@@ -1997,6 +3295,16 @@
         "answer_index": 1,
         "explanation_ar": "أجاب الموظف عن أسئلتها بأدب."
       }
+    ],
+    "target_words": [
+      "wonder",
+      "staff",
+      "like",
+      "receptionist",
+      "brochure",
+      "monthly",
+      "membership",
+      "stay"
     ]
   },
   {
@@ -2106,6 +3414,16 @@
         "answer_index": 2,
         "explanation_ar": "تعلمت سارة أهمية الثقة بالفريق والعمل الجماعي بدلاً من القيام بكل شيء بمفردها."
       }
+    ],
+    "target_words": [
+      "encourage",
+      "proud",
+      "becoming",
+      "trust",
+      "feel",
+      "reward",
+      "start",
+      "manager"
     ]
   },
   {
@@ -2220,6 +3538,16 @@
         "answer_index": 1,
         "explanation_ar": "في الجملة قبل الأخيرة، ذكر الكاتب أن السفر يساعدنا على فهم الناس والثقافات بشكل أفضل."
       }
+    ],
+    "target_words": [
+      "pack",
+      "suitcase",
+      "center",
+      "last",
+      "look",
+      "architecture",
+      "third",
+      "wait"
     ]
   },
   {
@@ -2330,6 +3658,16 @@
         "answer_index": 0,
         "explanation_ar": "ذكر النص أنه فخور (proud of) بمنزله الحديث."
       }
+    ],
+    "target_words": [
+      "smart",
+      "complex",
+      "expected",
+      "security",
+      "whenever",
+      "proud",
+      "controlled",
+      "lighting"
     ]
   },
   {
@@ -2443,6 +3781,16 @@
         "answer_index": 0,
         "explanation_ar": "ذكر النص أنها بدأت بالمشي لمدة ثلاثين دقيقة كل صباح."
       }
+    ],
+    "target_words": [
+      "plenty",
+      "throughout",
+      "lead",
+      "snack",
+      "feel",
+      "lifestyle",
+      "start",
+      "although"
     ]
   },
   {
@@ -2553,6 +3901,16 @@
         "answer_index": 1,
         "explanation_ar": "استخدم النص (not as quiet as) ليقارن بين هدوء المدينة والقرية."
       }
+    ],
+    "target_words": [
+      "move",
+      "entertainment",
+      "appreciate",
+      "pace",
+      "efficient",
+      "center",
+      "resident",
+      "public"
     ]
   },
   {
@@ -2662,6 +4020,16 @@
         "answer_index": 0,
         "explanation_ar": "أصبحت الفصول أكثر هدوءًا وإنتاجية بعد تطبيق القواعد."
       }
+    ],
+    "target_words": [
+      "policy",
+      "used",
+      "nervous",
+      "immediately",
+      "use",
+      "tablet",
+      "research",
+      "technology"
     ]
   },
   {
@@ -2771,6 +4139,16 @@
         "answer_index": 2,
         "explanation_ar": "في آخر جملة: يراجع جدوله مرتين ويضبط منبّهين."
       }
+    ],
+    "target_words": [
+      "rush",
+      "minute",
+      "software",
+      "set",
+      "alarm",
+      "prepared",
+      "last",
+      "spring"
     ]
   },
   {
@@ -2880,6 +4258,16 @@
         "answer_index": 2,
         "explanation_ar": "ذكر النص أنها لو كانت أكثر تنظيمًا لكان لديها مجموعة وصفات، مما يعني أنها لم تكن منظمة بما يكفي."
       }
+    ],
+    "target_words": [
+      "making",
+      "regret",
+      "spice",
+      "recreate",
+      "notebook",
+      "struggle",
+      "even",
+      "classic"
     ]
   },
   {
@@ -2989,6 +4377,16 @@
         "answer_index": 0,
         "explanation_ar": "النص يذكر أن رابطتهما تظل قوية رغم المسافة."
       }
+    ],
+    "target_words": [
+      "catch",
+      "bond",
+      "remains",
+      "live",
+      "due",
+      "despite",
+      "best",
+      "friend"
     ]
   },
   {
@@ -3100,6 +4498,16 @@
         "answer_index": 2,
         "explanation_ar": "تشير الجملة الأخيرة إلى ضرورة تطوير علاجات جديدة لمواجهة التحديات الحديثة."
       }
+    ],
+    "target_words": [
+      "significant",
+      "bacteria",
+      "produce",
+      "infection",
+      "minor",
+      "patient",
+      "bacterial",
+      "antibiotic"
     ]
   },
   {
@@ -3214,6 +4622,16 @@
         "answer_index": 3,
         "explanation_ar": "فعل النقل 'admitted' يعني الاعتراف بوقوع خطأ."
       }
+    ],
+    "target_words": [
+      "insist",
+      "genuine",
+      "entire",
+      "saving",
+      "imitation",
+      "demand",
+      "refund",
+      "fake"
     ]
   },
   {
@@ -3323,6 +4741,16 @@
         "answer_index": 1,
         "explanation_ar": "ذكر النص أن الجميع ذهبوا إلى مقهى قريب للاحتفال بعد الحفل."
       }
+    ],
+    "target_words": [
+      "annual",
+      "tournament",
+      "sporting",
+      "medal",
+      "spectator",
+      "cheer",
+      "reach",
+      "former"
     ]
   },
   {
@@ -3432,6 +4860,16 @@
         "answer_index": 0,
         "explanation_ar": "تؤمن سارة بأن التعلم المستمر هو مفتاح النجاح."
       }
+    ],
+    "target_words": [
+      "vision",
+      "dozen",
+      "regarding",
+      "dedication",
+      "mentor",
+      "sustainability",
+      "proud",
+      "achievement"
     ]
   },
   {
@@ -3541,6 +4979,16 @@
         "answer_index": 2,
         "explanation_ar": "وجدت شركة الطيران الحقيبة ووعدت بتوصيلها للفندق."
       }
+    ],
+    "target_words": [
+      "reach",
+      "suitcase",
+      "anxious",
+      "tag",
+      "found",
+      "claim",
+      "staff",
+      "pack"
     ]
   },
   {
@@ -3650,6 +5098,16 @@
         "answer_index": 1,
         "explanation_ar": "قررت حفظ عملها والذهاب إلى المنزل للراحة."
       }
+    ],
+    "target_words": [
+      "exhaust",
+      "startup",
+      "crash",
+      "trying",
+      "fix",
+      "database",
+      "flicker",
+      "brew"
     ]
   },
   {
@@ -3767,6 +5225,16 @@
         "answer_index": 2,
         "explanation_ar": "تؤكد الجملة الأخيرة أن الاستمرارية هي مفتاح الصحة الجيدة."
       }
+    ],
+    "target_words": [
+      "overall",
+      "snack",
+      "entirely",
+      "reach",
+      "locking",
+      "mass",
+      "found",
+      "spare"
     ]
   },
   {
@@ -3877,6 +5345,16 @@
         "answer_index": 3,
         "explanation_ar": "رغم الفوضى، ذكرت الجملة الأخيرة أنها لا تستطيع تخيل العيش في مكان آخر."
       }
+    ],
+    "target_words": [
+      "constant",
+      "skyscraper",
+      "exhaust",
+      "seek",
+      "surround",
+      "concrete",
+      "routine",
+      "rush"
     ]
   },
   {
@@ -3990,6 +5468,16 @@
         "answer_index": 3,
         "explanation_ar": "ذكرت الجملة أنها أرادت اكتساب معرفة عميقة وليس فقط اجتياز الامتحانات."
       }
+    ],
+    "target_words": [
+      "struggle",
+      "strict",
+      "thesis",
+      "peer",
+      "whereas",
+      "gain",
+      "workshop",
+      "praise"
     ]
   },
   {
@@ -4099,6 +5587,16 @@
         "answer_index": 1,
         "explanation_ar": "يتحدث النص عن مبادرات بيئية تهدف إلى تحسين كفاءة استخدام الطاقة والموارد."
       }
+    ],
+    "target_words": [
+      "council",
+      "mayor",
+      "solar",
+      "panel",
+      "resident",
+      "contribute",
+      "initiative",
+      "insulate"
     ]
   },
   {
@@ -4208,6 +5706,16 @@
         "answer_index": 2,
         "explanation_ar": "يدور النص حول أهمية الوصفات العائلية كجزء من الثقافة والذكريات."
       }
+    ],
+    "target_words": [
+      "spice",
+      "provided",
+      "notebook",
+      "color",
+      "exotic",
+      "scent",
+      "inspire",
+      "herb"
     ]
   },
   {
@@ -4322,6 +5830,16 @@
         "answer_index": 0,
         "explanation_ar": "في الجملة قبل الأخيرة، ذكر الكاتب أن وجود صديقة مثلها يجعل الحياة أقل صعوبة."
       }
+    ],
+    "target_words": [
+      "bond",
+      "maintain",
+      "make",
+      "significantly",
+      "gathering",
+      "chaotic",
+      "meaningful",
+      "supportive"
     ]
   },
   {
@@ -4435,6 +5953,16 @@
         "answer_index": 0,
         "explanation_ar": "أدت التجربة إلى اكتشاف آلية جديدة قد تغير إنتاج الكهرباء."
       }
+    ],
+    "target_words": [
+      "unexpected",
+      "publishing",
+      "finding",
+      "mechanism",
+      "produce",
+      "breakthrough",
+      "eager",
+      "laboratory"
     ]
   },
   {
@@ -4548,6 +6076,16 @@
         "answer_index": 3,
         "explanation_ar": "قررت سارة في النهاية الشراء عبر الإنترنت لتوفير المال."
       }
+    ],
+    "target_words": [
+      "electronics",
+      "saving",
+      "making",
+      "purchase",
+      "significantly",
+      "lower",
+      "shipping",
+      "latest"
     ]
   },
   {
@@ -4662,6 +6200,16 @@
         "answer_index": 2,
         "explanation_ar": "تعتمد ليلى على أكل الخضروات والبروتينات للحفاظ على طاقتها."
       }
+    ],
+    "target_words": [
+      "championship",
+      "entirely",
+      "recovery",
+      "stretch",
+      "maintain",
+      "lean",
+      "protein",
+      "session"
     ]
   },
   {
@@ -4771,6 +6319,16 @@
         "answer_index": 3,
         "explanation_ar": "كلمة 'each' تعني أن كل فرد في المجموعة يقوم بهذا الفعل بشكل منفصل."
       }
+    ],
+    "target_words": [
+      "conduct",
+      "employe",
+      "detailed",
+      "tense",
+      "feedback",
+      "ensure",
+      "relieved",
+      "productivity"
     ]
   },
   {
@@ -4885,6 +6443,16 @@
         "answer_index": 0,
         "explanation_ar": "في الجملة الأخيرة، تخطط لمغامرة خارجية (overseas) قادمة."
       }
+    ],
+    "target_words": [
+      "inexperienced",
+      "suitcase",
+      "booking",
+      "incorrect",
+      "perspective",
+      "overseas",
+      "inconvenience",
+      "landmark"
     ]
   },
   {
@@ -4991,6 +6559,16 @@
         "answer_index": 1,
         "explanation_ar": "يقدم قسم تكنولوجيا المعلومات دورات تدريبية لمساعدة الموظفين على التعامل مع التكنولوجيا الجديدة."
       }
+    ],
+    "target_words": [
+      "downtown",
+      "sleek",
+      "employe",
+      "lighting",
+      "ensure",
+      "unique",
+      "efficiently",
+      "session"
     ]
   },
   {
@@ -5100,6 +6678,16 @@
         "answer_index": 2,
         "explanation_ar": "ذكر النص أنها كانت تقضي عطلات نهاية الأسبوع جالسة على الأريكة تشاهد التلفاز."
       }
+    ],
+    "target_words": [
+      "lean",
+      "protein",
+      "struggle",
+      "plain",
+      "feel",
+      "energetic",
+      "used",
+      "eventually"
     ]
   },
   {
@@ -5206,6 +6794,16 @@
         "answer_index": 1,
         "explanation_ar": "ذكر الراوي أنه مر بجانب المقهى مرات عديدة لكنه لم يدخله من قبل."
       }
+    ],
+    "target_words": [
+      "center",
+      "bump",
+      "nearby",
+      "grab",
+      "times",
+      "vibrant",
+      "living",
+      "remind"
     ]
   },
   {
@@ -5315,6 +6913,16 @@
         "answer_index": 3,
         "explanation_ar": "هذا تعبير قوي للنهي، ويعني أنه لا يوجد أي ظرف يسمح بالتقليل من أهمية طرق التدريس المبتكرة."
       }
+    ],
+    "target_words": [
+      "engagement",
+      "dedicated",
+      "advocate",
+      "interactive",
+      "radical",
+      "reform",
+      "remains",
+      "inspiration"
     ]
   },
   {
@@ -5424,6 +7032,16 @@
         "answer_index": 3,
         "explanation_ar": "يدور النص حول ضرورة التحرك العاجل لمواجهة أزمة المناخ."
       }
+    ],
+    "target_words": [
+      "collective",
+      "negligence",
+      "accelerate",
+      "sustainability",
+      "pressing",
+      "melt",
+      "reach",
+      "transition"
     ]
   },
   {
@@ -5534,6 +7152,16 @@
         "answer_index": 2,
         "explanation_ar": "الجملة الأخيرة توضح أن التعديل يتم لتناسب التفضيلات الغذائية الحديثة."
       }
+    ],
+    "target_words": [
+      "authentic",
+      "accelerate",
+      "heritage",
+      "deeply",
+      "root",
+      "civilization",
+      "widely",
+      "spice"
     ]
   },
   {
@@ -5643,6 +7271,16 @@
         "answer_index": 3,
         "explanation_ar": "بعد فعل مثل 'insist' أو 'suggest'، نستخدم صيغة المصدر المجرد (Subjunctive) للتعبير عن الرغبة أو الضرورة."
       }
+    ],
+    "target_words": [
+      "upcoming",
+      "gathering",
+      "meaningful",
+      "intimate",
+      "sake",
+      "fragile",
+      "collective",
+      "standing"
     ]
   },
   {
@@ -5752,6 +7390,16 @@
         "answer_index": 3,
         "explanation_ar": "ذكر النص بوضوح أن أنظمة التبريد وُضعت لمنع الضوضاء الحرارية."
       }
+    ],
+    "target_words": [
+      "processor",
+      "compute",
+      "refine",
+      "stability",
+      "leap",
+      "processing",
+      "summit",
+      "remains"
     ]
   },
   {
@@ -5861,6 +7509,16 @@
         "answer_index": 0,
         "explanation_ar": "هذه جملة مطلقة (Absolute clause) حيث تعمل كجملة فرعية تصف السبب أو الظرف."
       }
+    ],
+    "target_words": [
+      "endless",
+      "acquisition",
+      "obsess",
+      "inadequate",
+      "unaffordable",
+      "impulsive",
+      "accumulation",
+      "saving"
     ]
   },
   {
@@ -5975,6 +7633,16 @@
         "answer_index": 0,
         "explanation_ar": "التحدي الرئيسي هو الموازنة بين التقدم التكنولوجي والحفاظ على النزاهة الرياضية."
       }
+    ],
+    "target_words": [
+      "spark",
+      "fairness",
+      "undermine",
+      "essence",
+      "gear",
+      "remains",
+      "preservation",
+      "integrity"
     ]
   },
   {
@@ -6089,6 +7757,16 @@
         "answer_index": 3,
         "explanation_ar": "أشارت الجملة الثامنة إلى أن تحسين قنوات الاتصال ضروري للحفاظ على الروح المعنوية."
       }
+    ],
+    "target_words": [
+      "implementation",
+      "efficiency",
+      "protocol",
+      "strategic",
+      "transformation",
+      "remains",
+      "transparency",
+      "morale"
     ]
   },
   {
@@ -6198,6 +7876,16 @@
         "answer_index": 1,
         "explanation_ar": "النص يصف رحلة جبلية محفوفة بالمخاطر وتغيرات الطقس المفاجئة، مما يخلق جواً من التوتر والمغامرة."
       }
+    ],
+    "target_words": [
+      "reconsider",
+      "impulsive",
+      "gear",
+      "peak",
+      "summit",
+      "ponder",
+      "terrain",
+      "caution"
     ]
   },
   {
@@ -6307,6 +7995,16 @@
         "answer_index": 0,
         "explanation_ar": "نصت القصة على أن المستثمرين نظروا بشك متزايد بسبب تعطل النظام."
       }
+    ],
+    "target_words": [
+      "flawed",
+      "hardware",
+      "postpone",
+      "underlying",
+      "compromise",
+      "stability",
+      "prototype",
+      "launch"
     ]
   },
   {
@@ -6416,6 +8114,16 @@
         "answer_index": 2,
         "explanation_ar": "ذكر النص أن ما يضعه الرياضيون في مقدمة أولوياتهم هو الاستمرارية في الروتين اليومي."
       }
+    ],
+    "target_words": [
+      "dedication",
+      "hygiene",
+      "equation",
+      "intake",
+      "supplement",
+      "endurance",
+      "consistency",
+      "constantly"
     ]
   },
   {
@@ -6526,6 +8234,16 @@
         "answer_index": 2,
         "explanation_ar": "هذا المثال يحتوي على بدل (appositive) حيث يتم شرح 'The Shard' بعبارة إضافية."
       }
+    ],
+    "target_words": [
+      "profound",
+      "transformation",
+      "architectural",
+      "efficiency",
+      "commerce",
+      "fade",
+      "charm",
+      "heritage"
     ]
   },
   {
@@ -6639,6 +8357,16 @@
         "answer_index": 1,
         "explanation_ar": "ذكر النص أن من يتقن أدوات التعاون غالبًا ما يحصل على منح بحثية أفضل."
       }
+    ],
+    "target_words": [
+      "undermine",
+      "autonomy",
+      "administrative",
+      "burden",
+      "coordinate",
+      "overwhelming",
+      "remains",
+      "regardless"
     ]
   },
   {
@@ -6744,1193 +8472,1303 @@
         "answer_index": 1,
         "explanation_ar": "توضح الجملة السابعة أن النقاد منقسمون بين من يراها غير كافية ومن يراها طموحة أكثر من اللازم."
       }
+    ],
+    "target_words": [
+      "combat",
+      "albeit",
+      "utility",
+      "notwithstanding",
+      "burden",
+      "ecological",
+      "undeniable",
+      "insufficient"
     ]
   },
-{
-        "id":  "r091",
-        "level":  "A1",
-        "topic":  "daily routine",
-        "title_en":  "A Busy Friday Morning",
-        "title_ar":  "صباح جمعة مزدحم",
-        "grammar_ids":  [
-                            "g007",
-                            "g011"
-                        ],
-        "sentences":  [
-                          {
-                              "en":  "Friday is my favorite day of the week because I do not work.",
-                              "ar":  "الجمعة هو يومي المفضل في الأسبوع لأنني لا أعمل.",
-                              "grammar_id":  "g007"
-                          },
-                          {
-                              "en":  "I usually wake up at eight o\u0027clock and make a cup of hot tea.",
-                              "ar":  "أستيقظ عادةً في الساعة الثامنة وأصنع كوبًا من الشاي الساخن.",
-                              "grammar_id":  "g011"
-                          },
-                          {
-                              "en":  "My mother prepares a big breakfast for the whole family.",
-                              "ar":  "تُعد والدتي إفطارًا كبيرًا للعائلة بأكملها.",
-                              "grammar_id":  "g007"
-                          },
-                          {
-                              "en":  "We eat warm bread, cheese, and eggs together in the kitchen.",
-                              "ar":  "نأكل الخبز الدافئ والجبن والبيض معًا في المطبخ.",
-                              "grammar_id":  "g007"
-                          },
-                          {
-                              "en":  "After breakfast, I take a short walk to the local market.",
-                              "ar":  "بعد الإفطار، أذهب في نزهة قصيرة سيرًا على الأقدام إلى السوق المحلي.",
-                              "grammar_id":  "g007"
-                          },
-                          {
-                              "en":  "The market is always crowded on Friday mornings.",
-                              "ar":  "السوق مزدحم دائمًا في صباح أيام الجمعة.",
-                              "grammar_id":  "g011"
-                          },
-                          {
-                              "en":  "I buy fresh tomatoes, apples, and some milk for the house.",
-                              "ar":  "أشتري طماطم طازجة وتفاحًا وبعض الحليب للمنزل.",
-                              "grammar_id":  "g007"
-                          },
-                          {
-                              "en":  "The seller knows me well and always gives me a good price.",
-                              "ar":  "البائع يعرفني جيدًا ويعطيني دائمًا سعرًا جيدًا.",
-                              "grammar_id":  "g007"
-                          },
-                          {
-                              "en":  "In the afternoon, my friends come to my house to watch a football match.",
-                              "ar":  "في فترة ما بعد الظهر، يأتي أصدقائي إلى منزلي لمشاهدة مباراة كرة قدم.",
-                              "grammar_id":  "g007"
-                          },
-                          {
-                              "en":  "Spending time with family and friends makes me very happy.",
-                              "ar":  "قضاء الوقت مع العائلة والأصدقاء يجعلني سعيدًا جدًا.",
-                              "grammar_id":  "g007"
-                          }
-                      ],
-        "questions":  [
-                          {
-                              "prompt":  "Why does the narrator like Friday?",
-                              "options":  [
-                                              "Because the market is closed",
-                                              "Because he does not work on Friday",
-                                              "Because he wakes up very late",
-                                              "Because he travels to another city"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "يحب الراوي يوم الجمعة لأنه يوم إجازته ولا يعمل فيه."
-                          },
-                          {
-                              "prompt":  "Where does the family eat breakfast?",
-                              "options":  [
-                                              "In a restaurant",
-                                              "In the garden",
-                                              "In the kitchen",
-                                              "At the local market"
-                                          ],
-                              "answer_index":  2,
-                              "explanation_ar":  "يذكر النص أنهم يتناولون الإفطار معًا في المطبخ."
-                          },
-                          {
-                              "prompt":  "What does the narrator buy from the market?",
-                              "options":  [
-                                              "Bread and cheese",
-                                              "New clothes",
-                                              "Tea and coffee",
-                                              "Tomatoes, apples, and milk"
-                                          ],
-                              "answer_index":  3,
-                              "explanation_ar":  "يشتري الراوي طماطم طازجة وتفاحًا وبعض الحليب."
-                          },
-                          {
-                              "prompt":  "Why does the seller give the narrator a good price?",
-                              "options":  [
-                                              "Because the food is old",
-                                              "Because the seller knows him well",
-                                              "Because it is late at night",
-                                              "Because the narrator buys a lot of things"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "البائع يعرفه جيدًا (knows me well) لذلك يعطيه سعرًا جيدًا."
-                          },
-                          {
-                              "prompt":  "What does the narrator do in the afternoon?",
-                              "options":  [
-                                              "He goes to sleep",
-                                              "He cleans the house",
-                                              "He watches a football match with his friends",
-                                              "He goes back to the market"
-                                          ],
-                              "answer_index":  2,
-                              "explanation_ar":  "في فترة ما بعد الظهر، يأتي أصدقاؤه لمشاهدة مباراة كرة قدم."
-                          }
-                      ]
-    },
-    {
-        "id":  "r092",
-        "level":  "A1",
-        "topic":  "home and living",
-        "title_en":  "Moving to a New Apartment",
-        "title_ar":  "الانتقال إلى شقة جديدة",
-        "grammar_ids":  [
-                            "g006",
-                            "g014",
-                            "g015",
-                            "g007"
-                        ],
-        "sentences":  [
-                          {
-                              "en":  "Last month, my family moved to a new apartment in a quiet street.",
-                              "ar":  "في الشهر الماضي، انتقلت عائلتي إلى شقة جديدة في شارع هادئ.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "Our old house was too small, and the street was very noisy.",
-                              "ar":  "كان منزلنا القديم صغيرًا جدًا، وكان الشارع صاخبًا للغاية.",
-                              "grammar_id":  "g014"
-                          },
-                          {
-                              "en":  "The new apartment is on the third floor of a modern building.",
-                              "ar":  "الشقة الجديدة تقع في الطابق الثالث من مبنى حديث.",
-                              "grammar_id":  "g007"
-                          },
-                          {
-                              "en":  "It has three bedrooms, a large living room, and a bright kitchen.",
-                              "ar":  "تحتوي على ثلاث غرف نوم، وغرفة معيشة كبيرة، ومطبخ مشرق.",
-                              "grammar_id":  "g006"
-                          },
-                          {
-                              "en":  "My bedroom has a big window with a view of green trees.",
-                              "ar":  "غرفة نومي بها نافذة كبيرة تطل على أشجار خضراء.",
-                              "grammar_id":  "g007"
-                          },
-                          {
-                              "en":  "I put my desk near the window because I like natural light.",
-                              "ar":  "وضعت مكتبي بالقرب من النافذة لأنني أحب الضوء الطبيعي.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "There is a small supermarket and a bakery right across the street.",
-                              "ar":  "يوجد سوبر ماركت صغير ومخبز في الجهة المقابلة من الشارع مباشرة.",
-                              "grammar_id":  "g006"
-                          },
-                          {
-                              "en":  "Our new neighbors are very polite and friendly people.",
-                              "ar":  "جيراننا الجدد أشخاص مهذبون وودودون للغاية.",
-                              "grammar_id":  "g007"
-                          },
-                          {
-                              "en":  "Yesterday, the neighbor next door brought us a plate of sweet cake.",
-                              "ar":  "بالأمس، أحضر لنا الجار المجاور طبقًا من الكعك الحلو.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "We feel very comfortable and safe in our new neighborhood.",
-                              "ar":  "نشعر براحة وأمان كبيرين في حينا الجديد.",
-                              "grammar_id":  "g007"
-                          }
-                      ],
-        "questions":  [
-                          {
-                              "prompt":  "Why did the family leave their old house?",
-                              "options":  [
-                                              "It was too far from the supermarket",
-                                              "It was too small and the street was noisy",
-                                              "It did not have a kitchen",
-                                              "The neighbors were not friendly"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "المنزل القديم كان صغيرًا جدًا والشارع كان صاخبًا للغاية."
-                          },
-                          {
-                              "prompt":  "Which floor is the new apartment on?",
-                              "options":  [
-                                              "The first floor",
-                                              "The second floor",
-                                              "The third floor",
-                                              "The fourth floor"
-                                          ],
-                              "answer_index":  2,
-                              "explanation_ar":  "تقع الشقة الجديدة في الطابق الثالث (on the third floor)."
-                          },
-                          {
-                              "prompt":  "Why did the narrator put the desk near the window?",
-                              "options":  [
-                                              "Because the room is too small",
-                                              "To watch the street",
-                                              "Because he likes natural light",
-                                              "To stay away from the door"
-                                          ],
-                              "answer_index":  2,
-                              "explanation_ar":  "وضع المكتب قرب النافذة لأنه يحب الضوء الطبيعي (natural light)."
-                          },
-                          {
-                              "prompt":  "What is across the street from the building?",
-                              "options":  [
-                                              "A school and a park",
-                                              "A supermarket and a bakery",
-                                              "A hospital",
-                                              "A train station"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "يوجد سوبر ماركت صغير ومخبز في الجهة المقابلة من الشارع."
-                          },
-                          {
-                              "prompt":  "What did the neighbor bring yesterday?",
-                              "options":  [
-                                              "Some fresh bread",
-                                              "A box of milk",
-                                              "A plate of sweet cake",
-                                              "Green plants"
-                                          ],
-                              "answer_index":  2,
-                              "explanation_ar":  "أحضر الجار طبقًا من الكعك الحلو ترحيبًا بهم."
-                          }
-                      ]
-    },
-    {
-        "id":  "r093",
-        "level":  "A1",
-        "topic":  "hobbies and cooking",
-        "title_en":  "Cooking Dinner Together",
-        "title_ar":  "طهي العشاء معًا",
-        "grammar_ids":  [
-                            "g007",
-                            "g008"
-                        ],
-        "sentences":  [
-                          {
-                              "en":  "Every Tuesday evening, I cook dinner at home with my brother.",
-                              "ar":  "في مساء كل ثلاثاء، أطبخ العشاء في المنزل مع أخي.",
-                              "grammar_id":  "g007"
-                          },
-                          {
-                              "en":  "We do not like ordering fast food because homemade food is healthier.",
-                              "ar":  "نحن لا نحب طلب الوجبات السريعة لأن الطعام المنزلي صحي أكثر.",
-                              "grammar_id":  "g007"
-                          },
-                          {
-                              "en":  "Today, we are making grilled chicken with mashed potatoes.",
-                              "ar":  "اليوم، نحن نصنع دجاجًا مشويًا مع البطاطس المهروسة.",
-                              "grammar_id":  "g008"
-                          },
-                          {
-                              "en":  "First, my brother washes the potatoes and boils them in hot water.",
-                              "ar":  "أولاً، يغسل أخي البطاطس ويسلقها في ماء ساخن.",
-                              "grammar_id":  "g007"
-                          },
-                          {
-                              "en":  "While the potatoes are cooking, I season the chicken with salt and black pepper.",
-                              "ar":  "بينما تُطهى البطاطس، أتبل الدجاج بالملح والفلفل الأسود.",
-                              "grammar_id":  "g008"
-                          },
-                          {
-                              "en":  "Then, I put a little butter in a hot pan and cook the chicken.",
-                              "ar":  "ثم أضع القليل من الزبدة في مقلاة ساخنة وأطهو الدجاج.",
-                              "grammar_id":  "g007"
-                          },
-                          {
-                              "en":  "The kitchen smells wonderful after ten minutes.",
-                              "ar":  "تصبح رائحة المطبخ رائعة بعد عشر دقائق.",
-                              "grammar_id":  "g007"
-                          },
-                          {
-                              "en":  "My brother mixes the warm potatoes with milk and yellow cheddar cheese.",
-                              "ar":  "يمزج أخي البطاطس الدافئة مع الحليب وجبن الشيدر الأصفر.",
-                              "grammar_id":  "g007"
-                          },
-                          {
-                              "en":  "We set the table and drink cold lemon juice with our meal.",
-                              "ar":  "نجهز الطاولة ونشرب عصير الليمون البارد مع وجبتنا.",
-                              "grammar_id":  "g007"
-                          },
-                          {
-                              "en":  "Washing the dishes after dinner is boring, so we do it together.",
-                              "ar":  "غسل الأطباق بعد العشاء ممل، لذلك نقوم به معًا.",
-                              "grammar_id":  "g007"
-                          }
-                      ],
-        "questions":  [
-                          {
-                              "prompt":  "Why do the brothers prefer homemade food?",
-                              "options":  [
-                                              "Because restaurants are closed on Tuesday",
-                                              "Because it is healthier than fast food",
-                                              "Because they do not have money",
-                                              "Because their mother asked them to cook"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "يفضلون الطعام المنزلي لأنه صحي أكثر من الوجبات السريعة."
-                          },
-                          {
-                              "prompt":  "What are they cooking today?",
-                              "options":  [
-                                              "Pasta and meat",
-                                              "Fish and rice",
-                                              "Grilled chicken with mashed potatoes",
-                                              "Vegetable soup"
-                                          ],
-                              "answer_index":  2,
-                              "explanation_ar":  "يذكر النص أنهما يجهزان دجاجًا مشويًا مع البطاطس المهروسة."
-                          },
-                          {
-                              "prompt":  "What does the brother mix with the warm potatoes?",
-                              "options":  [
-                                              "Water and oil",
-                                              "Tomatoes and onions",
-                                              "Milk and yellow cheddar cheese",
-                                              "Lemon juice"
-                                          ],
-                              "answer_index":  2,
-                              "explanation_ar":  "يمزج الأخ البطاطس الدافئة مع الحليب وجبن الشيدر الأصفر."
-                          },
-                          {
-                              "prompt":  "How does the narrator cook the chicken?",
-                              "options":  [
-                                              "In cold water",
-                                              "With a little butter in a hot pan",
-                                              "In the microwave",
-                                              "With cheese and milk"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "يضع القليل من الزبدة في مقلاة ساخنة ويطهو الدجاج."
-                          },
-                          {
-                              "prompt":  "How do they feel about washing the dishes?",
-                              "options":  [
-                                              "They think it is fun",
-                                              "They think it is boring",
-                                              "They never wash the dishes",
-                                              "They leave them for the next morning"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "يذكر النص أن غسل الأطباق ممل (boring)، لذلك يتعاونان فيه."
-                          }
-                      ]
-    },
-    {
-        "id":  "r094",
-        "level":  "A2",
-        "topic":  "travel",
-        "title_en":  "Missing the Morning Train",
-        "title_ar":  "تفويت قطار الصباح",
-        "grammar_ids":  [
-                            "g015"
-                        ],
-        "sentences":  [
-                          {
-                              "en":  "Last Saturday, Karim planned to visit his uncle in Alexandria.",
-                              "ar":  "يوم السبت الماضي، خطط كريم لزيارة عمه في الإسكندرية.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "He bought a train ticket online the night before the trip.",
-                              "ar":  "اشترى تذكرة قطار عبر الإنترنت في الليلة السابقة للرحلة.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "The train was scheduled to leave the station at seven in the morning.",
-                              "ar":  "كان من المقرر أن يغادر القطار المحطة في الساعة السابعة صباحًا.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "Unfortunately, Karim forgot to set his alarm clock before going to sleep.",
-                              "ar":  "لسوء الحظ، نسي كريم ضبط منبهه قبل الذهاب إلى النوم.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "When he woke up, it was already six-thirty.",
-                              "ar":  "عندما استيقظ، كانت الساعة قد وصلت إلى السادسة والنصف بالفعل.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "He got dressed quickly, grabbed his bag, and took a taxi to the station.",
-                              "ar":  "ارتدى ملابسه بسرعة، وأمسك بحقيبته، واستقل سيارة أجرة إلى المحطة.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "However, the morning traffic was heavy, and the taxi moved slowly.",
-                              "ar":  "ومع ذلك، كانت حركة المرور الصباحية مزدحمة، وتحركت سيارة الأجرة ببطء.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "Karim arrived at the platform five minutes after the train left.",
-                              "ar":  "وصل كريم إلى الرصيف بعد خمس دقائق من مغادرة القطار.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "He went to the ticket office and exchanged his ticket for the next train.",
-                              "ar":  "ذهب إلى مكتب التذاكر واستبدل تذكرته بالقطار التالي.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "While waiting for an hour, he drank coffee and read a short book.",
-                              "ar":  "أثناء انتظاره لمدة ساعة، شرب القهوة وقرأ كتابًا قصيرًا.",
-                              "grammar_id":  "g015"
-                          }
-                      ],
-        "questions":  [
-                          {
-                              "prompt":  "Where was Karim planning to go?",
-                              "options":  [
-                                              "To work",
-                                              "To Alexandria to visit his uncle",
-                                              "To the airport",
-                                              "To a new school"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "خطط كريم للسفر إلى الإسكندرية لزيارة عمه."
-                          },
-                          {
-                              "prompt":  "Why did Karim wake up late?",
-                              "options":  [
-                                              "His alarm clock was broken",
-                                              "He forgot to set his alarm clock",
-                                              "He was sick during the night",
-                                              "His train was at night"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "نسي كريم ضبط المنبه قبل الذهاب إلى النوم."
-                          },
-                          {
-                              "prompt":  "Why did the taxi move slowly?",
-                              "options":  [
-                                              "The driver did not know the way",
-                                              "The taxi had a problem",
-                                              "The morning traffic was heavy",
-                                              "The station was very far"
-                                          ],
-                              "answer_index":  2,
-                              "explanation_ar":  "تحرك التاكسي ببطء بسبب ازدحام المرور الصباحي."
-                          },
-                          {
-                              "prompt":  "What did Karim do after he missed the train?",
-                              "options":  [
-                                              "He went back home",
-                                              "He took a bus instead",
-                                              "He exchanged his ticket for the next train",
-                                              "He called his uncle to cancel the trip"
-                                          ],
-                              "answer_index":  2,
-                              "explanation_ar":  "ذهب إلى مكتب التذاكر واستبدل تذكرته بالقطار التالي."
-                          },
-                          {
-                              "prompt":  "How did Karim spend his waiting time at the station?",
-                              "options":  [
-                                              "He slept on a bench",
-                                              "He talked to a friend",
-                                              "He drank coffee and read a short book",
-                                              "He bought new clothes"
-                                          ],
-                              "answer_index":  2,
-                              "explanation_ar":  "أثناء انتظاره لمدة ساعة، شرب القهوة وقرأ كتابًا قصيرًا."
-                          }
-                      ]
-    },
-    {
-        "id":  "r095",
-        "level":  "A2",
-        "topic":  "sports and lifestyle",
-        "title_en":  "Our Weekly Football Match",
-        "title_ar":  "مباراتنا الأسبوعية في كرة القدم",
-        "grammar_ids":  [
-                            "g023",
-                            "g015"
-                        ],
-        "sentences":  [
-                          {
-                              "en":  "Working in an office all week makes me sit for long hours.",
-                              "ar":  "العمل في مكتب طوال الأسبوع يجعلني أجلس لساعات طويلة."
-                          },
-                          {
-                              "en":  "To stay active, my friends and I rent a small football pitch every Thursday night.",
-                              "ar":  "للبقاء نشيطين، نستأجر أنا وأصدقائي ملعب كرة قدم صغير كل ليلة خميس."
-                          },
-                          {
-                              "en":  "We divide ourselves into two teams of five players each.",
-                              "ar":  "نقسم أنفسنا إلى فريقين يتكون كل منهما من خمسة لاعبين."
-                          },
-                          {
-                              "en":  "Before the match starts, we always warm up for ten minutes to avoid injuries.",
-                              "ar":  "قبل أن تبدأ المباراة، نقوم دائمًا بالإحماء لمدة عشر دقائق لتجنب الإصابات.",
-                              "grammar_id":  "g023"
-                          },
-                          {
-                              "en":  "Last week, the game was very exciting and fast from the beginning.",
-                              "ar":  "في الأسبوع الماضي، كانت اللعبة مثيرة وسريعة للغاية منذ البداية.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "Our goalkeeper made several great saves during the first half.",
-                              "ar":  "قام حارس مرمانا بعدة تصديات رائعة خلال الشوط الأول.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "Ten minutes before the end, I passed the ball to my friend Tariq, and he scored the winning goal.",
-                              "ar":  "قبل النهاية بعشر دقائق، مررت الكرة لصديقي طارق، وسجل هو هدف الفوز.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "Even when my team loses, we never get angry at each other.",
-                              "ar":  "حتى عندما يخسر فريقي، لا نغضب أبدًا من بعضنا البعض.",
-                              "grammar_id":  "g023"
-                          },
-                          {
-                              "en":  "After the match, we usually sit together and drink cold water.",
-                              "ar":  "بعد المباراة، نجلس عادةً معًا ونشرب الماء البارد.",
-                              "grammar_id":  "g023"
-                          },
-                          {
-                              "en":  "This weekly habit helps us forget work stress and keeps us fit.",
-                              "ar":  "تساعدنا هذه العادة الأسبوعية على نسيان ضغوط العمل وتحافظ على لياقتنا.",
-                              "grammar_id":  "g023"
-                          }
-                      ],
-        "questions":  [
-                          {
-                              "prompt":  "Why does the narrator play football every Thursday?",
-                              "options":  [
-                                              "To become a professional player",
-                                              "To stay active because he sits for long hours at work",
-                                              "Because he lives next to the pitch",
-                                              "To win a prize"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "يلعب كرة القدم ليبقى نشيطًا لأن عمله المكتبي يجعله يجلس لساعات طويلة."
-                          },
-                          {
-                              "prompt":  "How many players are on each team?",
-                              "options":  [
-                                              "Eleven players",
-                                              "Seven players",
-                                              "Five players",
-                                              "Three players"
-                                          ],
-                              "answer_index":  2,
-                              "explanation_ar":  "يقسمون أنفسهم إلى فريقين، كل فريق يتكون من خمسة لاعبين (five players each)."
-                          },
-                          {
-                              "prompt":  "Why do the players warm up before the match?",
-                              "options":  [
-                                              "To wait for late friends",
-                                              "To avoid injuries",
-                                              "Because the weather is cold",
-                                              "To choose the goalkeeper"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "يقومون بالإحماء لمدة عشر دقائق لتجنب الإصابات (to avoid injuries)."
-                          },
-                          {
-                              "prompt":  "Who scored the winning goal last week?",
-                              "options":  [
-                                              "The narrator",
-                                              "The goalkeeper",
-                                              "Tariq",
-                                              "No one, the match ended in a draw"
-                                          ],
-                              "answer_index":  2,
-                              "explanation_ar":  "مرر الراوي الكرة إلى صديقه طارق الذي سجل هدف الفوز."
-                          },
-                          {
-                              "prompt":  "How does this weekly match help the friends?",
-                              "options":  [
-                                              "It helps them make money",
-                                              "It helps them forget work stress and stay fit",
-                                              "It makes them wake up early",
-                                              "It helps them find new office jobs"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "تساعدهم هذه العادة على نسيان ضغوط العمل والحفاظ على لياقتهم البدنية."
-                          }
-                      ]
-    },
-    {
-        "id":  "r096",
-        "level":  "A2",
-        "topic":  "shopping and daily life",
-        "title_en":  "Fixing a Broken Phone",
-        "title_ar":  "إصلاح هاتف معطل",
-        "grammar_ids":  [
-                            "g015",
-                            "g018"
-                        ],
-        "sentences":  [
-                          {
-                              "en":  "Two days ago, Salma dropped her smartphone on the hard kitchen floor.",
-                              "ar":  "قبل يومين، أسقطت سلمى هاتفها الذكي على أرضية المطبخ الصلبة.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "When she picked it up, she saw a large crack across the screen.",
-                              "ar":  "عندما التقطته، رأت شرخًا كبيرًا يمتد عبر الشاشة.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "The phone turned on, but the touch screen did not work at all.",
-                              "ar":  "اشتغل الهاتف، لكن شاشة اللمس لم تعمل على الإطلاق.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "She needed her phone urgently because she uses it for study and communication.",
-                              "ar":  "كانت بحاجة إلى هاتفها بشكل عاجل لأنها تستخدمه للدراسة والتواصل."
-                          },
-                          {
-                              "en":  "In the afternoon, she took it to a repair shop in the city center.",
-                              "ar":  "في فترة ما بعد الظهر، أخذته إلى محل صيانة في وسط المدينة.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "The technician examined the phone carefully for a few minutes.",
-                              "ar":  "فحص الفني الهاتف بعناية لبضع دقائق.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "He told her that the internal parts were fine, and it only needed a new screen.",
-                              "ar":  "أخبرها أن الأجزاء الداخلية سليمة، وأنه يحتاج فقط إلى شاشة جديدة.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "Replacing the screen cost much less than buying a brand-new phone.",
-                              "ar":  "تكلفة استبدال الشاشة كانت أقل بكثير من شراء هاتف جديد تمامًا.",
-                              "grammar_id":  "g018"
-                          },
-                          {
-                              "en":  "Salma waited in a nearby café for one hour until the repair was finished.",
-                              "ar":  "انتظرت سلمى في مقهى قريب لمدة ساعة واحدة حتى انتهى الإصلاح.",
-                              "grammar_id":  "g015"
-                          },
-                          {
-                              "en":  "Before leaving the shop, she bought a strong protective case to prevent future damage.",
-                              "ar":  "قبل مغادرة المحل، اشترت جراب حماية قويًا لمنع التلف في المستقبل.",
-                              "grammar_id":  "g015"
-                          }
-                      ],
-        "questions":  [
-                          {
-                              "prompt":  "How did Salma break her phone?",
-                              "options":  [
-                                              "She left it in the water",
-                                              "She dropped it on the kitchen floor",
-                                              "Someone stepped on it",
-                                              "It fell from her bag in the street"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "سقط منها الهاتف على أرضية المطبخ الصلبة."
-                          },
-                          {
-                              "prompt":  "What happened to the phone after it fell?",
-                              "options":  [
-                                              "It did not turn on at all",
-                                              "The battery exploded",
-                                              "The screen cracked and the touch stopped working",
-                                              "Only the camera broke"
-                                          ],
-                              "answer_index":  2,
-                              "explanation_ar":  "انشرخت الشاشة وتوقفت خاصية اللمس عن العمل رغم أن الهاتف كان يضيء."
-                          },
-                          {
-                              "prompt":  "What did the technician tell Salma?",
-                              "options":  [
-                                              "She must buy a new phone",
-                                              "The internal parts were broken",
-                                              "It only needed a new screen",
-                                              "He needed three days to fix it"
-                                          ],
-                              "answer_index":  2,
-                              "explanation_ar":  "أخبرها الفني أن الأجزاء الداخلية سليمة ويحتاج الهاتف فقط لشاشة جديدة."
-                          },
-                          {
-                              "prompt":  "How long did the repair take?",
-                              "options":  [
-                                              "Five minutes",
-                                              "One hour",
-                                              "Two days",
-                                              "One week"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "انتظرت سلمى في مقهى قريب لمدة ساعة واحدة حتى انتهى الإصلاح."
-                          },
-                          {
-                              "prompt":  "What did Salma buy before leaving the shop?",
-                              "options":  [
-                                              "A new charger",
-                                              "Headphones",
-                                              "A strong protective case",
-                                              "Another phone"
-                                          ],
-                              "answer_index":  2,
-                              "explanation_ar":  "اشترت جراب حماية قويًا (protective case) لحماية الهاتف مستقبلاً."
-                          }
-                      ]
-    },
-    {
-        "id":  "r097",
-        "level":  "B1",
-        "topic":  "information technology",
-        "title_en":  "Automating Daily Workflows",
-        "title_ar":  "أتمتة مهام العمل اليومية",
-        "grammar_ids":  [
-                            "g030",
-                            "g037",
-                            "g036",
-                            "g031"
-                        ],
-        "sentences":  [
-                          {
-                              "en":  "In many companies, employees spend hours copying data between different spreadsheets.",
-                              "ar":  "في العديد من الشركات، يقضي الموظفون ساعات في نسخ البيانات بين جداول البيانات المختلفة."
-                          },
-                          {
-                              "en":  "This manual process is not only exhausting, but it also leads to human errors.",
-                              "ar":  "هذه العملية اليدوية ليست مرهقة فحسب، بل تؤدي أيضًا إلى أخطاء بشرية."
-                          },
-                          {
-                              "en":  "Last month, our software team decided to build an automated data pipeline.",
-                              "ar":  "في الشهر الماضي، قرر فريق البرمجيات لدينا بناء خط أنابيب بيانات آلي.",
-                              "grammar_id":  "g031"
-                          },
-                          {
-                              "en":  "We wrote a Python script that collects daily sales reports from multiple sources.",
-                              "ar":  "كتبنا نصًا برمجيًا بلغة بايثون يجمع تقارير المبيعات اليومية من مصادر متعددة.",
-                              "grammar_id":  "g031"
-                          },
-                          {
-                              "en":  "After collecting the files, the script cleans the data and removes duplicate records.",
-                              "ar":  "بعد جمع الملفات، يقوم الكود بتنظيف البيانات وإزالة السجلات المكررة."
-                          },
-                          {
-                              "en":  "Then, the clean data is automatically uploaded to the central SQL database.",
-                              "ar":  "بعد ذلك، يتم رفع البيانات النظيفة تلقائيًا إلى قاعدة بيانات SQL المركزية.",
-                              "grammar_id":  "g037"
-                          },
-                          {
-                              "en":  "We scheduled the system to run every night at two o\u0027clock in the morning.",
-                              "ar":  "قمنا بجدولة النظام ليعمل كل ليلة في الساعة الثانية صباحًا.",
-                              "grammar_id":  "g031"
-                          },
-                          {
-                              "en":  "If the script encounters an unexpected error, it sends an instant alert to the engineers.",
-                              "ar":  "إذا واجه الكود خطأ غير متوقع، فإنه يرسل تنبيهًا فوريًا للمهندسين.",
-                              "grammar_id":  "g036"
-                          },
-                          {
-                              "en":  "Since we launched this tool, our team has saved more than ten hours every week.",
-                              "ar":  "منذ أن أطلقنا هذه الأداة، وفر فريقنا أكثر من عشر ساعات كل أسبوع.",
-                              "grammar_id":  "g030"
-                          },
-                          {
-                              "en":  "Now, employees can focus on analyzing trends instead of doing repetitive tasks.",
-                              "ar":  "الآن، يمكن للموظفين التركيز على تحليل الاتجاهات بدلاً من القيام بمهام متكررة."
-                          }
-                      ],
-        "questions":  [
-                          {
-                              "prompt":  "What is the main problem with copying data manually?",
-                              "options":  [
-                                              "It requires expensive computers",
-                                              "It is exhausting and leads to human errors",
-                                              "It deletes the central database",
-                                              "It only works at night"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "العملية اليدوية مرهقة وتؤدي إلى وقوع أخطاء بشرية."
-                          },
-                          {
-                              "prompt":  "What does the Python script do before uploading data to the database?",
-                              "options":  [
-                                              "It sends an email to customers",
-                                              "It turns off the server",
-                                              "It cleans the data and removes duplicate records",
-                                              "It creates new spreadsheets"
-                                          ],
-                              "answer_index":  2,
-                              "explanation_ar":  "يقوم الكود بتنظيف البيانات وإزالة السجلات المكررة قبل رفعها لقاعدة البيانات."
-                          },
-                          {
-                              "prompt":  "When does the automated system run?",
-                              "options":  [
-                                              "Every morning at nine o\u0027clock",
-                                              "Every night at two o\u0027clock in the morning",
-                                              "Once a month",
-                                              "Only when an engineer clicks a button"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "تمت جدولة النظام ليعمل كل ليلة في الساعة الثانية صباحًا."
-                          },
-                          {
-                              "prompt":  "What happens if the script encounters an error?",
-                              "options":  [
-                                              "It deletes all the sales reports",
-                                              "It restarts the computer",
-                                              "It sends an instant alert to the engineers",
-                                              "It waits until next week"
-                                          ],
-                              "answer_index":  2,
-                              "explanation_ar":  "إذا واجه الكود خطأ غير متوقع، يرسل تنبيهًا فوريًا للمهندسين."
-                          },
-                          {
-                              "prompt":  "How has this automation helped the employees?",
-                              "options":  [
-                                              "They can now focus on analyzing trends instead of repetitive tasks",
-                                              "They work more hours on weekends",
-                                              "They stopped using databases completely",
-                                              "They learned how to fix hardware"
-                                          ],
-                              "answer_index":  0,
-                              "explanation_ar":  "وفرت الأداة وقتهم وأصبح بإمكانهم التركيز على تحليل البيانات بدلاً من المهام المتكررة."
-                          }
-                      ]
-    },
-    {
-        "id":  "r098",
-        "level":  "B1",
-        "topic":  "medical",
-        "title_en":  "Understanding Antibiotic Resistance",
-        "title_ar":  "فهم مقاومة المضادات الحيوية",
-        "grammar_ids":  [
-                            "g036",
-                            "g037",
-                            "g021",
-                            "g030"
-                        ],
-        "sentences":  [
-                          {
-                              "en":  "Antibiotics are powerful medicines that fight bacterial infections in the human body.",
-                              "ar":  "المضادات الحيوية هي أدوية قوية تحارب الالتهابات البكتيرية في جسم الإنسان."
-                          },
-                          {
-                              "en":  "Since their discovery, they have saved millions of lives around the world.",
-                              "ar":  "منذ اكتشافها، أنقذت ملايين الأرواح حول العالم.",
-                              "grammar_id":  "g030"
-                          },
-                          {
-                              "en":  "However, many people take antibiotics unnecessarily when they have a common cold or flu.",
-                              "ar":  "ومع ذلك، يتناول الكثير من الناس المضادات الحيوية دون داعٍ عند إصابتهم بنزلة برد أو إنفلونزا."
-                          },
-                          {
-                              "en":  "Doctors always explain that these medicines cannot cure illnesses caused by viruses.",
-                              "ar":  "يشرح الأطباء دائمًا أن هذه الأدوية لا يمكنها علاج الأمراض التي تسببها الفيروسات."
-                          },
-                          {
-                              "en":  "When patients misuse antibiotics, bacteria adapt and develop resistance over time.",
-                              "ar":  "عندما يسيء المرضى استخدام المضادات الحيوية، تتكيف البكتيريا وتطور مقاومة بمرور الوقت.",
-                              "grammar_id":  "g036"
-                          },
-                          {
-                              "en":  "Another common mistake is stopping the treatment as soon as the patient feels better.",
-                              "ar":  "خطأ شائع آخر هو إيقاف العلاج بمجرد أن يشعر المريض بتحسن.",
-                              "grammar_id":  "g036"
-                          },
-                          {
-                              "en":  "If the full course of medicine is not completed, the strongest bacteria survive and multiply.",
-                              "ar":  "إذا لم تكتمل دورة الدواء الكاملة، فإن البكتيريا الأقوى تنجو وتتكاثر.",
-                              "grammar_id":  "g037"
-                          },
-                          {
-                              "en":  "As a result, standard medical treatments become ineffective against these superbugs.",
-                              "ar":  "ونتيجة لذلك، تصبح العلاجات الطبية المعتادة غير فعالة ضد هذه البكتيريا الخارقة."
-                          },
-                          {
-                              "en":  "Health organizations warn that antibiotic resistance is a major global threat.",
-                              "ar":  "تحذر المنظمات الصحية من أن مقاومة المضادات الحيوية تمثل تهديدًا عالميًا كبيرًا."
-                          },
-                          {
-                              "en":  "Therefore, patients must only take antibiotics when prescribed by a qualified physician.",
-                              "ar":  "لذلك، يجب على المرضى تناول المضادات الحيوية فقط عندما يصفها طبيب مؤهل.",
-                              "grammar_id":  "g021"
-                          }
-                      ],
-        "questions":  [
-                          {
-                              "prompt":  "What kind of infections do antibiotics fight?",
-                              "options":  [
-                                              "Viral infections like the flu",
-                                              "Bacterial infections",
-                                              "Allergies caused by dust",
-                                              "Genetic diseases"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "تحارب المضادات الحيوية الالتهابات البكتيرية فقط ولا تعالج الفيروسات."
-                          },
-                          {
-                              "prompt":  "Why shouldn\u0027t people take antibiotics for a common cold?",
-                              "options":  [
-                                              "Because colds are caused by viruses, which antibiotics cannot cure",
-                                              "Because antibiotics are too expensive",
-                                              "Because colds only last for one hour",
-                                              "Because antibiotics make the cold worse immediately"
-                                          ],
-                              "answer_index":  0,
-                              "explanation_ar":  "نزلات البرد والإنفلونزا تسببها الفيروسات، والمضادات الحيوية لا تعالج الفيروسات."
-                          },
-                          {
-                              "prompt":  "What happens if a patient stops taking the medicine too early?",
-                              "options":  [
-                                              "The patient recovers faster",
-                                              "The strongest bacteria survive and multiply",
-                                              "The medicine turns into a virus",
-                                              "Nothing happens"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "عدم إكمال جرعة الدواء كاملة يؤدي إلى بقاء البكتيريا الأقوى على قيد الحياة وتكاثرها."
-                          },
-                          {
-                              "prompt":  "What causes bacteria to develop resistance?",
-                              "options":  [
-                                              "Drinking too much water",
-                                              "Misusing and overusing antibiotics",
-                                              "Visiting hospitals frequently",
-                                              "Taking vitamins every day"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "سوء استخدام المضادات الحيوية والإفراط فيها يؤدي إلى تكيف البكتيريا وتطوير مقاومتها."
-                          },
-                          {
-                              "prompt":  "When should a patient take antibiotics?",
-                              "options":  [
-                                              "Whenever they feel tired",
-                                              "When a friend recommends them",
-                                              "Only when prescribed by a qualified physician",
-                                              "Before every winter season"
-                                          ],
-                              "answer_index":  2,
-                              "explanation_ar":  "يجب تناولها فقط عندما يصفها طبيب مؤهل."
-                          }
-                      ]
-    },
-    {
-        "id":  "r099",
-        "level":  "B2",
-        "topic":  "information technology",
-        "title_en":  "Database Indexing and Query Optimization",
-        "title_ar":  "فهرسة قواعد البيانات وتحسين الاستعلامات",
-        "grammar_ids":  [
-                            "g057",
-                            "g065",
-                            "g036",
-                            "g068",
-                            "g064"
-                        ],
-        "sentences":  [
-                          {
-                              "en":  "As software applications grow, the volume of data stored in relational databases increases rapidly.",
-                              "ar":  "مع نمو تطبيقات البرمجيات، يزداد حجم البيانات المخزنة في قواعد البيانات العلائقية بسرعة.",
-                              "grammar_id":  "g036"
-                          },
-                          {
-                              "en":  "When a table contains millions of rows, retrieving specific records can become noticeably slow.",
-                              "ar":  "عندما يحتوي الجدول على ملايين الصفوف، يمكن أن يصبح استرجاع سجلات معينة بطيئًا بشكل ملحوظ.",
-                              "grammar_id":  "g036"
-                          },
-                          {
-                              "en":  "Without proper indexing, the database engine must perform a full table scan for every query.",
-                              "ar":  "بدون فهرسة مناسبة، يجب على محرك قاعدة البيانات إجراء مسح كامل للجدول لكل استعلام."
-                          },
-                          {
-                              "en":  "A database index works similarly to an index at the back of a printed book.",
-                              "ar":  "يعمل فهرس قاعدة البيانات بطريقة مشابهة للفهرس الموجود في نهاية الكتاب المطبوع.",
-                              "grammar_id":  "g068"
-                          },
-                          {
-                              "en":  "By creating an index on frequently searched columns, engineers can reduce query execution time dramatically.",
-                              "ar":  "من خلال إنشاء فهرس على الأعمدة التي يتم البحث فيها بكثرة، يمكن للمهندسين تقليل وقت تنفيذ الاستعلام بشكل كبير.",
-                              "grammar_id":  "g064"
-                          },
-                          {
-                              "en":  "However, adding too many indexes to a single table introduces a significant performance trade-off.",
-                              "ar":  "ومع ذلك، فإن إضافة الكثير من الفهارس إلى جدول واحد يؤدي إلى مقايضة كبيرة في الأداء.",
-                              "grammar_id":  "g065"
-                          },
-                          {
-                              "en":  "Every time a new row is inserted or updated, all associated indexes must be recalculated as well.",
-                              "ar":  "في كل مرة يتم فيها إدراج صف جديد أو تحديثه، يجب إعادة حساب جميع الفهارس المرتبطة به أيضًا.",
-                              "grammar_id":  "g057"
-                          },
-                          {
-                              "en":  "Consequently, write-heavy applications might experience slower insertion speeds if they are over-indexed.",
-                              "ar":  "وبالتالي، قد تواجه التطبيقات التي تعتمد بكثرة على الكتابة سرعات إدراج أبطأ إذا تمت فهرستها بشكل مفرط.",
-                              "grammar_id":  "g065"
-                          },
-                          {
-                              "en":  "Experienced data engineers analyze query execution plans before deciding which columns require indexing.",
-                              "ar":  "يقوم مهندسو البيانات ذوو الخبرة بتحليل خطط تنفيذ الاستعلام قبل تحديد الأعمدة التي تتطلب الفهرسة."
-                          },
-                          {
-                              "en":  "Balancing read speed with write efficiency is essential for maintaining a scalable system architecture.",
-                              "ar":  "يُعد تحقيق التوازن بين سرعة القراءة وكفاءة الكتابة أمرًا ضروريًا للحفاظ على بنية نظام قابلة للتوسع."
-                          }
-                      ],
-        "questions":  [
-                          {
-                              "prompt":  "What happens when a database queries a large table without an index?",
-                              "options":  [
-                                              "It deletes old rows automatically",
-                                              "It performs a full table scan, which slows down retrieval",
-                                              "It crashes immediately",
-                                              "It creates a new table"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "بدون فهرس، يضطر محرك قاعدة البيانات إلى فحص الجدول بالكامل (full table scan) مما يبطئ الاسترجاع."
-                          },
-                          {
-                              "prompt":  "How does the text compare a database index to a real-world object?",
-                              "options":  [
-                                              "Like a lock on a door",
-                                              "Like an index at the back of a printed book",
-                                              "Like a folder on a desktop",
-                                              "Like a calculator"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "يشبه النص فهرس قاعدة البيانات بالفهرس الموجود في نهاية الكتاب المطبوع للوصول السريع للمعلومة."
-                          },
-                          {
-                              "prompt":  "What is the downside of adding too many indexes to a table?",
-                              "options":  [
-                                              "Select queries become much slower",
-                                              "Insert and update operations become slower because indexes must be recalculated",
-                                              "Data gets corrupted easily",
-                                              "Users cannot read the table anymore"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "إضافة فهارس كثيرة تبطئ عمليات الإضافة والتحديث (Insert/Update) لأن الفهارس يُعاد حسابها مع كل تعديل."
-                          },
-                          {
-                              "prompt":  "What do data engineers examine before creating new indexes?",
-                              "options":  [
-                                              "The user interface design",
-                                              "Query execution plans",
-                                              "The internet connection speed",
-                                              "Customer emails"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "يحلل مهندسو البيانات خطط تنفيذ الاستعلام (query execution plans) لتحديد الأعمدة التي تحتاج لفهرسة."
-                          },
-                          {
-                              "prompt":  "What balance is required for a scalable database architecture?",
-                              "options":  [
-                                              "Balancing read speed with write efficiency",
-                                              "Having more indexes than columns",
-                                              "Avoiding relational databases completely",
-                                              "Running queries only once a day"
-                                          ],
-                              "answer_index":  0,
-                              "explanation_ar":  "السر يكمن في الموازنة بين سرعة القراءة (Read speed) وكفاءة الكتابة (Write efficiency)."
-                          }
-                      ]
-    },
-    {
-        "id":  "r100",
-        "level":  "C1",
-        "topic":  "medical",
-        "title_en":  "Remote Patient Monitoring and Wearable Tech",
-        "title_ar":  "مراقبة المرضى عن بُعد والتقنيات القابلة للارتداء",
-        "grammar_ids":  [
-                            "g079",
-                            "g084",
-                            "g090"
-                        ],
-        "sentences":  [
-                          {
-                              "en":  "The integration of wearable biosensors into healthcare has fundamentally transformed chronic disease management.",
-                              "ar":  "أدى دمج المستشعرات الحيوية القابلة للارتداء في الرعاية الصحية إلى إحداث تحول جذري في إدارة الأمراض المزمنة.",
-                              "grammar_id":  "g084"
-                          },
-                          {
-                              "en":  "Traditionally, physicians relied on periodic clinic visits to assess a patient\u0027s cardiovascular health.",
-                              "ar":  "تقليديًا، اعتمد الأطباء على الزيارات الدورية للعيادة لتقييم صحة القلب والأوعية الدموية للمريض."
-                          },
-                          {
-                              "en":  "However, sporadic measurements often fail to capture transient anomalies such as irregular heart rhythms.",
-                              "ar":  "ومع ذلك، غالبًا ما تفشل القياسات المتقطعة في رصد الاضطرابات العابرة مثل عدم انتظام ضربات القلب."
-                          },
-                          {
-                              "en":  "Modern medical wearables continuously track vital signs, including blood oxygen saturation and glucose levels.",
-                              "ar":  "تتبع الأجهزة الطبية الحديثة القابلة للارتداء العلامات الحيوية باستمرار، بما في ذلك تشبع الأكسجين في الدم ومستويات الجلوكوز."
-                          },
-                          {
-                              "en":  "This real-time physiological data is encrypted and transmitted directly to hospital servers via cloud networks.",
-                              "ar":  "يتم تشفير هذه البيانات الفسيولوجية الفورية وإرسالها مباشرة إلى خوادم المستشفى عبر الشبكات السحابية.",
-                              "grammar_id":  "g079"
-                          },
-                          {
-                              "en":  "Should a patient\u0027s vital signs deviate beyond safe thresholds, automated triage systems notify medical staff immediately.",
-                              "ar":  "في حال انحراف العلامات الحيوية للمريض عن الحدود الآمنة، تقوم أنظمة الفرز الآلي بإبلاغ الطاقم الطبي على الفور."
-                          },
-                          {
-                              "en":  "Early intervention not only prevents severe medical emergencies, but it also significantly reduces hospital readmission rates.",
-                              "ar":  "لا يقتصر التدخل المبكر على منع حالات الطوارئ الطبية الحرجة فحسب، بل يقلل أيضًا بشكل كبير من معدلات إعادة دخول المستشفى.",
-                              "grammar_id":  "g084"
-                          },
-                          {
-                              "en":  "Despite these clinical benefits, ensuring strict compliance with data privacy regulations remains a complex challenge.",
-                              "ar":  "على الرغم من هذه الفوائد السريرية، يظل ضمان الامتثال الصارم للوائح خصوصية البيانات تحديًا معقدًا.",
-                              "grammar_id":  "g090"
-                          },
-                          {
-                              "en":  "Furthermore, healthcare providers must train elderly patients to use these digital devices accurately at home.",
-                              "ar":  "علاوة على ذلك، يجب على مقدمي الرعاية الصحية تدريب المرضى المسنين على استخدام هذه الأجهزة الرقمية بدقة في المنزل."
-                          },
-                          {
-                              "en":  "Ultimately, continuous remote monitoring bridges the gap between hospital care and independent living.",
-                              "ar":  "في النهاية، تسد المراقبة المستمرة عن بُعد الفجوة بين الرعاية داخل المستشفى والحياة المستقلة."
-                          }
-                      ],
-        "questions":  [
-                          {
-                              "prompt":  "What is the main limitation of traditional periodic clinic visits?",
-                              "options":  [
-                                              "Doctors do not have medical equipment in clinics",
-                                              "Sporadic measurements often miss transient anomalies like irregular heart rhythms",
-                                              "Patients refuse to visit clinics",
-                                              "Clinic visits take too many days"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "القياسات المتقطعة في الزيارات التقليدية قد تفشل في رصد الاضطرابات العابرة التي تحدث وتختفي فجأة."
-                          },
-                          {
-                              "prompt":  "How is patient data protected when sent to hospital servers?",
-                              "options":  [
-                                              "It is printed on paper",
-                                              "It is encrypted before being transmitted via cloud networks",
-                                              "It is deleted every five minutes",
-                                              "It is kept only on the patient\u0027s phone"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "يتم تشفير البيانات الفسيولوجية (encrypted) قبل إرسالها عبر الشبكات السحابية."
-                          },
-                          {
-                              "prompt":  "What triggers the automated triage system to notify medical staff?",
-                              "options":  [
-                                              "When the wearable battery is full",
-                                              "When a patient\u0027s vital signs deviate beyond safe thresholds",
-                                              "When the patient goes to sleep",
-                                              "Every morning at eight o\u0027clock"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "يرسل النظام تنبيهًا فوريًا إذا انحرفت العلامات الحيوية للمريض عن الحدود الآمنة المسموح بها."
-                          },
-                          {
-                              "prompt":  "How does early intervention impact hospitals?",
-                              "options":  [
-                                              "It increases the number of surgeries",
-                                              "It significantly reduces hospital readmission rates",
-                                              "It replaces nurses completely",
-                                              "It makes hospital care more expensive"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "التدخل المبكر يمنع الطوارئ الحرجة ويقلل بشكل كبير من معدلات عودة المرضى لدخول المستشفى."
-                          },
-                          {
-                              "prompt":  "Which two challenges are mentioned regarding remote patient monitoring?",
-                              "options":  [
-                                              "Battery life and screen size",
-                                              "Data privacy compliance and training elderly patients",
-                                              "Slow internet and lack of doctors",
-                                              "High cost of medicine and hospital beds"
-                                          ],
-                              "answer_index":  1,
-                              "explanation_ar":  "التحديان المذكوران هما الامتثال للوائح خصوصية البيانات، وتدريب المرضى كبار السن على استخدام الأجهزة."
-                          }
-                      ]
-    }
+  {
+    "id": "r091",
+    "level": "A1",
+    "topic": "daily routine",
+    "title_en": "A Busy Friday Morning",
+    "title_ar": "صباح جمعة مزدحم",
+    "grammar_ids": [
+      "g007",
+      "g011"
+    ],
+    "sentences": [
+      {
+        "en": "Friday is my favorite day of the week because I do not work.",
+        "ar": "الجمعة هو يومي المفضل في الأسبوع لأنني لا أعمل.",
+        "grammar_id": "g007"
+      },
+      {
+        "en": "I usually wake up at eight o'clock and make a cup of hot tea.",
+        "ar": "أستيقظ عادةً في الساعة الثامنة وأصنع كوبًا من الشاي الساخن.",
+        "grammar_id": "g011"
+      },
+      {
+        "en": "My mother prepares a big breakfast for the whole family.",
+        "ar": "تُعد والدتي إفطارًا كبيرًا للعائلة بأكملها.",
+        "grammar_id": "g007"
+      },
+      {
+        "en": "We eat warm bread, cheese, and eggs together in the kitchen.",
+        "ar": "نأكل الخبز الدافئ والجبن والبيض معًا في المطبخ.",
+        "grammar_id": "g007"
+      },
+      {
+        "en": "After breakfast, I take a short walk to the local market.",
+        "ar": "بعد الإفطار، أذهب في نزهة قصيرة سيرًا على الأقدام إلى السوق المحلي.",
+        "grammar_id": "g007"
+      },
+      {
+        "en": "The market is always crowded on Friday mornings.",
+        "ar": "السوق مزدحم دائمًا في صباح أيام الجمعة.",
+        "grammar_id": "g011"
+      },
+      {
+        "en": "I buy fresh tomatoes, apples, and some milk for the house.",
+        "ar": "أشتري طماطم طازجة وتفاحًا وبعض الحليب للمنزل.",
+        "grammar_id": "g007"
+      },
+      {
+        "en": "The seller knows me well and always gives me a good price.",
+        "ar": "البائع يعرفني جيدًا ويعطيني دائمًا سعرًا جيدًا.",
+        "grammar_id": "g007"
+      },
+      {
+        "en": "In the afternoon, my friends come to my house to watch a football match.",
+        "ar": "في فترة ما بعد الظهر، يأتي أصدقائي إلى منزلي لمشاهدة مباراة كرة قدم.",
+        "grammar_id": "g007"
+      },
+      {
+        "en": "Spending time with family and friends makes me very happy.",
+        "ar": "قضاء الوقت مع العائلة والأصدقاء يجعلني سعيدًا جدًا.",
+        "grammar_id": "g007"
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "Why does the narrator like Friday?",
+        "options": [
+          "Because the market is closed",
+          "Because he does not work on Friday",
+          "Because he wakes up very late",
+          "Because he travels to another city"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "يحب الراوي يوم الجمعة لأنه يوم إجازته ولا يعمل فيه."
+      },
+      {
+        "prompt": "Where does the family eat breakfast?",
+        "options": [
+          "In a restaurant",
+          "In the garden",
+          "In the kitchen",
+          "At the local market"
+        ],
+        "answer_index": 2,
+        "explanation_ar": "يذكر النص أنهم يتناولون الإفطار معًا في المطبخ."
+      },
+      {
+        "prompt": "What does the narrator buy from the market?",
+        "options": [
+          "Bread and cheese",
+          "New clothes",
+          "Tea and coffee",
+          "Tomatoes, apples, and milk"
+        ],
+        "answer_index": 3,
+        "explanation_ar": "يشتري الراوي طماطم طازجة وتفاحًا وبعض الحليب."
+      },
+      {
+        "prompt": "Why does the seller give the narrator a good price?",
+        "options": [
+          "Because the food is old",
+          "Because the seller knows him well",
+          "Because it is late at night",
+          "Because the narrator buys a lot of things"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "البائع يعرفه جيدًا (knows me well) لذلك يعطيه سعرًا جيدًا."
+      },
+      {
+        "prompt": "What does the narrator do in the afternoon?",
+        "options": [
+          "He goes to sleep",
+          "He cleans the house",
+          "He watches a football match with his friends",
+          "He goes back to the market"
+        ],
+        "answer_index": 2,
+        "explanation_ar": "في فترة ما بعد الظهر، يأتي أصدقاؤه لمشاهدة مباراة كرة قدم."
+      }
+    ],
+    "target_words": [
+      "friday",
+      "week",
+      "work",
+      "usually",
+      "wake",
+      "eight",
+      "o'clock",
+      "cup"
+    ]
+  },
+  {
+    "id": "r092",
+    "level": "A1",
+    "topic": "home and living",
+    "title_en": "Moving to a New Apartment",
+    "title_ar": "الانتقال إلى شقة جديدة",
+    "grammar_ids": [
+      "g006",
+      "g014",
+      "g015",
+      "g007"
+    ],
+    "sentences": [
+      {
+        "en": "Last month, my family moved to a new apartment in a quiet street.",
+        "ar": "في الشهر الماضي، انتقلت عائلتي إلى شقة جديدة في شارع هادئ.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "Our old house was too small, and the street was very noisy.",
+        "ar": "كان منزلنا القديم صغيرًا جدًا، وكان الشارع صاخبًا للغاية.",
+        "grammar_id": "g014"
+      },
+      {
+        "en": "The new apartment is on the third floor of a modern building.",
+        "ar": "الشقة الجديدة تقع في الطابق الثالث من مبنى حديث.",
+        "grammar_id": "g007"
+      },
+      {
+        "en": "It has three bedrooms, a large living room, and a bright kitchen.",
+        "ar": "تحتوي على ثلاث غرف نوم، وغرفة معيشة كبيرة، ومطبخ مشرق.",
+        "grammar_id": "g006"
+      },
+      {
+        "en": "My bedroom has a big window with a view of green trees.",
+        "ar": "غرفة نومي بها نافذة كبيرة تطل على أشجار خضراء.",
+        "grammar_id": "g007"
+      },
+      {
+        "en": "I put my desk near the window because I like natural light.",
+        "ar": "وضعت مكتبي بالقرب من النافذة لأنني أحب الضوء الطبيعي.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "There is a small supermarket and a bakery right across the street.",
+        "ar": "يوجد سوبر ماركت صغير ومخبز في الجهة المقابلة من الشارع مباشرة.",
+        "grammar_id": "g006"
+      },
+      {
+        "en": "Our new neighbors are very polite and friendly people.",
+        "ar": "جيراننا الجدد أشخاص مهذبون وودودون للغاية.",
+        "grammar_id": "g007"
+      },
+      {
+        "en": "Yesterday, the neighbor next door brought us a plate of sweet cake.",
+        "ar": "بالأمس، أحضر لنا الجار المجاور طبقًا من الكعك الحلو.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "We feel very comfortable and safe in our new neighborhood.",
+        "ar": "نشعر براحة وأمان كبيرين في حينا الجديد.",
+        "grammar_id": "g007"
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "Why did the family leave their old house?",
+        "options": [
+          "It was too far from the supermarket",
+          "It was too small and the street was noisy",
+          "It did not have a kitchen",
+          "The neighbors were not friendly"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "المنزل القديم كان صغيرًا جدًا والشارع كان صاخبًا للغاية."
+      },
+      {
+        "prompt": "Which floor is the new apartment on?",
+        "options": [
+          "The first floor",
+          "The second floor",
+          "The third floor",
+          "The fourth floor"
+        ],
+        "answer_index": 2,
+        "explanation_ar": "تقع الشقة الجديدة في الطابق الثالث (on the third floor)."
+      },
+      {
+        "prompt": "Why did the narrator put the desk near the window?",
+        "options": [
+          "Because the room is too small",
+          "To watch the street",
+          "Because he likes natural light",
+          "To stay away from the door"
+        ],
+        "answer_index": 2,
+        "explanation_ar": "وضع المكتب قرب النافذة لأنه يحب الضوء الطبيعي (natural light)."
+      },
+      {
+        "prompt": "What is across the street from the building?",
+        "options": [
+          "A school and a park",
+          "A supermarket and a bakery",
+          "A hospital",
+          "A train station"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "يوجد سوبر ماركت صغير ومخبز في الجهة المقابلة من الشارع."
+      },
+      {
+        "prompt": "What did the neighbor bring yesterday?",
+        "options": [
+          "Some fresh bread",
+          "A box of milk",
+          "A plate of sweet cake",
+          "Green plants"
+        ],
+        "answer_index": 2,
+        "explanation_ar": "أحضر الجار طبقًا من الكعك الحلو ترحيبًا بهم."
+      }
+    ],
+    "target_words": [
+      "month",
+      "family",
+      "new",
+      "apartment",
+      "quiet",
+      "street",
+      "old",
+      "house"
+    ]
+  },
+  {
+    "id": "r093",
+    "level": "A1",
+    "topic": "hobbies and cooking",
+    "title_en": "Cooking Dinner Together",
+    "title_ar": "طهي العشاء معًا",
+    "grammar_ids": [
+      "g007",
+      "g008"
+    ],
+    "sentences": [
+      {
+        "en": "Every Tuesday evening, I cook dinner at home with my brother.",
+        "ar": "في مساء كل ثلاثاء، أطبخ العشاء في المنزل مع أخي.",
+        "grammar_id": "g007"
+      },
+      {
+        "en": "We do not like ordering fast food because homemade food is healthier.",
+        "ar": "نحن لا نحب طلب الوجبات السريعة لأن الطعام المنزلي صحي أكثر.",
+        "grammar_id": "g007"
+      },
+      {
+        "en": "Today, we are making grilled chicken with mashed potatoes.",
+        "ar": "اليوم، نحن نصنع دجاجًا مشويًا مع البطاطس المهروسة.",
+        "grammar_id": "g008"
+      },
+      {
+        "en": "First, my brother washes the potatoes and boils them in hot water.",
+        "ar": "أولاً، يغسل أخي البطاطس ويسلقها في ماء ساخن.",
+        "grammar_id": "g007"
+      },
+      {
+        "en": "While the potatoes are cooking, I season the chicken with salt and black pepper.",
+        "ar": "بينما تُطهى البطاطس، أتبل الدجاج بالملح والفلفل الأسود.",
+        "grammar_id": "g008"
+      },
+      {
+        "en": "Then, I put a little butter in a hot pan and cook the chicken.",
+        "ar": "ثم أضع القليل من الزبدة في مقلاة ساخنة وأطهو الدجاج.",
+        "grammar_id": "g007"
+      },
+      {
+        "en": "The kitchen smells wonderful after ten minutes.",
+        "ar": "تصبح رائحة المطبخ رائعة بعد عشر دقائق.",
+        "grammar_id": "g007"
+      },
+      {
+        "en": "My brother mixes the warm potatoes with milk and yellow cheddar cheese.",
+        "ar": "يمزج أخي البطاطس الدافئة مع الحليب وجبن الشيدر الأصفر.",
+        "grammar_id": "g007"
+      },
+      {
+        "en": "We set the table and drink cold lemon juice with our meal.",
+        "ar": "نجهز الطاولة ونشرب عصير الليمون البارد مع وجبتنا.",
+        "grammar_id": "g007"
+      },
+      {
+        "en": "Washing the dishes after dinner is boring, so we do it together.",
+        "ar": "غسل الأطباق بعد العشاء ممل، لذلك نقوم به معًا.",
+        "grammar_id": "g007"
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "Why do the brothers prefer homemade food?",
+        "options": [
+          "Because restaurants are closed on Tuesday",
+          "Because it is healthier than fast food",
+          "Because they do not have money",
+          "Because their mother asked them to cook"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "يفضلون الطعام المنزلي لأنه صحي أكثر من الوجبات السريعة."
+      },
+      {
+        "prompt": "What are they cooking today?",
+        "options": [
+          "Pasta and meat",
+          "Fish and rice",
+          "Grilled chicken with mashed potatoes",
+          "Vegetable soup"
+        ],
+        "answer_index": 2,
+        "explanation_ar": "يذكر النص أنهما يجهزان دجاجًا مشويًا مع البطاطس المهروسة."
+      },
+      {
+        "prompt": "What does the brother mix with the warm potatoes?",
+        "options": [
+          "Water and oil",
+          "Tomatoes and onions",
+          "Milk and yellow cheddar cheese",
+          "Lemon juice"
+        ],
+        "answer_index": 2,
+        "explanation_ar": "يمزج الأخ البطاطس الدافئة مع الحليب وجبن الشيدر الأصفر."
+      },
+      {
+        "prompt": "How does the narrator cook the chicken?",
+        "options": [
+          "In cold water",
+          "With a little butter in a hot pan",
+          "In the microwave",
+          "With cheese and milk"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "يضع القليل من الزبدة في مقلاة ساخنة ويطهو الدجاج."
+      },
+      {
+        "prompt": "How do they feel about washing the dishes?",
+        "options": [
+          "They think it is fun",
+          "They think it is boring",
+          "They never wash the dishes",
+          "They leave them for the next morning"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "يذكر النص أن غسل الأطباق ممل (boring)، لذلك يتعاونان فيه."
+      }
+    ],
+    "target_words": [
+      "tuesday",
+      "evening",
+      "dinner",
+      "brother",
+      "order",
+      "fast",
+      "food",
+      "today"
+    ]
+  },
+  {
+    "id": "r094",
+    "level": "A2",
+    "topic": "travel",
+    "title_en": "Missing the Morning Train",
+    "title_ar": "تفويت قطار الصباح",
+    "grammar_ids": [
+      "g015"
+    ],
+    "sentences": [
+      {
+        "en": "Last Saturday, Karim planned to visit his uncle in Alexandria.",
+        "ar": "يوم السبت الماضي، خطط كريم لزيارة عمه في الإسكندرية.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "He bought a train ticket online the night before the trip.",
+        "ar": "اشترى تذكرة قطار عبر الإنترنت في الليلة السابقة للرحلة.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "The train was scheduled to leave the station at seven in the morning.",
+        "ar": "كان من المقرر أن يغادر القطار المحطة في الساعة السابعة صباحًا.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "Unfortunately, Karim forgot to set his alarm clock before going to sleep.",
+        "ar": "لسوء الحظ، نسي كريم ضبط منبهه قبل الذهاب إلى النوم.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "When he woke up, it was already six-thirty.",
+        "ar": "عندما استيقظ، كانت الساعة قد وصلت إلى السادسة والنصف بالفعل.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "He got dressed quickly, grabbed his bag, and took a taxi to the station.",
+        "ar": "ارتدى ملابسه بسرعة، وأمسك بحقيبته، واستقل سيارة أجرة إلى المحطة.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "However, the morning traffic was heavy, and the taxi moved slowly.",
+        "ar": "ومع ذلك، كانت حركة المرور الصباحية مزدحمة، وتحركت سيارة الأجرة ببطء.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "Karim arrived at the platform five minutes after the train left.",
+        "ar": "وصل كريم إلى الرصيف بعد خمس دقائق من مغادرة القطار.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "He went to the ticket office and exchanged his ticket for the next train.",
+        "ar": "ذهب إلى مكتب التذاكر واستبدل تذكرته بالقطار التالي.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "While waiting for an hour, he drank coffee and read a short book.",
+        "ar": "أثناء انتظاره لمدة ساعة، شرب القهوة وقرأ كتابًا قصيرًا.",
+        "grammar_id": "g015"
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "Where was Karim planning to go?",
+        "options": [
+          "To work",
+          "To Alexandria to visit his uncle",
+          "To the airport",
+          "To a new school"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "خطط كريم للسفر إلى الإسكندرية لزيارة عمه."
+      },
+      {
+        "prompt": "Why did Karim wake up late?",
+        "options": [
+          "His alarm clock was broken",
+          "He forgot to set his alarm clock",
+          "He was sick during the night",
+          "His train was at night"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "نسي كريم ضبط المنبه قبل الذهاب إلى النوم."
+      },
+      {
+        "prompt": "Why did the taxi move slowly?",
+        "options": [
+          "The driver did not know the way",
+          "The taxi had a problem",
+          "The morning traffic was heavy",
+          "The station was very far"
+        ],
+        "answer_index": 2,
+        "explanation_ar": "تحرك التاكسي ببطء بسبب ازدحام المرور الصباحي."
+      },
+      {
+        "prompt": "What did Karim do after he missed the train?",
+        "options": [
+          "He went back home",
+          "He took a bus instead",
+          "He exchanged his ticket for the next train",
+          "He called his uncle to cancel the trip"
+        ],
+        "answer_index": 2,
+        "explanation_ar": "ذهب إلى مكتب التذاكر واستبدل تذكرته بالقطار التالي."
+      },
+      {
+        "prompt": "How did Karim spend his waiting time at the station?",
+        "options": [
+          "He slept on a bench",
+          "He talked to a friend",
+          "He drank coffee and read a short book",
+          "He bought new clothes"
+        ],
+        "answer_index": 2,
+        "explanation_ar": "أثناء انتظاره لمدة ساعة، شرب القهوة وقرأ كتابًا قصيرًا."
+      }
+    ],
+    "target_words": [
+      "last",
+      "schedule",
+      "unfortunately",
+      "sleep",
+      "already",
+      "heavy",
+      "slowly",
+      "platform"
+    ]
+  },
+  {
+    "id": "r095",
+    "level": "A2",
+    "topic": "sports and lifestyle",
+    "title_en": "Our Weekly Football Match",
+    "title_ar": "مباراتنا الأسبوعية في كرة القدم",
+    "grammar_ids": [
+      "g023",
+      "g015"
+    ],
+    "sentences": [
+      {
+        "en": "Working in an office all week makes me sit for long hours.",
+        "ar": "العمل في مكتب طوال الأسبوع يجعلني أجلس لساعات طويلة."
+      },
+      {
+        "en": "To stay active, my friends and I rent a small football pitch every Thursday night.",
+        "ar": "للبقاء نشيطين، نستأجر أنا وأصدقائي ملعب كرة قدم صغير كل ليلة خميس."
+      },
+      {
+        "en": "We divide ourselves into two teams of five players each.",
+        "ar": "نقسم أنفسنا إلى فريقين يتكون كل منهما من خمسة لاعبين."
+      },
+      {
+        "en": "Before the match starts, we always warm up for ten minutes to avoid injuries.",
+        "ar": "قبل أن تبدأ المباراة، نقوم دائمًا بالإحماء لمدة عشر دقائق لتجنب الإصابات.",
+        "grammar_id": "g023"
+      },
+      {
+        "en": "Last week, the game was very exciting and fast from the beginning.",
+        "ar": "في الأسبوع الماضي، كانت اللعبة مثيرة وسريعة للغاية منذ البداية.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "Our goalkeeper made several great saves during the first half.",
+        "ar": "قام حارس مرمانا بعدة تصديات رائعة خلال الشوط الأول.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "Ten minutes before the end, I passed the ball to my friend Tariq, and he scored the winning goal.",
+        "ar": "قبل النهاية بعشر دقائق، مررت الكرة لصديقي طارق، وسجل هو هدف الفوز.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "Even when my team loses, we never get angry at each other.",
+        "ar": "حتى عندما يخسر فريقي، لا نغضب أبدًا من بعضنا البعض.",
+        "grammar_id": "g023"
+      },
+      {
+        "en": "After the match, we usually sit together and drink cold water.",
+        "ar": "بعد المباراة، نجلس عادةً معًا ونشرب الماء البارد.",
+        "grammar_id": "g023"
+      },
+      {
+        "en": "This weekly habit helps us forget work stress and keeps us fit.",
+        "ar": "تساعدنا هذه العادة الأسبوعية على نسيان ضغوط العمل وتحافظ على لياقتنا.",
+        "grammar_id": "g023"
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "Why does the narrator play football every Thursday?",
+        "options": [
+          "To become a professional player",
+          "To stay active because he sits for long hours at work",
+          "Because he lives next to the pitch",
+          "To win a prize"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "يلعب كرة القدم ليبقى نشيطًا لأن عمله المكتبي يجعله يجلس لساعات طويلة."
+      },
+      {
+        "prompt": "How many players are on each team?",
+        "options": [
+          "Eleven players",
+          "Seven players",
+          "Five players",
+          "Three players"
+        ],
+        "answer_index": 2,
+        "explanation_ar": "يقسمون أنفسهم إلى فريقين، كل فريق يتكون من خمسة لاعبين (five players each)."
+      },
+      {
+        "prompt": "Why do the players warm up before the match?",
+        "options": [
+          "To wait for late friends",
+          "To avoid injuries",
+          "Because the weather is cold",
+          "To choose the goalkeeper"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "يقومون بالإحماء لمدة عشر دقائق لتجنب الإصابات (to avoid injuries)."
+      },
+      {
+        "prompt": "Who scored the winning goal last week?",
+        "options": [
+          "The narrator",
+          "The goalkeeper",
+          "Tariq",
+          "No one, the match ended in a draw"
+        ],
+        "answer_index": 2,
+        "explanation_ar": "مرر الراوي الكرة إلى صديقه طارق الذي سجل هدف الفوز."
+      },
+      {
+        "prompt": "How does this weekly match help the friends?",
+        "options": [
+          "It helps them make money",
+          "It helps them forget work stress and stay fit",
+          "It makes them wake up early",
+          "It helps them find new office jobs"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "تساعدهم هذه العادة على نسيان ضغوط العمل والحفاظ على لياقتهم البدنية."
+      }
+    ],
+    "target_words": [
+      "working",
+      "stay",
+      "active",
+      "start",
+      "avoid",
+      "injury",
+      "last",
+      "several"
+    ]
+  },
+  {
+    "id": "r096",
+    "level": "A2",
+    "topic": "shopping and daily life",
+    "title_en": "Fixing a Broken Phone",
+    "title_ar": "إصلاح هاتف معطل",
+    "grammar_ids": [
+      "g015",
+      "g018"
+    ],
+    "sentences": [
+      {
+        "en": "Two days ago, Salma dropped her smartphone on the hard kitchen floor.",
+        "ar": "قبل يومين، أسقطت سلمى هاتفها الذكي على أرضية المطبخ الصلبة.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "When she picked it up, she saw a large crack across the screen.",
+        "ar": "عندما التقطته، رأت شرخًا كبيرًا يمتد عبر الشاشة.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "The phone turned on, but the touch screen did not work at all.",
+        "ar": "اشتغل الهاتف، لكن شاشة اللمس لم تعمل على الإطلاق.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "She needed her phone urgently because she uses it for study and communication.",
+        "ar": "كانت بحاجة إلى هاتفها بشكل عاجل لأنها تستخدمه للدراسة والتواصل."
+      },
+      {
+        "en": "In the afternoon, she took it to a repair shop in the city center.",
+        "ar": "في فترة ما بعد الظهر، أخذته إلى محل صيانة في وسط المدينة.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "The technician examined the phone carefully for a few minutes.",
+        "ar": "فحص الفني الهاتف بعناية لبضع دقائق.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "He told her that the internal parts were fine, and it only needed a new screen.",
+        "ar": "أخبرها أن الأجزاء الداخلية سليمة، وأنه يحتاج فقط إلى شاشة جديدة.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "Replacing the screen cost much less than buying a brand-new phone.",
+        "ar": "تكلفة استبدال الشاشة كانت أقل بكثير من شراء هاتف جديد تمامًا.",
+        "grammar_id": "g018"
+      },
+      {
+        "en": "Salma waited in a nearby café for one hour until the repair was finished.",
+        "ar": "انتظرت سلمى في مقهى قريب لمدة ساعة واحدة حتى انتهى الإصلاح.",
+        "grammar_id": "g015"
+      },
+      {
+        "en": "Before leaving the shop, she bought a strong protective case to prevent future damage.",
+        "ar": "قبل مغادرة المحل، اشترت جراب حماية قويًا لمنع التلف في المستقبل.",
+        "grammar_id": "g015"
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "How did Salma break her phone?",
+        "options": [
+          "She left it in the water",
+          "She dropped it on the kitchen floor",
+          "Someone stepped on it",
+          "It fell from her bag in the street"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "سقط منها الهاتف على أرضية المطبخ الصلبة."
+      },
+      {
+        "prompt": "What happened to the phone after it fell?",
+        "options": [
+          "It did not turn on at all",
+          "The battery exploded",
+          "The screen cracked and the touch stopped working",
+          "Only the camera broke"
+        ],
+        "answer_index": 2,
+        "explanation_ar": "انشرخت الشاشة وتوقفت خاصية اللمس عن العمل رغم أن الهاتف كان يضيء."
+      },
+      {
+        "prompt": "What did the technician tell Salma?",
+        "options": [
+          "She must buy a new phone",
+          "The internal parts were broken",
+          "It only needed a new screen",
+          "He needed three days to fix it"
+        ],
+        "answer_index": 2,
+        "explanation_ar": "أخبرها الفني أن الأجزاء الداخلية سليمة ويحتاج الهاتف فقط لشاشة جديدة."
+      },
+      {
+        "prompt": "How long did the repair take?",
+        "options": [
+          "Five minutes",
+          "One hour",
+          "Two days",
+          "One week"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "انتظرت سلمى في مقهى قريب لمدة ساعة واحدة حتى انتهى الإصلاح."
+      },
+      {
+        "prompt": "What did Salma buy before leaving the shop?",
+        "options": [
+          "A new charger",
+          "Headphones",
+          "A strong protective case",
+          "Another phone"
+        ],
+        "answer_index": 2,
+        "explanation_ar": "اشترت جراب حماية قويًا (protective case) لحماية الهاتف مستقبلاً."
+      }
+    ],
+    "target_words": [
+      "smartphone",
+      "screen",
+      "need",
+      "carefully",
+      "replace",
+      "less",
+      "wait",
+      "finish"
+    ]
+  },
+  {
+    "id": "r097",
+    "level": "B1",
+    "topic": "information technology",
+    "title_en": "Automating Daily Workflows",
+    "title_ar": "أتمتة مهام العمل اليومية",
+    "grammar_ids": [
+      "g030",
+      "g037",
+      "g036",
+      "g031"
+    ],
+    "sentences": [
+      {
+        "en": "In many companies, employees spend hours copying data between different spreadsheets.",
+        "ar": "في العديد من الشركات، يقضي الموظفون ساعات في نسخ البيانات بين جداول البيانات المختلفة."
+      },
+      {
+        "en": "This manual process is not only exhausting, but it also leads to human errors.",
+        "ar": "هذه العملية اليدوية ليست مرهقة فحسب، بل تؤدي أيضًا إلى أخطاء بشرية."
+      },
+      {
+        "en": "Last month, our software team decided to build an automated data pipeline.",
+        "ar": "في الشهر الماضي، قرر فريق البرمجيات لدينا بناء خط أنابيب بيانات آلي.",
+        "grammar_id": "g031"
+      },
+      {
+        "en": "We wrote a Python script that collects daily sales reports from multiple sources.",
+        "ar": "كتبنا نصًا برمجيًا بلغة بايثون يجمع تقارير المبيعات اليومية من مصادر متعددة.",
+        "grammar_id": "g031"
+      },
+      {
+        "en": "After collecting the files, the script cleans the data and removes duplicate records.",
+        "ar": "بعد جمع الملفات، يقوم الكود بتنظيف البيانات وإزالة السجلات المكررة."
+      },
+      {
+        "en": "Then, the clean data is automatically uploaded to the central SQL database.",
+        "ar": "بعد ذلك، يتم رفع البيانات النظيفة تلقائيًا إلى قاعدة بيانات SQL المركزية.",
+        "grammar_id": "g037"
+      },
+      {
+        "en": "We scheduled the system to run every night at two o'clock in the morning.",
+        "ar": "قمنا بجدولة النظام ليعمل كل ليلة في الساعة الثانية صباحًا.",
+        "grammar_id": "g031"
+      },
+      {
+        "en": "If the script encounters an unexpected error, it sends an instant alert to the engineers.",
+        "ar": "إذا واجه الكود خطأ غير متوقع، فإنه يرسل تنبيهًا فوريًا للمهندسين.",
+        "grammar_id": "g036"
+      },
+      {
+        "en": "Since we launched this tool, our team has saved more than ten hours every week.",
+        "ar": "منذ أن أطلقنا هذه الأداة، وفر فريقنا أكثر من عشر ساعات كل أسبوع.",
+        "grammar_id": "g030"
+      },
+      {
+        "en": "Now, employees can focus on analyzing trends instead of doing repetitive tasks.",
+        "ar": "الآن، يمكن للموظفين التركيز على تحليل الاتجاهات بدلاً من القيام بمهام متكررة."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "What is the main problem with copying data manually?",
+        "options": [
+          "It requires expensive computers",
+          "It is exhausting and leads to human errors",
+          "It deletes the central database",
+          "It only works at night"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "العملية اليدوية مرهقة وتؤدي إلى وقوع أخطاء بشرية."
+      },
+      {
+        "prompt": "What does the Python script do before uploading data to the database?",
+        "options": [
+          "It sends an email to customers",
+          "It turns off the server",
+          "It cleans the data and removes duplicate records",
+          "It creates new spreadsheets"
+        ],
+        "answer_index": 2,
+        "explanation_ar": "يقوم الكود بتنظيف البيانات وإزالة السجلات المكررة قبل رفعها لقاعدة البيانات."
+      },
+      {
+        "prompt": "When does the automated system run?",
+        "options": [
+          "Every morning at nine o'clock",
+          "Every night at two o'clock in the morning",
+          "Once a month",
+          "Only when an engineer clicks a button"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "تمت جدولة النظام ليعمل كل ليلة في الساعة الثانية صباحًا."
+      },
+      {
+        "prompt": "What happens if the script encounters an error?",
+        "options": [
+          "It deletes all the sales reports",
+          "It restarts the computer",
+          "It sends an instant alert to the engineers",
+          "It waits until next week"
+        ],
+        "answer_index": 2,
+        "explanation_ar": "إذا واجه الكود خطأ غير متوقع، يرسل تنبيهًا فوريًا للمهندسين."
+      },
+      {
+        "prompt": "How has this automation helped the employees?",
+        "options": [
+          "They can now focus on analyzing trends instead of repetitive tasks",
+          "They work more hours on weekends",
+          "They stopped using databases completely",
+          "They learned how to fix hardware"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "وفرت الأداة وقتهم وأصبح بإمكانهم التركيز على تحليل البيانات بدلاً من المهام المتكررة."
+      }
+    ],
+    "target_words": [
+      "lead",
+      "software",
+      "script",
+      "file",
+      "central",
+      "since",
+      "trend",
+      "employe"
+    ]
+  },
+  {
+    "id": "r098",
+    "level": "B1",
+    "topic": "medical",
+    "title_en": "Understanding Antibiotic Resistance",
+    "title_ar": "فهم مقاومة المضادات الحيوية",
+    "grammar_ids": [
+      "g036",
+      "g037",
+      "g021",
+      "g030"
+    ],
+    "sentences": [
+      {
+        "en": "Antibiotics are powerful medicines that fight bacterial infections in the human body.",
+        "ar": "المضادات الحيوية هي أدوية قوية تحارب الالتهابات البكتيرية في جسم الإنسان."
+      },
+      {
+        "en": "Since their discovery, they have saved millions of lives around the world.",
+        "ar": "منذ اكتشافها، أنقذت ملايين الأرواح حول العالم.",
+        "grammar_id": "g030"
+      },
+      {
+        "en": "However, many people take antibiotics unnecessarily when they have a common cold or flu.",
+        "ar": "ومع ذلك، يتناول الكثير من الناس المضادات الحيوية دون داعٍ عند إصابتهم بنزلة برد أو إنفلونزا."
+      },
+      {
+        "en": "Doctors always explain that these medicines cannot cure illnesses caused by viruses.",
+        "ar": "يشرح الأطباء دائمًا أن هذه الأدوية لا يمكنها علاج الأمراض التي تسببها الفيروسات."
+      },
+      {
+        "en": "When patients misuse antibiotics, bacteria adapt and develop resistance over time.",
+        "ar": "عندما يسيء المرضى استخدام المضادات الحيوية، تتكيف البكتيريا وتطور مقاومة بمرور الوقت.",
+        "grammar_id": "g036"
+      },
+      {
+        "en": "Another common mistake is stopping the treatment as soon as the patient feels better.",
+        "ar": "خطأ شائع آخر هو إيقاف العلاج بمجرد أن يشعر المريض بتحسن.",
+        "grammar_id": "g036"
+      },
+      {
+        "en": "If the full course of medicine is not completed, the strongest bacteria survive and multiply.",
+        "ar": "إذا لم تكتمل دورة الدواء الكاملة، فإن البكتيريا الأقوى تنجو وتتكاثر.",
+        "grammar_id": "g037"
+      },
+      {
+        "en": "As a result, standard medical treatments become ineffective against these superbugs.",
+        "ar": "ونتيجة لذلك، تصبح العلاجات الطبية المعتادة غير فعالة ضد هذه البكتيريا الخارقة."
+      },
+      {
+        "en": "Health organizations warn that antibiotic resistance is a major global threat.",
+        "ar": "تحذر المنظمات الصحية من أن مقاومة المضادات الحيوية تمثل تهديدًا عالميًا كبيرًا."
+      },
+      {
+        "en": "Therefore, patients must only take antibiotics when prescribed by a qualified physician.",
+        "ar": "لذلك، يجب على المرضى تناول المضادات الحيوية فقط عندما يصفها طبيب مؤهل.",
+        "grammar_id": "g021"
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "What kind of infections do antibiotics fight?",
+        "options": [
+          "Viral infections like the flu",
+          "Bacterial infections",
+          "Allergies caused by dust",
+          "Genetic diseases"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "تحارب المضادات الحيوية الالتهابات البكتيرية فقط ولا تعالج الفيروسات."
+      },
+      {
+        "prompt": "Why shouldn't people take antibiotics for a common cold?",
+        "options": [
+          "Because colds are caused by viruses, which antibiotics cannot cure",
+          "Because antibiotics are too expensive",
+          "Because colds only last for one hour",
+          "Because antibiotics make the cold worse immediately"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "نزلات البرد والإنفلونزا تسببها الفيروسات، والمضادات الحيوية لا تعالج الفيروسات."
+      },
+      {
+        "prompt": "What happens if a patient stops taking the medicine too early?",
+        "options": [
+          "The patient recovers faster",
+          "The strongest bacteria survive and multiply",
+          "The medicine turns into a virus",
+          "Nothing happens"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "عدم إكمال جرعة الدواء كاملة يؤدي إلى بقاء البكتيريا الأقوى على قيد الحياة وتكاثرها."
+      },
+      {
+        "prompt": "What causes bacteria to develop resistance?",
+        "options": [
+          "Drinking too much water",
+          "Misusing and overusing antibiotics",
+          "Visiting hospitals frequently",
+          "Taking vitamins every day"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "سوء استخدام المضادات الحيوية والإفراط فيها يؤدي إلى تكيف البكتيريا وتطوير مقاومتها."
+      },
+      {
+        "prompt": "When should a patient take antibiotics?",
+        "options": [
+          "Whenever they feel tired",
+          "When a friend recommends them",
+          "Only when prescribed by a qualified physician",
+          "Before every winter season"
+        ],
+        "answer_index": 2,
+        "explanation_ar": "يجب تناولها فقط عندما يصفها طبيب مؤهل."
+      }
+    ],
+    "target_words": [
+      "powerful",
+      "since",
+      "live",
+      "treatment",
+      "survive",
+      "standard",
+      "warn",
+      "global"
+    ]
+  },
+  {
+    "id": "r099",
+    "level": "B2",
+    "topic": "information technology",
+    "title_en": "Database Indexing and Query Optimization",
+    "title_ar": "فهرسة قواعد البيانات وتحسين الاستعلامات",
+    "grammar_ids": [
+      "g057",
+      "g065",
+      "g036",
+      "g068",
+      "g064"
+    ],
+    "sentences": [
+      {
+        "en": "As software applications grow, the volume of data stored in relational databases increases rapidly.",
+        "ar": "مع نمو تطبيقات البرمجيات، يزداد حجم البيانات المخزنة في قواعد البيانات العلائقية بسرعة.",
+        "grammar_id": "g036"
+      },
+      {
+        "en": "When a table contains millions of rows, retrieving specific records can become noticeably slow.",
+        "ar": "عندما يحتوي الجدول على ملايين الصفوف، يمكن أن يصبح استرجاع سجلات معينة بطيئًا بشكل ملحوظ.",
+        "grammar_id": "g036"
+      },
+      {
+        "en": "Without proper indexing, the database engine must perform a full table scan for every query.",
+        "ar": "بدون فهرسة مناسبة، يجب على محرك قاعدة البيانات إجراء مسح كامل للجدول لكل استعلام."
+      },
+      {
+        "en": "A database index works similarly to an index at the back of a printed book.",
+        "ar": "يعمل فهرس قاعدة البيانات بطريقة مشابهة للفهرس الموجود في نهاية الكتاب المطبوع.",
+        "grammar_id": "g068"
+      },
+      {
+        "en": "By creating an index on frequently searched columns, engineers can reduce query execution time dramatically.",
+        "ar": "من خلال إنشاء فهرس على الأعمدة التي يتم البحث فيها بكثرة، يمكن للمهندسين تقليل وقت تنفيذ الاستعلام بشكل كبير.",
+        "grammar_id": "g064"
+      },
+      {
+        "en": "However, adding too many indexes to a single table introduces a significant performance trade-off.",
+        "ar": "ومع ذلك، فإن إضافة الكثير من الفهارس إلى جدول واحد يؤدي إلى مقايضة كبيرة في الأداء.",
+        "grammar_id": "g065"
+      },
+      {
+        "en": "Every time a new row is inserted or updated, all associated indexes must be recalculated as well.",
+        "ar": "في كل مرة يتم فيها إدراج صف جديد أو تحديثه، يجب إعادة حساب جميع الفهارس المرتبطة به أيضًا.",
+        "grammar_id": "g057"
+      },
+      {
+        "en": "Consequently, write-heavy applications might experience slower insertion speeds if they are over-indexed.",
+        "ar": "وبالتالي، قد تواجه التطبيقات التي تعتمد بكثرة على الكتابة سرعات إدراج أبطأ إذا تمت فهرستها بشكل مفرط.",
+        "grammar_id": "g065"
+      },
+      {
+        "en": "Experienced data engineers analyze query execution plans before deciding which columns require indexing.",
+        "ar": "يقوم مهندسو البيانات ذوو الخبرة بتحليل خطط تنفيذ الاستعلام قبل تحديد الأعمدة التي تتطلب الفهرسة."
+      },
+      {
+        "en": "Balancing read speed with write efficiency is essential for maintaining a scalable system architecture.",
+        "ar": "يُعد تحقيق التوازن بين سرعة القراءة وكفاءة الكتابة أمرًا ضروريًا للحفاظ على بنية نظام قابلة للتوسع."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "What happens when a database queries a large table without an index?",
+        "options": [
+          "It deletes old rows automatically",
+          "It performs a full table scan, which slows down retrieval",
+          "It crashes immediately",
+          "It creates a new table"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "بدون فهرس، يضطر محرك قاعدة البيانات إلى فحص الجدول بالكامل (full table scan) مما يبطئ الاسترجاع."
+      },
+      {
+        "prompt": "How does the text compare a database index to a real-world object?",
+        "options": [
+          "Like a lock on a door",
+          "Like an index at the back of a printed book",
+          "Like a folder on a desktop",
+          "Like a calculator"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "يشبه النص فهرس قاعدة البيانات بالفهرس الموجود في نهاية الكتاب المطبوع للوصول السريع للمعلومة."
+      },
+      {
+        "prompt": "What is the downside of adding too many indexes to a table?",
+        "options": [
+          "Select queries become much slower",
+          "Insert and update operations become slower because indexes must be recalculated",
+          "Data gets corrupted easily",
+          "Users cannot read the table anymore"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "إضافة فهارس كثيرة تبطئ عمليات الإضافة والتحديث (Insert/Update) لأن الفهارس يُعاد حسابها مع كل تعديل."
+      },
+      {
+        "prompt": "What do data engineers examine before creating new indexes?",
+        "options": [
+          "The user interface design",
+          "Query execution plans",
+          "The internet connection speed",
+          "Customer emails"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "يحلل مهندسو البيانات خطط تنفيذ الاستعلام (query execution plans) لتحديد الأعمدة التي تحتاج لفهرسة."
+      },
+      {
+        "prompt": "What balance is required for a scalable database architecture?",
+        "options": [
+          "Balancing read speed with write efficiency",
+          "Having more indexes than columns",
+          "Avoiding relational databases completely",
+          "Running queries only once a day"
+        ],
+        "answer_index": 0,
+        "explanation_ar": "السر يكمن في الموازنة بين سرعة القراءة (Read speed) وكفاءة الكتابة (Write efficiency)."
+      }
+    ],
+    "target_words": [
+      "volume",
+      "database",
+      "rapidly",
+      "indexing",
+      "index",
+      "print",
+      "dramatically",
+      "significant"
+    ]
+  },
+  {
+    "id": "r100",
+    "level": "C1",
+    "topic": "medical",
+    "title_en": "Remote Patient Monitoring and Wearable Tech",
+    "title_ar": "مراقبة المرضى عن بُعد والتقنيات القابلة للارتداء",
+    "grammar_ids": [
+      "g079",
+      "g084",
+      "g090"
+    ],
+    "sentences": [
+      {
+        "en": "The integration of wearable biosensors into healthcare has fundamentally transformed chronic disease management.",
+        "ar": "أدى دمج المستشعرات الحيوية القابلة للارتداء في الرعاية الصحية إلى إحداث تحول جذري في إدارة الأمراض المزمنة.",
+        "grammar_id": "g084"
+      },
+      {
+        "en": "Traditionally, physicians relied on periodic clinic visits to assess a patient's cardiovascular health.",
+        "ar": "تقليديًا، اعتمد الأطباء على الزيارات الدورية للعيادة لتقييم صحة القلب والأوعية الدموية للمريض."
+      },
+      {
+        "en": "However, sporadic measurements often fail to capture transient anomalies such as irregular heart rhythms.",
+        "ar": "ومع ذلك، غالبًا ما تفشل القياسات المتقطعة في رصد الاضطرابات العابرة مثل عدم انتظام ضربات القلب."
+      },
+      {
+        "en": "Modern medical wearables continuously track vital signs, including blood oxygen saturation and glucose levels.",
+        "ar": "تتبع الأجهزة الطبية الحديثة القابلة للارتداء العلامات الحيوية باستمرار، بما في ذلك تشبع الأكسجين في الدم ومستويات الجلوكوز."
+      },
+      {
+        "en": "This real-time physiological data is encrypted and transmitted directly to hospital servers via cloud networks.",
+        "ar": "يتم تشفير هذه البيانات الفسيولوجية الفورية وإرسالها مباشرة إلى خوادم المستشفى عبر الشبكات السحابية.",
+        "grammar_id": "g079"
+      },
+      {
+        "en": "Should a patient's vital signs deviate beyond safe thresholds, automated triage systems notify medical staff immediately.",
+        "ar": "في حال انحراف العلامات الحيوية للمريض عن الحدود الآمنة، تقوم أنظمة الفرز الآلي بإبلاغ الطاقم الطبي على الفور."
+      },
+      {
+        "en": "Early intervention not only prevents severe medical emergencies, but it also significantly reduces hospital readmission rates.",
+        "ar": "لا يقتصر التدخل المبكر على منع حالات الطوارئ الطبية الحرجة فحسب، بل يقلل أيضًا بشكل كبير من معدلات إعادة دخول المستشفى.",
+        "grammar_id": "g084"
+      },
+      {
+        "en": "Despite these clinical benefits, ensuring strict compliance with data privacy regulations remains a complex challenge.",
+        "ar": "على الرغم من هذه الفوائد السريرية، يظل ضمان الامتثال الصارم للوائح خصوصية البيانات تحديًا معقدًا.",
+        "grammar_id": "g090"
+      },
+      {
+        "en": "Furthermore, healthcare providers must train elderly patients to use these digital devices accurately at home.",
+        "ar": "علاوة على ذلك، يجب على مقدمي الرعاية الصحية تدريب المرضى المسنين على استخدام هذه الأجهزة الرقمية بدقة في المنزل."
+      },
+      {
+        "en": "Ultimately, continuous remote monitoring bridges the gap between hospital care and independent living.",
+        "ar": "في النهاية، تسد المراقبة المستمرة عن بُعد الفجوة بين الرعاية داخل المستشفى والحياة المستقلة."
+      }
+    ],
+    "questions": [
+      {
+        "prompt": "What is the main limitation of traditional periodic clinic visits?",
+        "options": [
+          "Doctors do not have medical equipment in clinics",
+          "Sporadic measurements often miss transient anomalies like irregular heart rhythms",
+          "Patients refuse to visit clinics",
+          "Clinic visits take too many days"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "القياسات المتقطعة في الزيارات التقليدية قد تفشل في رصد الاضطرابات العابرة التي تحدث وتختفي فجأة."
+      },
+      {
+        "prompt": "How is patient data protected when sent to hospital servers?",
+        "options": [
+          "It is printed on paper",
+          "It is encrypted before being transmitted via cloud networks",
+          "It is deleted every five minutes",
+          "It is kept only on the patient's phone"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "يتم تشفير البيانات الفسيولوجية (encrypted) قبل إرسالها عبر الشبكات السحابية."
+      },
+      {
+        "prompt": "What triggers the automated triage system to notify medical staff?",
+        "options": [
+          "When the wearable battery is full",
+          "When a patient's vital signs deviate beyond safe thresholds",
+          "When the patient goes to sleep",
+          "Every morning at eight o'clock"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "يرسل النظام تنبيهًا فوريًا إذا انحرفت العلامات الحيوية للمريض عن الحدود الآمنة المسموح بها."
+      },
+      {
+        "prompt": "How does early intervention impact hospitals?",
+        "options": [
+          "It increases the number of surgeries",
+          "It significantly reduces hospital readmission rates",
+          "It replaces nurses completely",
+          "It makes hospital care more expensive"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "التدخل المبكر يمنع الطوارئ الحرجة ويقلل بشكل كبير من معدلات عودة المرضى لدخول المستشفى."
+      },
+      {
+        "prompt": "Which two challenges are mentioned regarding remote patient monitoring?",
+        "options": [
+          "Battery life and screen size",
+          "Data privacy compliance and training elderly patients",
+          "Slow internet and lack of doctors",
+          "High cost of medicine and hospital beds"
+        ],
+        "answer_index": 1,
+        "explanation_ar": "التحديان المذكوران هما الامتثال للوائح خصوصية البيانات، وتدريب المرضى كبار السن على استخدام الأجهزة."
+      }
+    ],
+    "target_words": [
+      "integration",
+      "chronic",
+      "physician",
+      "threshold",
+      "notify",
+      "intervention",
+      "clinical",
+      "compliance"
+    ]
+  }
 ]

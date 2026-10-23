@@ -169,7 +169,8 @@ class ReadingRepository(
                     sentencesJson = sentencesJson,
                     questionsJson = questionsJson,
                     grammarIdsJson = grammarIdsJson,
-                    dataVersion = READING_DATA_VERSION
+                    dataVersion = READING_DATA_VERSION,
+                    targetWordsJson = targetWordsJson
                 )
             }
             count++
@@ -379,6 +380,64 @@ class ReadingRepository(
         val clean = cleanWordForLookup(wordText).lowercase()
         val cardKey = "${deckId.trim()}:${clean}"
         (dao.getWordProgress(cardKey) ?: dao.getWordProgress("${deckId}_${clean}"))?.isFavorite == true
+    }
+
+    /**
+     * Records a passive Tap-to-Translate lookup in a reading story:
+     * increments `lookup_count` and sets `last_looked_up_timestamp` so the word transitions
+     * to the `SEEN` stage and receives a priority boost in upcoming vocabulary selections.
+     */
+    suspend fun recordWordLookup(
+        wordText: String,
+        preferredDeckId: String? = null,
+        nowMillis: Long = System.currentTimeMillis()
+    ): WordProgressEntity? = withContext(Dispatchers.IO) {
+        val clean = cleanWordForLookup(wordText).lowercase()
+        if (clean.isBlank()) return@withContext null
+        val variants = lookupWordLocally(clean)
+        val matchedEntry = if (!preferredDeckId.isNullOrBlank()) {
+            variants.firstOrNull { it.deck == preferredDeckId } ?: variants.firstOrNull()
+        } else {
+            variants.firstOrNull { it.deck == "oxford5000" }
+                ?: variants.firstOrNull { it.deck == "oxford_opal" }
+                ?: variants.firstOrNull()
+        }
+        val deckId = matchedEntry?.deck ?: preferredDeckId ?: "oxford5000"
+        val headword = matchedEntry?.text?.trim()?.lowercase() ?: clean
+        val cardKey = "$deckId:$headword"
+        val existing = dao.getWordProgress(cardKey) ?: dao.getWordProgress("${deckId}_$headword")
+        val resolvedEntryId = existing?.entryId ?: matchedEntry?.id ?: dao.getPrimaryEntryIdForCard(deckId, headword)
+        val updated = (existing ?: WordProgressEntity(
+            cardKey = cardKey,
+            entryId = resolvedEntryId,
+            deck = deckId,
+            text = headword
+        )).copy(
+            cardKey = cardKey,
+            entryId = resolvedEntryId,
+            lookupCount = (existing?.lookupCount ?: 0) + 1,
+            lastLookedUpTimestamp = nowMillis
+        )
+        dao.upsertWordProgress(updated)
+        updated
+    }
+
+    /**
+     * Schedules a looked-up word for immediate SRS review today ("Add to Today's Practice").
+     */
+    suspend fun scheduleWordForPracticeToday(
+        wordText: String,
+        preferredDeckId: String? = null,
+        nowMillis: Long = System.currentTimeMillis()
+    ): WordProgressEntity? = withContext(Dispatchers.IO) {
+        val lookedUp = recordWordLookup(wordText, preferredDeckId, nowMillis) ?: return@withContext null
+        val updated = if (lookedUp.dueTimestamp == 0L || lookedUp.dueTimestamp > nowMillis) {
+            lookedUp.copy(dueTimestamp = nowMillis)
+        } else {
+            lookedUp
+        }
+        dao.upsertWordProgress(updated)
+        updated
     }
 
     suspend fun getSavedTargetWords(limit: Int = 15): List<String> = withContext(Dispatchers.IO) {
@@ -769,7 +828,7 @@ class ReadingRepository(
     }
 
     companion object {
-        const val READING_DATA_VERSION = 2
+        const val READING_DATA_VERSION = 3
         const val PREFS_NAME = "reading_repository_prefs"
         private const val KEY_DATA_VERSION = "reading_data_version"
         private const val KEY_ASSET_HASH = "reading_asset_hash"

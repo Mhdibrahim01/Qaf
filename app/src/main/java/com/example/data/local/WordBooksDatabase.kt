@@ -30,7 +30,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         QuizResultEntity::class,
         WordDetailEntity::class
     ],
-    version = 15,
+    version = 16,
     exportSchema = true
 )
 abstract class WordBooksDatabase : RoomDatabase() {
@@ -241,6 +241,30 @@ abstract class WordBooksDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. Add Tap-to-Translate lookup tracking and Conquered milestone timestamp to word_progress
+                db.execSQL("ALTER TABLE word_progress ADD COLUMN lookup_count INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE word_progress ADD COLUMN last_looked_up_timestamp INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE word_progress ADD COLUMN conquered_timestamp INTEGER NOT NULL DEFAULT 0")
+
+                // Backfill conquered_timestamp for cards that already overcame >= 2 lapses and reached >= 21d interval
+                db.execSQL("""
+                    UPDATE word_progress
+                    SET conquered_timestamp = CASE WHEN last_reviewed_timestamp > 0 THEN last_reviewed_timestamp ELSE 1 END
+                    WHERE again_count >= 2 AND interval_days >= 21 AND conquered_timestamp = 0
+                """.trimIndent())
+
+                // 2. Add elapsed_ms to attempts for personalPaceSeconds EMA calculation
+                db.execSQL("ALTER TABLE attempts ADD COLUMN elapsed_ms INTEGER DEFAULT NULL")
+
+                // 3. Add reading topic preferences, Quiet Mode, and dismissed insights map to study_plan_profile
+                db.execSQL("ALTER TABLE study_plan_profile ADD COLUMN preferred_topics_json TEXT NOT NULL DEFAULT '[]'")
+                db.execSQL("ALTER TABLE study_plan_profile ADD COLUMN quiet_mode_enabled INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE study_plan_profile ADD COLUMN dismissed_insights_json TEXT NOT NULL DEFAULT '{}'")
+            }
+        }
+
         fun getInstance(context: Context): WordBooksDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -254,7 +278,8 @@ abstract class WordBooksDatabase : RoomDatabase() {
                         MIGRATION_11_12,
                         MIGRATION_12_13,
                         MIGRATION_13_14,
-                        MIGRATION_14_15
+                        MIGRATION_14_15,
+                        MIGRATION_15_16
                     )
                     .build()
                 INSTANCE = instance

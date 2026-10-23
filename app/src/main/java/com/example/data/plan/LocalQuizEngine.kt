@@ -45,16 +45,63 @@ class LocalQuizEngine(
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     /**
-     * Generates a 10-question Daily Mini-Quiz directly aligned with today's study plan:
-     * - 5 Vocabulary questions covering today's assigned words
-     * - 3 Grammar questions derived strictly from today's single grammar lesson
-     * - 2 Reading comprehension questions derived from today's assigned passage
+     * Generates a 5-question Daily Mini-Quiz with TTS-aware listening support
+     * (2 Vocabulary, 1 Grammar, 1 Reading, and 1 Listening when TTS is available, or 2 Reading when TTS is unavailable).
+     * Note: The 10-question daily plan assessment uses [generateAlignedDailyQuiz].
      */
     suspend fun generateDailyMiniQuiz(isTtsAvailable: Boolean = true): List<QuizQuestionItem> {
         val today = timeProvider.todayDateString()
         val checklist = dao.getDailyChecklist(today)
         val profile = dao.getStudyPlanProfile()
-        return generateAlignedDailyQuiz(checklist, profile, isTtsAvailable).questions
+        val aligned = generateAlignedDailyQuiz(checklist, profile, isTtsAvailable).questions
+        val vocabQuestions = aligned.filter { it.skill == "vocabulary" }.take(2)
+        val grammarQuestion = aligned.firstOrNull { it.skill == "grammar" }
+        val readingQuestions = aligned.filter { it.skill == "reading" }
+
+        val result = mutableListOf<QuizQuestionItem>()
+        result.addAll(vocabQuestions)
+        if (grammarQuestion != null) result.add(grammarQuestion)
+        if (readingQuestions.isNotEmpty()) result.add(readingQuestions.first())
+
+        if (isTtsAvailable) {
+            val vocabCandidates = dao.getAllTranslatedEntries().filter { it.arabic.isNotBlank() && it.text.isNotBlank() }
+            if (vocabCandidates.size >= 4) {
+                val target = vocabCandidates.first()
+                val distractors = vocabCandidates.filter { it.id != target.id && !it.text.equals(target.text, ignoreCase = true) }.take(3)
+                if (distractors.size >= 3) {
+                    val opts = (listOf(target.text) + distractors.map { it.text }).shuffled()
+                    result.add(
+                        QuizQuestionItem(
+                            id = UUID.randomUUID().toString(),
+                            skill = "listening",
+                            questionType = "listening",
+                            promptEn = "Listen and identify the spoken word:",
+                            promptAr = "استمع واختر الكلمة المسموعة:",
+                            options = opts,
+                            answerIndex = opts.indexOf(target.text).coerceAtLeast(0),
+                            correctText = target.text,
+                            audioText = target.text,
+                            explanationAr = "الكلمة هي: ${target.text}"
+                        )
+                    )
+                }
+            }
+        } else {
+            val extraReading = readingQuestions.drop(1).firstOrNull()
+                ?: aligned.filter { it.skill == "vocabulary" }.drop(2).firstOrNull()
+            if (extraReading != null) {
+                result.add(extraReading)
+            }
+        }
+
+        // Pad to 5 if needed from aligned questions
+        for (q in aligned) {
+            if (result.size >= 5) break
+            if (result.none { it.id == q.id }) {
+                result.add(q)
+            }
+        }
+        return result.take(5)
     }
 
     /**

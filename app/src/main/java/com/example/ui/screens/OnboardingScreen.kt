@@ -118,6 +118,7 @@ fun OnboardingScreen(
     onSelectMinutesPerDay: (Int) -> Unit = {},
     onSelectStudyDaysPerWeek: (Int) -> Unit = {},
     onCompleteStep3: (goal: String, minutesPerDay: Int, studyDaysPerWeek: Int) -> Unit = { _, _, _ -> },
+    onCompleteStep3WithTopicsAndQuietMode: ((goal: String, minutesPerDay: Int, studyDaysPerWeek: Int, preferredTopics: List<String>, quietModeEnabled: Boolean) -> Unit)? = null,
     onStep3Back: () -> Unit = {},
     onCompleteStep4: (selectedDecks: List<String>, startAtUserLevel: Boolean) -> Unit = { _, _ -> },
     onStep4Back: () -> Unit = {},
@@ -244,17 +245,33 @@ fun OnboardingScreen(
                         onPlacementQuizBack = onPlacementQuizBack,
                         onRetryImport = onRetryImport
                     )
-                    3 -> OnboardingGoalAndTimeStep(
-                        selectedLevel = onboardingState.selectedLevel.ifBlank { "B2" },
-                        selectedGoal = onboardingState.selectedGoal.ifBlank { "general_fluency" },
-                        selectedMinutesPerDay = onboardingState.selectedMinutesPerDay,
-                        selectedStudyDaysPerWeek = onboardingState.selectedStudyDaysPerWeek,
-                        onSelectGoal = onSelectGoal,
-                        onSelectMinutesPerDay = onSelectMinutesPerDay,
-                        onSelectStudyDaysPerWeek = onSelectStudyDaysPerWeek,
-                        onContinueStep3 = onCompleteStep3,
-                        onStep3Back = onStep3Back
-                    )
+                    3 -> {
+                        val initialTopics = remember(onboardingState.preferredTopicsJson) {
+                            try {
+                                if (onboardingState.preferredTopicsJson.isNotBlank()) {
+                                    kotlinx.serialization.json.Json.decodeFromString<List<String>>(onboardingState.preferredTopicsJson)
+                                } else {
+                                    listOf("daily_life", "technology", "career")
+                                }
+                            } catch (_: Exception) {
+                                listOf("daily_life", "technology", "career")
+                            }
+                        }
+                        OnboardingGoalAndTimeStep(
+                            selectedLevel = onboardingState.selectedLevel.ifBlank { "B2" },
+                            selectedGoal = onboardingState.selectedGoal.ifBlank { "general_fluency" },
+                            selectedMinutesPerDay = onboardingState.selectedMinutesPerDay,
+                            selectedStudyDaysPerWeek = onboardingState.selectedStudyDaysPerWeek,
+                            initialPreferredTopics = initialTopics,
+                            initialQuietModeEnabled = onboardingState.quietModeEnabled,
+                            onSelectGoal = onSelectGoal,
+                            onSelectMinutesPerDay = onSelectMinutesPerDay,
+                            onSelectStudyDaysPerWeek = onSelectStudyDaysPerWeek,
+                            onContinueStep3 = onCompleteStep3,
+                            onContinueStep3WithTopicsAndQuietMode = onCompleteStep3WithTopicsAndQuietMode,
+                            onStep3Back = onStep3Back
+                        )
+                    }
                     4 -> {
                         val initialDecks = remember(onboardingState.selectedDecksJson) {
                             try {
