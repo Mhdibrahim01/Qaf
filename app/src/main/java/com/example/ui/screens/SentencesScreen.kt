@@ -110,6 +110,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.example.data.audio.AudioPlayerManager
 import com.example.data.local.SentenceEntity
 import com.example.data.sentences.DictationDiffResult
 import com.example.data.sentences.DiffTokenStatus
@@ -117,6 +118,7 @@ import com.example.data.sentences.SentencePracticeUtils
 import com.example.data.sentences.SentenceSortOrder
 import com.example.ui.components.ArabicText
 import com.example.ui.components.GoldBadge
+import com.example.ui.components.SlowAudioTurtleButton
 import com.example.ui.theme.AmberAccent
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
@@ -289,6 +291,9 @@ fun SentencesScreen(
                             onPlaySentence = { sentence ->
                                 onPlaySentenceAudio(sentence.englishText, sentence.audioUrl)
                             },
+                            onPlaySentenceSlow = { sentence ->
+                                onSpeakSentenceTts(sentence.englishText, AudioPlayerManager.SLOW_TURTLE_RATE)
+                            },
                             onCopySentence = { sentence ->
                                 val textToCopy = if (showTranslation && sentence.arabicText.isNotBlank()) {
                                     "${sentence.englishText}\n${sentence.arabicText}"
@@ -325,7 +330,7 @@ fun SentencesScreen(
                             currentlyPlayingText = currentlyPlayingText,
                             onIndexChange = { practiceIndex = it },
                             onPlayNormalTts = { text -> onSpeakSentenceTts(text, null) },
-                            onPlaySlowTts = { text -> onSpeakSentenceTts(text, 0.72f) },
+                            onPlaySlowTts = { text -> onSpeakSentenceTts(text, AudioPlayerManager.SLOW_TURTLE_RATE) },
                             onRecordAttempt = onRecordSentencePracticeAttempt,
                             onSwitchToFavorites = { activeTab = SentencesTab.FAVORITES }
                         )
@@ -340,6 +345,7 @@ fun SentencesScreen(
                             currentlyPlayingText = currentlyPlayingText,
                             onIndexChange = { practiceIndex = it },
                             onPlayNormalTts = { text -> onSpeakSentenceTts(text, null) },
+                            onPlaySlowTts = { text -> onSpeakSentenceTts(text, AudioPlayerManager.SLOW_TURTLE_RATE) },
                             onRecordAttempt = onRecordSentencePracticeAttempt,
                             onSwitchToFavorites = { activeTab = SentencesTab.FAVORITES }
                         )
@@ -582,6 +588,7 @@ private fun FavoritesSentencesTabContent(
     showDictionaryPicker: Boolean,
     onToggleDictionaryPicker: () -> Unit,
     onPlaySentence: (SentenceEntity) -> Unit,
+    onPlaySentenceSlow: (SentenceEntity) -> Unit = {},
     onCopySentence: (SentenceEntity) -> Unit,
     onDeleteSentence: (Long) -> Unit,
     onTapAiExplainSparkle: (SentenceEntity) -> Unit,
@@ -806,6 +813,7 @@ private fun FavoritesSentencesTabContent(
                     isExplaining = isExplaining,
                     isExplanationExpanded = isExplanationExpanded,
                     onPlay = { onPlaySentence(sentence) },
+                    onPlaySlow = { onPlaySentenceSlow(sentence) },
                     onCopy = { onCopySentence(sentence) },
                     onDelete = { onDeleteSentence(sentence.id) },
                     onTapAiExplain = { onTapAiExplainSparkle(sentence) }
@@ -823,6 +831,7 @@ private fun SavedSentenceRowCard(
     isExplaining: Boolean,
     isExplanationExpanded: Boolean,
     onPlay: () -> Unit,
+    onPlaySlow: () -> Unit = {},
     onCopy: () -> Unit,
     onDelete: () -> Unit,
     onTapAiExplain: () -> Unit
@@ -881,6 +890,12 @@ private fun SavedSentenceRowCard(
                             modifier = Modifier.size(19.dp)
                         )
                     }
+
+                    SlowAudioTurtleButton(
+                        onClick = onPlaySlow,
+                        showSpeedLabel = false,
+                        testTag = "sentence_play_slow_${sentence.id}"
+                    )
 
                     IconButton(
                         onClick = onCopy,
@@ -1133,7 +1148,7 @@ private fun DictationTabContent(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Slow 0.72x", color = GoldAccent, fontWeight = FontWeight.SemiBold)
+                        Text("🐢 Slow 0.6x", color = GoldAccent, fontWeight = FontWeight.SemiBold)
                     }
                 }
 
@@ -1290,6 +1305,7 @@ private fun SpeakingTabContent(
     currentlyPlayingText: String?,
     onIndexChange: (Int) -> Unit,
     onPlayNormalTts: (String) -> Unit,
+    onPlaySlowTts: (String) -> Unit = { onPlayNormalTts(it) },
     onRecordAttempt: (String, Int) -> Unit = { _, _ -> },
     onSwitchToFavorites: () -> Unit
 ) {
@@ -1573,21 +1589,32 @@ private fun SpeakingTabContent(
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                         color = GoldAccent
                     )
-                    OutlinedButton(
-                        onClick = { onPlayNormalTts(currentSentence.englishText) },
-                        border = BorderStroke(1.dp, GoldAccentBorder),
-                        modifier = Modifier.testTag("speaking_listen_tts_button")
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                            contentDescription = "Listen to target sentence",
-                            tint = GoldAccent,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (currentlyPlayingText == currentSentence.englishText) "Playing..." else "Listen",
-                            color = GoldAccent
+                        OutlinedButton(
+                            onClick = { onPlayNormalTts(currentSentence.englishText) },
+                            border = BorderStroke(1.dp, GoldAccentBorder),
+                            modifier = Modifier.testTag("speaking_listen_tts_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                contentDescription = "Listen to target sentence",
+                                tint = GoldAccent,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (currentlyPlayingText == currentSentence.englishText) "Playing..." else "Listen",
+                                color = GoldAccent
+                            )
+                        }
+
+                        SlowAudioTurtleButton(
+                            onClick = { onPlaySlowTts(currentSentence.englishText) },
+                            showSpeedLabel = true,
+                            testTag = "speaking_listen_slow_tts_button"
                         )
                     }
                 }

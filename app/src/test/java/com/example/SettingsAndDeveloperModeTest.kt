@@ -1,6 +1,8 @@
 package com.example
 
 import android.content.Context
+import android.speech.tts.TextToSpeech
+import android.speech.tts.Voice
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -14,11 +16,14 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.ai.TranslationEngineMode
+import com.example.data.audio.AudioPlayerManager
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.onboarding.OnboardingPreferencesRepository
+import com.example.ui.components.SlowAudioTurtleButton
 import com.example.ui.screens.MoreScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.theme.WordBooksTheme
+import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -213,5 +218,73 @@ class SettingsAndDeveloperModeTest {
         assertTrue(updated.preferredAccentUk)
         assertTrue(updated.autoPlayPronunciation)
         assertEquals(0.60f, updated.ttsSpeechRate, 0.01f)
+    }
+
+    @Test
+    fun audioOptimization_scoresHighQualityNeuralVoicesAndRendersTurtleButton() {
+        assertEquals("com.google.android.tts", AudioPlayerManager.GOOGLE_TTS_PACKAGE)
+        assertEquals(0.85f, AudioPlayerManager.DEFAULT_NORMAL_RATE, 0.001f)
+        assertEquals(0.60f, AudioPlayerManager.SLOW_TURTLE_RATE, 0.001f)
+        assertEquals(0.70f, AudioPlayerManager.EXO_SLOW_RATE, 0.001f)
+
+        val neuralLocalUs = Voice(
+            "en-us-x-sfg-local",
+            Locale.US,
+            Voice.QUALITY_VERY_HIGH,
+            Voice.LATENCY_LOW,
+            false,
+            emptySet()
+        )
+        val legacyNetworkUs = Voice(
+            "en-us-legacy-network",
+            Locale.US,
+            Voice.QUALITY_NORMAL,
+            Voice.LATENCY_NORMAL,
+            true,
+            emptySet()
+        )
+        val notInstalledUs = Voice(
+            "en-us-x-tpf-local",
+            Locale.US,
+            Voice.QUALITY_VERY_HIGH,
+            Voice.LATENCY_LOW,
+            false,
+            setOf(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)
+        )
+        val ukVoice = Voice(
+            "en-gb-x-gba-local",
+            Locale.UK,
+            Voice.QUALITY_VERY_HIGH,
+            Voice.LATENCY_LOW,
+            false,
+            emptySet()
+        )
+
+        val scoreNeural = AudioPlayerManager.scoreVoiceForLocale(neuralLocalUs, Locale.US)
+        val scoreLegacy = AudioPlayerManager.scoreVoiceForLocale(legacyNetworkUs, Locale.US)
+        val scoreUninstalled = AudioPlayerManager.scoreVoiceForLocale(notInstalledUs, Locale.US)
+        val scoreWrongCountry = AudioPlayerManager.scoreVoiceForLocale(ukVoice, Locale.US)
+
+        assertTrue("Neural local voice should outscore legacy network voice", scoreNeural > scoreLegacy)
+        assertEquals(580, scoreNeural) // 500 (VERY_HIGH) + 50 (local) + 30 (-x-/local)
+        assertTrue("Uninstalled voice should be rejected", scoreUninstalled < 0)
+        assertTrue("UK voice should be rejected when querying US locale", scoreWrongCountry < 0)
+
+        var turtleClicked = false
+        composeTestRule.setContent {
+            WordBooksTheme {
+                SlowAudioTurtleButton(
+                    onClick = { turtleClicked = true },
+                    isPlayingSlow = true,
+                    showSpeedLabel = true,
+                    testTag = "test_turtle_btn"
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("test_turtle_btn").assertIsDisplayed()
+        composeTestRule.onNodeWithText("0.6x").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("test_turtle_btn").performClick()
+        assertTrue(turtleClicked)
     }
 }

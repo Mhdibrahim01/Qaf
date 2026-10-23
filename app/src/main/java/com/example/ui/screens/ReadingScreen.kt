@@ -122,6 +122,7 @@ import com.example.data.local.ReadingQuestionItem
 import com.example.data.local.ReadingSentenceItem
 import com.example.data.local.ReadingTextEntity
 import com.example.ui.components.BidiText
+import com.example.ui.components.SlowAudioTurtleButton
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.EmeraldAccentBg
@@ -252,8 +253,9 @@ fun ReadingScreen(
     onImportJsonUris: (List<Uri>, (Result<Int>) -> Unit) -> Unit,
     onImportJsonText: suspend (String) -> Result<Int>,
     onSpeakSentence: (String) -> Unit,
+    onSpeakSentenceSlow: (String) -> Unit = { onSpeakSentence(it) },
     onStopAudio: () -> Unit,
-    ttsSpeechRate: Float = 0.95f,
+    ttsSpeechRate: Float = 0.85f,
     userLevel: String = "B2",
     onScheduleWordForToday: suspend (String) -> Boolean = { false },
     storyReadabilityById: Map<String, com.example.data.plan.StoryReadabilityReport> = emptyMap(),
@@ -299,6 +301,7 @@ fun ReadingScreen(
                 onDeleteText(selectedText.id)
             },
             onSpeakSentence = onSpeakSentence,
+            onSpeakSentenceSlow = onSpeakSentenceSlow,
             onStopAudio = onStopAudio,
             ttsSpeechRate = ttsSpeechRate,
             onScheduleWordForToday = onScheduleWordForToday,
@@ -1078,6 +1081,7 @@ fun ReadingDetailScreen(
     onFeedbackOnOpenQuestion: suspend (prompt: String, answer: String) -> Result<String>,
     onDeleteText: () -> Unit,
     onSpeakSentence: (String) -> Unit,
+    onSpeakSentenceSlow: (String) -> Unit = { onSpeakSentence(it) },
     onStopAudio: () -> Unit,
     ttsSpeechRate: Float,
     onScheduleWordForToday: suspend (String) -> Boolean = { false },
@@ -1551,6 +1555,9 @@ fun ReadingDetailScreen(
                                 onSpeakSentence = {
                                     onSpeakSentence(sentenceItem.en)
                                 },
+                                onSpeakSentenceSlow = {
+                                    onSpeakSentenceSlow(sentenceItem.en)
+                                },
                                 onGrammarClicked = {
                                     activeGrammarSentence = Pair(
                                         sentenceItem,
@@ -1672,6 +1679,7 @@ fun ReadingDetailScreen(
             onGetWordFavoriteStatus = onGetWordFavoriteStatus,
             onExplainWordInContext = onExplainWordInContext,
             onSpeakWord = { onSpeakSentence(it) },
+            onSpeakWordSlow = { onSpeakSentenceSlow(it) },
             onScheduleWordForToday = onScheduleWordForToday
         )
     }
@@ -1758,6 +1766,7 @@ fun ReadingSentenceBlock(
     onToggleArabic: () -> Unit,
     onWordClicked: (String) -> Unit,
     onSpeakSentence: () -> Unit,
+    onSpeakSentenceSlow: () -> Unit = {},
     onGrammarClicked: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -1799,7 +1808,7 @@ fun ReadingSentenceBlock(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top
         ) {
-            // Speaker icon to play this individual sentence (High contrast)
+            // Speaker icon to play this individual sentence (High contrast) + Slow Turtle button
             IconButton(
                 onClick = onSpeakSentence,
                 modifier = Modifier
@@ -1813,6 +1822,12 @@ fun ReadingSentenceBlock(
                     modifier = Modifier.size(18.dp)
                 )
             }
+
+            SlowAudioTurtleButton(
+                onClick = onSpeakSentenceSlow,
+                showSpeedLabel = false,
+                testTag = "sentence_speak_slow_${sentenceIndex}"
+            )
 
             Spacer(Modifier.width(4.dp))
 
@@ -2652,6 +2667,7 @@ fun WordLookupBottomSheet(
     onGetWordFavoriteStatus: suspend (deckId: String, word: String) -> Boolean,
     onExplainWordInContext: suspend (sentenceIndex: Int, sentenceEn: String, word: String) -> Result<String>,
     onSpeakWord: (String) -> Unit,
+    onSpeakWordSlow: (String) -> Unit = { onSpeakWord(it) },
     onScheduleWordForToday: suspend (String) -> Boolean = { false }
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -2714,6 +2730,12 @@ fun WordLookupBottomSheet(
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
+
+                    SlowAudioTurtleButton(
+                        onClick = { onSpeakWordSlow(word) },
+                        showSpeedLabel = true,
+                        testTag = "word_sheet_speak_slow_button"
+                    )
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {

@@ -510,6 +510,7 @@ fun WordBooksAppShell(
                         onSaveUserArabic = wordBooksViewModel::saveUserArabicForEntry,
                         onToggleSaveSentence = wordBooksViewModel::toggleSaveExampleSentence,
                         onPlayAudio = wordBooksViewModel::playAudio,
+                        onPlayAudioSlow = { word, url -> wordBooksViewModel.playAudioSlow(word, url) },
                         onPlayVoiceAudio = wordBooksViewModel::playWordVoiceAudio,
                         onSpeakSentenceTts = wordBooksViewModel::speakSentenceTts,
                         onReverifyImport = { wordBooksViewModel.startImportIfNeeded(forceRecheck = true) },
@@ -564,6 +565,7 @@ fun WordBooksAppShell(
                         onToggleMastered = wordBooksViewModel::toggleCurrentFlashcardMastered,
                         onToggleFavorite = wordBooksViewModel::toggleCurrentFlashcardFavorite,
                         onPlayAudio = wordBooksViewModel::playAudio,
+                        onPlayAudioSlow = { word, url -> wordBooksViewModel.playAudioSlow(word, url) },
                         onPlayVoiceAudio = wordBooksViewModel::playWordVoiceAudio,
                         onSpeakSentenceTts = wordBooksViewModel::speakSentenceTts,
                         onOpenDetailedDefinition = wordBooksViewModel::openDetailedDefinition,
@@ -699,6 +701,7 @@ fun WordBooksAppShell(
                         onImportJsonUris = { uris, cb -> wordBooksViewModel.importReadingTextsFromUris(uris, cb) },
                         onImportJsonText = wordBooksViewModel::importReadingTextsFromText,
                         onSpeakSentence = { wordBooksViewModel.speakSentenceTts(it) },
+                        onSpeakSentenceSlow = { wordBooksViewModel.speakSentenceSlow(it) },
                         onStopAudio = { wordBooksViewModel.stopAudio() },
                         ttsSpeechRate = ttsSpeechRate,
                         userLevel = userLevel,
@@ -900,6 +903,9 @@ fun WordBooksAppShell(
                         onToggleAutoPlayPronunciation = wordBooksViewModel::setAutoPlayPronunciation,
                         onTestVoicePreview = { sampleText ->
                             wordBooksViewModel.speakSentenceTts(sampleText, ttsSpeechRate)
+                        },
+                        onTestVoiceSlowPreview = { sampleText ->
+                            wordBooksViewModel.speakSentenceSlow(sampleText)
                         },
                         onSavePlanProfile = wordBooksViewModel::savePlanProfile,
                         onNavigateToPlan = {

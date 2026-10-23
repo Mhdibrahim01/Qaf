@@ -32,3 +32,13 @@ public/
 .idea/
 .aistudio/
 *.apk
+
+.gradle/
+build/
+app/build/
+local.properties
+
+.gradle/
+build/
+app/build/
+local.properties

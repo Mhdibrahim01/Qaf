@@ -142,6 +142,7 @@ import com.example.ui.components.ErrorState
 import com.example.ui.components.GoldBadge
 import com.example.ui.components.LoadingState
 import com.example.ui.components.SearchField
+import com.example.ui.components.SlowAudioTurtleButton
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
@@ -349,6 +350,7 @@ fun WordBooksDatabaseScreen(
     onSaveUserArabic: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     onToggleSaveSentence: (String, String, String) -> Unit = { _, _, _ -> },
     onPlayAudio: (String, String) -> Unit,
+    onPlayAudioSlow: (String, String) -> Unit = { word, url -> onPlayAudio(word, url) },
     onPlayVoiceAudio: (String, String, Boolean) -> Unit = { word, url, _ -> onPlayAudio(word, url) },
     onSpeakSentenceTts: (String) -> Unit = {},
     onReverifyImport: () -> Unit,
@@ -473,6 +475,10 @@ fun WordBooksDatabaseScreen(
                             val url = detailedCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: ""
                             onPlayAudio(detailedCard.text, url)
                         },
+                        onPlayAudioSlow = {
+                            val url = detailedCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: ""
+                            onPlayAudioSlow(detailedCard.text, url)
+                        },
                         onPlayVoiceAudio = { isGb ->
                             val url = if (!isGb) detailedCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: "" else ""
                             onPlayVoiceAudio(detailedCard.text, url, isGb)
@@ -587,6 +593,10 @@ fun WordBooksDatabaseScreen(
                         onPlayAudio = {
                             val url = detailedCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: ""
                             onPlayAudio(detailedCard.text, url)
+                        },
+                        onPlayAudioSlow = {
+                            val url = detailedCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: ""
+                            onPlayAudioSlow(detailedCard.text, url)
                         },
                         onPlayVoiceAudio = { isGb ->
                             val url = if (!isGb) detailedCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: "" else ""
@@ -2310,6 +2320,7 @@ fun AiDefinitionPanel(
     isAllowAi: Boolean = true,
     isOnline: Boolean = true,
     onPlayAudio: () -> Unit,
+    onPlayAudioSlow: () -> Unit = {},
     onPlayVoiceAudio: (isGb: Boolean) -> Unit,
     onSpeakSentenceTts: (String) -> Unit,
     onRetryAiDefinition: () -> Unit,
@@ -2576,6 +2587,13 @@ fun AiDefinitionPanel(
                         )
                     }
                 }
+
+                // Slow Turtle (0.6x) Chip
+                SlowAudioTurtleButton(
+                    onClick = onPlayAudioSlow,
+                    showSpeedLabel = true,
+                    testTag = "pronounce_slow_button"
+                )
             }
 
             // AI Status: Loading Shimmer, Error Card, or "AI Definition" Button
@@ -2960,6 +2978,7 @@ internal fun WordDetailedDefinitionSheet(
     isAllowAi: Boolean = true,
     isOnline: Boolean = true,
     onPlayAudio: () -> Unit,
+    onPlayAudioSlow: () -> Unit = {},
     onPlayVoiceAudio: (Boolean) -> Unit = { _ -> onPlayAudio() },
     onSpeakSentenceTts: (String) -> Unit = {},
     onRetryAiDefinition: () -> Unit = {},
@@ -2982,6 +3001,7 @@ internal fun WordDetailedDefinitionSheet(
         isAllowAi = isAllowAi,
         isOnline = isOnline,
         onPlayAudio = onPlayAudio,
+        onPlayAudioSlow = onPlayAudioSlow,
         onPlayVoiceAudio = onPlayVoiceAudio,
         onSpeakSentenceTts = onSpeakSentenceTts,
         onRetryAiDefinition = onRetryAiDefinition,

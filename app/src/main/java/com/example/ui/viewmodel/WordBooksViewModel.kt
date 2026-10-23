@@ -153,6 +153,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     val aiStatus: StateFlow<AiTaskStatus> = geminiService.status
     val batchTranslateState: StateFlow<BatchTranslateUiState> = batchTranslateManager.uiState
     val currentlyPlayingWord: StateFlow<String?> = audioPlayer.currentlyPlayingWord
+    val isPlayingSlow: StateFlow<Boolean> = audioPlayer.isPlayingSlow
 
     private val _isBatchTranslateOpen = MutableStateFlow(false)
     val isBatchTranslateOpen: StateFlow<Boolean> = _isBatchTranslateOpen.asStateFlow()
@@ -1789,8 +1790,16 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         audioPlayer.playWordWithVoice(word, audioUrl, isGb)
     }
 
+    fun playAudioSlow(word: String, audioUrl: String = "", isGb: Boolean = _preferredAccentUk.value) {
+        audioPlayer.playWordSlow(word, audioUrl, isGb)
+    }
+
     fun speakSentenceTts(sentence: String, speechRateOverride: Float? = null) {
         audioPlayer.speakSentenceWithTts(sentence, speechRateOverride)
+    }
+
+    fun speakSentenceSlow(sentence: String) {
+        audioPlayer.speakSentenceSlow(sentence)
     }
 
     fun toggleSaveExampleSentence(

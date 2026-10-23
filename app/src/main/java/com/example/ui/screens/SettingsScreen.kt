@@ -77,6 +77,7 @@ import com.example.data.ai.TranslationEngineMode
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.ui.components.ArabicText
 import com.example.ui.components.ProgressBadge
+import com.example.ui.components.SlowAudioTurtleButton
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
@@ -115,6 +116,7 @@ fun SettingsScreen(
     onSelectSpeechRate: (Float) -> Unit,
     onToggleAutoPlayPronunciation: (Boolean) -> Unit,
     onTestVoicePreview: (String) -> Unit,
+    onTestVoiceSlowPreview: (String) -> Unit = { onTestVoicePreview(it) },
     onSavePlanProfile: (StudyPlanProfileEntity) -> Unit,
     onNavigateToPlan: () -> Unit,
     onRedoOnboardingSetup: () -> Unit,
@@ -275,26 +277,39 @@ fun SettingsScreen(
                             )
                         }
 
-                        OutlinedButton(
-                            onClick = {
-                                onTestVoicePreview("Consistency is the key to mastering English vocabulary.")
-                            },
-                            shape = RoundedCornerShape(10.dp),
-                            border = BorderStroke(1.dp, GoldAccentBorder),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                            modifier = Modifier.testTag("btn_test_voice")
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                contentDescription = "Test Voice",
-                                tint = GoldAccent,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Test Voice",
-                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                color = GoldAccent
+                            OutlinedButton(
+                                onClick = {
+                                    onTestVoicePreview("Mastering English pronunciation requires natural rhythm and clear syllable stress.")
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, GoldAccentBorder),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                modifier = Modifier.testTag("btn_test_voice")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                    contentDescription = "Test Voice",
+                                    tint = GoldAccent,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Test Voice",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = GoldAccent
+                                )
+                            }
+
+                            SlowAudioTurtleButton(
+                                onClick = {
+                                    onTestVoiceSlowPreview("Mastering English pronunciation requires natural rhythm and clear syllable stress.")
+                                },
+                                showSpeedLabel = true,
+                                testTag = "btn_test_voice_slow"
                             )
                         }
                     }
