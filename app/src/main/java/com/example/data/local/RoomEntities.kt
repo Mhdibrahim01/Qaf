@@ -48,6 +48,12 @@ data class DeckArabicStats(
     val emptyCount: Int
 )
 
+@Immutable
+data class LevelCountRaw(
+    val level: String?,
+    val count: Int
+)
+
 /**
  * 1. entries table
  * Stores all imported vocabulary rows (9,862 core entries + optional generated decks).

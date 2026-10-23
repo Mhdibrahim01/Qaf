@@ -17,6 +17,7 @@ data class AiMeaningItem(
     val pos: String = "",
     val arabic: List<String> = emptyList(),
     @SerialName("definition_en") val definitionEn: String = "",
+    @SerialName("definition_ar") val definitionAr: String = "",
     val example: AiExampleItem? = null
 )
 

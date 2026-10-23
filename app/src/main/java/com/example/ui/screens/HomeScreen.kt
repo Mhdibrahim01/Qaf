@@ -1278,8 +1278,18 @@ private fun YourLibrarySection(
                             } catch (_: Exception) {
                                 totalWords.toString()
                             }
+                            val deckMetaText = if (deck.rowCount > totalWords) {
+                                val formattedDefs = try {
+                                    NumberFormat.getNumberInstance(Locale.US).format(deck.rowCount)
+                                } catch (_: Exception) {
+                                    deck.rowCount.toString()
+                                }
+                                "$formattedWords words ($formattedDefs defs) • $progressPercent%"
+                            } else {
+                                "$formattedWords words • $progressPercent% complete"
+                            }
                             Text(
-                                text = "$formattedWords words • $progressPercent% complete",
+                                text = deckMetaText,
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontSize = 10.sp,
                                     color = TextMuted

@@ -834,8 +834,9 @@ fun NumberedBookCard(
     modifier: Modifier = Modifier
 ) {
     val isSavedBook = deck.id == DataImportRepository.SAVED_WORDS_DECK_ID
-    val progressPercent = if (deck.rowCount > 0) {
-        ((deck.masteredCount.toFloat() / deck.rowCount.toFloat()) * 100).toInt()
+    val cardCount = if (deck.uniqueWordCount > 0) deck.uniqueWordCount else deck.rowCount
+    val progressPercent = if (cardCount > 0) {
+        ((deck.masteredCount.toFloat() / cardCount.toFloat()) * 100).toInt()
     } else 0
     val actionText = if (deck.masteredCount > 0 || deck.id == "oxford5000" || isSavedBook) {
         "Browse Words"
@@ -900,9 +901,13 @@ fun NumberedBookCard(
                     )
                 }
 
-                val metaText = remember(deck.rowCount, deck.category, deck.name, progressPercent) {
+                val metaText = remember(deck.rowCount, deck.uniqueWordCount, deck.category, deck.name, progressPercent) {
                     buildString {
-                        append("${formatNumber(deck.rowCount)} words")
+                        if (deck.uniqueWordCount > 0 && deck.rowCount > deck.uniqueWordCount) {
+                            append("${formatNumber(deck.uniqueWordCount)} words (${formatNumber(deck.rowCount)} defs)")
+                        } else {
+                            append("${formatNumber(deck.rowCount)} words")
+                        }
                         if (deck.category.isNotBlank() && deck.category != deck.name) {
                             append(" • ${deck.category}")
                         }
@@ -1142,21 +1147,22 @@ private fun PagedDeckWordListScreen(
                                 overflow = TextOverflow.Ellipsis
                             )
 
-                            val totalCount = if (deck != null) deck.rowCount else totalEntriesCount
+                            val totalEntries = if (deck != null) deck.rowCount else totalEntriesCount
+                            val totalCards = if (deck != null && deck.uniqueWordCount > 0) deck.uniqueWordCount else totalEntries
                             val studiedWords = remember(progressMap, currentDeckId, deck?.masteredCount, masteredCount) {
                                 progressMap.values.count { 
                                     (currentDeckId.isEmpty() || it.deck == currentDeckId) && (it.isMastered || it.repetitions > 0)
                                 }.coerceAtLeast(deck?.masteredCount ?: masteredCount)
                             }
-                            val leftWords = remember(totalCount, studiedWords) { (totalCount - studiedWords).coerceAtLeast(0) }
-                            val progressFraction = remember(totalCount, studiedWords) {
-                                if (totalCount > 0) (studiedWords.toFloat() / totalCount.toFloat()).coerceIn(0f, 1f) else 0f
+                            val leftWords = remember(totalCards, studiedWords) { (totalCards - studiedWords).coerceAtLeast(0) }
+                            val progressFraction = remember(totalCards, studiedWords) {
+                                if (totalCards > 0) (studiedWords.toFloat() / totalCards.toFloat()).coerceIn(0f, 1f) else 0f
                             }
                             val visualProgressFraction = remember(studiedWords, progressFraction) {
                                 if (studiedWords > 0) progressFraction.coerceIn(0.02f, 1f) else 0f
                             }
-                            val progressPercentText = remember(studiedWords, totalCount) {
-                                formatProgressPercent(studiedWords, totalCount)
+                            val progressPercentText = remember(studiedWords, totalCards) {
+                                formatProgressPercent(studiedWords, totalCards)
                             }
 
                             Row(
@@ -1164,8 +1170,13 @@ private fun PagedDeckWordListScreen(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 modifier = Modifier.padding(top = 2.dp)
                             ) {
+                                val countText = if (deck != null && deck.uniqueWordCount > 0 && deck.rowCount > deck.uniqueWordCount) {
+                                    "${formatNumber(deck.uniqueWordCount)} words (${formatNumber(deck.rowCount)} definitions)"
+                                } else {
+                                    "${formatNumber(totalCards)} entries"
+                                }
                                 Text(
-                                    text = "${formatNumber(totalCount)} entries",
+                                    text = countText,
                                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                                     color = TextSecondary
                                 )
@@ -1569,10 +1580,10 @@ private fun PagedDeckWordListScreen(
                                             )
                                         )
                                         val lastIndex = (currentStudyState?.lastCardIndex ?: 0) + 1
-                                        val totalCount = deck?.rowCount ?: totalEntriesCount
-                                        val percent = if (totalCount > 0) (lastIndex * 100 / totalCount).coerceIn(0, 100) else 0
+                                        val totalCards = if (deck != null && deck.uniqueWordCount > 0) deck.uniqueWordCount else (deck?.rowCount ?: totalEntriesCount)
+                                        val percent = if (totalCards > 0) (lastIndex * 100 / totalCards).coerceIn(0, 100) else 0
                                         Text(
-                                            text = "\"$checkpointWord\" • Card #$lastIndex of ${formatNumber(totalCount)} ($percent%)",
+                                            text = "\"$checkpointWord\" • Card #$lastIndex of ${formatNumber(totalCards)} ($percent%)",
                                             style = MaterialTheme.typography.bodyMedium.copy(
                                                 fontWeight = FontWeight.Bold,
                                                 color = TextPrimary
@@ -1717,27 +1728,29 @@ private fun PagedDeckWordListScreen(
                     ) { index ->
                         val entry = pagedEntries[index]
                         if (entry != null) {
-                            val cardKey = "${entry.deck}:${entry.text.trim().lowercase()}"
+                            val cardKey = remember(entry.id) {
+                                "${entry.deck}:${entry.text.trim().lowercase()}"
+                            }
                             val prog = progressMap[cardKey]
                             val isFirst = index == 0
                             val isLast = index == itemCount - 1
                             val isCurrentCheckpoint = hasCheckpoint && entry.text.equals(checkpointWord, ignoreCase = true)
-                            val onPlayAudioLambda = remember(entry.text, entry.audioUrl, entry.deck, index, onPlayAudio, onSetCheckpoint) {
+                            val onPlayAudioLambda = remember(entry.id, index, onPlayAudio, onSetCheckpoint) {
                                 {
                                     onPlayAudio(entry.text, entry.audioUrl)
                                     onSetCheckpoint(entry.deck, entry.text, index)
                                 }
                             }
-                            val onToggleMasteredLambda = remember(entry.deck, entry.text, onToggleMastered) {
+                            val onToggleMasteredLambda = remember(entry.id, onToggleMastered) {
                                 { onToggleMastered(entry.deck, entry.text) }
                             }
-                            val onToggleFavoriteLambda = remember(entry.deck, entry.text, onToggleFavorite) {
+                            val onToggleFavoriteLambda = remember(entry.id, onToggleFavorite) {
                                 { onToggleFavorite(entry.deck, entry.text) }
                             }
-                            val onSetCheckpointLambda = remember(entry.deck, entry.text, index, onSetCheckpoint) {
+                            val onSetCheckpointLambda = remember(entry.id, index, onSetCheckpoint) {
                                 { onSetCheckpoint(entry.deck, entry.text, index) }
                             }
-                            val onOpenDetailLambda = remember(entry.deck, entry.text, index, onOpenDetailedDefinition, onSetCheckpoint) {
+                            val onOpenDetailLambda = remember(entry.id, index, onOpenDetailedDefinition, onSetCheckpoint) {
                                 {
                                     onOpenDetailedDefinition(entry.deck, entry.text)
                                     onSetCheckpoint(entry.deck, entry.text, index)
@@ -1910,6 +1923,45 @@ private val ROW_SHAPE_SINGLE = RoundedCornerShape(16.dp)
 private val ROW_SHAPE_FIRST = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
 private val ROW_SHAPE_LAST = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
 private val ROW_SHAPE_MIDDLE = RoundedCornerShape(0.dp)
+private val SKELETON_BOX_SHAPE = RoundedCornerShape(6.dp)
+private val SPEAKER_BTN_SHAPE = RoundedCornerShape(10.dp)
+
+private fun formatArabicPreviewFast(rawArabic: String): String {
+    if (rawArabic.isEmpty()) return ""
+    var count = 0
+    val sb = StringBuilder(rawArabic.length)
+    var segStart = -1
+    var segEnd = -1
+    for (i in 0 until rawArabic.length) {
+        val c = rawArabic[i]
+        if (c == ';' || c == '؛' || c == '\n') {
+            if (segStart != -1) {
+                if (count > 0) sb.append("، ")
+                sb.append(rawArabic, segStart, segEnd + 1)
+                count++
+                if (count == 3) return sb.toString()
+                segStart = -1
+                segEnd = -1
+            }
+        } else if (!c.isWhitespace()) {
+            if (segStart == -1) segStart = i
+            segEnd = i
+        }
+    }
+    if (segStart != -1 && count < 3) {
+        if (count > 0) sb.append("، ")
+        sb.append(rawArabic, segStart, segEnd + 1)
+    }
+    return sb.toString()
+}
+
+private fun hasLatinFast(text: String): Boolean {
+    for (i in 0 until text.length) {
+        val c = text[i]
+        if ((c in 'a'..'z') || (c in 'A'..'Z')) return true
+    }
+    return false
+}
 
 fun parseArabicMeaningGroups(pos: String, arabic: String): List<Pair<String, String>> {
     val cleanArabic = arabic.trim()
@@ -1956,30 +2008,9 @@ fun posFullName(pos: String): String {
 
 @Composable
 fun ShimmerPlaceholder(modifier: Modifier = Modifier) {
-    val transition = rememberInfiniteTransition(label = "shimmer_transition")
-    val translateAnim by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1000f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmer_anim"
-    )
-    val shimmerBrush = Brush.linearGradient(
-        colors = listOf(
-            SurfaceElevatedDark,
-            SurfaceElevatedDark.copy(alpha = 0.6f),
-            BorderDark,
-            SurfaceElevatedDark
-        ),
-        start = Offset(translateAnim - 500f, 0f),
-        end = Offset(translateAnim, 0f)
-    )
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(shimmerBrush)
+            .background(SurfaceElevatedDark, SKELETON_BOX_SHAPE)
     )
 }
 
@@ -1987,41 +2018,48 @@ fun ShimmerPlaceholder(modifier: Modifier = Modifier) {
 private fun WordBookEntryPlaceholderRow(
     modifier: Modifier = Modifier
 ) {
-    Surface(
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        color = SurfaceDark,
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, BorderDark)
+            .background(SurfaceDark)
+            .border(1.dp, BorderDark)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.weight(1f)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                ShimmerPlaceholder(modifier = Modifier.size(40.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        ShimmerPlaceholder(modifier = Modifier.size(width = 110.dp, height = 16.dp))
-                        ShimmerPlaceholder(modifier = Modifier.size(width = 28.dp, height = 16.dp))
-                    }
-                    ShimmerPlaceholder(modifier = Modifier.size(width = 90.dp, height = 12.dp))
-                    ShimmerPlaceholder(modifier = Modifier.size(width = 140.dp, height = 14.dp))
-                }
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(SurfaceElevatedDark, SPEAKER_BTN_SHAPE)
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 120.dp, height = 16.dp)
+                        .background(SurfaceElevatedDark, SKELETON_BOX_SHAPE)
+                )
+                Box(
+                    modifier = Modifier
+                        .size(width = 90.dp, height = 12.dp)
+                        .background(SurfaceElevatedDark, SKELETON_BOX_SHAPE)
+                )
+                Box(
+                    modifier = Modifier
+                        .size(width = 140.dp, height = 14.dp)
+                        .background(SurfaceElevatedDark, SKELETON_BOX_SHAPE)
+                )
             }
-            ShimmerPlaceholder(modifier = Modifier.size(24.dp))
         }
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .background(SurfaceElevatedDark, SKELETON_BOX_SHAPE)
+        )
     }
 }
 
@@ -2070,22 +2108,16 @@ fun WordBookEntryRow(
         }
     }
     val formattedArabic = remember(entry.arabic) {
-        entry.arabic
-            .split(ARABIC_MEANING_SPLIT_REGEX)
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-            .take(3)
-            .joinToString("، ")
+        formatArabicPreviewFast(entry.arabic)
     }
     val containsLatin = remember(formattedArabic) {
-        formattedArabic.any { (it in 'a'..'z') || (it in 'A'..'Z') }
+        hasLatinFast(formattedArabic)
     }
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(rowShape)
-            .background(SurfaceDark)
+            .background(SurfaceDark, rowShape)
             .border(1.dp, BorderDark, rowShape)
             .clickable(
                 interactionSource = null,
@@ -2106,9 +2138,8 @@ fun WordBookEntryRow(
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (isPlayingAudio) GoldAccentDim else SurfaceElevatedDark)
-                        .border(1.dp, if (isPlayingAudio) GoldAccentBorder else BorderDark, RoundedCornerShape(10.dp))
+                        .background(if (isPlayingAudio) GoldAccentDim else SurfaceElevatedDark, SPEAKER_BTN_SHAPE)
+                        .border(1.dp, if (isPlayingAudio) GoldAccentBorder else BorderDark, SPEAKER_BTN_SHAPE)
                         .clickable(
                             interactionSource = null,
                             indication = null,
@@ -2658,6 +2689,7 @@ fun AiDefinitionPanel(
                             MeaningItemView(
                                 arabicList = meaning.arabic,
                                 definitionEn = meaning.definitionEn,
+                                definitionAr = meaning.definitionAr,
                                 exampleEn = meaning.example?.en.orEmpty(),
                                 exampleAr = meaning.example?.ar.orEmpty(),
                                 cardText = card.text,
@@ -2856,6 +2888,7 @@ fun AiDefinitionPanel(
 private fun MeaningItemView(
     arabicList: List<String>,
     definitionEn: String,
+    definitionAr: String = "",
     exampleEn: String,
     exampleAr: String,
     cardText: String,
@@ -2891,6 +2924,20 @@ private fun MeaningItemView(
                     fontSize = 14.sp
                 ),
                 color = TextSecondary
+            )
+        }
+
+        // Arabic explanation of the definition (definition_ar)
+        if (definitionAr.isNotBlank()) {
+            BidiText(
+                text = definitionAr,
+                style = ArabicTypography.bodyMedium.copy(
+                    fontSize = 14.sp,
+                    letterSpacing = 0.sp
+                ),
+                color = TextSecondary,
+                fillMaxWidth = true,
+                textAlign = TextAlign.Right
             )
         }
 

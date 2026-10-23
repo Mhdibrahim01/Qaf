@@ -50,6 +50,71 @@ import org.robolectric.annotation.Config
 class ExampleRobolectricTest {
 
     @Test
+    fun auditCefrLevelsAcrossAllModules() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val db = Room.inMemoryDatabaseBuilder(context, WordBooksDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        val dao = db.wordBooksDao()
+        val repo = DataImportRepository(context, db)
+        repo.ensureImportedOnFirstLaunch(forceRecheck = true)
+
+        val grammarRepo = GrammarRepository(context, dao)
+        grammarRepo.importGrammarLessonsIfNeeded(force = true)
+
+        val readingRepo = ReadingRepository(context, dao)
+        readingRepo.importReadingTextsIfNeeded()
+
+        // 1. Audit Entry Entity CEFR levels in Room DB
+        val totalEntries = dao.getTotalEntryCount()
+        val entriesByLevel = dao.getEntryCountGroupedByLevelRaw()
+        val emptyLevelEntries = dao.getEntriesWithEmptyLevelCount()
+
+        println("=== ENTRY CEFR LEVEL AUDIT ===")
+        println("Total Entries: $totalEntries")
+        entriesByLevel.forEach { row ->
+            println("Level '${row.level}': ${row.count} entries")
+        }
+        println("Empty / Unassigned Level Entries: $emptyLevelEntries")
+
+        // 2. Audit AI Word Details
+        val wordDetails = dao.getAllWordDetails()
+        val emptyWordDetails = wordDetails.count { it.json.isBlank() }
+
+        println("\n=== AI WORD DETAILS AUDIT ===")
+        println("Total AI Word Details: ${wordDetails.size}")
+        println("Empty / Invalid AI Word Details: $emptyWordDetails")
+
+        // 3. Audit Grammar Lessons CEFR levels
+        val grammarLessons = dao.getAllGrammarLessons()
+        val grammarByLevel = grammarLessons.groupBy { it.level.uppercase().trim() }
+            .mapValues { it.value.size }
+        val emptyGrammarLevel = grammarLessons.count { it.level.isBlank() }
+
+        println("\n=== GRAMMAR LESSONS CEFR LEVEL AUDIT ===")
+        println("Total Grammar Lessons: ${grammarLessons.size}")
+        grammarByLevel.forEach { (lvl, count) ->
+            println("Level '$lvl': $count lessons")
+        }
+        println("Empty / Unassigned Grammar Level: $emptyGrammarLevel")
+
+        // 4. Audit Reading Texts CEFR levels
+        val readingTexts = dao.getAllReadingTexts()
+        val readingByLevel = readingTexts.groupBy { it.level.uppercase().trim() }
+            .mapValues { it.value.size }
+        val emptyReadingLevel = readingTexts.count { it.level.isBlank() }
+
+        println("\n=== READING TEXTS CEFR LEVEL AUDIT ===")
+        println("Total Reading Texts: ${readingTexts.size}")
+        readingByLevel.forEach { (lvl, count) ->
+            println("Level '$lvl': $count texts")
+        }
+        println("Empty / Unassigned Reading Level: $emptyReadingLevel")
+
+        db.close()
+    }
+
+    @Test
     fun verifyRealJsonFilesImportExactCountsAndProvenanceRules() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val db = Room.inMemoryDatabaseBuilder(context, WordBooksDatabase::class.java)

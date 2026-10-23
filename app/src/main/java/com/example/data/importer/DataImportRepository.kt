@@ -670,18 +670,22 @@ class DataImportRepository(
     }
 
     fun getPagedEntries(filter: WordFilterState): Flow<PagingData<EntryEntity>> {
+        val cleanSearch = filter.searchQuery.trim()
+        val isSimpleBrowse = cleanSearch.isEmpty() &&
+            filter.typeFilter.isEmpty() &&
+            filter.posFilter.isEmpty()
         return Pager(
             config = PagingConfig(
-                pageSize = 40,
-                prefetchDistance = 20,
+                pageSize = 60,
+                prefetchDistance = 30,
                 enablePlaceholders = true,
-                initialLoadSize = 60
+                initialLoadSize = 120
             ),
             pagingSourceFactory = {
                 if (filter.onlyFavorites || filter.deckId == SAVED_WORDS_DECK_ID) {
                     dao.getPagedFavoriteEntries(
                         deckId = if (filter.deckId == SAVED_WORDS_DECK_ID) "" else filter.deckId,
-                        searchQuery = filter.searchQuery.trim(),
+                        searchQuery = cleanSearch,
                         typeFilter = filter.typeFilter,
                         levelFilter = filter.levelFilter,
                         posFilter = filter.posFilter,
@@ -690,7 +694,7 @@ class DataImportRepository(
                 } else if (filter.onlyMastered) {
                     dao.getPagedMasteredEntries(
                         deckId = filter.deckId,
-                        searchQuery = filter.searchQuery.trim(),
+                        searchQuery = cleanSearch,
                         typeFilter = filter.typeFilter,
                         levelFilter = filter.levelFilter,
                         posFilter = filter.posFilter,
@@ -699,16 +703,26 @@ class DataImportRepository(
                 } else if (filter.onlyLearning) {
                     dao.getPagedLearningEntries(
                         deckId = filter.deckId,
-                        searchQuery = filter.searchQuery.trim(),
+                        searchQuery = cleanSearch,
                         typeFilter = filter.typeFilter,
                         levelFilter = filter.levelFilter,
                         posFilter = filter.posFilter,
                         sortOrder = filter.sortOrder.sqlKey
                     )
+                } else if (isSimpleBrowse && filter.deckId.isNotEmpty() && filter.levelFilter.isEmpty()) {
+                    when (filter.sortOrder) {
+                        WordSortOrder.AZ -> dao.getPagedEntriesForDeckAz(filter.deckId)
+                        WordSortOrder.ZA -> dao.getPagedEntriesForDeckZa(filter.deckId)
+                        WordSortOrder.LEVEL -> dao.getPagedEntriesForDeckLevel(filter.deckId)
+                    }
+                } else if (isSimpleBrowse && filter.deckId.isNotEmpty() && filter.levelFilter.isNotEmpty() && filter.sortOrder == WordSortOrder.AZ) {
+                    dao.getPagedEntriesForDeckAndLevelAz(filter.deckId, filter.levelFilter)
+                } else if (isSimpleBrowse && filter.deckId.isEmpty() && filter.levelFilter.isEmpty() && filter.sortOrder == WordSortOrder.AZ) {
+                    dao.getPagedEntriesAllDecksAz()
                 } else {
                     dao.getPagedEntries(
                         deckId = filter.deckId,
-                        searchQuery = filter.searchQuery.trim(),
+                        searchQuery = cleanSearch,
                         typeFilter = filter.typeFilter,
                         levelFilter = filter.levelFilter,
                         posFilter = filter.posFilter,

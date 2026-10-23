@@ -213,6 +213,12 @@ interface WordBooksDao {
     @Query("SELECT COUNT(*) FROM entries WHERE TRIM(arabic) = ''")
     suspend fun getEmptyArabicCount(): Int
 
+    @Query("SELECT level, COUNT(*) AS count FROM entries GROUP BY level")
+    suspend fun getEntryCountGroupedByLevelRaw(): List<LevelCountRaw>
+
+    @Query("SELECT COUNT(*) FROM entries WHERE level IS NULL OR TRIM(level) = ''")
+    suspend fun getEntriesWithEmptyLevelCount(): Int
+
     @Query("SELECT * FROM entries WHERE id = :id LIMIT 1")
     suspend fun getEntryById(id: String): EntryEntity?
 
@@ -480,6 +486,61 @@ interface WordBooksDao {
     @Query(
         """
         SELECT e.* FROM entries e
+        WHERE e.deck = :deckId
+        ORDER BY e.text COLLATE NOCASE ASC, LOWER(e.text) ASC, e.pos ASC
+        """
+    )
+    fun getPagedEntriesForDeckAz(deckId: String): PagingSource<Int, EntryEntity>
+
+    @Query(
+        """
+        SELECT e.* FROM entries e
+        WHERE e.deck = :deckId
+        ORDER BY e.text COLLATE NOCASE DESC, LOWER(e.text) DESC, e.pos ASC
+        """
+    )
+    fun getPagedEntriesForDeckZa(deckId: String): PagingSource<Int, EntryEntity>
+
+    @Query(
+        """
+        SELECT e.* FROM entries e
+        WHERE e.deck = :deckId
+        ORDER BY
+          CASE e.level
+              WHEN 'A1' THEN 1
+              WHEN 'A2' THEN 2
+              WHEN 'B1' THEN 3
+              WHEN 'B2' THEN 4
+              WHEN 'C1' THEN 5
+              ELSE 6
+          END ASC,
+          e.text COLLATE NOCASE ASC,
+          LOWER(e.text) ASC,
+          e.pos ASC
+        """
+    )
+    fun getPagedEntriesForDeckLevel(deckId: String): PagingSource<Int, EntryEntity>
+
+    @Query(
+        """
+        SELECT e.* FROM entries e
+        WHERE e.deck = :deckId AND e.level = :levelFilter
+        ORDER BY e.text COLLATE NOCASE ASC, LOWER(e.text) ASC, e.pos ASC
+        """
+    )
+    fun getPagedEntriesForDeckAndLevelAz(deckId: String, levelFilter: String): PagingSource<Int, EntryEntity>
+
+    @Query(
+        """
+        SELECT e.* FROM entries e
+        ORDER BY e.text COLLATE NOCASE ASC, LOWER(e.text) ASC, e.pos ASC
+        """
+    )
+    fun getPagedEntriesAllDecksAz(): PagingSource<Int, EntryEntity>
+
+    @Query(
+        """
+        SELECT e.* FROM entries e
         WHERE (:deckId = '' OR e.deck = :deckId)
           AND (:typeFilter = '' OR e.type = :typeFilter)
           AND (:levelFilter = '' OR e.level = :levelFilter)
@@ -528,7 +589,7 @@ interface WordBooksDao {
         """
         SELECT e.* FROM entries e
         INNER JOIN word_progress wp
-            ON wp.deck = e.deck AND wp.text = LOWER(e.text) AND wp.is_favorite = 1
+            ON wp.card_key = (e.deck || ':' || LOWER(TRIM(e.text))) AND wp.is_favorite = 1
         WHERE (:deckId = '' OR e.deck = :deckId)
           AND (:typeFilter = '' OR e.type = :typeFilter)
           AND (:levelFilter = '' OR e.level = :levelFilter)
@@ -577,7 +638,7 @@ interface WordBooksDao {
         """
         SELECT e.* FROM entries e
         LEFT JOIN word_progress wp
-            ON wp.deck = e.deck AND wp.text = LOWER(e.text)
+            ON wp.card_key = (e.deck || ':' || LOWER(TRIM(e.text)))
         WHERE (:deckId = '' OR e.deck = :deckId)
           AND COALESCE(wp.is_mastered, 0) = 0
           AND (:typeFilter = '' OR e.type = :typeFilter)
@@ -627,7 +688,7 @@ interface WordBooksDao {
         """
         SELECT e.* FROM entries e
         INNER JOIN word_progress wp
-            ON wp.deck = e.deck AND wp.text = LOWER(e.text) AND wp.is_mastered = 1
+            ON wp.card_key = (e.deck || ':' || LOWER(TRIM(e.text))) AND wp.is_mastered = 1
         WHERE (:deckId = '' OR e.deck = :deckId)
           AND (:typeFilter = '' OR e.type = :typeFilter)
           AND (:levelFilter = '' OR e.level = :levelFilter)
@@ -718,7 +779,7 @@ interface WordBooksDao {
         """
         SELECT COUNT(*) FROM entries e
         INNER JOIN word_progress wp
-            ON wp.deck = e.deck AND wp.text = LOWER(e.text) AND wp.is_favorite = 1
+            ON wp.card_key = (e.deck || ':' || LOWER(TRIM(e.text))) AND wp.is_favorite = 1
         WHERE (:deckId = '' OR e.deck = :deckId)
           AND (:typeFilter = '' OR e.type = :typeFilter)
           AND (:levelFilter = '' OR e.level = :levelFilter)
@@ -753,7 +814,7 @@ interface WordBooksDao {
         """
         SELECT COUNT(*) FROM entries e
         INNER JOIN word_progress wp
-            ON wp.deck = e.deck AND wp.text = LOWER(e.text) AND wp.is_mastered = 1
+            ON wp.card_key = (e.deck || ':' || LOWER(TRIM(e.text))) AND wp.is_mastered = 1
         WHERE (:deckId = '' OR e.deck = :deckId)
           AND (:typeFilter = '' OR e.type = :typeFilter)
           AND (:levelFilter = '' OR e.level = :levelFilter)
@@ -788,7 +849,7 @@ interface WordBooksDao {
         """
         SELECT COUNT(*) FROM entries e
         LEFT JOIN word_progress wp
-            ON wp.deck = e.deck AND wp.text = LOWER(e.text)
+            ON wp.card_key = (e.deck || ':' || LOWER(TRIM(e.text)))
         WHERE (:deckId = '' OR e.deck = :deckId)
           AND COALESCE(wp.is_mastered, 0) = 0
           AND (:typeFilter = '' OR e.type = :typeFilter)
@@ -824,8 +885,23 @@ interface WordBooksDao {
         """
         SELECT UPPER(SUBSTR(e.text, 1, 1)) AS initial, COUNT(*) AS count
         FROM entries e
+        WHERE (:deckId = '' OR e.deck = :deckId)
+          AND (:levelFilter = '' OR e.level = :levelFilter)
+        GROUP BY UPPER(SUBSTR(e.text, 1, 1))
+        ORDER BY initial ASC
+        """
+    )
+    suspend fun getGroupedInitialLetterCountsFast(
+        deckId: String,
+        levelFilter: String
+    ): List<LetterCountResult>
+
+    @Query(
+        """
+        SELECT UPPER(SUBSTR(e.text, 1, 1)) AS initial, COUNT(*) AS count
+        FROM entries e
         LEFT JOIN word_progress wp
-            ON wp.deck = e.deck AND wp.text = LOWER(e.text)
+            ON wp.card_key = (e.deck || ':' || LOWER(TRIM(e.text)))
         WHERE (:deckId = '' OR e.deck = :deckId)
           AND (:typeFilter = '' OR e.type = :typeFilter)
           AND (:levelFilter = '' OR e.level = :levelFilter)

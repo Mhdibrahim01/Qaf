@@ -58,6 +58,7 @@ import com.example.data.local.ReadingTextEntity
 import com.example.data.sentences.SentenceSortOrder
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -533,7 +534,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         val rawDeck = filter.deckId.ifBlank { selectedDeck.orEmpty() }
         val deckId = if (rawDeck == DataImportRepository.SAVED_WORDS_DECK_ID) "" else rawDeck
         Pair(deckId, targetLevel)
-    }.flatMapLatest { (deckId, targetLevel) ->
+    }.distinctUntilChanged().flatMapLatest { (deckId, targetLevel) ->
         database.wordBooksDao().observeWordsForDeckAndLevel(
             deckId = deckId,
             level = targetLevel
@@ -547,7 +548,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 )
             }
         }
-    }.stateIn(
+    }.flowOn(Dispatchers.IO).stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
@@ -1100,16 +1101,26 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         val deckArg = if (effectiveDeckId == DataImportRepository.SAVED_WORDS_DECK_ID) "" else effectiveDeckId
 
         val counts = withContext(Dispatchers.IO) {
-            database.wordBooksDao().getGroupedInitialLetterCounts(
-                deckId = deckArg,
-                searchQuery = filter.searchQuery.trim(),
-                typeFilter = filter.typeFilter,
-                levelFilter = filter.levelFilter,
-                posFilter = filter.posFilter,
-                onlyFavorites = onlyFav,
-                onlyMastered = onlyMast,
-                onlyLearning = onlyLearn
-            )
+            val cleanQuery = filter.searchQuery.trim()
+            if (cleanQuery.isEmpty() && filter.typeFilter.isEmpty() && filter.posFilter.isEmpty() &&
+                onlyFav == 0 && onlyMast == 0 && onlyLearn == 0
+            ) {
+                database.wordBooksDao().getGroupedInitialLetterCountsFast(
+                    deckId = deckArg,
+                    levelFilter = filter.levelFilter
+                )
+            } else {
+                database.wordBooksDao().getGroupedInitialLetterCounts(
+                    deckId = deckArg,
+                    searchQuery = cleanQuery,
+                    typeFilter = filter.typeFilter,
+                    levelFilter = filter.levelFilter,
+                    posFilter = filter.posFilter,
+                    onlyFavorites = onlyFav,
+                    onlyMastered = onlyMast,
+                    onlyLearning = onlyLearn
+                )
+            }
         }
 
         val offsets = mutableMapOf<Char, Int>()

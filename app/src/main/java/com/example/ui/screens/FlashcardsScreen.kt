@@ -201,6 +201,9 @@ fun FlashcardsScreen(
     val studyDecks = remember(decks) {
         decks.filter { it.id != DataImportRepository.SAVED_WORDS_DECK_ID && it.rowCount > 0 }
     }
+    val activeDeck = remember(studyDecks, activeDeckId) {
+        studyDecks.find { it.id == activeDeckId }
+    }
     val safeIndex = if (cards.isEmpty()) 0 else currentIndex.coerceIn(0, cards.size - 1)
     val activeCard = cards.getOrNull(safeIndex)
     val activeProgress = activeCard?.let { progressMap[it.cardKey] }
@@ -629,6 +632,32 @@ fun FlashcardsScreen(
                         color = GoldAccent,
                         trackColor = SurfaceElevatedDark
                     )
+
+                    if (activeDeck != null && activeDeck.rowCount > cards.size && cards.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 3.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${formatter.format(cards.size)} unique words • ${formatter.format(activeDeck.rowCount)} definitions",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 10.sp,
+                                    color = TextMuted
+                                )
+                            )
+                            Text(
+                                text = "Multi-POS grouped",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 10.sp,
+                                    color = GoldAccent.copy(alpha = 0.85f),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            )
+                        }
+                    }
                 }
             }
 
