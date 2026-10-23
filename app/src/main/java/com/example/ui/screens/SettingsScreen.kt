@@ -1267,7 +1267,7 @@ private fun OfflineVoiceEngineSelectorSection(
             )
             SettingsChoicePill(
                 labelEn = "Natural AI Voice (Offline)",
-                subtitleEn = if (isNeuralInstalled) "Piper VITS • Installed" else "Piper VITS • ~21 MB",
+                subtitleEn = if (isNeuralInstalled) "Piper VITS • Installed" else "Piper VITS • ~64 MB",
                 isSelected = isNeuralSelected,
                 accentColor = EmeraldAccent,
                 onClick = { onSelectTtsEngineMode(TtsEngineMode.NATURAL_AI_OFFLINE) },
@@ -1312,7 +1312,7 @@ private fun OfflineVoiceEngineSelectorSection(
                         )
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
-                                text = "Piper VITS English (en_US-amy-low)",
+                                text = "Piper VITS English (en_US-lessac-medium)",
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                                 color = TextPrimary
                             )
@@ -1357,7 +1357,7 @@ private fun OfflineVoiceEngineSelectorSection(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Download Natural AI Voice (~21 MB)",
+                                text = "Download Natural AI Voice (~64 MB)",
                                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
                             )
                         }

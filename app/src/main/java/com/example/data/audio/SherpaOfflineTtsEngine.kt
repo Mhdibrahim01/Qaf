@@ -31,16 +31,27 @@ class SherpaOfflineTtsEngine(
     private val scope = CoroutineScope(SupervisorJob() + ttsDispatcher)
 
     private var offlineTts: OfflineTts? = null
+    private var loadedModelPath: String? = null
     private var activeAudioTrack: AudioTrack? = null
     private var activeSpeakJob: Job? = null
 
     private fun getOrCreateOfflineTts(): OfflineTts? {
-        val existing = offlineTts
-        if (existing != null) return existing
         if (!modelManager.isModelInstalled()) return null
+        val targetModelPath = modelManager.onnxModelFile.absolutePath
+        val existing = offlineTts
+        if (existing != null && loadedModelPath == targetModelPath) {
+            return existing
+        }
+        if (existing != null) {
+            try {
+                existing.release()
+            } catch (_: Throwable) {}
+            offlineTts = null
+            loadedModelPath = null
+        }
 
         val vitsConfig = OfflineTtsVitsModelConfig(
-            model = modelManager.onnxModelFile.absolutePath,
+            model = targetModelPath,
             lexicon = "",
             tokens = modelManager.tokensFile.absolutePath,
             dataDir = modelManager.espeakDataDir.absolutePath,
@@ -64,6 +75,7 @@ class SherpaOfflineTtsEngine(
         )
         return OfflineTts(assetManager = null, config = config).also {
             offlineTts = it
+            loadedModelPath = targetModelPath
         }
     }
 

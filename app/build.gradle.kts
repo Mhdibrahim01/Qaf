@@ -10,10 +10,10 @@ plugins {
   id("org.jetbrains.kotlin.plugin.serialization") version "2.2.10"
 }
 
-val sherpaOnnxAarFile = file("$projectDir/libs/sherpa-onnx-static-link-onnxruntime-2.0.0.aar")
+val sherpaOnnxAarFile = file("$projectDir/libs/sherpa-onnx-static-link-onnxruntime-1.12.40.aar")
 if (!sherpaOnnxAarFile.exists()) {
   sherpaOnnxAarFile.parentFile.mkdirs()
-  val sherpaUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v2.0.0/sherpa-onnx-static-link-onnxruntime-2.0.0.aar"
+  val sherpaUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.40/sherpa-onnx-static-link-onnxruntime-1.12.40.aar"
   logger.lifecycle("Downloading Sherpa-ONNX Android AAR from $sherpaUrl ...")
   URL(sherpaUrl).openStream().use { input ->
     sherpaOnnxAarFile.outputStream().use { output ->

@@ -467,10 +467,10 @@ class AudioPlayerManager(
                 player.prepare()
                 player.play()
             } catch (_: Exception) {
-                speakWithTts(cleanText, speechRateOverride = rateOverride, locale = targetLocale, forceSystemTtsForGb = isGb)
+                speakWithTts(cleanText, speechRateOverride = rateOverride, locale = targetLocale)
             }
         } else {
-            speakWithTts(cleanText, speechRateOverride = rateOverride, locale = targetLocale, forceSystemTtsForGb = isGb)
+            speakWithTts(cleanText, speechRateOverride = rateOverride, locale = targetLocale)
         }
     }
 
@@ -487,7 +487,7 @@ class AudioPlayerManager(
         _currentlyPlayingWord.value = text
         _isPlayingSlow.value = speechRateOverride != null && speechRateOverride <= SLOW_TURTLE_RATE + 0.05f
         val targetLocale = if (preferUkAccent) Locale.UK else Locale.US
-        speakWithTts(cleanText, speechRateOverride, locale = targetLocale, forceSystemTtsForGb = false)
+        speakWithTts(cleanText, speechRateOverride, locale = targetLocale)
     }
 
     /**
@@ -514,13 +514,10 @@ class AudioPlayerManager(
     private fun speakWithTts(
         text: String,
         speechRateOverride: Float? = null,
-        locale: Locale = Locale.US,
-        forceSystemTtsForGb: Boolean = false
+        locale: Locale = Locale.US
     ) {
         val rate = (speechRateOverride ?: defaultSpeechRate).coerceIn(0.5f, 1.5f)
-        // Use Sherpa-ONNX offline neural voice whenever active, except when the user explicitly
-        // tapped the GB chip to compare British system pronunciation.
-        if (isNeuralAiVoiceActive() && !forceSystemTtsForGb) {
+        if (isNeuralAiVoiceActive()) {
             try {
                 tts?.stop()
             } catch (_: Exception) {}

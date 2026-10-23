@@ -46,8 +46,8 @@ sealed interface NeuralVoicePackState {
 }
 
 /**
- * Manages the optional downloadable Offline Neural TTS voice pack (`vits-piper-en_US-amy-low`)
- * stored inside `context.filesDir/tts_models/vits-piper-en_US-amy-low/`.
+ * Manages the optional downloadable Offline Neural TTS voice pack (`vits-piper-en_US-lessac-medium`)
+ * stored inside `context.filesDir/tts_models/vits-piper-en_US-lessac-medium/`.
  */
 class PiperVoiceModelManager(
     context: Context,
@@ -55,14 +55,19 @@ class PiperVoiceModelManager(
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 ) {
     companion object {
-        const val MODEL_FOLDER_NAME = "vits-piper-en_US-amy-low"
-        const val ONNX_FILE_NAME = "en_US-amy-low.onnx"
+        const val MODEL_FOLDER_NAME = "vits-piper-en_US-lessac-medium"
+        const val ONNX_FILE_NAME = "en_US-lessac-medium.onnx"
         const val TOKENS_FILE_NAME = "tokens.txt"
         const val ESPEAK_DIR_NAME = "espeak-ng-data"
-        const val APPROX_ARCHIVE_BYTES = 22_400_000L // ~21.4 MB
+        const val APPROX_ARCHIVE_BYTES = 67_230_653L // ~64.1 MB
+
+        private val LEGACY_MODEL_FOLDERS = listOf(
+            "vits-piper-en_US-amy-low",
+            "vits-piper-en_US-amy-medium"
+        )
 
         const val PRIMARY_DOWNLOAD_URL =
-            "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-amy-low.tar.bz2"
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-lessac-medium.tar.bz2"
     }
 
     private val appContext = context.applicationContext
@@ -87,7 +92,24 @@ class PiperVoiceModelManager(
     private var downloadJob: Job? = null
 
     init {
+        cleanupLegacyModelFolders()
         refreshInstallationState()
+    }
+
+    private fun cleanupLegacyModelFolders() {
+        try {
+            if (!ttsModelsRootDir.exists()) return
+            for (legacyName in LEGACY_MODEL_FOLDERS) {
+                val legacyDir = File(ttsModelsRootDir, legacyName)
+                if (legacyDir.exists()) {
+                    legacyDir.deleteRecursively()
+                }
+                val legacyPart = File(ttsModelsRootDir, "$legacyName.tar.bz2.part")
+                if (legacyPart.exists()) {
+                    legacyPart.delete()
+                }
+            }
+        } catch (_: Exception) {}
     }
 
     /**
@@ -287,6 +309,7 @@ class PiperVoiceModelManager(
 
     internal fun extractTarBz2Archive(archiveFile: File, targetDir: File) {
         val canonicalTargetRoot = targetDir.canonicalPath + File.separator
+        val deferredLinks = mutableListOf<Triple<File, String, Boolean>>()
         FileInputStream(archiveFile).use { fis ->
             BufferedInputStream(fis, 64 * 1024).use { bis ->
                 BZip2CompressorInputStream(bis).use { bzis ->
@@ -301,14 +324,20 @@ class PiperVoiceModelManager(
                             ) {
                                 throw SecurityException("Blocked unsafe tar entry path: ${entry.name}")
                             }
-                            if (entry.isDirectory) {
-                                outFile.mkdirs()
-                            } else {
-                                outFile.parentFile?.mkdirs()
-                                FileOutputStream(outFile).use { fos ->
-                                    var len: Int
-                                    while (tis.read(buffer).also { len = it } != -1) {
-                                        fos.write(buffer, 0, len)
+                            when {
+                                entry.isDirectory -> {
+                                    outFile.mkdirs()
+                                }
+                                entry.isSymbolicLink || entry.isLink -> {
+                                    deferredLinks.add(Triple(outFile, entry.linkName, entry.isSymbolicLink))
+                                }
+                                else -> {
+                                    outFile.parentFile?.mkdirs()
+                                    FileOutputStream(outFile).use { fos ->
+                                        var len: Int
+                                        while (tis.read(buffer).also { len = it } != -1) {
+                                            fos.write(buffer, 0, len)
+                                        }
                                     }
                                 }
                             }
@@ -316,6 +345,18 @@ class PiperVoiceModelManager(
                         }
                     }
                 }
+            }
+        }
+        for ((outFile, linkName, isSymlink) in deferredLinks) {
+            val sourceFile = if (isSymlink) {
+                File(outFile.parentFile ?: targetDir, linkName)
+            } else {
+                File(targetDir, linkName)
+            }
+            val canonicalSource = sourceFile.canonicalPath
+            if (canonicalSource.startsWith(canonicalTargetRoot) && sourceFile.exists() && sourceFile.isFile) {
+                outFile.parentFile?.mkdirs()
+                sourceFile.copyTo(outFile, overwrite = true)
             }
         }
     }
