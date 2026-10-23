@@ -78,7 +78,7 @@ fun MoreScreen(
     onNavigateToPlan: () -> Unit,
     onNavigateToCorrectionNotebook: () -> Unit,
     onOpenSettings: () -> Unit,
-    onNavigateToLabs: () -> Unit,
+    onNavigateToLabs: () -> Unit = {},
     onNavigateToSentences: () -> Unit = {},
     onExportBackupToUri: (Uri, (Boolean, String) -> Unit) -> Unit = { _, _ -> },
     onImportBackupFromUri: (Uri, (Boolean, String) -> Unit) -> Unit = { _, _ -> },
@@ -304,7 +304,7 @@ fun MoreScreen(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 HubSectionHeader(
                     eyebrow = "SYSTEM & UTILITIES",
-                    title = "Preferences, Backup & Diagnostics"
+                    title = "Preferences & Data Backup"
                 )
 
                 backupStatusMessage?.let { (isSuccess, msg) ->
@@ -340,8 +340,8 @@ fun MoreScreen(
                     ) {
                         MoreModuleCard(
                             titleEn = "Settings",
-                            titleAr = "إعدادات التطبيق ومفاتيح الذكاء الاصطناعي",
-                            descriptionEn = "Configure Gemini API keys, AI enrichment toggles, speech rate, and study preferences.",
+                            titleAr = "إعدادات التطبيق والصوت والذكاء الاصطناعي",
+                            descriptionEn = "Configure pronunciation accent & speed, study goals, backups, Gemini API keys, and app preferences.",
                             tagText = "Preferences",
                             accentColor = GoldAccent,
                             icon = Icons.Default.Settings,
@@ -349,22 +349,6 @@ fun MoreScreen(
                             onClick = onOpenSettings,
                             modifier = Modifier.weight(1f)
                         )
-                        MoreModuleCard(
-                            titleEn = "Labs & Diagnostics",
-                            titleAr = "فحص قاعدة البيانات والترجمة الدفعية",
-                            descriptionEn = "SQLite database verifier, background batch translation engine, and JSON asset tools.",
-                            tagText = "Data Tools",
-                            accentColor = GoldAccent,
-                            icon = Icons.Default.Science,
-                            testTag = "nav_labs",
-                            onClick = onNavigateToLabs,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
                         MoreModuleCard(
                             titleEn = "Export Progress Backup",
                             titleAr = "تصدير نسخة احتياطية كاملة لتقدمك (JSON)",
@@ -376,6 +360,11 @@ fun MoreScreen(
                             onClick = triggerExport,
                             modifier = Modifier.weight(1f)
                         )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
                         MoreModuleCard(
                             titleEn = "Restore Progress Backup",
                             titleAr = "استعادة نسخة احتياطية من ملف JSON",
@@ -392,8 +381,8 @@ fun MoreScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         MoreModuleCard(
                             titleEn = "Settings",
-                            titleAr = "إعدادات التطبيق ومفاتيح الذكاء الاصطناعي",
-                            descriptionEn = "Configure Gemini API keys, AI enrichment toggles, speech rate, and study preferences.",
+                            titleAr = "إعدادات التطبيق والصوت والذكاء الاصطناعي",
+                            descriptionEn = "Configure pronunciation accent & speed, study goals, backups, Gemini API keys, and app preferences.",
                             tagText = "Preferences",
                             accentColor = GoldAccent,
                             icon = Icons.Default.Settings,
@@ -419,16 +408,6 @@ fun MoreScreen(
                             icon = Icons.Default.CloudUpload,
                             testTag = "btn_restore_backup",
                             onClick = triggerImport
-                        )
-                        MoreModuleCard(
-                            titleEn = "Labs & Diagnostics",
-                            titleAr = "فحص قاعدة البيانات والترجمة الدفعية",
-                            descriptionEn = "SQLite database verifier, background batch translation engine, and JSON asset tools.",
-                            tagText = "Data Tools",
-                            accentColor = GoldAccent,
-                            icon = Icons.Default.Science,
-                            testTag = "nav_labs",
-                            onClick = onNavigateToLabs
                         )
                     }
                 }
