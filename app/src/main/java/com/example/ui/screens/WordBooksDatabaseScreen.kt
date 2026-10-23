@@ -2544,12 +2544,11 @@ fun AiDefinitionPanel(
             val isGbPlaying = isPlayingWord && selectedIsGb && !isPlayingSlowLocal
             val isSlowPlaying = isPlayingWord && isPlayingSlowLocal
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
+            @OptIn(ExperimentalLayoutApi::class)
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // US Chip
                 val ipaUs = aiDetail?.ipaUs?.ifBlank { card.ipa } ?: card.ipa

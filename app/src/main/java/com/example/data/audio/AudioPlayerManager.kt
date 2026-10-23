@@ -136,6 +136,8 @@ class AudioPlayerManager(
         ttsEngineMode = mode
         if (mode == TtsEngineMode.STANDARD_SYSTEM) {
             sherpaEngine.stop()
+        } else if (voiceModelManager.isModelInstalled()) {
+            sherpaEngine.preload()
         }
     }
 
@@ -148,7 +150,10 @@ class AudioPlayerManager(
         ttsEngineMode == TtsEngineMode.NATURAL_AI_OFFLINE && voiceModelManager.isModelInstalled()
 
     fun downloadNeuralVoicePack(onCompleted: (() -> Unit)? = null) {
-        voiceModelManager.startDownload(onDownloadCompleted = onCompleted)
+        voiceModelManager.startDownload(onDownloadCompleted = {
+            sherpaEngine.preload()
+            onCompleted?.invoke()
+        })
     }
 
     fun cancelNeuralVoiceDownload() {
@@ -450,7 +455,9 @@ class AudioPlayerManager(
         val targetLocale = if (isGb) Locale.UK else Locale.US
         val rateOverride = if (isSlow) SLOW_TURTLE_RATE else null
 
-        if (!isGb && audioUrl.isNotBlank() && (audioUrl.startsWith("http://") || audioUrl.startsWith("https://"))) {
+        // When Natural AI Voice (Offline) is active, synthesize directly with Sherpa-ONNX
+        // instead of attempting to stream remote dictionary URLs via ExoPlayer.
+        if (!isNeuralAiVoiceActive() && !isGb && audioUrl.isNotBlank() && (audioUrl.startsWith("http://") || audioUrl.startsWith("https://"))) {
             try {
                 lastExoWasSlow = isSlow
                 val player = getOrCreateExoPlayer()
@@ -460,10 +467,10 @@ class AudioPlayerManager(
                 player.prepare()
                 player.play()
             } catch (_: Exception) {
-                speakWithTts(cleanText, speechRateOverride = rateOverride, locale = targetLocale)
+                speakWithTts(cleanText, speechRateOverride = rateOverride, locale = targetLocale, forceSystemTtsForGb = isGb)
             }
         } else {
-            speakWithTts(cleanText, speechRateOverride = rateOverride, locale = targetLocale)
+            speakWithTts(cleanText, speechRateOverride = rateOverride, locale = targetLocale, forceSystemTtsForGb = isGb)
         }
     }
 
@@ -480,7 +487,7 @@ class AudioPlayerManager(
         _currentlyPlayingWord.value = text
         _isPlayingSlow.value = speechRateOverride != null && speechRateOverride <= SLOW_TURTLE_RATE + 0.05f
         val targetLocale = if (preferUkAccent) Locale.UK else Locale.US
-        speakWithTts(cleanText, speechRateOverride, locale = targetLocale)
+        speakWithTts(cleanText, speechRateOverride, locale = targetLocale, forceSystemTtsForGb = false)
     }
 
     /**
@@ -507,13 +514,13 @@ class AudioPlayerManager(
     private fun speakWithTts(
         text: String,
         speechRateOverride: Float? = null,
-        locale: Locale = Locale.US
+        locale: Locale = Locale.US,
+        forceSystemTtsForGb: Boolean = false
     ) {
         val rate = (speechRateOverride ?: defaultSpeechRate).coerceIn(0.5f, 1.5f)
-        // Note: The local Piper model (vits-piper-en_US-amy-low) is a US English model.
-        // When the user explicitly requests British English (Locale.UK / en_GB), route to Android TTS
-        // with Locale.UK so the accent switches to British English instead of staying US.
-        if (isNeuralAiVoiceActive() && !isUkLocale(locale)) {
+        // Use Sherpa-ONNX offline neural voice whenever active, except when the user explicitly
+        // tapped the GB chip to compare British system pronunciation.
+        if (isNeuralAiVoiceActive() && !forceSystemTtsForGb) {
             try {
                 tts?.stop()
             } catch (_: Exception) {}
