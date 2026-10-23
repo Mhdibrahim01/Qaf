@@ -191,7 +191,6 @@ class DataImportRepository(
 
     val decksFlow: Flow<List<DeckEntity>> = dao.observeDecks()
     val totalEntriesFlow: Flow<Int> = dao.observeTotalEntryCount()
-    val totalUniqueWordsFlow: Flow<Int> = dao.observeTotalUniqueWordCount()
     val emptyArabicCountFlow: Flow<Int> = dao.observeEmptyArabicCount()
     val deckArabicStatsFlow: Flow<List<DeckArabicStats>> = dao.observeDeckArabicStats()
     val allProgressFlow: Flow<List<WordProgressEntity>> = dao.observeAllWordProgress()

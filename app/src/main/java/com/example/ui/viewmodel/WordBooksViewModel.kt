@@ -255,13 +255,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         initialValue = emptyList()
     )
 
-    val totalEntriesCount: StateFlow<Int> = repository.totalUniqueWordsFlow.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = 0
-    )
-
-    val totalRawEntriesCount: StateFlow<Int> = repository.totalEntriesFlow.stateIn(
+    val totalEntriesCount: StateFlow<Int> = repository.totalEntriesFlow.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = 0
