@@ -15,9 +15,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,6 +27,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -278,62 +282,20 @@ fun SettingsScreen(
 
                 // 1B. Speech Playback Speed + Test Speaker Button
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Text(
-                                text = "Speech Playback Speed",
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = TextPrimary
-                            )
-                            ArabicText(
-                                text = "سرعة قراءة الكلمات والجمل الصوتية",
-                                style = ArabicTypography.bodySmall,
-                                color = TextSecondary
-                            )
-                        }
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = {
-                                    onTestVoicePreview("Mastering English pronunciation requires natural rhythm and clear syllable stress.")
-                                },
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, GoldAccentBorder),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                modifier = Modifier.testTag("btn_test_voice")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                    contentDescription = "Test Voice",
-                                    tint = GoldAccent,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Test Voice",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = GoldAccent
-                                )
-                            }
-
-                            SlowAudioTurtleButton(
-                                onClick = {
-                                    onTestVoiceSlowPreview("Mastering English pronunciation requires natural rhythm and clear syllable stress.")
-                                },
-                                showSpeedLabel = true,
-                                testTag = "btn_test_voice_slow"
-                            )
-                        }
+                        Text(
+                            text = "Speech Playback Speed",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = TextPrimary
+                        )
+                        ArabicText(
+                            text = "سرعة قراءة الكلمات والجمل الصوتية",
+                            style = ArabicTypography.bodySmall,
+                            color = TextSecondary
+                        )
                     }
 
                     val speedPresets = listOf(
@@ -343,7 +305,9 @@ fun SettingsScreen(
                     )
 
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(IntrinsicSize.Min),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         speedPresets.forEach { (rate, label, badge) ->
@@ -360,9 +324,52 @@ fun SettingsScreen(
                                 accentColor = GoldAccent,
                                 onClick = { onSelectSpeechRate(rate) },
                                 testTag = tag,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
                             )
                         }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                onTestVoicePreview("Mastering English pronunciation requires natural rhythm and clear syllable stress.")
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, GoldAccentBorder),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("btn_test_voice")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                contentDescription = "Test Voice",
+                                tint = GoldAccent,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Test Voice",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                color = GoldAccent,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+
+                        SlowAudioTurtleButton(
+                            onClick = {
+                                onTestVoiceSlowPreview("Mastering English pronunciation requires natural rhythm and clear syllable stress.")
+                            },
+                            showSpeedLabel = true,
+                            testTag = "btn_test_voice_slow"
+                        )
                     }
                 }
 
@@ -1192,19 +1199,25 @@ private fun SettingsChoicePill(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(horizontal = 10.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)
         ) {
             Text(
                 text = labelEn,
                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                color = if (isSelected) accentColor else TextPrimary
+                color = if (isSelected) accentColor else TextPrimary,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = subtitleEn,
                 style = MaterialTheme.typography.labelSmall,
-                color = if (isSelected) accentColor.copy(alpha = 0.85f) else TextSecondary
+                color = if (isSelected) accentColor.copy(alpha = 0.85f) else TextSecondary,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -1229,31 +1242,26 @@ private fun OfflineVoiceEngineSelectorSection(
             .testTag("section_voice_engine"),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = "Voice Engine",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = TextPrimary
-                )
-                ArabicText(
-                    text = "محرك النطق الصوتي",
-                    style = ArabicTypography.bodySmall,
-                    color = TextSecondary
-                )
-            }
-            ProgressBadge(
-                text = if (isNeuralSelected && isNeuralInstalled) "Natural AI (Offline)" else "System Default",
-                color = if (isNeuralSelected && isNeuralInstalled) EmeraldAccent else GoldAccent
+            Text(
+                text = "Voice Engine",
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = TextPrimary
+            )
+            ArabicText(
+                text = "محرك النطق الصوتي",
+                style = ArabicTypography.bodySmall,
+                color = TextSecondary
             )
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             SettingsChoicePill(
@@ -1263,16 +1271,20 @@ private fun OfflineVoiceEngineSelectorSection(
                 accentColor = GoldAccent,
                 onClick = { onSelectTtsEngineMode(TtsEngineMode.STANDARD_SYSTEM) },
                 testTag = "btn_voice_engine_system",
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
             )
             SettingsChoicePill(
-                labelEn = "Natural AI Voice (Offline)",
-                subtitleEn = if (isNeuralInstalled) "Piper VITS • Installed" else "Piper VITS • ~64 MB",
+                labelEn = "Natural AI Voice",
+                subtitleEn = if (isNeuralInstalled) "Offline • Installed" else "Offline • ~64 MB",
                 isSelected = isNeuralSelected,
                 accentColor = EmeraldAccent,
                 onClick = { onSelectTtsEngineMode(TtsEngineMode.NATURAL_AI_OFFLINE) },
                 testTag = "btn_voice_engine_neural",
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
             )
         }
 
@@ -1381,19 +1393,23 @@ private fun OfflineVoiceEngineSelectorSection(
                                 Text(
                                     text = "Downloading voice model... ${String.format(java.util.Locale.US, "%.1f / %.1f MB", downloadedMb, totalMb)} ($progressPercent%)",
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                    color = EmeraldAccent
+                                    color = EmeraldAccent,
+                                    modifier = Modifier.weight(1f)
                                 )
+                                Spacer(modifier = Modifier.width(10.dp))
                                 OutlinedButton(
                                     onClick = onCancelNeuralVoiceDownload,
                                     modifier = Modifier.testTag("btn_cancel_neural_download"),
                                     shape = RoundedCornerShape(8.dp),
                                     border = BorderStroke(1.dp, CoralAccent.copy(alpha = 0.5f)),
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                                 ) {
                                     Text(
                                         text = "Cancel",
                                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                        color = CoralAccent
+                                        color = CoralAccent,
+                                        maxLines = 1,
+                                        softWrap = false
                                     )
                                 }
                             }
@@ -1467,7 +1483,9 @@ private fun OfflineVoiceEngineSelectorSection(
                                 Text(
                                     text = "Delete Pack",
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = CoralAccent
+                                    color = CoralAccent,
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                             }
                         }
