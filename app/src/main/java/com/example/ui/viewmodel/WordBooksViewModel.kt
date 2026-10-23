@@ -14,6 +14,8 @@ import com.example.data.ai.BatchTranslateManager
 import com.example.data.ai.BatchTranslateUiState
 import com.example.data.ai.GeminiDeckAndTranslationService
 import com.example.data.audio.AudioPlayerManager
+import com.example.data.audio.NeuralVoicePackState
+import com.example.data.audio.TtsEngineMode
 import com.example.data.importer.DataImportRepository
 import com.example.data.importer.FlashcardDirection
 import com.example.data.importer.GroupedWordCard
@@ -153,6 +155,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     val aiStatus: StateFlow<AiTaskStatus> = geminiService.status
     val batchTranslateState: StateFlow<BatchTranslateUiState> = batchTranslateManager.uiState
     val currentlyPlayingWord: StateFlow<String?> = audioPlayer.currentlyPlayingWord
+    val isPlayingSlow: StateFlow<Boolean> = audioPlayer.isPlayingSlow
 
     private val _isBatchTranslateOpen = MutableStateFlow(false)
     val isBatchTranslateOpen: StateFlow<Boolean> = _isBatchTranslateOpen.asStateFlow()
@@ -399,6 +402,11 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     private val _isDeveloperModeEnabled = MutableStateFlow(false)
     val isDeveloperModeEnabled: StateFlow<Boolean> = _isDeveloperModeEnabled.asStateFlow()
 
+    private val _ttsEngineMode = MutableStateFlow(TtsEngineMode.STANDARD_SYSTEM)
+    val ttsEngineMode: StateFlow<TtsEngineMode> = _ttsEngineMode.asStateFlow()
+
+    val neuralVoicePackState: StateFlow<NeuralVoicePackState> = audioPlayer.neuralVoicePackState
+
     private val _dictationIgnorePunctuation = MutableStateFlow(true)
     val dictationIgnorePunctuation: StateFlow<Boolean> = _dictationIgnorePunctuation.asStateFlow()
 
@@ -634,8 +642,11 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             _autoPlayPronunciation.value = onboardingSnap.autoPlayPronunciation
             _autoPlayPracticeAudio.value = onboardingSnap.autoPlayPronunciation
             _ttsSpeechRate.value = onboardingSnap.ttsSpeechRate
+            val initialEngineMode = TtsEngineMode.fromId(onboardingSnap.ttsEngineMode)
+            _ttsEngineMode.value = initialEngineMode
             audioPlayer.setPreferUkAccent(onboardingSnap.preferredAccentUk)
             audioPlayer.setDefaultSpeechRate(onboardingSnap.ttsSpeechRate)
+            audioPlayer.setTtsEngineMode(initialEngineMode)
             if (existingProfile != null || onboardingSnap.onboardingCompleted) {
                 val checklist = studyPlanRepository.getOrCreateDailyChecklist()
                 _todayChecklist.value = checklist
@@ -652,8 +663,11 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 _preferredAccentUk.value = prefs.preferredAccentUk
                 _autoPlayPronunciation.value = prefs.autoPlayPronunciation
                 _ttsSpeechRate.value = prefs.ttsSpeechRate
+                val mode = TtsEngineMode.fromId(prefs.ttsEngineMode)
+                _ttsEngineMode.value = mode
                 audioPlayer.setPreferUkAccent(prefs.preferredAccentUk)
                 audioPlayer.setDefaultSpeechRate(prefs.ttsSpeechRate)
+                audioPlayer.setTtsEngineMode(mode)
             }
         }
 
@@ -1789,8 +1803,16 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         audioPlayer.playWordWithVoice(word, audioUrl, isGb)
     }
 
+    fun playAudioSlow(word: String, audioUrl: String = "", isGb: Boolean = _preferredAccentUk.value) {
+        audioPlayer.playWordSlow(word, audioUrl, isGb)
+    }
+
     fun speakSentenceTts(sentence: String, speechRateOverride: Float? = null) {
         audioPlayer.speakSentenceWithTts(sentence, speechRateOverride)
+    }
+
+    fun speakSentenceSlow(sentence: String) {
+        audioPlayer.speakSentenceSlow(sentence)
     }
 
     fun toggleSaveExampleSentence(
@@ -1883,6 +1905,29 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             onboardingRepository.setDeveloperModeEnabled(enabled)
         }
+    }
+
+    fun selectTtsEngineMode(mode: TtsEngineMode) {
+        _ttsEngineMode.value = mode
+        audioPlayer.setTtsEngineMode(mode)
+        viewModelScope.launch {
+            onboardingRepository.setTtsEngineMode(mode.id)
+        }
+    }
+
+    fun downloadNeuralVoicePack() {
+        audioPlayer.downloadNeuralVoicePack {
+            selectTtsEngineMode(TtsEngineMode.NATURAL_AI_OFFLINE)
+        }
+    }
+
+    fun cancelNeuralVoiceDownload() {
+        audioPlayer.cancelNeuralVoiceDownload()
+    }
+
+    fun deleteNeuralVoicePack() {
+        audioPlayer.deleteNeuralVoicePack()
+        selectTtsEngineMode(TtsEngineMode.STANDARD_SYSTEM)
     }
 
     fun updateDictationIgnorePunctuation(ignore: Boolean) {

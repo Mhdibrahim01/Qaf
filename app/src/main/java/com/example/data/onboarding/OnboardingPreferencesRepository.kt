@@ -41,7 +41,8 @@ data class OnboardingPreferencesState(
     val isDeveloperModeEnabled: Boolean = false,
     val preferredAccentUk: Boolean = false,
     val autoPlayPronunciation: Boolean = false,
-    val ttsSpeechRate: Float = 0.85f
+    val ttsSpeechRate: Float = 0.85f,
+    val ttsEngineMode: String = "system"
 ) {
     /**
      * Returns the 1-indexed step (1..5) that should currently be shown when onboarding is active.
@@ -83,6 +84,7 @@ class OnboardingPreferencesRepository(
         val KEY_PREFERRED_ACCENT_UK = booleanPreferencesKey("preferred_accent_uk")
         val KEY_AUTO_PLAY_PRONUNCIATION = booleanPreferencesKey("auto_play_pronunciation")
         val KEY_TTS_SPEECH_RATE = floatPreferencesKey("tts_speech_rate")
+        val KEY_TTS_ENGINE_MODE = stringPreferencesKey("tts_engine_mode")
 
         /**
          * Kept false until the daily reminder WorkManager notification feature is enabled.
@@ -113,7 +115,8 @@ class OnboardingPreferencesRepository(
             isDeveloperModeEnabled = prefs[KEY_DEVELOPER_MODE_ENABLED] ?: false,
             preferredAccentUk = prefs[KEY_PREFERRED_ACCENT_UK] ?: false,
             autoPlayPronunciation = prefs[KEY_AUTO_PLAY_PRONUNCIATION] ?: false,
-            ttsSpeechRate = prefs[KEY_TTS_SPEECH_RATE] ?: 0.85f
+            ttsSpeechRate = prefs[KEY_TTS_SPEECH_RATE] ?: 0.85f,
+            ttsEngineMode = prefs[KEY_TTS_ENGINE_MODE] ?: "system"
         )
     }
 
@@ -260,6 +263,12 @@ class OnboardingPreferencesRepository(
     suspend fun setTtsSpeechRate(rate: Float) {
         dataStore.edit { prefs ->
             prefs[KEY_TTS_SPEECH_RATE] = rate.coerceIn(0.5f, 1.5f)
+        }
+    }
+
+    suspend fun setTtsEngineMode(modeId: String) {
+        dataStore.edit { prefs ->
+            prefs[KEY_TTS_ENGINE_MODE] = modeId.trim().lowercase()
         }
     }
 
