@@ -207,12 +207,6 @@ interface WordBooksDao {
     @Query("SELECT COUNT(*) FROM entries")
     fun observeTotalEntryCount(): Flow<Int>
 
-    @Query("SELECT COUNT(DISTINCT deck || ':' || LOWER(TRIM(text))) FROM entries")
-    suspend fun getTotalUniqueWordCount(): Int
-
-    @Query("SELECT COUNT(DISTINCT deck || ':' || LOWER(TRIM(text))) FROM entries")
-    fun observeTotalUniqueWordCount(): Flow<Int>
-
     @Query("SELECT COUNT(*) FROM entries WHERE TRIM(arabic) = ''")
     fun observeEmptyArabicCount(): Flow<Int>
 
@@ -477,9 +471,6 @@ interface WordBooksDao {
     @Query("SELECT COUNT(DISTINCT LOWER(text)) FROM entries WHERE deck = :deckId")
     suspend fun getUniqueWordCountForDeck(deckId: String): Int
 
-    @Query("SELECT COUNT(DISTINCT LOWER(TRIM(text))) FROM entries WHERE deck = :deckId AND (level = :level OR effective_level = :level)")
-    suspend fun getUniqueWordCountForDeckByLevel(deckId: String, level: String): Int
-
     @Query("SELECT * FROM decks ORDER BY display_order ASC")
     fun observeDecks(): Flow<List<DeckEntity>>
 
@@ -488,30 +479,10 @@ interface WordBooksDao {
 
     @Query(
         """
-        SELECT
-            e.id AS id,
-            e.type AS type,
-            e.deck AS deck,
-            e.text AS text,
-            GROUP_CONCAT(DISTINCT e.pos) AS pos,
-            MIN(e.level) AS level,
-            e.definition_en AS definition_en,
-            e.note_en AS note_en,
-            e.examples_en AS examples_en,
-            e.examples_ar AS examples_ar,
-            e.definition_url AS definition_url,
-            e.audio_url AS audio_url,
-            e.arabic AS arabic,
-            e.arabic_source AS arabic_source,
-            e.ipa AS ipa,
-            e.syllables AS syllables,
-            e.extra_examples_json AS extra_examples_json,
-            e.data_version AS data_version,
-            MIN(COALESCE(e.effective_level, e.level)) AS effective_level
-        FROM entries e
+        SELECT e.* FROM entries e
         WHERE (:deckId = '' OR e.deck = :deckId)
           AND (:typeFilter = '' OR e.type = :typeFilter)
-          AND (:levelFilter = '' OR e.level = :levelFilter OR e.effective_level = :levelFilter)
+          AND (:levelFilter = '' OR e.level = :levelFilter)
           AND (
               :posFilter = ''
               OR LOWER(e.pos) = LOWER(:posFilter)
@@ -527,28 +498,21 @@ interface WordBooksDao {
               OR e.arabic LIKE '%' || :searchQuery || '%'
               OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
           )
-        GROUP BY e.deck, LOWER(TRIM(e.text))
         ORDER BY
-          CASE WHEN :sortOrder = 'AZ' THEN LOWER(TRIM(e.text)) END ASC,
-          CASE WHEN :sortOrder = 'ZA' THEN LOWER(TRIM(e.text)) END DESC,
+          CASE WHEN :sortOrder = 'AZ' THEN LOWER(e.text) END ASC,
+          CASE WHEN :sortOrder = 'ZA' THEN LOWER(e.text) END DESC,
           CASE WHEN :sortOrder = 'LEVEL' THEN
-              CASE MIN(CASE UPPER(COALESCE(e.effective_level, e.level))
+              CASE e.level
                   WHEN 'A1' THEN 1
                   WHEN 'A2' THEN 2
                   WHEN 'B1' THEN 3
                   WHEN 'B2' THEN 4
                   WHEN 'C1' THEN 5
                   ELSE 6
-              END)
-                  WHEN 1 THEN 1
-                  WHEN 2 THEN 2
-                  WHEN 3 THEN 3
-                  WHEN 4 THEN 4
-                  WHEN 5 THEN 5
-                  ELSE 6
               END
           END ASC,
-          LOWER(TRIM(e.text)) ASC
+          LOWER(e.text) ASC,
+          e.pos ASC
         """
     )
     fun getPagedEntries(
@@ -562,32 +526,12 @@ interface WordBooksDao {
 
     @Query(
         """
-        SELECT
-            e.id AS id,
-            e.type AS type,
-            e.deck AS deck,
-            e.text AS text,
-            GROUP_CONCAT(DISTINCT e.pos) AS pos,
-            MIN(e.level) AS level,
-            e.definition_en AS definition_en,
-            e.note_en AS note_en,
-            e.examples_en AS examples_en,
-            e.examples_ar AS examples_ar,
-            e.definition_url AS definition_url,
-            e.audio_url AS audio_url,
-            e.arabic AS arabic,
-            e.arabic_source AS arabic_source,
-            e.ipa AS ipa,
-            e.syllables AS syllables,
-            e.extra_examples_json AS extra_examples_json,
-            e.data_version AS data_version,
-            MIN(COALESCE(e.effective_level, e.level)) AS effective_level
-        FROM entries e
+        SELECT e.* FROM entries e
         INNER JOIN word_progress wp
-            ON wp.deck = e.deck AND wp.text = LOWER(TRIM(e.text)) AND wp.is_favorite = 1
+            ON wp.deck = e.deck AND wp.text = LOWER(e.text) AND wp.is_favorite = 1
         WHERE (:deckId = '' OR e.deck = :deckId)
           AND (:typeFilter = '' OR e.type = :typeFilter)
-          AND (:levelFilter = '' OR e.level = :levelFilter OR e.effective_level = :levelFilter)
+          AND (:levelFilter = '' OR e.level = :levelFilter)
           AND (
               :posFilter = ''
               OR LOWER(e.pos) = LOWER(:posFilter)
@@ -603,28 +547,21 @@ interface WordBooksDao {
               OR e.arabic LIKE '%' || :searchQuery || '%'
               OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
           )
-        GROUP BY e.deck, LOWER(TRIM(e.text))
         ORDER BY
-          CASE WHEN :sortOrder = 'AZ' THEN LOWER(TRIM(e.text)) END ASC,
-          CASE WHEN :sortOrder = 'ZA' THEN LOWER(TRIM(e.text)) END DESC,
+          CASE WHEN :sortOrder = 'AZ' THEN LOWER(e.text) END ASC,
+          CASE WHEN :sortOrder = 'ZA' THEN LOWER(e.text) END DESC,
           CASE WHEN :sortOrder = 'LEVEL' THEN
-              CASE MIN(CASE UPPER(COALESCE(e.effective_level, e.level))
+              CASE e.level
                   WHEN 'A1' THEN 1
                   WHEN 'A2' THEN 2
                   WHEN 'B1' THEN 3
                   WHEN 'B2' THEN 4
                   WHEN 'C1' THEN 5
                   ELSE 6
-              END)
-                  WHEN 1 THEN 1
-                  WHEN 2 THEN 2
-                  WHEN 3 THEN 3
-                  WHEN 4 THEN 4
-                  WHEN 5 THEN 5
-                  ELSE 6
               END
           END ASC,
-          LOWER(TRIM(e.text)) ASC
+          LOWER(e.text) ASC,
+          e.pos ASC
         """
     )
     fun getPagedFavoriteEntries(
@@ -638,33 +575,13 @@ interface WordBooksDao {
 
     @Query(
         """
-        SELECT
-            e.id AS id,
-            e.type AS type,
-            e.deck AS deck,
-            e.text AS text,
-            GROUP_CONCAT(DISTINCT e.pos) AS pos,
-            MIN(e.level) AS level,
-            e.definition_en AS definition_en,
-            e.note_en AS note_en,
-            e.examples_en AS examples_en,
-            e.examples_ar AS examples_ar,
-            e.definition_url AS definition_url,
-            e.audio_url AS audio_url,
-            e.arabic AS arabic,
-            e.arabic_source AS arabic_source,
-            e.ipa AS ipa,
-            e.syllables AS syllables,
-            e.extra_examples_json AS extra_examples_json,
-            e.data_version AS data_version,
-            MIN(COALESCE(e.effective_level, e.level)) AS effective_level
-        FROM entries e
+        SELECT e.* FROM entries e
         LEFT JOIN word_progress wp
-            ON wp.deck = e.deck AND wp.text = LOWER(TRIM(e.text))
+            ON wp.deck = e.deck AND wp.text = LOWER(e.text)
         WHERE (:deckId = '' OR e.deck = :deckId)
           AND COALESCE(wp.is_mastered, 0) = 0
           AND (:typeFilter = '' OR e.type = :typeFilter)
-          AND (:levelFilter = '' OR e.level = :levelFilter OR e.effective_level = :levelFilter)
+          AND (:levelFilter = '' OR e.level = :levelFilter)
           AND (
               :posFilter = ''
               OR LOWER(e.pos) = LOWER(:posFilter)
@@ -680,28 +597,21 @@ interface WordBooksDao {
               OR e.arabic LIKE '%' || :searchQuery || '%'
               OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
           )
-        GROUP BY e.deck, LOWER(TRIM(e.text))
         ORDER BY
-          CASE WHEN :sortOrder = 'AZ' THEN LOWER(TRIM(e.text)) END ASC,
-          CASE WHEN :sortOrder = 'ZA' THEN LOWER(TRIM(e.text)) END DESC,
+          CASE WHEN :sortOrder = 'AZ' THEN LOWER(e.text) END ASC,
+          CASE WHEN :sortOrder = 'ZA' THEN LOWER(e.text) END DESC,
           CASE WHEN :sortOrder = 'LEVEL' THEN
-              CASE MIN(CASE UPPER(COALESCE(e.effective_level, e.level))
+              CASE e.level
                   WHEN 'A1' THEN 1
                   WHEN 'A2' THEN 2
                   WHEN 'B1' THEN 3
                   WHEN 'B2' THEN 4
                   WHEN 'C1' THEN 5
                   ELSE 6
-              END)
-                  WHEN 1 THEN 1
-                  WHEN 2 THEN 2
-                  WHEN 3 THEN 3
-                  WHEN 4 THEN 4
-                  WHEN 5 THEN 5
-                  ELSE 6
               END
           END ASC,
-          LOWER(TRIM(e.text)) ASC
+          LOWER(e.text) ASC,
+          e.pos ASC
         """
     )
     fun getPagedLearningEntries(
@@ -715,32 +625,12 @@ interface WordBooksDao {
 
     @Query(
         """
-        SELECT
-            e.id AS id,
-            e.type AS type,
-            e.deck AS deck,
-            e.text AS text,
-            GROUP_CONCAT(DISTINCT e.pos) AS pos,
-            MIN(e.level) AS level,
-            e.definition_en AS definition_en,
-            e.note_en AS note_en,
-            e.examples_en AS examples_en,
-            e.examples_ar AS examples_ar,
-            e.definition_url AS definition_url,
-            e.audio_url AS audio_url,
-            e.arabic AS arabic,
-            e.arabic_source AS arabic_source,
-            e.ipa AS ipa,
-            e.syllables AS syllables,
-            e.extra_examples_json AS extra_examples_json,
-            e.data_version AS data_version,
-            MIN(COALESCE(e.effective_level, e.level)) AS effective_level
-        FROM entries e
+        SELECT e.* FROM entries e
         INNER JOIN word_progress wp
-            ON wp.deck = e.deck AND wp.text = LOWER(TRIM(e.text)) AND wp.is_mastered = 1
+            ON wp.deck = e.deck AND wp.text = LOWER(e.text) AND wp.is_mastered = 1
         WHERE (:deckId = '' OR e.deck = :deckId)
           AND (:typeFilter = '' OR e.type = :typeFilter)
-          AND (:levelFilter = '' OR e.level = :levelFilter OR e.effective_level = :levelFilter)
+          AND (:levelFilter = '' OR e.level = :levelFilter)
           AND (
               :posFilter = ''
               OR LOWER(e.pos) = LOWER(:posFilter)
@@ -756,28 +646,21 @@ interface WordBooksDao {
               OR e.arabic LIKE '%' || :searchQuery || '%'
               OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
           )
-        GROUP BY e.deck, LOWER(TRIM(e.text))
         ORDER BY
-          CASE WHEN :sortOrder = 'AZ' THEN LOWER(TRIM(e.text)) END ASC,
-          CASE WHEN :sortOrder = 'ZA' THEN LOWER(TRIM(e.text)) END DESC,
+          CASE WHEN :sortOrder = 'AZ' THEN LOWER(e.text) END ASC,
+          CASE WHEN :sortOrder = 'ZA' THEN LOWER(e.text) END DESC,
           CASE WHEN :sortOrder = 'LEVEL' THEN
-              CASE MIN(CASE UPPER(COALESCE(e.effective_level, e.level))
+              CASE e.level
                   WHEN 'A1' THEN 1
                   WHEN 'A2' THEN 2
                   WHEN 'B1' THEN 3
                   WHEN 'B2' THEN 4
                   WHEN 'C1' THEN 5
                   ELSE 6
-              END)
-                  WHEN 1 THEN 1
-                  WHEN 2 THEN 2
-                  WHEN 3 THEN 3
-                  WHEN 4 THEN 4
-                  WHEN 5 THEN 5
-                  ELSE 6
               END
           END ASC,
-          LOWER(TRIM(e.text)) ASC
+          LOWER(e.text) ASC,
+          e.pos ASC
         """
     )
     fun getPagedMasteredEntries(
@@ -791,19 +674,19 @@ interface WordBooksDao {
 
     @Query(
         """
-        SELECT COUNT(DISTINCT deck || ':' || LOWER(TRIM(text))) FROM entries
+        SELECT COUNT(*) FROM entries
         WHERE (:deckId IS NULL OR :deckId = '' OR deck = :deckId)
-          AND LOWER(TRIM(text)) < :letterPrefix
+          AND LOWER(text) < :letterPrefix
         """
     )
     suspend fun getEntryIndexBeforeLetter(deckId: String?, letterPrefix: String): Int
 
     @Query(
         """
-        SELECT COUNT(DISTINCT e.deck || ':' || LOWER(TRIM(e.text))) FROM entries e
+        SELECT COUNT(*) FROM entries e
         WHERE (:deckId = '' OR e.deck = :deckId)
           AND (:typeFilter = '' OR e.type = :typeFilter)
-          AND (:levelFilter = '' OR e.level = :levelFilter OR e.effective_level = :levelFilter)
+          AND (:levelFilter = '' OR e.level = :levelFilter)
           AND (
               :posFilter = ''
               OR LOWER(e.pos) = LOWER(:posFilter)
@@ -819,7 +702,7 @@ interface WordBooksDao {
               OR e.arabic LIKE '%' || :searchQuery || '%'
               OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
           )
-          AND LOWER(TRIM(e.text)) < :letterPrefix
+          AND LOWER(e.text) < :letterPrefix
         """
     )
     suspend fun getFilteredEntryIndexBeforeLetter(
@@ -833,12 +716,12 @@ interface WordBooksDao {
 
     @Query(
         """
-        SELECT COUNT(DISTINCT e.deck || ':' || LOWER(TRIM(e.text))) FROM entries e
+        SELECT COUNT(*) FROM entries e
         INNER JOIN word_progress wp
-            ON wp.deck = e.deck AND wp.text = LOWER(TRIM(e.text)) AND wp.is_favorite = 1
+            ON wp.deck = e.deck AND wp.text = LOWER(e.text) AND wp.is_favorite = 1
         WHERE (:deckId = '' OR e.deck = :deckId)
           AND (:typeFilter = '' OR e.type = :typeFilter)
-          AND (:levelFilter = '' OR e.level = :levelFilter OR e.effective_level = :levelFilter)
+          AND (:levelFilter = '' OR e.level = :levelFilter)
           AND (
               :posFilter = ''
               OR LOWER(e.pos) = LOWER(:posFilter)
@@ -854,7 +737,7 @@ interface WordBooksDao {
               OR e.arabic LIKE '%' || :searchQuery || '%'
               OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
           )
-          AND LOWER(TRIM(e.text)) < :letterPrefix
+          AND LOWER(e.text) < :letterPrefix
         """
     )
     suspend fun getFavoriteFilteredEntryIndexBeforeLetter(
@@ -868,12 +751,12 @@ interface WordBooksDao {
 
     @Query(
         """
-        SELECT COUNT(DISTINCT e.deck || ':' || LOWER(TRIM(e.text))) FROM entries e
+        SELECT COUNT(*) FROM entries e
         INNER JOIN word_progress wp
-            ON wp.deck = e.deck AND wp.text = LOWER(TRIM(e.text)) AND wp.is_mastered = 1
+            ON wp.deck = e.deck AND wp.text = LOWER(e.text) AND wp.is_mastered = 1
         WHERE (:deckId = '' OR e.deck = :deckId)
           AND (:typeFilter = '' OR e.type = :typeFilter)
-          AND (:levelFilter = '' OR e.level = :levelFilter OR e.effective_level = :levelFilter)
+          AND (:levelFilter = '' OR e.level = :levelFilter)
           AND (
               :posFilter = ''
               OR LOWER(e.pos) = LOWER(:posFilter)
@@ -889,7 +772,7 @@ interface WordBooksDao {
               OR e.arabic LIKE '%' || :searchQuery || '%'
               OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
           )
-          AND LOWER(TRIM(e.text)) < :letterPrefix
+          AND LOWER(e.text) < :letterPrefix
         """
     )
     suspend fun getMasteredFilteredEntryIndexBeforeLetter(
@@ -903,13 +786,13 @@ interface WordBooksDao {
 
     @Query(
         """
-        SELECT COUNT(DISTINCT e.deck || ':' || LOWER(TRIM(e.text))) FROM entries e
+        SELECT COUNT(*) FROM entries e
         LEFT JOIN word_progress wp
-            ON wp.deck = e.deck AND wp.text = LOWER(TRIM(e.text))
+            ON wp.deck = e.deck AND wp.text = LOWER(e.text)
         WHERE (:deckId = '' OR e.deck = :deckId)
           AND COALESCE(wp.is_mastered, 0) = 0
           AND (:typeFilter = '' OR e.type = :typeFilter)
-          AND (:levelFilter = '' OR e.level = :levelFilter OR e.effective_level = :levelFilter)
+          AND (:levelFilter = '' OR e.level = :levelFilter)
           AND (
               :posFilter = ''
               OR LOWER(e.pos) = LOWER(:posFilter)
@@ -925,7 +808,7 @@ interface WordBooksDao {
               OR e.arabic LIKE '%' || :searchQuery || '%'
               OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
           )
-          AND LOWER(TRIM(e.text)) < :letterPrefix
+          AND LOWER(e.text) < :letterPrefix
         """
     )
     suspend fun getLearningFilteredEntryIndexBeforeLetter(

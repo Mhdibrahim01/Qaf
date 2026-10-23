@@ -853,9 +853,8 @@ fun NumberedBookCard(
     modifier: Modifier = Modifier
 ) {
     val isSavedBook = deck.id == DataImportRepository.SAVED_WORDS_DECK_ID
-    val totalWords = (deck.uniqueWordCount.takeIf { it > 0 } ?: deck.rowCount).coerceAtLeast(0)
-    val progressPercent = if (totalWords > 0) {
-        ((deck.masteredCount.toFloat() / totalWords.toFloat()) * 100).toInt()
+    val progressPercent = if (deck.rowCount > 0) {
+        ((deck.masteredCount.toFloat() / deck.rowCount.toFloat()) * 100).toInt()
     } else 0
     val actionText = if (deck.masteredCount > 0 || deck.id == "oxford5000" || isSavedBook) {
         "Browse Words"
@@ -920,9 +919,9 @@ fun NumberedBookCard(
                     )
                 }
 
-                val metaText = remember(totalWords, deck.category, deck.name, progressPercent) {
+                val metaText = remember(deck.rowCount, deck.category, deck.name, progressPercent) {
                     buildString {
-                        append("${formatNumber(totalWords)} words")
+                        append("${formatNumber(deck.rowCount)} words")
                         if (deck.category.isNotBlank() && deck.category != deck.name) {
                             append(" • ${deck.category}")
                         }
@@ -1162,7 +1161,7 @@ private fun PagedDeckWordListScreen(
                                 overflow = TextOverflow.Ellipsis
                             )
 
-                            val totalCount = if (deck != null) (deck.uniqueWordCount.takeIf { it > 0 } ?: deck.rowCount) else totalEntriesCount
+                            val totalCount = if (deck != null) deck.rowCount else totalEntriesCount
                             val studiedWords = remember(progressMap, currentDeckId, deck?.masteredCount, masteredCount) {
                                 progressMap.values.count { 
                                     (currentDeckId.isEmpty() || it.deck == currentDeckId) && (it.isMastered || it.repetitions > 0)
@@ -1185,7 +1184,7 @@ private fun PagedDeckWordListScreen(
                                 modifier = Modifier.padding(top = 2.dp)
                             ) {
                                 Text(
-                                    text = "${formatNumber(totalCount)} words",
+                                    text = "${formatNumber(totalCount)} entries",
                                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                                     color = TextSecondary
                                 )
@@ -1562,7 +1561,6 @@ private fun PagedDeckWordListScreen(
                             color = GoldAccentDim,
                             border = BorderStroke(1.dp, GoldAccentBorder)
                         ) {
-                            val checkpointTotalCount = (deck?.uniqueWordCount?.takeIf { it > 0 } ?: deck?.rowCount) ?: totalEntriesCount
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -1590,9 +1588,10 @@ private fun PagedDeckWordListScreen(
                                             )
                                         )
                                         val lastIndex = (currentStudyState?.lastCardIndex ?: 0) + 1
-                                        val percent = if (checkpointTotalCount > 0) (lastIndex * 100 / checkpointTotalCount).coerceIn(0, 100) else 0
+                                        val totalCount = deck?.rowCount ?: totalEntriesCount
+                                        val percent = if (totalCount > 0) (lastIndex * 100 / totalCount).coerceIn(0, 100) else 0
                                         Text(
-                                            text = "\"$checkpointWord\" • Card #$lastIndex of ${formatNumber(checkpointTotalCount)} ($percent%)",
+                                            text = "\"$checkpointWord\" • Card #$lastIndex of ${formatNumber(totalCount)} ($percent%)",
                                             style = MaterialTheme.typography.bodyMedium.copy(
                                                 fontWeight = FontWeight.Bold,
                                                 color = TextPrimary
@@ -1614,11 +1613,11 @@ private fun PagedDeckWordListScreen(
                                                     break
                                                 }
                                             }
-                                            val targetIdx = foundIdx ?: currentStudyState?.lastCardIndex?.takeIf { it in 0 until checkpointTotalCount }
+                                            val targetIdx = foundIdx ?: currentStudyState?.lastCardIndex?.takeIf { it in 0 until (deck?.rowCount ?: totalEntriesCount) }
                                             if (targetIdx != null) {
-                                                val pageCount = pagedEntries.itemCount
-                                                if (pageCount > 0) {
-                                                    val clampedIdx = targetIdx.coerceIn(0, pageCount - 1)
+                                                val totalCount = pagedEntries.itemCount
+                                                if (totalCount > 0) {
+                                                    val clampedIdx = targetIdx.coerceIn(0, totalCount - 1)
                                                     val headerItemsCount = 1
                                                     pagedEntries[clampedIdx]
                                                     listState.scrollToItem((clampedIdx + headerItemsCount).coerceAtLeast(0))
@@ -1686,13 +1685,12 @@ private fun PagedDeckWordListScreen(
                     }
                 }
                 isEmpty -> {
-                    val isDeckEmpty = ((deck?.uniqueWordCount?.takeIf { it > 0 } ?: deck?.rowCount) ?: 0) == 0
                     val emptyTitle = when {
                         filterState.deckId == DataImportRepository.SAVED_WORDS_DECK_ID || activeStatus == "Favorites" ->
                             "No Favorite Words Yet"
                         activeStatus == "Mastered" ->
                             "No Mastered Words Yet"
-                        isDeckEmpty ->
+                        (deck?.rowCount ?: 0) == 0 ->
                             "Empty Deck (${deck?.name ?: filterState.deckId})"
                         else ->
                             "No Matching Words"
@@ -1702,8 +1700,8 @@ private fun PagedDeckWordListScreen(
                             "Tap the heart icon on any word to save it to your favorites."
                         activeStatus == "Mastered" ->
                             "Study cards or mark words as mastered to see them here."
-                        isDeckEmpty ->
-                            "0 words imported for ${deck?.id}."
+                        (deck?.rowCount ?: 0) == 0 ->
+                            "0 rows imported for ${deck?.id}."
                         else ->
                             "Try adjusting your search query or clearing the level/status filters."
                     }
@@ -1712,7 +1710,7 @@ private fun PagedDeckWordListScreen(
                             "لا توجد كلمات مفضلة بعد"
                         activeStatus == "Mastered" ->
                             "لا توجد كلمات متقنة بعد"
-                        isDeckEmpty ->
+                        (deck?.rowCount ?: 0) == 0 ->
                             "الكتاب فارغ"
                         else ->
                             "لا توجد نتائج مطابقة"
@@ -1932,16 +1930,6 @@ private val ROW_SHAPE_FIRST = RoundedCornerShape(topStart = 16.dp, topEnd = 16.d
 private val ROW_SHAPE_LAST = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
 private val ROW_SHAPE_MIDDLE = RoundedCornerShape(0.dp)
 
-fun formatCombinedPos(pos: String): String {
-    val clean = pos.trim()
-    if (clean.isEmpty()) return "noun"
-    val parts = clean.split(',').map { it.trim() }.filter { it.isNotEmpty() }
-    if (parts.size <= 1) {
-        return posFullName(clean).lowercase(Locale.ROOT)
-    }
-    return parts.map { posFullName(it).lowercase(Locale.ROOT) }.distinct().joinToString(", ")
-}
-
 fun parseArabicMeaningGroups(pos: String, arabic: String): List<Pair<String, String>> {
     val cleanArabic = arabic.trim()
     if (cleanArabic.isEmpty()) return emptyList()
@@ -1952,8 +1940,7 @@ fun parseArabicMeaningGroups(pos: String, arabic: String): List<Pair<String, Str
 
     if (rawParts.isEmpty()) return emptyList()
 
-    val firstPos = pos.split(',').firstOrNull()?.trim().orEmpty().ifBlank { pos }
-    val primaryPos = posShortLabel(firstPos)
+    val primaryPos = posShortLabel(pos)
 
     if (rawParts.size == 1) {
         return listOf(primaryPos to rawParts[0])
@@ -2091,7 +2078,7 @@ fun WordBookEntryRow(
     }
 
     val posLower = remember(entry.pos) {
-        formatCombinedPos(entry.pos)
+        posFullName(entry.pos).lowercase()
     }
     val displayLevel = remember(entry.level) { entry.level.uppercase() }
     val ipaAndPos = remember(entry.ipa, posLower) {
