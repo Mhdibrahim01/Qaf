@@ -6,7 +6,7 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Diagonal Dark Obsidian Navy Gradient (#0B0F17 to #141D2E) -->
+    <!-- Diagonal Deep Space Navy Background (#07090E to #0F172A) -->
     <path android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
             <gradient
@@ -16,34 +16,49 @@
                 android:endY="108"
                 android:type="linear">
                 <item
-                    android:color="#FF0B0F17"
+                    android:color="#FF07090E"
                     android:offset="0.0" />
                 <item
-                    android:color="#FF111827"
-                    android:offset="0.55" />
+                    android:color="#FF0B1120"
+                    android:offset="0.5" />
                 <item
-                    android:color="#FF162033"
+                    android:color="#FF0F172A"
                     android:offset="1.0" />
             </gradient>
         </aapt:attr>
     </path>
 
-    <!-- Subtle Warm Gold Radial Glow in Center -->
+    <!-- Subtle Emerald Glow at Bottom Left (#10B981) -->
     <path android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:centerX="54"
-                android:centerY="52"
-                android:gradientRadius="46"
+                android:centerX="20"
+                android:centerY="90"
+                android:gradientRadius="55"
                 android:type="radial">
                 <item
-                    android:color="#2EF59E0B"
+                    android:color="#2410B981"
                     android:offset="0.0" />
                 <item
-                    android:color="#12F59E0B"
-                    android:offset="0.55" />
+                    android:color="#0010B981"
+                    android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Subtle Warm Gold Glow at Top Right (#F5C542) -->
+    <path android:pathData="M0,0h108v108h-108z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:centerX="88"
+                android:centerY="20"
+                android:gradientRadius="55"
+                android:type="radial">
                 <item
-                    android:color="#000B0F17"
+                    android:color="#24F5C542"
+                    android:offset="0.0" />
+                <item
+                    android:color="#00F5C542"
                     android:offset="1.0" />
             </gradient>
         </aapt:attr>
