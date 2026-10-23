@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -479,11 +480,10 @@ private fun OnboardingWelcomeStep(
                             .testTag("onboarding_qaf_logo"),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_launcher_qaf),
                             contentDescription = "Qaf Logo ق",
-                            tint = androidx.compose.ui.graphics.Color.Unspecified,
-                            modifier = Modifier.size(80.dp)
+                            modifier = Modifier.size(72.dp)
                         )
                     }
 
