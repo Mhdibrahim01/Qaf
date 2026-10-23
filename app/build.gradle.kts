@@ -1,4 +1,5 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import java.net.URL
 
 plugins {
   alias(libs.plugins.android.application)
@@ -7,6 +8,18 @@ plugins {
   alias(libs.plugins.secrets)
   alias(libs.plugins.google.services)
   id("org.jetbrains.kotlin.plugin.serialization") version "2.2.10"
+}
+
+val sherpaOnnxAarFile = file("$projectDir/libs/sherpa-onnx-static-link-onnxruntime-2.0.0.aar")
+if (!sherpaOnnxAarFile.exists()) {
+  sherpaOnnxAarFile.parentFile.mkdirs()
+  val sherpaUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v2.0.0/sherpa-onnx-static-link-onnxruntime-2.0.0.aar"
+  logger.lifecycle("Downloading Sherpa-ONNX Android AAR from $sherpaUrl ...")
+  URL(sherpaUrl).openStream().use { input ->
+    sherpaOnnxAarFile.outputStream().use { output ->
+      input.copyTo(output)
+    }
+  }
 }
 
 android {
@@ -94,6 +107,8 @@ ksp {
 // Some unused dependencies are commented out below instead of being removed.
 // This makes it easy to add them back in the future if needed.
 dependencies {
+  implementation(fileTree("libs") { include("*.aar") })
+  implementation("org.apache.commons:commons-compress:1.26.2")
   implementation(platform(libs.androidx.compose.bom))
   // implementation(platform(libs.firebase.bom))
   // implementation(libs.accompanist.permissions)

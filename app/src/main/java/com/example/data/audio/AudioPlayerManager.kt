@@ -36,7 +36,10 @@ import java.util.Locale
  *    Google Speech Services (`com.google.android.tts`) and highest-quality neural voices (`QUALITY_VERY_HIGH`),
  *    with automatic fallback to the device's default TTS engine if Google TTS is unavailable.
  */
-class AudioPlayerManager(context: Context) {
+class AudioPlayerManager(
+    context: Context,
+    val voiceModelManager: PiperVoiceModelManager = PiperVoiceModelManager(context.applicationContext)
+) {
 
     companion object {
         const val GOOGLE_TTS_PACKAGE = "com.google.android.tts"
@@ -97,6 +100,8 @@ class AudioPlayerManager(context: Context) {
 
     private var exoPlayer: ExoPlayer? = null
     private var tts: TextToSpeech? = null
+    private val sherpaEngine = SherpaOfflineTtsEngine(voiceModelManager)
+    private var ttsEngineMode: TtsEngineMode = TtsEngineMode.STANDARD_SYSTEM
     private var isTtsReady = false
     private var isTtsInitializing = false
     private var pendingTtsText: String? = null
@@ -105,6 +110,40 @@ class AudioPlayerManager(context: Context) {
     private var defaultSpeechRate: Float = DEFAULT_NORMAL_RATE
     private var preferUkAccent: Boolean = false
     private var lastExoWasSlow: Boolean = false
+
+    val neuralVoicePackState: StateFlow<NeuralVoicePackState> = voiceModelManager.state
+
+    fun setTtsEngineMode(mode: TtsEngineMode) {
+        ttsEngineMode = mode
+        if (mode == TtsEngineMode.STANDARD_SYSTEM) {
+            sherpaEngine.stop()
+        }
+    }
+
+    fun getTtsEngineMode(): TtsEngineMode = ttsEngineMode
+
+    /**
+     * Returns true when the offline neural AI voice engine is both selected and installed on disk.
+     */
+    fun isNeuralAiVoiceActive(): Boolean =
+        ttsEngineMode == TtsEngineMode.NATURAL_AI_OFFLINE && voiceModelManager.isModelInstalled()
+
+    fun downloadNeuralVoicePack(onCompleted: (() -> Unit)? = null) {
+        voiceModelManager.startDownload(onDownloadCompleted = onCompleted)
+    }
+
+    fun cancelNeuralVoiceDownload() {
+        voiceModelManager.cancelDownload()
+    }
+
+    fun deleteNeuralVoicePack() {
+        voiceModelManager.deleteVoicePack(
+            onBeforeDelete = {
+                sherpaEngine.releaseEngine()
+            }
+        )
+        ttsEngineMode = TtsEngineMode.STANDARD_SYSTEM
+    }
 
     fun setDefaultSpeechRate(rate: Float) {
         defaultSpeechRate = rate.coerceIn(0.5f, 1.5f)
@@ -407,6 +446,9 @@ class AudioPlayerManager(context: Context) {
         try {
             tts?.stop()
         } catch (_: Exception) {}
+        try {
+            sherpaEngine.stop()
+        } catch (_: Exception) {}
         _currentlyPlayingWord.value = null
         _isPlayingSlow.value = false
     }
@@ -417,6 +459,31 @@ class AudioPlayerManager(context: Context) {
         locale: Locale = Locale.US
     ) {
         val rate = (speechRateOverride ?: defaultSpeechRate).coerceIn(0.5f, 1.5f)
+        if (isNeuralAiVoiceActive()) {
+            try {
+                tts?.stop()
+            } catch (_: Exception) {}
+            sherpaEngine.speak(
+                text = text,
+                speechRate = rate,
+                onComplete = {
+                    _currentlyPlayingWord.value = null
+                    _isPlayingSlow.value = false
+                },
+                onError = {
+                    speakWithAndroidSystemTts(text, rate, locale)
+                }
+            )
+            return
+        }
+        speakWithAndroidSystemTts(text, rate, locale)
+    }
+
+    private fun speakWithAndroidSystemTts(
+        text: String,
+        rate: Float,
+        locale: Locale
+    ) {
         if (isTtsReady && tts != null) {
             applyBestVoiceAndLocale(locale)
             tts?.setSpeechRate(rate)
@@ -446,6 +513,10 @@ class AudioPlayerManager(context: Context) {
         } catch (_: Exception) {
         }
         tts = null
+        try {
+            sherpaEngine.releaseEngine()
+        } catch (_: Exception) {
+        }
         isTtsReady = false
         isTtsInitializing = false
         pendingTtsText = null

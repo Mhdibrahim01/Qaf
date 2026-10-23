@@ -17,13 +17,22 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.ai.TranslationEngineMode
 import com.example.data.audio.AudioPlayerManager
+import com.example.data.audio.NeuralVoicePackState
+import com.example.data.audio.PiperVoiceModelManager
+import com.example.data.audio.TtsEngineMode
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.onboarding.OnboardingPreferencesRepository
 import com.example.ui.components.SlowAudioTurtleButton
 import com.example.ui.screens.MoreScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.theme.WordBooksTheme
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
 import java.util.Locale
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -39,7 +48,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -151,13 +159,13 @@ class SettingsAndDeveloperModeTest {
 
         // 1. Verify Audio & Pronunciation controls work
         composeTestRule.onNodeWithTag("settings_section_audio").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("btn_accent_uk").performClick()
+        composeTestRule.onNodeWithTag("btn_accent_uk").performScrollTo().performClick()
         assertTrue(isUkAccent)
 
-        composeTestRule.onNodeWithTag("btn_speed_slow").performClick()
+        composeTestRule.onNodeWithTag("btn_speed_slow").performScrollTo().performClick()
         assertEquals(0.60f, speechRate, 0.01f)
 
-        composeTestRule.onNodeWithTag("btn_test_voice").performClick()
+        composeTestRule.onNodeWithTag("btn_test_voice").performScrollTo().performClick()
         assertTrue(!voiceTestedText.isNullOrBlank())
 
         // 2. Verify Developer Options card is initially hidden
@@ -286,5 +294,136 @@ class SettingsAndDeveloperModeTest {
         composeTestRule.onNodeWithText("0.6x").assertIsDisplayed()
         composeTestRule.onNodeWithTag("test_turtle_btn").performClick()
         assertTrue(turtleClicked)
+    }
+
+    @Test
+    fun piperVoiceModelManager_extractsTarBz2AndDetectsAndDeletesVoicePack() {
+        val manager = PiperVoiceModelManager(context)
+        manager.deleteVoicePack()
+        assertFalse(manager.isModelInstalled())
+        assertTrue(manager.state.value is NeuralVoicePackState.NotDownloaded)
+
+        // Create a synthetic .tar.bz2 archive containing the required Piper VITS model files
+        val archiveFile = File(context.cacheDir, "test_piper_model.tar.bz2")
+        FileOutputStream(archiveFile).use { fos ->
+            BZip2CompressorOutputStream(fos).use { bzos ->
+                TarArchiveOutputStream(bzos).use { tarOut ->
+                    fun addEntry(path: String, bytes: ByteArray) {
+                        val entry = TarArchiveEntry(path)
+                        entry.size = bytes.size.toLong()
+                        tarOut.putArchiveEntry(entry)
+                        tarOut.write(bytes)
+                        tarOut.closeArchiveEntry()
+                    }
+                    addEntry(
+                        "${PiperVoiceModelManager.MODEL_FOLDER_NAME}/${PiperVoiceModelManager.ONNX_FILE_NAME}",
+                        ByteArray(2048) { 0x4F } // > 1000 bytes requirement
+                    )
+                    addEntry(
+                        "${PiperVoiceModelManager.MODEL_FOLDER_NAME}/${PiperVoiceModelManager.TOKENS_FILE_NAME}",
+                        "_ 0\n^ 1\n$ 2\na 3\n".toByteArray()
+                    )
+                    addEntry(
+                        "${PiperVoiceModelManager.MODEL_FOLDER_NAME}/${PiperVoiceModelManager.ESPEAK_DIR_NAME}/phontab",
+                        ByteArray(128) { 0x01 }
+                    )
+                }
+            }
+        }
+
+        val targetRootDir = File(context.filesDir, "tts_models")
+        targetRootDir.mkdirs()
+        manager.extractTarBz2Archive(archiveFile, targetRootDir)
+        archiveFile.delete()
+        manager.refreshInstallationState()
+
+        assertTrue("Piper model should be detected as installed after extraction", manager.isModelInstalled())
+        assertTrue(manager.state.value is NeuralVoicePackState.Downloaded)
+
+        // Verify AudioPlayerManager switches cleanly when installed vs deleted
+        val audioPlayerManager = AudioPlayerManager(context)
+        audioPlayerManager.setTtsEngineMode(TtsEngineMode.NATURAL_AI_OFFLINE)
+        assertTrue(audioPlayerManager.isNeuralAiVoiceActive())
+
+        // Delete pack -> falls back to system TTS
+        manager.deleteVoicePack()
+        assertFalse(manager.isModelInstalled())
+        assertTrue(manager.state.value is NeuralVoicePackState.NotDownloaded)
+        assertFalse(audioPlayerManager.isNeuralAiVoiceActive())
+        audioPlayerManager.release()
+    }
+
+    @Test
+    fun settingsScreen_switchesBetweenSystemAndOfflineNeuralVoiceEngine() = runBlocking {
+        // Test persistence in OnboardingPreferencesRepository first
+        assertEquals("system", onboardingRepo.getSnapshot().ttsEngineMode)
+        onboardingRepo.setTtsEngineMode(TtsEngineMode.NATURAL_AI_OFFLINE.id)
+        assertEquals("natural_ai_offline", onboardingRepo.getSnapshot().ttsEngineMode)
+
+        var currentMode by mutableStateOf(TtsEngineMode.STANDARD_SYSTEM)
+        var packState by mutableStateOf<NeuralVoicePackState>(NeuralVoicePackState.NotDownloaded)
+        var downloadTriggered = false
+        var deleteTriggered = false
+
+        composeTestRule.setContent {
+            WordBooksTheme {
+                SettingsScreen(
+                    preferredAccentUk = false,
+                    ttsSpeechRate = 0.85f,
+                    autoPlayPronunciation = false,
+                    ttsEngineMode = currentMode,
+                    neuralVoicePackState = packState,
+                    studyPlanProfile = StudyPlanProfileEntity(level = "B1"),
+                    totalEntriesCount = 3000,
+                    allowAi = true,
+                    engineMode = TranslationEngineMode.FREE_API_ONLY,
+                    apiKeySource = "Built-in",
+                    isApiKeyConfigured = true,
+                    isDeveloperModeEnabled = false,
+                    onSelectAccentUk = {},
+                    onSelectSpeechRate = {},
+                    onToggleAutoPlayPronunciation = {},
+                    onSelectTtsEngineMode = { currentMode = it },
+                    onDownloadNeuralVoicePack = {
+                        downloadTriggered = true
+                        packState = NeuralVoicePackState.Downloaded(sizeOnDiskBytes = 22_400_000L)
+                    },
+                    onCancelNeuralVoiceDownload = {},
+                    onDeleteNeuralVoicePack = {
+                        deleteTriggered = true
+                        packState = NeuralVoicePackState.NotDownloaded
+                        currentMode = TtsEngineMode.STANDARD_SYSTEM
+                    },
+                    onTestVoicePreview = {},
+                    onTestVoiceSlowPreview = {},
+                    onSavePlanProfile = {},
+                    onNavigateToPlan = {},
+                    onRedoOnboardingSetup = {},
+                    onExportBackupToUri = { _, _ -> },
+                    onImportBackupFromUri = { _, _ -> },
+                    onToggleAllowAi = {},
+                    onSelectEngineMode = {},
+                    onOpenApiKeyDialog = {},
+                    onSetDeveloperMode = {},
+                    onNavigateToLabs = {}
+                )
+            }
+        }
+
+        // Verify voice engine buttons & download CTA exist
+        composeTestRule.onNodeWithTag("btn_voice_engine_system").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("btn_voice_engine_neural").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("btn_download_neural_voice").assertIsDisplayed()
+
+        // Tap Download -> switches to NATURAL_AI_OFFLINE and transitions to Downloaded state
+        composeTestRule.onNodeWithTag("btn_download_neural_voice").performClick()
+        assertTrue(downloadTriggered)
+        assertEquals(TtsEngineMode.NATURAL_AI_OFFLINE, currentMode)
+
+        // Delete button should now be visible
+        composeTestRule.onNodeWithTag("btn_delete_neural_voice").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("btn_delete_neural_voice").performClick()
+        assertTrue(deleteTriggered)
+        assertEquals(TtsEngineMode.STANDARD_SYSTEM, currentMode)
     }
 }
