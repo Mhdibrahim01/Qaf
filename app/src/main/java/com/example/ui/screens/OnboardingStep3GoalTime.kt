@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Schedule
@@ -113,6 +114,15 @@ object OnboardingStep3Defaults {
             subtitleAr = "هندسة البرمجيات واجتماعات الفرق التقنية والمقابلات المهنية",
             defaultDecksLabelEn = "Oxford 5000 + OPAL + IT & Tech Industry",
             icon = Icons.Filled.Code
+        ),
+        OnboardingGoalOption(
+            id = "medical",
+            titleEn = "Medical & Healthcare",
+            titleAr = "الطب والرعاية الصحية",
+            subtitleEn = "Medical terminology, clinical communication & healthcare",
+            subtitleAr = "مصطلحات الطب والمرضى والتقارير الطبية والصحية",
+            defaultDecksLabelEn = "Oxford 5000 + OPAL + Medical & Healthcare",
+            icon = Icons.Filled.LocalHospital
         )
     )
 

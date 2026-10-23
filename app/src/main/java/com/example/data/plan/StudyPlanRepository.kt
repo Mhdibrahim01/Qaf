@@ -70,6 +70,7 @@ class StudyPlanRepository(
         return when (goal.trim().lowercase(Locale.US)) {
             "ielts" -> listOf("oxford5000", "oxford_opal", "ielts_core")
             "it_career" -> listOf("oxford5000", "oxford_opal", "it_industry")
+            "medical" -> listOf("oxford5000", "oxford_opal", "medical_healthcare")
             else -> listOf("oxford5000", "oxford_opal")
         }
     }
@@ -1478,6 +1479,7 @@ class StudyPlanRepository(
         return when (goal?.trim()?.lowercase(Locale.US)) {
             "ielts" -> "IELTS Prep"
             "it_career" -> "IT Career"
+            "medical" -> "Medical & Healthcare"
             else -> "General English"
         }
     }
@@ -1537,6 +1539,15 @@ class StudyPlanRepository(
                 ),
                 "تدرب على صياغة جمل واضحة ومختصرة تشرح المشاكل التقنية والحلول البرمجية بدقة."
             )
+            "medical" -> Pair(
+                listOf(
+                    PlanWeekGoal(1, "Clinical & Healthcare Core Vocabulary ($lvl)", "المفردات الأساسية للرعاية الصحية والسريرية ($lvl)", baseGoals),
+                    PlanWeekGoal(2, "Patient History, Symptoms & Case Reporting", "التاريخ الطبي وتوثيق أعراض المرضى والتقارير", baseGoals),
+                    PlanWeekGoal(3, "Diagnostic Terms, Pharmacology & Medical Nuances", "مصطلحات التشخيص والأدوية والتواصل الطبي الدقيق", baseGoals),
+                    PlanWeekGoal(4, "Medical Ethics, Consultations & Professional Practice", "أخلاقيات الطب والاستشارات والمراجعة الشاملة", baseGoals)
+                ),
+                "ركز على مفردات الرعاية الصحية والتواصل الطبي مع ممارسة استخدامها في سياق التقارير السريرية."
+            )
             else -> Pair(
                 listOf(
                     PlanWeekGoal(1, "Core Communication & Conditionals in Context ($lvl)", "التواصل اليومي والمهني وجمل الشرط في السياق ($lvl)", baseGoals),
@@ -1567,7 +1578,8 @@ data class DeckMixWeightsConfig(
     val goalSpecialtyShares: Map<String, Float> = mapOf(
         "general_fluency" to 0.30f,
         "ielts" to 0.40f,
-        "it_career" to 0.45f
+        "it_career" to 0.45f,
+        "medical" to 0.45f
     ),
     val defaultDeckWeights: Map<String, Float> = mapOf(
         "oxford5000" to 0.45f,
@@ -1581,25 +1593,23 @@ data class DeckMixWeightsConfig(
         "pte_academic" to 0.35f,
         "business_english" to 0.25f,
         "career_interview" to 0.25f,
-        "medical_healthcare" to 0.25f
+        "medical_healthcare" to 0.35f
     ),
     val goalDeckWeights: Map<String, Map<String, Float>> = mapOf(
         "it_career" to mapOf(
-            "it_industry" to 0.35f,
-            "ielts_core" to 0.65f,
-            "oxford5000" to 0.40f,
-            "oxford_opal" to 0.25f,
-            "business_english" to 0.30f,
-            "career_interview" to 0.30f,
-            "pte_academic" to 0.25f
+            "it_industry" to 0.70f,
+            "oxford5000" to 0.20f,
+            "oxford_opal" to 0.10f
+        ),
+        "medical" to mapOf(
+            "medical_healthcare" to 0.70f,
+            "oxford5000" to 0.20f,
+            "oxford_opal" to 0.10f
         ),
         "ielts" to mapOf(
-            "ielts_core" to 0.45f,
-            "oxford_opal" to 0.35f,
-            "pte_academic" to 0.35f,
-            "oxford5000" to 0.20f,
-            "oxford_phrases" to 0.20f,
-            "cefr_c1" to 0.25f
+            "ielts_core" to 0.50f,
+            "oxford_opal" to 0.30f,
+            "oxford5000" to 0.20f
         ),
         "general_fluency" to mapOf(
             "oxford5000" to 0.50f,
