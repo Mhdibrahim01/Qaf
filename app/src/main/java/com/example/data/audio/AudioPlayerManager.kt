@@ -48,13 +48,28 @@ class AudioPlayerManager(
         const val EXO_SLOW_RATE = 0.70f
 
         /**
+         * Returns true if [locale] represents British English (`en-GB` / `en-UK`).
+         */
+        fun isUkLocale(locale: Locale): Boolean {
+            val country = locale.country
+            return country.equals("GB", ignoreCase = true) || country.equals("UK", ignoreCase = true)
+        }
+
+        /**
          * Scores an Android [Voice] candidate for [locale] selection.
          * Returns a negative value if the voice does not match the language/country or is not installed.
          */
         fun scoreVoiceForLocale(voice: Voice, locale: Locale): Int {
             if (!voice.locale.language.equals(locale.language, ignoreCase = true)) return -1
-            if (locale.country.isNotBlank() && !voice.locale.country.equals(locale.country, ignoreCase = true)) {
-                return -1
+            if (locale.country.isNotBlank()) {
+                val targetIsUk = isUkLocale(locale)
+                val voiceIsUk = isUkLocale(voice.locale)
+                val countryMatches = if (targetIsUk) {
+                    voiceIsUk
+                } else {
+                    voice.locale.country.equals(locale.country, ignoreCase = true)
+                }
+                if (!countryMatches) return -1
             }
             val features = voice.features ?: emptySet()
             if (features.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED) ||
@@ -98,6 +113,9 @@ class AudioPlayerManager(
     private val _isPlayingSlow = MutableStateFlow(false)
     val isPlayingSlow: StateFlow<Boolean> = _isPlayingSlow.asStateFlow()
 
+    private val _currentlyPlayingIsGb = MutableStateFlow(false)
+    val currentlyPlayingIsGb: StateFlow<Boolean> = _currentlyPlayingIsGb.asStateFlow()
+
     private var exoPlayer: ExoPlayer? = null
     private var tts: TextToSpeech? = null
     private val sherpaEngine = SherpaOfflineTtsEngine(voiceModelManager)
@@ -110,6 +128,7 @@ class AudioPlayerManager(
     private var defaultSpeechRate: Float = DEFAULT_NORMAL_RATE
     private var preferUkAccent: Boolean = false
     private var lastExoWasSlow: Boolean = false
+    private var lastRequestedIsGb: Boolean = false
 
     val neuralVoicePackState: StateFlow<NeuralVoicePackState> = voiceModelManager.state
 
@@ -185,10 +204,27 @@ class AudioPlayerManager(
     private fun applyBestVoiceAndLocale(locale: Locale) {
         val engine = tts ?: return
         try {
-            engine.language = locale
-            val bestVoice = findBestVoiceForLocale(locale)
-            if (bestVoice != null) {
-                engine.voice = bestVoice
+            val bestInstalledVoice = findBestVoiceForLocale(locale)
+            if (bestInstalledVoice != null) {
+                engine.language = locale
+                engine.voice = bestInstalledVoice
+            } else {
+                // If no offline voice without KEY_FEATURE_NOT_INSTALLED was found,
+                // look for any voice matching the target locale (e.g. network or default en-GB voice)
+                // so a previously-selected US voice does not stay locked when switching to GB.
+                val fallbackLocaleVoice = try {
+                    engine.voices?.firstOrNull { v ->
+                        v.locale != null &&
+                            v.locale.language.equals(locale.language, ignoreCase = true) &&
+                            (if (isUkLocale(locale)) isUkLocale(v.locale) else v.locale.country.equals(locale.country, ignoreCase = true))
+                    }
+                } catch (_: Exception) {
+                    null
+                }
+                engine.language = locale
+                if (fallbackLocaleVoice != null) {
+                    engine.voice = fallbackLocaleVoice
+                }
             }
             engine.setPitch(1.0f)
         } catch (_: Exception) {
@@ -366,11 +402,12 @@ class AudioPlayerManager(
                     override fun onPlayerError(error: PlaybackException) {
                         val activeWord = _currentlyPlayingWord.value
                         val wasSlow = lastExoWasSlow
+                        val wasGb = lastRequestedIsGb
                         if (!activeWord.isNullOrBlank()) {
                             speakWithTts(
                                 text = activeWord,
                                 speechRateOverride = if (wasSlow) SLOW_TURTLE_RATE else null,
-                                locale = if (preferUkAccent) Locale.UK else Locale.US
+                                locale = if (wasGb) Locale.UK else Locale.US
                             )
                         } else {
                             _currentlyPlayingWord.value = null
@@ -394,8 +431,22 @@ class AudioPlayerManager(
     ) {
         val cleanText = text.trim()
         if (cleanText.isEmpty()) return
+
+        // Stop any previous playback before switching voice/accent
+        try {
+            exoPlayer?.stop()
+        } catch (_: Exception) {}
+        try {
+            tts?.stop()
+        } catch (_: Exception) {}
+        try {
+            sherpaEngine.stop()
+        } catch (_: Exception) {}
+
         _currentlyPlayingWord.value = text
         _isPlayingSlow.value = isSlow
+        _currentlyPlayingIsGb.value = isGb
+        lastRequestedIsGb = isGb
         val targetLocale = if (isGb) Locale.UK else Locale.US
         val rateOverride = if (isSlow) SLOW_TURTLE_RATE else null
 
@@ -459,7 +510,10 @@ class AudioPlayerManager(
         locale: Locale = Locale.US
     ) {
         val rate = (speechRateOverride ?: defaultSpeechRate).coerceIn(0.5f, 1.5f)
-        if (isNeuralAiVoiceActive()) {
+        // Note: The local Piper model (vits-piper-en_US-amy-low) is a US English model.
+        // When the user explicitly requests British English (Locale.UK / en_GB), route to Android TTS
+        // with Locale.UK so the accent switches to British English instead of staying US.
+        if (isNeuralAiVoiceActive() && !isUkLocale(locale)) {
             try {
                 tts?.stop()
             } catch (_: Exception) {}
