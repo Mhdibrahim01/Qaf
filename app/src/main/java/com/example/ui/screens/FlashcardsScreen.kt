@@ -761,7 +761,7 @@ fun FlashcardsScreen(
                                     val committedDirection = if (dragDirection != 0f) dragDirection else flingDirection
 
                                     if (dragCompleted && committedDirection != 0f) {
-                                        handleRateCard(if (committedDirection < 0f) Sm2Rating.AGAIN else Sm2Rating.GOOD)
+                                        handleRateCard(if (committedDirection < 0f) Sm2Rating.AGAIN else Sm2Rating.EASY)
                                     } else if (dragOffsetX != 0f) {
                                         coroutineScope.launch {
                                             val returnAnimation = Animatable(dragOffsetX)
@@ -1020,7 +1020,7 @@ private fun FlipFlashcardItem(
 private fun Sm2Rating.ratingAccent(): Color = when (this) {
     Sm2Rating.AGAIN -> CoralAccent
     Sm2Rating.HARD -> Color(0xFFF59E0B)
-    Sm2Rating.GOOD -> EmeraldAccent
+    Sm2Rating.GOOD -> Color(0xFFFACC15)
     Sm2Rating.EASY -> EmeraldAccent
 }
 
@@ -1685,7 +1685,7 @@ private fun FlashcardBottomActionsBar(
             Sm2RateButton(
                 label = "Good",
                 intervalText = intervalPreview.goodLabel,
-                accentColor = EmeraldAccent,
+                accentColor = Color(0xFFFACC15),
                 testTag = "sm2_button_good",
                 enabled = isCardFlipped && !isRatingLocked,
                 onClick = { if (isCardFlipped && !isRatingLocked) onRateCard(Sm2Rating.GOOD) },
@@ -1856,7 +1856,7 @@ private fun RatingStampOverlay(
     val (label, color, icon) = when (rating) {
         Sm2Rating.AGAIN -> Triple("AGAIN", CoralAccent, Icons.Default.Refresh)
         Sm2Rating.HARD -> Triple("HARD", Color(0xFFF59E0B), Icons.Default.FitnessCenter)
-        Sm2Rating.GOOD -> Triple("GOOD", EmeraldAccent, Icons.Default.ThumbUp)
+        Sm2Rating.GOOD -> Triple("GOOD", Color(0xFFFACC15), Icons.Default.ThumbUp)
         Sm2Rating.EASY -> Triple("EASY", EmeraldAccent, Icons.Default.AutoAwesome)
     }
 

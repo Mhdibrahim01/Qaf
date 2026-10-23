@@ -181,7 +181,10 @@ data class WordProgressEntity(
     @ColumnInfo(name = "due_timestamp") val dueTimestamp: Long = 0L,
     @ColumnInfo(name = "last_reviewed_timestamp") val lastReviewedTimestamp: Long = 0L,
     @ColumnInfo(name = "again_count") val againCount: Int = 0,
-    @ColumnInfo(name = "first_learned_timestamp") val firstLearnedTimestamp: Long = 0L
+    @ColumnInfo(name = "first_learned_timestamp") val firstLearnedTimestamp: Long = 0L,
+    @ColumnInfo(name = "lookup_count") val lookupCount: Int = 0,
+    @ColumnInfo(name = "last_looked_up_timestamp") val lastLookedUpTimestamp: Long = 0L,
+    @ColumnInfo(name = "conquered_timestamp") val conqueredTimestamp: Long = 0L
 )
 
 /**
@@ -215,7 +218,8 @@ data class AttemptEntity(
     @ColumnInfo(name = "sm2_rating") val sm2Rating: Int? = null, // 0=Again, 1=Hard, 2=Good, 3=Easy
     @ColumnInfo(name = "is_correct") val isCorrect: Boolean? = null,
     val score: Float? = null,
-    val deck: String? = null
+    val deck: String? = null,
+    @ColumnInfo(name = "elapsed_ms") val elapsedMs: Long? = null
 )
 
 /**
@@ -532,7 +536,10 @@ data class StudyPlanProfileEntity(
     @ColumnInfo(name = "selected_decks_json") val selectedDecksJson: String = "[\"oxford5000\",\"oxford_opal\"]",
     @ColumnInfo(name = "rest_days_json") val restDaysJson: String = "[6]",
     @ColumnInfo(name = "start_at_user_level") val startAtUserLevel: Boolean = true,
-    @ColumnInfo(name = "updated_at") val updatedAt: Long = System.currentTimeMillis()
+    @ColumnInfo(name = "updated_at") val updatedAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(name = "preferred_topics_json") val preferredTopicsJson: String = "[]",
+    @ColumnInfo(name = "quiet_mode_enabled") val quietModeEnabled: Boolean = false,
+    @ColumnInfo(name = "dismissed_insights_json") val dismissedInsightsJson: String = "{}"
 )
 
 /**
@@ -706,7 +713,7 @@ data class PracticeAccuracySummary(
  */
 @Serializable
 data class UserBackupPayload(
-    val schemaVersion: Int = 15,
+    val schemaVersion: Int = 16,
     val exportedAt: Long = 0L,
     val wordProgress: List<WordProgressEntity> = emptyList(),
     val attempts: List<AttemptEntity> = emptyList(),
@@ -715,6 +722,7 @@ data class UserBackupPayload(
     val readingProgress: List<ReadingProgressEntity> = emptyList(),
     val correctionNotebook: List<CorrectionNotebookEntity> = emptyList(),
     val studyPlanProfile: StudyPlanProfileEntity? = null,
+    val studyPlans: List<StudyPlanEntity> = emptyList(),
     val dailyChecklists: List<DailyChecklistEntity> = emptyList(),
     val quizResults: List<QuizResultEntity> = emptyList()
 )

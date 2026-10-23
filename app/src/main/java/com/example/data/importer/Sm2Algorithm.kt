@@ -143,14 +143,22 @@ object Sm2Algorithm {
         } else {
             nowMillis
         }
+        val updatedAgainCount = progress.againCount + againInc
+        val conqueredTime = when {
+            updatedAgainCount < 2 -> 0L
+            progress.conqueredTimestamp > 0L -> progress.conqueredTimestamp
+            result.intervalDays >= 21 -> nowMillis
+            else -> 0L
+        }
         return progress.copy(
             repetitions = result.repetitions,
             intervalDays = result.intervalDays,
             easeFactor = result.easeFactor,
             dueTimestamp = result.dueTimestamp,
             lastReviewedTimestamp = nowMillis,
-            againCount = progress.againCount + againInc,
-            firstLearnedTimestamp = firstLearned
+            againCount = updatedAgainCount,
+            firstLearnedTimestamp = firstLearned,
+            conqueredTimestamp = conqueredTime
         )
     }
 }

@@ -19,6 +19,8 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,11 +29,13 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.data.local.StudyPlanProfileEntity
+import com.example.data.plan.AdaptiveConfig
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
@@ -76,6 +80,18 @@ fun PlanSetupDialog(
         }
     }
     var selectedRestDays by remember { mutableStateOf(initialRestDays) }
+
+    val initialTopics = remember(initialProfile?.preferredTopicsJson) {
+        try {
+            setupJson.decodeFromString<List<String>>(
+                initialProfile?.preferredTopicsJson ?: "[\"daily_life\",\"technology\",\"career\"]"
+            ).ifEmpty { listOf("daily_life", "technology", "career") }.take(3)
+        } catch (e: Exception) {
+            listOf("daily_life", "technology", "career")
+        }
+    }
+    var selectedTopics by remember { mutableStateOf(initialTopics) }
+    var quietModeEnabled by remember { mutableStateOf(initialProfile?.quietModeEnabled ?: false) }
 
     val levels = listOf("A1", "A2", "B1", "B2", "C1")
     val goals = listOf(
@@ -122,7 +138,7 @@ fun PlanSetupDialog(
                     color = TextPrimary
                 )
                 Text(
-                    text = "Personalize your CEFR target, decks, and weekly schedule",
+                    text = "Personalize your CEFR target, decks, reading topics, and weekly schedule",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary
                 )
@@ -338,6 +354,84 @@ fun PlanSetupDialog(
                         }
                     }
                 }
+
+                // 6. Reading Topics (Pick 3)
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "Favorite Reading Topics (Pick up to 3)",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                        color = TextPrimary
+                    )
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        AdaptiveConfig.MACRO_TOPICS.forEach { (topicId, labelEn, _) ->
+                            val isSelected = topicId in selectedTopics
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    selectedTopics = if (isSelected) {
+                                        if (selectedTopics.size > 1) selectedTopics - topicId else selectedTopics
+                                    } else {
+                                        if (selectedTopics.size < 3) selectedTopics + topicId else selectedTopics.drop(1) + topicId
+                                    }
+                                },
+                                label = { Text(labelEn, style = MaterialTheme.typography.labelSmall) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = GoldAccentDim,
+                                    selectedLabelColor = GoldAccent,
+                                    containerColor = SurfaceElevatedDark,
+                                    labelColor = TextMuted
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = isSelected,
+                                    borderColor = if (isSelected) GoldAccent else BorderDark
+                                ),
+                                modifier = Modifier.testTag("plan_setup_topic_chip_$topicId")
+                            )
+                        }
+                    }
+                }
+
+                // 7. Quiet / Text-Only Mode
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = SurfaceElevatedDark,
+                    border = BorderStroke(1.dp, if (quietModeEnabled) GoldAccent else BorderDark)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                            Text(
+                                text = "Quiet / Text-Only Mode",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = if (quietModeEnabled) GoldAccent else TextPrimary
+                            )
+                            Text(
+                                text = "Silent reading & sentence tasks without audio",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextSecondary
+                            )
+                        }
+                        Switch(
+                            checked = quietModeEnabled,
+                            onCheckedChange = { quietModeEnabled = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = BackgroundDark,
+                                checkedTrackColor = GoldAccent
+                            ),
+                            modifier = Modifier.testTag("plan_setup_toggle_quiet_mode")
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
@@ -349,7 +443,9 @@ fun PlanSetupDialog(
                         minutesPerDay = selectedMinutes,
                         studyDaysPerWeek = activeStudyDaysCount,
                         selectedDecksJson = setupJson.encodeToString(selectedDecks),
-                        restDaysJson = setupJson.encodeToString(selectedRestDays)
+                        restDaysJson = setupJson.encodeToString(selectedRestDays),
+                        preferredTopicsJson = setupJson.encodeToString(selectedTopics),
+                        quietModeEnabled = quietModeEnabled
                     )
                     onSaveProfile(updated)
                     onDismiss()

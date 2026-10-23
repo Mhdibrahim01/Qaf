@@ -194,7 +194,7 @@ fun isLtrDominantLine(line: String): Boolean {
     val beforeFirstArabic = withoutParens.takeWhile { !isArabicLetter(it) }
     val latinCountBeforeArabic = beforeFirstArabic.count { isLatinChar(it) }
     val totalArabicLetters = withoutParens.count { isArabicLetter(it) }
-    return latinCountBeforeArabic >= 10 && (beforeFirstArabic.contains('+') || beforeFirstArabic.contains("->")) && totalArabicLetters <= 18
+    return latinCountBeforeArabic >= 10 && !beforeFirstArabic.contains(':') && (beforeFirstArabic.contains('+') || beforeFirstArabic.contains("->")) && totalArabicLetters <= 18
 }
 
 /**
@@ -255,13 +255,8 @@ private fun bindInlineEnglishRun(candidate: String): String {
         return "$LRI$LRM$bound$LRM$PDI"
     }
 
-    // If the run is longer than 34 chars and is still inline inside an RTL line, split it into
-    // self-contained `<= 28`-char LRI..PDI clauses (preferring splits after commas `, ` or `; `)
-    //Wait: if you split an English run inside an RTL line into two separate LRI..PDI isolates on the SAME line,
-    //the outer RTL line would order Isolate 1 on the right and Isolate 2 on the left!
-    //So we must NEVER split a single English sentence into multiple sibling isolates on the same RTL line!
-    //Instead, keep it as a single LRI+LRM...LRM+PDI isolate and bind the first 2 words and last 2 words
-    //with NBSP so a single word like `I` or `have helped.` is never orphaned!
+    // Keep as a single LRI+LRM...LRM+PDI isolate and bind the first 3 words and last 3 words
+    // with NBSP so a single word like `I` or `have helped.` is never orphaned!
     val words = bound.split(' ').filter { it.isNotEmpty() }
     if (words.size <= 5) {
         return "$LRI$LRM${words.joinToString(NBSP.toString())}$LRM$PDI"
@@ -298,14 +293,14 @@ private fun isolateLatinInRtlLine(rawLine: String): String {
         // Check if an English run can start here:
         // - A Latin letter
         // - A digit followed by a Latin letter (e.g. `3rd`, `V1`)
-        // - An opening bracket/quote/verdict symbol (`(`, `[`, `"`, `'`, `✓`, `✗`) followed shortly by a Latin letter
-        //   before any Arabic letter or closing bracket!
+        // - An opening quote or verdict symbol (`"`, `'`, `✓`, `✗`) followed shortly by a Latin letter
+        //   (Note: outer brackets `(` and `[` stay outside the isolate so Arabic parentheticals wrap cleanly)
         val canStart = when {
             isLatinChar(c) -> true
             c.isDigit() && i + 1 < n && isLatinChar(line[i + 1]) -> true
-            (c == '(' || c == '[' || c == '"' || c == '“' || c == '\'' || c == '‘' || isVerdictSymbol(c)) -> {
+            (c == '"' || c == '“' || c == '\'' || c == '‘' || isVerdictSymbol(c)) -> {
                 var k = i + 1
-                while (k < n && (line[k] == ' ' || line[k] == '(' || line[k] == '[' || line[k] == '"' || line[k] == '\'' || isVerdictSymbol(line[k]) || line[k] == '-' || line[k].isDigit())) {
+                while (k < n && (line[k] == ' ' || line[k] == '"' || line[k] == '\'' || isVerdictSymbol(line[k]) || line[k] == '-' || line[k].isDigit())) {
                     k++
                 }
                 k < n && isLatinChar(line[k])

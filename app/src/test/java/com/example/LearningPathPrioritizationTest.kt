@@ -180,14 +180,14 @@ class LearningPathPrioritizationTest {
         val now = timeProvider.currentTimeMillis()
         val pastDue = now - 86_400_000L // 1 day ago
 
-        val dueProgress1 = WordProgressEntity(cardKey = "oxford5000:algorithm", deck = "oxford5000", text = "algorithm", dueTimestamp = pastDue, isMastered = false, repetitions = 2)
-        val dueProgress2 = WordProgressEntity(cardKey = "oxford5000:database", deck = "oxford5000", text = "database", dueTimestamp = pastDue, isMastered = false, repetitions = 2)
+        val dueProgress1 = WordProgressEntity(cardKey = "oxford5000:abandon", deck = "oxford5000", text = "abandon", dueTimestamp = pastDue, isMastered = false, repetitions = 2)
+        val dueProgress2 = WordProgressEntity(cardKey = "oxford5000:benefit", deck = "oxford5000", text = "benefit", dueTimestamp = pastDue, isMastered = false, repetitions = 2)
         dao.upsertWordProgress(dueProgress1)
         dao.upsertWordProgress(dueProgress2)
 
         val dueNowEntries = dao.getDueNowEntriesOrdered(now)
-        assertTrue(dueNowEntries.any { it.text == "algorithm" })
-        assertTrue(dueNowEntries.any { it.text == "database" })
+        assertTrue(dueNowEntries.any { it.text == "abandon" })
+        assertTrue(dueNowEntries.any { it.text == "benefit" })
 
         val dueNowCount = dao.getDueNowCardsCount(now)
         assertTrue(dueNowCount >= 2)

@@ -187,6 +187,7 @@ fun WordBooksAppShell(
     val kickoffWords by wordBooksViewModel.kickoffWords.collectAsStateWithLifecycle()
     val isKickoffDismissed by wordBooksViewModel.isKickoffDismissed.collectAsStateWithLifecycle()
     val levelProgressSummary by wordBooksViewModel.levelProgressSummary.collectAsStateWithLifecycle()
+    val learnerModelSnapshot by wordBooksViewModel.learnerModelSnapshot.collectAsStateWithLifecycle()
     val userLevel = studyPlanProfile?.level?.ifBlank { "B2" } ?: "B2"
     val activeQuizSession by wordBooksViewModel.activeQuizSession.collectAsStateWithLifecycle()
     val isQuizLoading by wordBooksViewModel.isQuizLoading.collectAsStateWithLifecycle()
@@ -216,7 +217,8 @@ fun WordBooksAppShell(
             onSelectGoal = wordBooksViewModel::selectOnboardingGoal,
             onSelectMinutesPerDay = wordBooksViewModel::selectOnboardingMinutesPerDay,
             onSelectStudyDaysPerWeek = wordBooksViewModel::selectOnboardingStudyDaysPerWeek,
-            onCompleteStep3 = wordBooksViewModel::completeOnboardingStep3,
+            onCompleteStep3 = { g, m, d -> wordBooksViewModel.completeOnboardingStep3(g, m, d) },
+            onCompleteStep3WithTopicsAndQuietMode = wordBooksViewModel::completeOnboardingStep3,
             onStep3Back = wordBooksViewModel::navigateBackFromStep3,
             onCompleteStep4 = wordBooksViewModel::completeOnboardingStep4,
             onStep4Back = wordBooksViewModel::navigateBackFromStep4,
@@ -410,6 +412,9 @@ fun WordBooksAppShell(
                         weeklyChecklists = monthlyChecklists,
                         studyStreak = studyStreak,
                         studyPlanProfile = studyPlanProfile,
+                        learnerModelSnapshot = learnerModelSnapshot,
+                        onDismissInsight = wordBooksViewModel::dismissAdaptiveInsight,
+                        onAcceptLevelUp = wordBooksViewModel::acceptSuggestedLevelUp,
                         onOpenDeck = { deckId ->
                             wordBooksViewModel.selectDeck(deckId)
                             navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
@@ -431,6 +436,7 @@ fun WordBooksAppShell(
                                     "word_books", "database" -> navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
                                     "reading" -> navController.navigate(AppRoute.Reading) { launchSingleTop = true }
                                     "grammar" -> navController.navigate(AppRoute.Grammar) { launchSingleTop = true }
+                                    "correction_notebook" -> navController.navigate(AppRoute.CorrectionNotebook) { launchSingleTop = true }
                                     else -> navController.navigate(AppRoute.Plan) { launchSingleTop = true }
                                 }
                             }
@@ -682,7 +688,9 @@ fun WordBooksAppShell(
                         onSpeakSentence = { wordBooksViewModel.speakSentenceTts(it) },
                         onStopAudio = { wordBooksViewModel.stopAudio() },
                         ttsSpeechRate = ttsSpeechRate,
-                        userLevel = userLevel
+                        userLevel = userLevel,
+                        onScheduleWordForToday = wordBooksViewModel::scheduleLookedUpWordForToday,
+                        storyReadabilityById = learnerModelSnapshot.storyReadabilityById
                     )
                 }
                 composable<AppRoute.Labs> {
@@ -777,6 +785,9 @@ fun WordBooksAppShell(
                         weakAreas = weakAreas,
                         monthlyChecklists = monthlyChecklists,
                         practiceAccuracySummary = practiceAccuracySummary,
+                        learnerModelSnapshot = learnerModelSnapshot,
+                        onDismissInsight = wordBooksViewModel::dismissAdaptiveInsight,
+                        onAcceptLevelUp = wordBooksViewModel::acceptSuggestedLevelUp,
                         onSaveProfile = wordBooksViewModel::savePlanProfile,
                         onGeneratePlanWithAi = wordBooksViewModel::generatePlanWithAi,
                         onGenerateDailyQuiz = wordBooksViewModel::generateDailyQuiz,
@@ -846,6 +857,8 @@ fun WordBooksAppShell(
                         onNavigateToLabs = {
                             navController.navigate(AppRoute.Labs) { launchSingleTop = true }
                         },
+                        onExportBackupToUri = wordBooksViewModel::exportUserBackupToUri,
+                        onImportBackupFromUri = wordBooksViewModel::importUserBackupFromUri,
                         grammarLessonsCount = grammarLessons.size,
                         readingTextsCount = readingTexts.size,
                         correctionEntriesCount = correctionEntries.size,

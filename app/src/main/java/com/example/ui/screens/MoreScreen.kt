@@ -30,7 +30,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +67,9 @@ import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.VioletAccent
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun MoreScreen(
@@ -68,6 +80,8 @@ fun MoreScreen(
     onOpenSettings: () -> Unit,
     onNavigateToLabs: () -> Unit,
     onNavigateToSentences: () -> Unit = {},
+    onExportBackupToUri: (Uri, (Boolean, String) -> Unit) -> Unit = { _, _ -> },
+    onImportBackupFromUri: (Uri, (Boolean, String) -> Unit) -> Unit = { _, _ -> },
     grammarLessonsCount: Int = 90,
     readingTextsCount: Int = 50,
     correctionEntriesCount: Int = 0,
@@ -78,6 +92,27 @@ fun MoreScreen(
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
     val scrollState = rememberScrollState()
+    var backupStatusMessage by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
+
+    val exportBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        if (uri != null) {
+            onExportBackupToUri(uri) { success, msg ->
+                backupStatusMessage = success to msg
+            }
+        }
+    }
+
+    val importBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            onImportBackupFromUri(uri) { success, msg ->
+                backupStatusMessage = success to msg
+            }
+        }
+    }
 
     Box(
         modifier = modifier
@@ -269,8 +304,34 @@ fun MoreScreen(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 HubSectionHeader(
                     eyebrow = "SYSTEM & UTILITIES",
-                    title = "Preferences & Diagnostics"
+                    title = "Preferences, Backup & Diagnostics"
                 )
+
+                backupStatusMessage?.let { (isSuccess, msg) ->
+                    Surface(
+                        color = if (isSuccess) EmeraldAccent.copy(alpha = 0.14f) else CoralAccent.copy(alpha = 0.14f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, if (isSuccess) EmeraldAccent else CoralAccent),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("more_backup_status_banner")
+                    ) {
+                        Text(
+                            text = msg,
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = if (isSuccess) EmeraldAccent else CoralAccent,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                        )
+                    }
+                }
+
+                val triggerExport: () -> Unit = {
+                    val dateStamp = SimpleDateFormat("yyyyMMdd_HHmm", Locale.US).format(Date())
+                    exportBackupLauncher.launch("qaf_backup_$dateStamp.json")
+                }
+                val triggerImport: () -> Unit = {
+                    importBackupLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+                }
 
                 if (isTablet) {
                     Row(
@@ -300,6 +361,33 @@ fun MoreScreen(
                             modifier = Modifier.weight(1f)
                         )
                     }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        MoreModuleCard(
+                            titleEn = "Export Progress Backup",
+                            titleAr = "تصدير نسخة احتياطية كاملة لتقدمك (JSON)",
+                            descriptionEn = "Save all word progress, SM-2 intervals, streaks, correction notebook, and study plans to a local JSON file.",
+                            tagText = "Offline JSON",
+                            accentColor = EmeraldAccent,
+                            icon = Icons.Default.CloudDownload,
+                            testTag = "btn_export_backup",
+                            onClick = triggerExport,
+                            modifier = Modifier.weight(1f)
+                        )
+                        MoreModuleCard(
+                            titleEn = "Restore Progress Backup",
+                            titleAr = "استعادة نسخة احتياطية من ملف JSON",
+                            descriptionEn = "Restore your vocabulary stages, streaks, study plans, and review history from a previously exported JSON file.",
+                            tagText = "Restore",
+                            accentColor = SkyAccent,
+                            icon = Icons.Default.CloudUpload,
+                            testTag = "btn_restore_backup",
+                            onClick = triggerImport,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         MoreModuleCard(
@@ -311,6 +399,26 @@ fun MoreScreen(
                             icon = Icons.Default.Settings,
                             testTag = "nav_settings",
                             onClick = onOpenSettings
+                        )
+                        MoreModuleCard(
+                            titleEn = "Export Progress Backup",
+                            titleAr = "تصدير نسخة احتياطية كاملة لتقدمك (JSON)",
+                            descriptionEn = "Save all word progress, SM-2 intervals, streaks, correction notebook, and study plans to a local JSON file.",
+                            tagText = "Offline JSON",
+                            accentColor = EmeraldAccent,
+                            icon = Icons.Default.CloudDownload,
+                            testTag = "btn_export_backup",
+                            onClick = triggerExport
+                        )
+                        MoreModuleCard(
+                            titleEn = "Restore Progress Backup",
+                            titleAr = "استعادة نسخة احتياطية من ملف JSON",
+                            descriptionEn = "Restore your vocabulary stages, streaks, study plans, and review history from a previously exported JSON file.",
+                            tagText = "Restore",
+                            accentColor = SkyAccent,
+                            icon = Icons.Default.CloudUpload,
+                            testTag = "btn_restore_backup",
+                            onClick = triggerImport
                         )
                         MoreModuleCard(
                             titleEn = "Labs & Diagnostics",

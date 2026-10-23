@@ -458,6 +458,9 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     private val _practiceAccuracySummary = MutableStateFlow(PracticeAccuracySummary())
     val practiceAccuracySummary: StateFlow<PracticeAccuracySummary> = _practiceAccuracySummary.asStateFlow()
 
+    private val _learnerModelSnapshot = MutableStateFlow(com.example.data.plan.LearnerModelSnapshot())
+    val learnerModelSnapshot: StateFlow<com.example.data.plan.LearnerModelSnapshot> = _learnerModelSnapshot.asStateFlow()
+
     val monthlyChecklists: StateFlow<List<DailyChecklistEntity>> = database.wordBooksDao().observeChecklistsForMonth(
         studyPlanRepository.timeProvider.currentMonthString()
     ).stateIn(
@@ -622,6 +625,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 _todayChecklist.value = checklist
                 _studyStreak.value = studyPlanRepository.computeStreak()
                 _weakAreas.value = studyPlanRepository.getWeakAreas()
+                _learnerModelSnapshot.value = studyPlanRepository.learnerModelRepository.buildSnapshot(existingProfile)
             }
         }
 
@@ -765,7 +769,9 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     fun completeOnboardingStep3(
         goal: String,
         minutesPerDay: Int,
-        studyDaysPerWeek: Int
+        studyDaysPerWeek: Int,
+        preferredTopics: List<String>? = null,
+        quietModeEnabled: Boolean? = null
     ) {
         viewModelScope.launch {
             val snap = onboardingRepository.getSnapshot()
@@ -773,22 +779,30 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             val cleanGoal = goal.trim().ifBlank { "general_fluency" }
             val cleanMinutes = minutesPerDay.coerceIn(15, 60)
             val cleanDays = studyDaysPerWeek.coerceIn(1, 7)
+            val topicsJson = preferredTopics?.let {
+                kotlinx.serialization.json.Json.encodeToString(it.take(3))
+            }
 
             onboardingRepository.saveGoalAndTime(
                 goal = cleanGoal,
                 minutesPerDay = cleanMinutes,
-                studyDaysPerWeek = cleanDays
+                studyDaysPerWeek = cleanDays,
+                preferredTopicsJson = topicsJson,
+                quietModeEnabled = quietModeEnabled
             )
 
             val checklist = studyPlanRepository.saveOnboardingGoalAndGeneratePlan(
                 level = cleanLevel,
                 goal = cleanGoal,
                 minutesPerDay = cleanMinutes,
-                studyDaysPerWeek = cleanDays
+                studyDaysPerWeek = cleanDays,
+                preferredTopics = preferredTopics,
+                quietModeEnabled = quietModeEnabled
             )
             _todayChecklist.value = checklist
             _studyStreak.value = studyPlanRepository.computeStreak()
             _weakAreas.value = studyPlanRepository.getWeakAreas()
+            _learnerModelSnapshot.value = studyPlanRepository.learnerModelRepository.buildSnapshot()
 
             onboardingRepository.setLastCompletedStep(3)
         }
@@ -1223,18 +1237,42 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             deck = currentCard.deck,
             text = currentCard.text.trim().lowercase()
         )
-        val optimisticUpdated = Sm2Algorithm.applyRating(
+        val baseOptimistic = Sm2Algorithm.applyRating(
             progress = existingProgress,
             rating = rating,
             nowMillis = nowMillis
         )
+        val optimisticUpdated = if (rating == Sm2Rating.EASY) {
+            val matureInterval = maxOf(baseOptimistic.intervalDays, com.example.data.plan.AdaptiveConfig.STAGE_MATURE_MIN_INTERVAL_DAYS)
+            val conqueredTime = when {
+                baseOptimistic.againCount < com.example.data.plan.AdaptiveConfig.CONQUERED_MIN_LAPSES -> 0L
+                baseOptimistic.conqueredTimestamp > 0L -> baseOptimistic.conqueredTimestamp
+                else -> nowMillis
+            }
+            baseOptimistic.copy(
+                isMastered = true,
+                intervalDays = matureInterval,
+                dueTimestamp = nowMillis + matureInterval * Sm2Algorithm.DAY_MILLIS,
+                conqueredTimestamp = conqueredTime
+            )
+        } else {
+            baseOptimistic
+        }
         val updatedProgressMap = progressMap.value + (currentCard.cardKey to optimisticUpdated)
+
+        val updatedCards = if (rating == Sm2Rating.EASY) {
+            cards.mapIndexed { idx, c ->
+                if (idx == currentIndex) c.copy(isMastered = true) else c
+            }
+        } else {
+            cards
+        }
 
         val remainingCards: List<GroupedWordCard>
         val nextIndex: Int
-        if (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID && optimisticUpdated.dueTimestamp > nowMillis) {
+        if (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID && (optimisticUpdated.dueTimestamp > nowMillis || optimisticUpdated.isMastered)) {
             // Hide rated card from active due-session until dueTimestamp <= nowMillis
-            remainingCards = cards.filterIndexed { index, _ -> index != currentIndex }
+            remainingCards = updatedCards.filterIndexed { index, _ -> index != currentIndex }
             nextIndex = if (remainingCards.isEmpty()) {
                 0
             } else {
@@ -1248,9 +1286,10 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             }
             _flashcardCards.value = remainingCards
         } else {
-            remainingCards = cards
+            remainingCards = updatedCards
+            _flashcardCards.value = updatedCards
             nextIndex = repository.findNextDueCardIndex(
-                cards = cards,
+                cards = updatedCards,
                 currentIndex = currentIndex,
                 progressMap = updatedProgressMap,
                 nowMillis = nowMillis
@@ -1267,6 +1306,10 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 rating = rating,
                 nowMillis = nowMillis
             )
+            if (rating == Sm2Rating.EASY) {
+                refreshDetailedCardIfOpen(currentCard.deck, currentCard.text)
+                _learnerModelSnapshot.value = studyPlanRepository.learnerModelRepository.buildSnapshot(studyPlanProfile.value)
+            }
             repository.saveDeckStudyPosition(
                 deckId = activeDeckId,
                 cardIndex = nextIndex,
@@ -1301,6 +1344,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 }
             }
             refreshDetailedCardIfOpen(currentCard.deck, currentCard.text)
+            _learnerModelSnapshot.value = studyPlanRepository.learnerModelRepository.buildSnapshot(studyPlanProfile.value)
         }
     }
 
@@ -1503,11 +1547,13 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             repository.toggleMastered(deckId, wordText)
             refreshDetailedCardIfOpen(deckId, wordText)
+            _learnerModelSnapshot.value = studyPlanRepository.learnerModelRepository.buildSnapshot(studyPlanProfile.value)
         }
     }
 
     fun openDetailedDefinition(deckId: String, wordText: String, cardIndex: Int = -1) {
         viewModelScope.launch {
+            readingRepository.recordWordLookup(wordText, deckId)
             _detailedCard.value = repository.getWordCardWithVariants(deckId, wordText)
             loadAiDefinitionForWord(wordText, forceFetch = false)
             if (deckId.isNotBlank() && wordText.isNotBlank()) {
@@ -1518,6 +1564,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                     incrementStudied = false
                 )
             }
+            _learnerModelSnapshot.value = studyPlanRepository.learnerModelRepository.buildSnapshot(studyPlanProfile.value)
         }
     }
 
@@ -1897,7 +1944,18 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     suspend fun lookupWordLocally(rawWord: String): List<EntryEntity> {
-        return readingRepository.lookupWordLocally(rawWord)
+        readingRepository.recordWordLookup(rawWord)
+        val results = readingRepository.lookupWordLocally(rawWord)
+        _learnerModelSnapshot.value = studyPlanRepository.learnerModelRepository.buildSnapshot(studyPlanProfile.value)
+        return results
+    }
+
+    suspend fun scheduleLookedUpWordForToday(rawWord: String): Boolean {
+        val scheduled = readingRepository.scheduleWordForPracticeToday(rawWord) != null
+        if (scheduled) {
+            refreshDailyChecklist()
+        }
+        return scheduled
     }
 
     suspend fun saveWordFavorite(deckId: String, wordText: String, isFavorite: Boolean) {
@@ -2319,6 +2377,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             _studyStreak.value = studyPlanRepository.computeStreak()
             _weakAreas.value = studyPlanRepository.getWeakAreas()
             _practiceAccuracySummary.value = studyPlanRepository.getPracticeAccuracySummary()
+            _learnerModelSnapshot.value = studyPlanRepository.learnerModelRepository.buildSnapshot(studyPlanProfile.value)
             val nowMillis = System.currentTimeMillis()
             val selectedDecks = parseSelectedDecks(studyPlanProfile.value)
             _waitingLaterTodayCount.value = repository.getLaterTodayCardsCount(
@@ -2329,6 +2388,25 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 nowMillis = nowMillis,
                 selectedDecks = selectedDecks
             )
+        }
+    }
+
+    fun dismissAdaptiveInsight(insightId: String) {
+        viewModelScope.launch {
+            studyPlanRepository.learnerModelRepository.dismissInsight(insightId)
+            _learnerModelSnapshot.value = studyPlanRepository.learnerModelRepository.buildSnapshot(studyPlanProfile.value)
+        }
+    }
+
+    fun acceptSuggestedLevelUp(nextLevel: String) {
+        viewModelScope.launch {
+            val current = studyPlanProfile.value ?: studyPlanRepository.getOrCreateProfile()
+            val updated = current.copy(
+                level = nextLevel.trim().uppercase(),
+                updatedAt = studyPlanRepository.timeProvider.currentTimeMillis()
+            )
+            studyPlanRepository.updateProfile(updated)
+            refreshDailyChecklist()
         }
     }
 
@@ -2403,6 +2481,45 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         return ok
     }
 
+    fun exportUserBackupToUri(uri: Uri, onResult: (Boolean, String) -> Unit = { _, _ -> }) {
+        viewModelScope.launch {
+            try {
+                val jsonText = withContext(Dispatchers.IO) {
+                    repository.exportUserBackupJson()
+                }
+                withContext(Dispatchers.IO) {
+                    getApplication<Application>().contentResolver.openOutputStream(uri)?.use { out ->
+                        out.write(jsonText.toByteArray(Charsets.UTF_8))
+                    } ?: throw IllegalStateException("Unable to open output stream")
+                }
+                onResult(true, "Progress backup exported successfully (Schema v16).")
+            } catch (e: Exception) {
+                onResult(false, "Export failed: ${e.message ?: "Unknown error"}")
+            }
+        }
+    }
+
+    fun importUserBackupFromUri(uri: Uri, onResult: (Boolean, String) -> Unit = { _, _ -> }) {
+        viewModelScope.launch {
+            try {
+                val jsonText = withContext(Dispatchers.IO) {
+                    getApplication<Application>().contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use {
+                        it.readText()
+                    } ?: throw IllegalStateException("Unable to read backup file")
+                }
+                val ok = repository.importUserBackupJson(jsonText)
+                if (ok) {
+                    refreshDailyChecklist()
+                    onResult(true, "Progress backup restored! All streaks, cards, and plans are up to date.")
+                } else {
+                    onResult(false, "Invalid backup file format.")
+                }
+            } catch (e: Exception) {
+                onResult(false, "Restore failed: ${e.message ?: "Unknown error"}")
+            }
+        }
+    }
+
     fun savePlanProfile(profile: StudyPlanProfileEntity) {
         viewModelScope.launch {
             studyPlanRepository.updateProfile(profile)
@@ -2432,9 +2549,10 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             try {
                 val checklist = _todayChecklist.value ?: studyPlanRepository.getOrCreateDailyChecklist()
                 val profile = studyPlanProfile.value ?: studyPlanRepository.getOrCreateProfile()
-                val alignedResult = localQuizEngine.generateAlignedDailyQuiz(checklist, profile, isTtsAvailable = true)
+                val ttsAllowed = !profile.quietModeEnabled
+                val alignedResult = localQuizEngine.generateAlignedDailyQuiz(checklist, profile, isTtsAvailable = ttsAllowed)
                 _activeQuizSession.value = ActiveQuizSession(
-                    title = "Daily Mini-Quiz",
+                    title = if (profile.quietModeEnabled) "Daily Mini-Quiz (Quiet Mode)" else "Daily Mini-Quiz",
                     quizType = "daily_mini",
                     questions = alignedResult.questions,
                     scopeInfo = alignedResult.scopeInfo
@@ -2451,7 +2569,8 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             _isQuizLoading.value = true
             try {
-                val questions = localQuizEngine.generateWeeklyQuiz(isTtsAvailable = true)
+                val ttsAllowed = !(studyPlanProfile.value?.quietModeEnabled ?: false)
+                val questions = localQuizEngine.generateWeeklyQuiz(isTtsAvailable = ttsAllowed)
                 _activeQuizSession.value = ActiveQuizSession(
                     title = "Weekly Comprehensive Quiz",
                     quizType = "weekly",
@@ -2471,7 +2590,8 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             _isQuizLoading.value = true
             try {
                 val level = studyPlanProfile.value?.level ?: "B2"
-                val questions = localQuizEngine.generateWeakAreasQuiz(targetLevel = level, isTtsAvailable = true)
+                val ttsAllowed = !(studyPlanProfile.value?.quietModeEnabled ?: false)
+                val questions = localQuizEngine.generateWeakAreasQuiz(targetLevel = level, isTtsAvailable = ttsAllowed)
                 _activeQuizSession.value = ActiveQuizSession(
                     title = "Weak Areas Targeted Practice",
                     quizType = "weak_areas",
@@ -2504,7 +2624,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     suspend fun generateDailyQuiz(): List<QuizQuestionItem> {
         val checklist = _todayChecklist.value ?: studyPlanRepository.getOrCreateDailyChecklist()
         val profile = studyPlanProfile.value ?: studyPlanRepository.getOrCreateProfile()
-        return localQuizEngine.generateAlignedDailyQuiz(checklist, profile, isTtsAvailable = true).questions
+        return localQuizEngine.generateAlignedDailyQuiz(checklist, profile, isTtsAvailable = !profile.quietModeEnabled).questions
     }
 
     suspend fun generateWeeklyQuiz(): List<QuizQuestionItem> {

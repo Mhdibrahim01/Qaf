@@ -109,6 +109,11 @@ import com.example.ui.theme.TextSubtle
 import com.example.ui.theme.VioletAccent
 import com.example.ui.theme.VioletAccentBg
 import com.example.ui.theme.WordBooksSpacing
+import com.example.data.plan.LearnerModelSnapshot
+import com.example.ui.components.AdaptiveInsightBannerCard
+import com.example.ui.components.CefrReadinessBarCard
+import com.example.ui.components.ConqueredWordsTrophyShelf
+import com.example.ui.components.WordLifecycleFunnelCard
 import kotlinx.serialization.json.Json
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -138,6 +143,9 @@ fun HomeScreen(
     weeklyChecklists: List<DailyChecklistEntity> = emptyList(),
     studyStreak: Int = 0,
     studyPlanProfile: StudyPlanProfileEntity? = null,
+    learnerModelSnapshot: LearnerModelSnapshot = LearnerModelSnapshot(),
+    onDismissInsight: (String) -> Unit = {},
+    onAcceptLevelUp: (String) -> Unit = {},
     onOpenDeck: (String) -> Unit = {},
     onOpenFlashcardsForDeck: (String) -> Unit = {},
     onOpenPlanScreen: () -> Unit = {},
@@ -194,6 +202,16 @@ fun HomeScreen(
                 studyPlanProfile = studyPlanProfile
             )
 
+            // 1b. Data-backed Adaptive Insight Banner (Cold-Start guarded < 20 attempts)
+            learnerModelSnapshot.activeInsight?.let { insight ->
+                AdaptiveInsightBannerCard(
+                    insight = insight,
+                    onDismiss = onDismissInsight,
+                    onAcceptLevelUp = onAcceptLevelUp,
+                    onNavigateToRoute = { route -> onNavigateToTask(route, null) }
+                )
+            }
+
             if (isTablet) {
                 // Two-column tablet layout
                 Row(
@@ -209,6 +227,19 @@ fun HomeScreen(
                             onOpenPlanScreen = onOpenPlanScreen,
                             onNavigateToTask = onNavigateToTask,
                             onToggleTaskCompleted = onToggleTaskCompleted
+                        )
+
+                        CefrReadinessBarCard(
+                            readiness = learnerModelSnapshot.cefrReadiness,
+                            onAcceptLevelUp = onAcceptLevelUp
+                        )
+
+                        WordLifecycleFunnelCard(
+                            funnel = learnerModelSnapshot.funnel
+                        )
+
+                        ConqueredWordsTrophyShelf(
+                            conqueredWords = learnerModelSnapshot.conqueredWords
                         )
 
                         WeeklyProgressSummaryCard(
@@ -254,6 +285,19 @@ fun HomeScreen(
                     onOpenPlanScreen = onOpenPlanScreen,
                     onNavigateToTask = onNavigateToTask,
                     onToggleTaskCompleted = onToggleTaskCompleted
+                )
+
+                CefrReadinessBarCard(
+                    readiness = learnerModelSnapshot.cefrReadiness,
+                    onAcceptLevelUp = onAcceptLevelUp
+                )
+
+                WordLifecycleFunnelCard(
+                    funnel = learnerModelSnapshot.funnel
+                )
+
+                ConqueredWordsTrophyShelf(
+                    conqueredWords = learnerModelSnapshot.conqueredWords
                 )
 
                 ReviewDueSection(

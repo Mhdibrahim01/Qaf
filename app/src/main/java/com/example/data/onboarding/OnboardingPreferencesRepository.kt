@@ -34,7 +34,9 @@ data class OnboardingPreferencesState(
     val firstSessionCompleted: Boolean = false,
     val notificationPromptShown: Boolean = false,
     val reminderHour: Int = 20,
-    val reminderMinute: Int = 0
+    val reminderMinute: Int = 0,
+    val preferredTopicsJson: String = "[]",
+    val quietModeEnabled: Boolean = false
 ) {
     /**
      * Returns the 1-indexed step (1..5) that should currently be shown when onboarding is active.
@@ -70,6 +72,8 @@ class OnboardingPreferencesRepository(
         val KEY_NOTIFICATION_PROMPT_SHOWN = booleanPreferencesKey("notification_prompt_shown")
         val KEY_REMINDER_HOUR = intPreferencesKey("reminder_hour")
         val KEY_REMINDER_MINUTE = intPreferencesKey("reminder_minute")
+        val KEY_PREFERRED_TOPICS = stringPreferencesKey("preferred_topics_json")
+        val KEY_QUIET_MODE = booleanPreferencesKey("quiet_mode_enabled")
 
         /**
          * Kept false until the daily reminder WorkManager notification feature is enabled.
@@ -94,7 +98,9 @@ class OnboardingPreferencesRepository(
             firstSessionCompleted = prefs[KEY_FIRST_SESSION_COMPLETED] ?: false,
             notificationPromptShown = prefs[KEY_NOTIFICATION_PROMPT_SHOWN] ?: false,
             reminderHour = prefs[KEY_REMINDER_HOUR] ?: 20,
-            reminderMinute = prefs[KEY_REMINDER_MINUTE] ?: 0
+            reminderMinute = prefs[KEY_REMINDER_MINUTE] ?: 0,
+            preferredTopicsJson = prefs[KEY_PREFERRED_TOPICS] ?: "[]",
+            quietModeEnabled = prefs[KEY_QUIET_MODE] ?: false
         )
     }
 
@@ -119,12 +125,20 @@ class OnboardingPreferencesRepository(
     suspend fun saveGoalAndTime(
         goal: String,
         minutesPerDay: Int,
-        studyDaysPerWeek: Int
+        studyDaysPerWeek: Int,
+        preferredTopicsJson: String? = null,
+        quietModeEnabled: Boolean? = null
     ) {
         dataStore.edit { prefs ->
             prefs[KEY_SELECTED_GOAL] = goal
             prefs[KEY_SELECTED_MINUTES] = minutesPerDay
             prefs[KEY_SELECTED_STUDY_DAYS] = studyDaysPerWeek.coerceIn(1, 7)
+            if (preferredTopicsJson != null) {
+                prefs[KEY_PREFERRED_TOPICS] = preferredTopicsJson
+            }
+            if (quietModeEnabled != null) {
+                prefs[KEY_QUIET_MODE] = quietModeEnabled
+            }
         }
     }
 
