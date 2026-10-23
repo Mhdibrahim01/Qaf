@@ -18,9 +18,6 @@ import androidx.test.core.app.ApplicationProvider
 import com.example.data.ai.AiWordDetailJson
 import com.example.data.ai.TranslationEngineMode
 import com.example.data.audio.AudioPlayerManager
-import com.example.data.audio.NeuralVoicePackState
-import com.example.data.audio.PiperVoiceModelManager
-import com.example.data.audio.TtsEngineMode
 import com.example.data.local.GroupedWordCard
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.onboarding.OnboardingPreferencesRepository
@@ -33,9 +30,6 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Locale
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry
-import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
-import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -277,7 +271,7 @@ class SettingsAndDeveloperModeTest {
         val scoreWrongCountry = AudioPlayerManager.scoreVoiceForLocale(ukVoice, Locale.US)
 
         assertTrue("Neural local voice should outscore legacy network voice", scoreNeural > scoreLegacy)
-        assertEquals(580, scoreNeural) // 500 (VERY_HIGH) + 50 (local) + 30 (-x-/local)
+        assertEquals(1650, scoreNeural) // 1000 (preferred neural) + 500 (VERY_HIGH) + 100 (local offline) + 50 (-x-/local)
         assertTrue("Uninstalled voice should be rejected", scoreUninstalled < 0)
         assertTrue("UK voice should be rejected when querying US locale", scoreWrongCountry < 0)
 
@@ -300,73 +294,43 @@ class SettingsAndDeveloperModeTest {
     }
 
     @Test
-    fun piperVoiceModelManager_extractsTarBz2AndDetectsAndDeletesVoicePack() {
-        val manager = PiperVoiceModelManager(context)
-        manager.deleteVoicePack()
-        assertFalse(manager.isModelInstalled())
-        assertTrue(manager.state.value is NeuralVoicePackState.NotDownloaded)
+    fun googleTts_scoresAndSelectsOfflineNeuralVoiceAndAppliesNaturalPitch() {
+        assertEquals(0.98f, AudioPlayerManager.NATURAL_PITCH, 0.001f)
+        assertEquals(0.85f, AudioPlayerManager.DEFAULT_NORMAL_RATE, 0.001f)
+        assertEquals(0.60f, AudioPlayerManager.SLOW_TURTLE_RATE, 0.001f)
 
-        // Create a synthetic .tar.bz2 archive containing the required Piper VITS model files
-        val archiveFile = File(context.cacheDir, "test_piper_model.tar.bz2")
-        FileOutputStream(archiveFile).use { fos ->
-            BZip2CompressorOutputStream(fos).use { bzos ->
-                TarArchiveOutputStream(bzos).use { tarOut ->
-                    fun addEntry(path: String, bytes: ByteArray) {
-                        val entry = TarArchiveEntry(path)
-                        entry.size = bytes.size.toLong()
-                        tarOut.putArchiveEntry(entry)
-                        tarOut.write(bytes)
-                        tarOut.closeArchiveEntry()
-                    }
-                    addEntry(
-                        "${PiperVoiceModelManager.MODEL_FOLDER_NAME}/${PiperVoiceModelManager.ONNX_FILE_NAME}",
-                        ByteArray(2048) { 0x4F } // > 1000 bytes requirement
-                    )
-                    addEntry(
-                        "${PiperVoiceModelManager.MODEL_FOLDER_NAME}/${PiperVoiceModelManager.TOKENS_FILE_NAME}",
-                        "_ 0\n^ 1\n$ 2\na 3\n".toByteArray()
-                    )
-                    addEntry(
-                        "${PiperVoiceModelManager.MODEL_FOLDER_NAME}/${PiperVoiceModelManager.ESPEAK_DIR_NAME}/phontab",
-                        ByteArray(128) { 0x01 }
-                    )
-                }
-            }
-        }
+        // Mock voice candidates
+        val neuralVoice = Voice(
+            "en-us-x-sfg-local",
+            Locale.US,
+            Voice.QUALITY_VERY_HIGH,
+            Voice.LATENCY_NORMAL,
+            false, // offline
+            emptySet()
+        )
+        val standardVoice = Voice(
+            "en-us-standard-a",
+            Locale.US,
+            Voice.QUALITY_NORMAL,
+            Voice.LATENCY_NORMAL,
+            true, // network required
+            emptySet()
+        )
 
-        val targetRootDir = File(context.filesDir, "tts_models")
-        targetRootDir.mkdirs()
-        manager.extractTarBz2Archive(archiveFile, targetRootDir)
-        archiveFile.delete()
-        manager.refreshInstallationState()
+        val neuralScore = AudioPlayerManager.scoreVoiceForLocale(neuralVoice, Locale.US)
+        val standardScore = AudioPlayerManager.scoreVoiceForLocale(standardVoice, Locale.US)
 
-        assertTrue("Piper model should be detected as installed after extraction", manager.isModelInstalled())
-        assertTrue(manager.state.value is NeuralVoicePackState.Downloaded)
-
-        // Verify AudioPlayerManager switches cleanly when installed vs deleted
-        val audioPlayerManager = AudioPlayerManager(context)
-        audioPlayerManager.setTtsEngineMode(TtsEngineMode.NATURAL_AI_OFFLINE)
-        assertTrue(audioPlayerManager.isNeuralAiVoiceActive())
-
-        // Delete pack -> falls back to system TTS
-        manager.deleteVoicePack()
-        assertFalse(manager.isModelInstalled())
-        assertTrue(manager.state.value is NeuralVoicePackState.NotDownloaded)
-        assertFalse(audioPlayerManager.isNeuralAiVoiceActive())
-        audioPlayerManager.release()
+        assertTrue("Google offline neural voice must score significantly higher", neuralScore > standardScore)
+        assertTrue("Neural score must include top preference bonus", neuralScore >= 1000)
     }
 
     @Test
-    fun settingsScreen_switchesBetweenSystemAndOfflineNeuralVoiceEngine() = runBlocking {
-        // Test persistence in OnboardingPreferencesRepository first
-        assertEquals("system", onboardingRepo.getSnapshot().ttsEngineMode)
-        onboardingRepo.setTtsEngineMode(TtsEngineMode.NATURAL_AI_OFFLINE.id)
-        assertEquals("natural_ai_offline", onboardingRepo.getSnapshot().ttsEngineMode)
-
-        var currentMode by mutableStateOf(TtsEngineMode.STANDARD_SYSTEM)
-        var packState by mutableStateOf<NeuralVoicePackState>(NeuralVoicePackState.NotDownloaded)
-        var downloadTriggered = false
-        var deleteTriggered = false
+    fun settingsScreen_displaysGoogleTtsEngineCardAndDualAudioSpeedControls() {
+        runBlocking {
+        // Test persistence in OnboardingPreferencesRepository
+        assertEquals(0.85f, onboardingRepo.getSnapshot().ttsSpeechRate, 0.001f)
+        onboardingRepo.setTtsSpeechRate(0.90f)
+        assertEquals(0.90f, onboardingRepo.getSnapshot().ttsSpeechRate, 0.001f)
 
         composeTestRule.setContent {
             WordBooksTheme {
@@ -374,8 +338,6 @@ class SettingsAndDeveloperModeTest {
                     preferredAccentUk = false,
                     ttsSpeechRate = 0.85f,
                     autoPlayPronunciation = false,
-                    ttsEngineMode = currentMode,
-                    neuralVoicePackState = packState,
                     studyPlanProfile = StudyPlanProfileEntity(level = "B1"),
                     totalEntriesCount = 3000,
                     allowAi = true,
@@ -386,17 +348,6 @@ class SettingsAndDeveloperModeTest {
                     onSelectAccentUk = {},
                     onSelectSpeechRate = {},
                     onToggleAutoPlayPronunciation = {},
-                    onSelectTtsEngineMode = { currentMode = it },
-                    onDownloadNeuralVoicePack = {
-                        downloadTriggered = true
-                        packState = NeuralVoicePackState.Downloaded(sizeOnDiskBytes = 22_400_000L)
-                    },
-                    onCancelNeuralVoiceDownload = {},
-                    onDeleteNeuralVoicePack = {
-                        deleteTriggered = true
-                        packState = NeuralVoicePackState.NotDownloaded
-                        currentMode = TtsEngineMode.STANDARD_SYSTEM
-                    },
                     onTestVoicePreview = {},
                     onTestVoiceSlowPreview = {},
                     onSavePlanProfile = {},
@@ -413,21 +364,11 @@ class SettingsAndDeveloperModeTest {
             }
         }
 
-        // Verify voice engine buttons & download CTA exist
-        composeTestRule.onNodeWithTag("btn_voice_engine_system").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("btn_voice_engine_neural").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("btn_download_neural_voice").assertIsDisplayed()
-
-        // Tap Download -> switches to NATURAL_AI_OFFLINE and transitions to Downloaded state
-        composeTestRule.onNodeWithTag("btn_download_neural_voice").performClick()
-        assertTrue(downloadTriggered)
-        assertEquals(TtsEngineMode.NATURAL_AI_OFFLINE, currentMode)
-
-        // Delete button should now be visible
-        composeTestRule.onNodeWithTag("btn_delete_neural_voice").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("btn_delete_neural_voice").performClick()
-        assertTrue(deleteTriggered)
-        assertEquals(TtsEngineMode.STANDARD_SYSTEM, currentMode)
+        // Verify Google Speech Services status card exists
+        composeTestRule.onNodeWithTag("card_google_tts_engine").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Google Speech Services").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Active Engine").assertIsDisplayed()
+        }
     }
 
     @Test

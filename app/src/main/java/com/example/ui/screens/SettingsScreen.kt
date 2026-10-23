@@ -15,9 +15,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,6 +27,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -76,8 +80,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.ai.TranslationEngineMode
-import com.example.data.audio.NeuralVoicePackState
-import com.example.data.audio.TtsEngineMode
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.ui.components.ArabicText
 import com.example.ui.components.ProgressBadge
@@ -116,12 +118,7 @@ fun SettingsScreen(
     apiKeySource: String,
     isApiKeyConfigured: Boolean,
     isDeveloperModeEnabled: Boolean,
-    ttsEngineMode: TtsEngineMode = TtsEngineMode.STANDARD_SYSTEM,
-    neuralVoicePackState: NeuralVoicePackState = NeuralVoicePackState.NotDownloaded,
-    onSelectTtsEngineMode: (TtsEngineMode) -> Unit = {},
-    onDownloadNeuralVoicePack: () -> Unit = {},
-    onCancelNeuralVoiceDownload: () -> Unit = {},
-    onDeleteNeuralVoicePack: () -> Unit = {},
+
     onSelectAccentUk: (Boolean) -> Unit,
     onSelectSpeechRate: (Float) -> Unit,
     onToggleAutoPlayPronunciation: (Boolean) -> Unit,
@@ -216,15 +213,8 @@ fun SettingsScreen(
                 accentColor = GoldAccent,
                 testTag = "settings_section_audio"
             ) {
-                // 1.0 Voice Engine Selection (Standard System vs. Natural AI Offline)
-                OfflineVoiceEngineSelectorSection(
-                    ttsEngineMode = ttsEngineMode,
-                    neuralVoicePackState = neuralVoicePackState,
-                    onSelectTtsEngineMode = onSelectTtsEngineMode,
-                    onDownloadNeuralVoicePack = onDownloadNeuralVoicePack,
-                    onCancelNeuralVoiceDownload = onCancelNeuralVoiceDownload,
-                    onDeleteNeuralVoicePack = onDeleteNeuralVoicePack
-                )
+                // 1.0 Voice Engine Status
+                GoogleTtsEngineStatusSection()
 
                 HorizontalDivider(color = BorderSubtle)
 
@@ -278,62 +268,20 @@ fun SettingsScreen(
 
                 // 1B. Speech Playback Speed + Test Speaker Button
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Text(
-                                text = "Speech Playback Speed",
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = TextPrimary
-                            )
-                            ArabicText(
-                                text = "سرعة قراءة الكلمات والجمل الصوتية",
-                                style = ArabicTypography.bodySmall,
-                                color = TextSecondary
-                            )
-                        }
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = {
-                                    onTestVoicePreview("Mastering English pronunciation requires natural rhythm and clear syllable stress.")
-                                },
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, GoldAccentBorder),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                modifier = Modifier.testTag("btn_test_voice")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                    contentDescription = "Test Voice",
-                                    tint = GoldAccent,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Test Voice",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = GoldAccent
-                                )
-                            }
-
-                            SlowAudioTurtleButton(
-                                onClick = {
-                                    onTestVoiceSlowPreview("Mastering English pronunciation requires natural rhythm and clear syllable stress.")
-                                },
-                                showSpeedLabel = true,
-                                testTag = "btn_test_voice_slow"
-                            )
-                        }
+                        Text(
+                            text = "Speech Playback Speed",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = TextPrimary
+                        )
+                        ArabicText(
+                            text = "سرعة قراءة الكلمات والجمل الصوتية",
+                            style = ArabicTypography.bodySmall,
+                            color = TextSecondary
+                        )
                     }
 
                     val speedPresets = listOf(
@@ -343,7 +291,9 @@ fun SettingsScreen(
                     )
 
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(IntrinsicSize.Min),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         speedPresets.forEach { (rate, label, badge) ->
@@ -360,9 +310,52 @@ fun SettingsScreen(
                                 accentColor = GoldAccent,
                                 onClick = { onSelectSpeechRate(rate) },
                                 testTag = tag,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
                             )
                         }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                onTestVoicePreview("Mastering English pronunciation requires natural rhythm and clear syllable stress.")
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, GoldAccentBorder),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("btn_test_voice")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                contentDescription = "Test Voice",
+                                tint = GoldAccent,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Test Voice",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                color = GoldAccent,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+
+                        SlowAudioTurtleButton(
+                            onClick = {
+                                onTestVoiceSlowPreview("Mastering English pronunciation requires natural rhythm and clear syllable stress.")
+                            },
+                            showSpeedLabel = true,
+                            testTag = "btn_test_voice_slow"
+                        )
                     }
                 }
 
@@ -1192,323 +1185,85 @@ private fun SettingsChoicePill(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(horizontal = 10.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)
         ) {
             Text(
                 text = labelEn,
                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                color = if (isSelected) accentColor else TextPrimary
+                color = if (isSelected) accentColor else TextPrimary,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = subtitleEn,
                 style = MaterialTheme.typography.labelSmall,
-                color = if (isSelected) accentColor.copy(alpha = 0.85f) else TextSecondary
+                color = if (isSelected) accentColor.copy(alpha = 0.85f) else TextSecondary,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
 }
 
 @Composable
-private fun OfflineVoiceEngineSelectorSection(
-    ttsEngineMode: TtsEngineMode,
-    neuralVoicePackState: NeuralVoicePackState,
-    onSelectTtsEngineMode: (TtsEngineMode) -> Unit,
-    onDownloadNeuralVoicePack: () -> Unit,
-    onCancelNeuralVoiceDownload: () -> Unit,
-    onDeleteNeuralVoicePack: () -> Unit
-) {
-    val isNeuralInstalled = neuralVoicePackState is NeuralVoicePackState.Downloaded
-    val isSystemSelected = ttsEngineMode == TtsEngineMode.STANDARD_SYSTEM || !isNeuralInstalled
-    val isNeuralSelected = ttsEngineMode == TtsEngineMode.NATURAL_AI_OFFLINE
-
-    Column(
+private fun GoogleTtsEngineStatusSection() {
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .testTag("section_voice_engine"),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+            .testTag("card_google_tts_engine"),
+        color = SurfaceElevatedDark,
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(width = 1.dp, color = GoldAccent.copy(alpha = 0.35f))
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = "Voice Engine",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = TextPrimary
-                )
-                ArabicText(
-                    text = "محرك النطق الصوتي",
-                    style = ArabicTypography.bodySmall,
-                    color = TextSecondary
-                )
-            }
-            ProgressBadge(
-                text = if (isNeuralSelected && isNeuralInstalled) "Natural AI (Offline)" else "System Default",
-                color = if (isNeuralSelected && isNeuralInstalled) EmeraldAccent else GoldAccent
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            SettingsChoicePill(
-                labelEn = "Standard System Voice",
-                subtitleEn = "Built-in • 0 MB",
-                isSelected = isSystemSelected && !isNeuralSelected,
-                accentColor = GoldAccent,
-                onClick = { onSelectTtsEngineMode(TtsEngineMode.STANDARD_SYSTEM) },
-                testTag = "btn_voice_engine_system",
-                modifier = Modifier.weight(1f)
-            )
-            SettingsChoicePill(
-                labelEn = "Natural AI Voice (Offline)",
-                subtitleEn = if (isNeuralInstalled) "Piper VITS • Installed" else "Piper VITS • ~21 MB",
-                isSelected = isNeuralSelected,
-                accentColor = EmeraldAccent,
-                onClick = { onSelectTtsEngineMode(TtsEngineMode.NATURAL_AI_OFFLINE) },
-                testTag = "btn_voice_engine_neural",
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        // Neural Voice Pack Manager Card
-        Surface(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .testTag("card_neural_voice_pack"),
-            color = SurfaceElevatedDark,
-            shape = RoundedCornerShape(14.dp),
-            border = BorderStroke(
-                width = 1.dp,
-                color = if (isNeuralInstalled) EmeraldAccent.copy(alpha = 0.45f) else BorderDark
-            )
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.RecordVoiceOver,
-                            contentDescription = null,
-                            tint = if (isNeuralInstalled) EmeraldAccent else GoldAccent,
-                            modifier = Modifier.size(20.dp)
+                    Icon(
+                        imageVector = Icons.Default.RecordVoiceOver,
+                        contentDescription = null,
+                        tint = GoldAccent,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = "Google Speech Services",
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                            color = TextPrimary
                         )
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                text = "Piper VITS English (en_US-amy-low)",
-                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                                color = TextPrimary
-                            )
-                            Text(
-                                text = "100% offline neural speech synthesis via Sherpa-ONNX.",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = TextSecondary
-                            )
-                        }
-                    }
-
-                    if (isNeuralInstalled) {
-                        ProgressBadge(
-                            text = "Installed Offline",
-                            color = EmeraldAccent
+                        Text(
+                            text = "Native local neural voices • 0 MB download • High quality",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextSecondary
                         )
                     }
                 }
-
-                when (neuralVoicePackState) {
-                    is NeuralVoicePackState.NotDownloaded -> {
-                        Button(
-                            onClick = {
-                                onSelectTtsEngineMode(TtsEngineMode.NATURAL_AI_OFFLINE)
-                                onDownloadNeuralVoicePack()
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("btn_download_neural_voice"),
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = EmeraldAccent.copy(alpha = 0.18f),
-                                contentColor = EmeraldAccent
-                            ),
-                            border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.5f)),
-                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 14.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CloudDownload,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Download Natural AI Voice (~21 MB)",
-                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
-                            )
-                        }
-                    }
-
-                    is NeuralVoicePackState.Downloading -> {
-                        val downloadedMb = neuralVoicePackState.downloadedBytes / (1024f * 1024f)
-                        val totalMb = neuralVoicePackState.totalBytes / (1024f * 1024f)
-                        val progressPercent = (neuralVoicePackState.progressFraction * 100f).toInt().coerceIn(0, 100)
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("neural_voice_download_progress"),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Downloading voice model... ${String.format(java.util.Locale.US, "%.1f / %.1f MB", downloadedMb, totalMb)} ($progressPercent%)",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                    color = EmeraldAccent
-                                )
-                                OutlinedButton(
-                                    onClick = onCancelNeuralVoiceDownload,
-                                    modifier = Modifier.testTag("btn_cancel_neural_download"),
-                                    shape = RoundedCornerShape(8.dp),
-                                    border = BorderStroke(1.dp, CoralAccent.copy(alpha = 0.5f)),
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                                ) {
-                                    Text(
-                                        text = "Cancel",
-                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                        color = CoralAccent
-                                    )
-                                }
-                            }
-                            LinearProgressIndicator(
-                                progress = { neuralVoicePackState.progressFraction.coerceIn(0f, 1f) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(6.dp)
-                                    .clip(RoundedCornerShape(4.dp)),
-                                color = EmeraldAccent,
-                                trackColor = BackgroundDark
-                            )
-                        }
-                    }
-
-                    is NeuralVoicePackState.Extracting -> {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("neural_voice_download_progress"),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "Extracting neural voice files & phoneme dictionary...",
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                color = EmeraldAccent
-                            )
-                            LinearProgressIndicator(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(6.dp)
-                                    .clip(RoundedCornerShape(4.dp)),
-                                color = EmeraldAccent,
-                                trackColor = BackgroundDark
-                            )
-                        }
-                    }
-
-                    is NeuralVoicePackState.Downloaded -> {
-                        val sizeMb = neuralVoicePackState.sizeOnDiskBytes / (1024f * 1024f)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = if (isNeuralSelected) {
-                                    "Active • Using local neural voice (${String.format(java.util.Locale.US, "%.1f MB", sizeMb)})"
-                                } else {
-                                    "Downloaded (${String.format(java.util.Locale.US, "%.1f MB", sizeMb)}) • Tap 'Natural AI Voice' above to activate"
-                                },
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (isNeuralSelected) EmeraldAccent else TextSecondary,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            OutlinedButton(
-                                onClick = onDeleteNeuralVoicePack,
-                                modifier = Modifier.testTag("btn_delete_neural_voice"),
-                                shape = RoundedCornerShape(8.dp),
-                                border = BorderStroke(1.dp, CoralAccent.copy(alpha = 0.45f)),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.DeleteOutline,
-                                    contentDescription = null,
-                                    tint = CoralAccent,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Delete Pack",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = CoralAccent
-                                )
-                            }
-                        }
-                    }
-
-                    is NeuralVoicePackState.Error -> {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                text = "Download failed: ${neuralVoicePackState.message}. Using Standard System Voice fallback.",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = CoralAccent,
-                                modifier = Modifier.testTag("txt_neural_voice_error")
-                            )
-                            Button(
-                                onClick = onDownloadNeuralVoicePack,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .testTag("btn_download_neural_voice"),
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = EmeraldAccent.copy(alpha = 0.18f),
-                                    contentColor = EmeraldAccent
-                                ),
-                                border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.5f)),
-                                contentPadding = PaddingValues(vertical = 10.dp, horizontal = 14.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Retry Download (~21 MB)",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
-                                )
-                            }
-                        }
-                    }
-                }
+                ProgressBadge(
+                    text = "Active Engine",
+                    color = EmeraldAccent
+                )
             }
+            Text(
+                text = "Calibrated with natural 0.98x pitch and dual speeds (0.85x Normal, 0.60x Slow Turtle). No extra downloads required.",
+                style = MaterialTheme.typography.labelSmall,
+                color = TextMuted
+            )
         }
     }
 }

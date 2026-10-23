@@ -29,23 +29,33 @@ import java.util.ArrayList
 import java.util.Locale
 
 /**
- * Plays word or sentence audio lazily (never probing codecs or TTS on app startup):
- * 1. If `audioUrl` is non-blank, streams it via an audio-only Media3 ExoPlayer with browser User-Agent
+ * Plays word or sentence audio lazily and reliably:
+ * 1. If [audioUrl] is a valid remote dictionary audio URL, streams it via an audio-only Media3 ExoPlayer
  *    (falling back to Android TextToSpeech on any network/codec error).
- * 2. Otherwise speaks `text` using lazily-initialized Android TextToSpeech, explicitly prioritizing
- *    Google Speech Services (`com.google.android.tts`) and highest-quality neural voices (`QUALITY_VERY_HIGH`),
- *    with automatic fallback to the device's default TTS engine if Google TTS is unavailable.
+ * 2. Otherwise synthesizes [text] using Android TextToSpeech, explicitly prioritizing Google Speech Services
+ *    (`com.google.android.tts`) and Google's high-quality offline neural voices (`en-us-x-*-local`), with
+ *    automatic fallback to the device's default TTS engine if Google TTS is unavailable.
+ * 3. Calibrates natural human resonance with a 0.98f pitch, supporting dual speeds:
+ *    - Normal Speech: 0.85f
+ *    - Slow Turtle: 0.60f (0.70f for pre-recorded dictionary audio)
  */
-class AudioPlayerManager(
-    context: Context,
-    val voiceModelManager: PiperVoiceModelManager = PiperVoiceModelManager(context.applicationContext)
-) {
+class AudioPlayerManager(context: Context) {
 
     companion object {
         const val GOOGLE_TTS_PACKAGE = "com.google.android.tts"
         const val DEFAULT_NORMAL_RATE = 0.85f
         const val SLOW_TURTLE_RATE = 0.60f
         const val EXO_SLOW_RATE = 0.70f
+        const val NATURAL_PITCH = 0.98f
+
+        val PREFERRED_GOOGLE_NEURAL_VOICES = setOf(
+            "en-us-x-tpf-local",
+            "en-us-x-sfg-local",
+            "en-us-x-iob-local",
+            "en-us-x-iom-local",
+            "en-us-x-iol-local",
+            "en-us-x-tpc-local"
+        )
 
         /**
          * Returns true if [locale] represents British English (`en-GB` / `en-UK`).
@@ -57,6 +67,7 @@ class AudioPlayerManager(
 
         /**
          * Scores an Android [Voice] candidate for [locale] selection.
+         * Prioritizes Google's high-quality local neural voices for zero-latency offline pronunciation.
          * Returns a negative value if the voice does not match the language/country or is not installed.
          */
         fun scoreVoiceForLocale(voice: Voice, locale: Locale): Int {
@@ -79,6 +90,13 @@ class AudioPlayerManager(
             }
 
             var score = 0
+            val nameLower = voice.name.lowercase(Locale.ROOT)
+
+            // Top priority: Known Google high-quality offline neural voices
+            if (PREFERRED_GOOGLE_NEURAL_VOICES.any { nameLower.contains(it) }) {
+                score += 1000
+            }
+
             score += when (voice.quality) {
                 Voice.QUALITY_VERY_HIGH -> 500
                 Voice.QUALITY_HIGH -> 400
@@ -87,18 +105,17 @@ class AudioPlayerManager(
                 else -> 50
             }
 
-            // Prefer local neural voices for zero-latency offline reliability
+            // Prefer local offline voices for zero-latency, reliable speech
             if (!voice.isNetworkConnectionRequired) {
-                score += 50
+                score += 100
             }
 
-            val nameLower = voice.name.lowercase(Locale.ROOT)
             if (nameLower.contains("local") ||
                 nameLower.contains("-x-") ||
                 nameLower.contains("wavenet") ||
                 nameLower.contains("neural")
             ) {
-                score += 30
+                score += 50
             }
 
             return score
@@ -118,8 +135,6 @@ class AudioPlayerManager(
 
     private var exoPlayer: ExoPlayer? = null
     private var tts: TextToSpeech? = null
-    private val sherpaEngine = SherpaOfflineTtsEngine(voiceModelManager)
-    private var ttsEngineMode: TtsEngineMode = TtsEngineMode.STANDARD_SYSTEM
     private var isTtsReady = false
     private var isTtsInitializing = false
     private var pendingTtsText: String? = null
@@ -129,40 +144,6 @@ class AudioPlayerManager(
     private var preferUkAccent: Boolean = false
     private var lastExoWasSlow: Boolean = false
     private var lastRequestedIsGb: Boolean = false
-
-    val neuralVoicePackState: StateFlow<NeuralVoicePackState> = voiceModelManager.state
-
-    fun setTtsEngineMode(mode: TtsEngineMode) {
-        ttsEngineMode = mode
-        if (mode == TtsEngineMode.STANDARD_SYSTEM) {
-            sherpaEngine.stop()
-        }
-    }
-
-    fun getTtsEngineMode(): TtsEngineMode = ttsEngineMode
-
-    /**
-     * Returns true when the offline neural AI voice engine is both selected and installed on disk.
-     */
-    fun isNeuralAiVoiceActive(): Boolean =
-        ttsEngineMode == TtsEngineMode.NATURAL_AI_OFFLINE && voiceModelManager.isModelInstalled()
-
-    fun downloadNeuralVoicePack(onCompleted: (() -> Unit)? = null) {
-        voiceModelManager.startDownload(onDownloadCompleted = onCompleted)
-    }
-
-    fun cancelNeuralVoiceDownload() {
-        voiceModelManager.cancelDownload()
-    }
-
-    fun deleteNeuralVoicePack() {
-        voiceModelManager.deleteVoicePack(
-            onBeforeDelete = {
-                sherpaEngine.releaseEngine()
-            }
-        )
-        ttsEngineMode = TtsEngineMode.STANDARD_SYSTEM
-    }
 
     fun setDefaultSpeechRate(rate: Float) {
         defaultSpeechRate = rate.coerceIn(0.5f, 1.5f)
@@ -184,7 +165,7 @@ class AudioPlayerManager(
 
     /**
      * Queries the active TTS engine for all available voices matching [locale]
-     * and selects the highest-quality neural voice (preferring local non-network voices).
+     * and selects the highest-quality neural voice (preferring local offline voices).
      */
     fun findBestVoiceForLocale(locale: Locale): Voice? {
         val engine = tts ?: return null
@@ -209,9 +190,6 @@ class AudioPlayerManager(
                 engine.language = locale
                 engine.voice = bestInstalledVoice
             } else {
-                // If no offline voice without KEY_FEATURE_NOT_INSTALLED was found,
-                // look for any voice matching the target locale (e.g. network or default en-GB voice)
-                // so a previously-selected US voice does not stay locked when switching to GB.
                 val fallbackLocaleVoice = try {
                     engine.voices?.firstOrNull { v ->
                         v.locale != null &&
@@ -226,11 +204,11 @@ class AudioPlayerManager(
                     engine.voice = fallbackLocaleVoice
                 }
             }
-            engine.setPitch(1.0f)
+            engine.setPitch(NATURAL_PITCH)
         } catch (_: Exception) {
-            // Fallback to standard locale assignment if voice query fails on older OEM engines
             try {
                 engine.language = locale
+                engine.setPitch(NATURAL_PITCH)
             } catch (_: Exception) {}
         }
     }
@@ -259,7 +237,7 @@ class AudioPlayerManager(
                     }
                     val rateToUse = pendingSpeechRate ?: defaultSpeechRate
                     tts?.setSpeechRate(rateToUse)
-                    tts?.setPitch(1.0f)
+                    tts?.setPitch(NATURAL_PITCH)
                     tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                         override fun onStart(utteranceId: String?) {}
                         override fun onDone(utteranceId: String?) {
@@ -439,9 +417,6 @@ class AudioPlayerManager(
         try {
             tts?.stop()
         } catch (_: Exception) {}
-        try {
-            sherpaEngine.stop()
-        } catch (_: Exception) {}
 
         _currentlyPlayingWord.value = text
         _isPlayingSlow.value = isSlow
@@ -450,7 +425,7 @@ class AudioPlayerManager(
         val targetLocale = if (isGb) Locale.UK else Locale.US
         val rateOverride = if (isSlow) SLOW_TURTLE_RATE else null
 
-        if (!isGb && audioUrl.isNotBlank() && (audioUrl.startsWith("http://") || audioUrl.startsWith("https://"))) {
+        if (audioUrl.isNotBlank() && (audioUrl.startsWith("http://") || audioUrl.startsWith("https://"))) {
             try {
                 lastExoWasSlow = isSlow
                 val player = getOrCreateExoPlayer()
@@ -497,9 +472,6 @@ class AudioPlayerManager(
         try {
             tts?.stop()
         } catch (_: Exception) {}
-        try {
-            sherpaEngine.stop()
-        } catch (_: Exception) {}
         _currentlyPlayingWord.value = null
         _isPlayingSlow.value = false
     }
@@ -510,34 +482,6 @@ class AudioPlayerManager(
         locale: Locale = Locale.US
     ) {
         val rate = (speechRateOverride ?: defaultSpeechRate).coerceIn(0.5f, 1.5f)
-        // Note: The local Piper model (vits-piper-en_US-amy-low) is a US English model.
-        // When the user explicitly requests British English (Locale.UK / en_GB), route to Android TTS
-        // with Locale.UK so the accent switches to British English instead of staying US.
-        if (isNeuralAiVoiceActive() && !isUkLocale(locale)) {
-            try {
-                tts?.stop()
-            } catch (_: Exception) {}
-            sherpaEngine.speak(
-                text = text,
-                speechRate = rate,
-                onComplete = {
-                    _currentlyPlayingWord.value = null
-                    _isPlayingSlow.value = false
-                },
-                onError = {
-                    speakWithAndroidSystemTts(text, rate, locale)
-                }
-            )
-            return
-        }
-        speakWithAndroidSystemTts(text, rate, locale)
-    }
-
-    private fun speakWithAndroidSystemTts(
-        text: String,
-        rate: Float,
-        locale: Locale
-    ) {
         if (isTtsReady && tts != null) {
             applyBestVoiceAndLocale(locale)
             tts?.setSpeechRate(rate)
@@ -567,10 +511,6 @@ class AudioPlayerManager(
         } catch (_: Exception) {
         }
         tts = null
-        try {
-            sherpaEngine.releaseEngine()
-        } catch (_: Exception) {
-        }
         isTtsReady = false
         isTtsInitializing = false
         pendingTtsText = null

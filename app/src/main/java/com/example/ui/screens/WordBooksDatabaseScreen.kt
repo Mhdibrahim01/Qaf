@@ -1074,6 +1074,7 @@ private fun PagedDeckWordListScreen(
         WordSortOrder.AZ -> "A–Z"
         WordSortOrder.ZA -> "Z–A"
         WordSortOrder.LEVEL -> "Level"
+        WordSortOrder.MIXED -> "Smart Mix"
     }
 
     val isEmpty = pagedEntries.itemCount == 0 &&
@@ -1087,6 +1088,7 @@ private fun PagedDeckWordListScreen(
         currentStudyState?.lastWordText?.trim().orEmpty()
     }
     val hasCheckpoint = checkpointWord.isNotBlank()
+    val headerItemsCount = 3 + (if (levelProgressSummary.hasRecommendedWords) 1 else 0) + (if (hasCheckpoint) 1 else 0)
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
@@ -1105,18 +1107,15 @@ private fun PagedDeckWordListScreen(
                 .testTag("paged_word_list"),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp)
         ) {
-            // Header + Search + LEVEL/STATUS Filter Card + Count/Sort Bar
-            item(key = "header", contentType = "header") {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+            // 1. Deck Header (Back + Title + Studied Progress + Study Button)
+            item(key = "deck_header", contentType = "deck_header") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
                 ) {
-                    // 1. Header section matching image.png
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top
-                    ) {
                         Column(
                             modifier = Modifier
                                 .weight(1f)
@@ -1313,8 +1312,16 @@ private fun PagedDeckWordListScreen(
                             )
                         }
                     }
+                }
 
-                    // 2. Search Bar matching image.png
+            // 2. Search & Filters Card
+            item(key = "search_and_filters", contentType = "search_and_filters") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
                     SearchField(
                         query = filterState.searchQuery,
                         onQueryChange = onSearchQueryChange,
@@ -1420,15 +1427,18 @@ private fun PagedDeckWordListScreen(
                             }
                         }
                     }
+                }
+            }
 
-                    // 4. Words Count & Sort Bar matching image.png
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 2.dp, bottom = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+            // 3. Words Count & Sort Bar
+            item(key = "count_and_sort", contentType = "count_and_sort") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 2.dp, bottom = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = formatNumber(pagedEntries.itemCount),
@@ -1454,13 +1464,12 @@ private fun PagedDeckWordListScreen(
                                 Row(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(8.dp))
-                                        .then(
-                                            if (isAzSort) {
-                                                Modifier.clickable { showAlphabetDialog = true }
-                                            } else {
-                                                Modifier
+                                        .clickable {
+                                            if (!isAzSort) {
+                                                onSortOrderChange(WordSortOrder.AZ)
                                             }
-                                        )
+                                            showAlphabetDialog = true
+                                        }
                                         .padding(horizontal = 8.dp, vertical = 4.dp)
                                         .testTag("alphabet_jump_button"),
                                     verticalAlignment = Alignment.CenterVertically,
@@ -1475,6 +1484,30 @@ private fun PagedDeckWordListScreen(
                                         color = if (isAzSort) GoldAccent else TextMuted.copy(alpha = 0.4f)
                                     )
                                 }
+                            }
+
+                            val isMixed = filterState.sortOrder == WordSortOrder.MIXED
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        onSortOrderChange(if (isMixed) WordSortOrder.AZ else WordSortOrder.MIXED)
+                                    }
+                                    .background(if (isMixed) GoldAccentDim else Color.Transparent)
+                                    .border(1.dp, if (isMixed) GoldAccentBorder else BorderDark, RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    .testTag("smart_mix_toggle_button"),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = if (isMixed) "⚡ Mix ON" else "⚡ Mix",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontWeight = if (isMixed) FontWeight.Bold else FontWeight.Medium,
+                                        fontSize = 12.sp
+                                    ),
+                                    color = if (isMixed) GoldAccent else TextSecondary
+                                )
                             }
 
                             Box {
@@ -1526,7 +1559,10 @@ private fun PagedDeckWordListScreen(
                             }
                         }
                     }
-                if (levelProgressSummary.hasRecommendedWords) {
+                }
+
+            if (levelProgressSummary.hasRecommendedWords) {
+                item(key = "level_banner", contentType = "level_banner") {
                     LevelProgressSummaryBanner(
                         summary = levelProgressSummary,
                         onFilterToLevel = { targetLvl ->
@@ -1550,107 +1586,105 @@ private fun PagedDeckWordListScreen(
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
                 }
+            }
 
-                if (hasCheckpoint) {
-                        Surface(
+            if (hasCheckpoint) {
+                item(key = "checkpoint_banner", contentType = "checkpoint_banner") {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                        shape = RoundedCornerShape(12.dp),
+                        color = GoldAccentDim,
+                        border = BorderStroke(1.dp, GoldAccentBorder)
+                    ) {
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 12.dp)
-                                .clip(RoundedCornerShape(12.dp)),
-                            shape = RoundedCornerShape(12.dp),
-                            color = GoldAccentDim,
-                            border = BorderStroke(1.dp, GoldAccentBorder)
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.weight(1f)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    modifier = Modifier.weight(1f)
-                                ) {
+                                Text(
+                                    text = "📍",
+                                    fontSize = 18.sp
+                                )
+                                Column {
                                     Text(
-                                        text = "📍",
-                                        fontSize = 18.sp
-                                    )
-                                    Column {
-                                        Text(
-                                            text = "LAST STUDIED CHECKPOINT",
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                letterSpacing = 1.sp,
-                                                color = GoldAccent
-                                            )
-                                        )
-                                        val lastIndex = (currentStudyState?.lastCardIndex ?: 0) + 1
-                                        val totalCount = deck?.rowCount ?: totalEntriesCount
-                                        val percent = if (totalCount > 0) (lastIndex * 100 / totalCount).coerceIn(0, 100) else 0
-                                        Text(
-                                            text = "\"$checkpointWord\" • Card #$lastIndex of ${formatNumber(totalCount)} ($percent%)",
-                                            style = MaterialTheme.typography.bodyMedium.copy(
-                                                fontWeight = FontWeight.Bold,
-                                                color = TextPrimary
-                                            ),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                }
-
-                                Button(
-                                    onClick = {
-                                        coroutineScope.launch {
-                                            var foundIdx: Int? = null
-                                            for (i in 0 until pagedEntries.itemCount) {
-                                                val item = pagedEntries.peek(i)
-                                                if (item?.text.equals(checkpointWord, ignoreCase = true)) {
-                                                    foundIdx = i
-                                                    break
-                                                }
-                                            }
-                                            val targetIdx = foundIdx ?: currentStudyState?.lastCardIndex?.takeIf { it in 0 until (deck?.rowCount ?: totalEntriesCount) }
-                                            if (targetIdx != null) {
-                                                val totalCount = pagedEntries.itemCount
-                                                if (totalCount > 0) {
-                                                    val clampedIdx = targetIdx.coerceIn(0, totalCount - 1)
-                                                    val headerItemsCount = 1
-                                                    pagedEntries[clampedIdx]
-                                                    listState.scrollToItem((clampedIdx + headerItemsCount).coerceAtLeast(0))
-                                                }
-                                            }
-                                        }
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = GoldAccent,
-                                        contentColor = BackgroundDark
-                                    ),
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                    modifier = Modifier.heightIn(min = 32.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.AutoAwesome,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(
-                                        text = "Resume →",
+                                        text = "LAST STUDIED CHECKPOINT",
                                         style = MaterialTheme.typography.labelSmall.copy(
-                                            fontWeight = FontWeight.Bold
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 1.sp,
+                                            color = GoldAccent
                                         )
+                                    )
+                                    val lastIndex = (currentStudyState?.lastCardIndex ?: 0) + 1
+                                    val totalCount = deck?.rowCount ?: totalEntriesCount
+                                    val percent = if (totalCount > 0) (lastIndex * 100 / totalCount).coerceIn(0, 100) else 0
+                                    Text(
+                                        text = "\"$checkpointWord\" • Card #$lastIndex of ${formatNumber(totalCount)} ($percent%)",
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = TextPrimary
+                                        ),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             }
+
+                            Button(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        var foundIdx: Int? = null
+                                        for (i in 0 until pagedEntries.itemCount) {
+                                            val item = pagedEntries.peek(i)
+                                            if (item?.text.equals(checkpointWord, ignoreCase = true)) {
+                                                foundIdx = i
+                                                break
+                                            }
+                                        }
+                                        val targetIdx = foundIdx ?: currentStudyState?.lastCardIndex?.takeIf { it in 0 until (deck?.rowCount ?: totalEntriesCount) }
+                                        if (targetIdx != null) {
+                                            val totalCount = pagedEntries.itemCount
+                                            if (totalCount > 0) {
+                                                val clampedIdx = targetIdx.coerceIn(0, totalCount - 1)
+                                                pagedEntries[clampedIdx]
+                                                listState.scrollToItem((clampedIdx + headerItemsCount).coerceAtLeast(0))
+                                            }
+                                        }
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = GoldAccent,
+                                    contentColor = BackgroundDark
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                modifier = Modifier.heightIn(min = 32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AutoAwesome,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = "Resume →",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                            }
                         }
-                }
-
-
+                    }
                 }
             }
 
@@ -1736,7 +1770,7 @@ private fun PagedDeckWordListScreen(
                     ) { index ->
                         val entry = pagedEntries[index]
                         if (entry != null) {
-                            val cardKey = "${entry.deck}:${entry.text.trim().lowercase()}"
+                            val cardKey = remember(entry.id) { "${entry.deck}:${entry.text.trim().lowercase()}" }
                             val prog = progressMap[cardKey]
                             val isFirst = index == 0
                             val isLast = index == itemCount - 1
@@ -1845,7 +1879,6 @@ private fun PagedDeckWordListScreen(
                                                 if (totalCount > 0) {
                                                     val targetIdx = onGetLetterIndex?.invoke(currentDeckId, letter) ?: 0
                                                     val clampedIdx = targetIdx.coerceIn(0, totalCount - 1)
-                                                    val headerItemsCount = 1
                                                     pagedEntries[clampedIdx]
                                                     listState.scrollToItem((clampedIdx + headerItemsCount).coerceAtLeast(0))
                                                 }
@@ -2026,20 +2059,50 @@ private fun WordBookEntryPlaceholderRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                ShimmerPlaceholder(modifier = Modifier.size(40.dp))
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(SurfaceElevatedDark)
+                )
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        ShimmerPlaceholder(modifier = Modifier.size(width = 110.dp, height = 16.dp))
-                        ShimmerPlaceholder(modifier = Modifier.size(width = 28.dp, height = 16.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(width = 110.dp, height = 18.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(SurfaceElevatedDark)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(width = 28.dp, height = 16.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(SurfaceElevatedDark)
+                        )
                     }
-                    ShimmerPlaceholder(modifier = Modifier.size(width = 90.dp, height = 12.dp))
-                    ShimmerPlaceholder(modifier = Modifier.size(width = 140.dp, height = 14.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(width = 90.dp, height = 12.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(SurfaceElevatedDark)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(width = 140.dp, height = 14.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(SurfaceElevatedDark)
+                    )
                 }
             }
-            ShimmerPlaceholder(modifier = Modifier.size(24.dp))
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(SurfaceElevatedDark)
+            )
         }
     }
 }
@@ -2100,12 +2163,21 @@ fun WordBookEntryRow(
         formattedArabic.any { (it in 'a'..'z') || (it in 'A'..'Z') }
     }
 
-    Column(
-        modifier = modifier
+    val rowModifier = if (isFirstInCard || isLastInCard) {
+        modifier
             .fillMaxWidth()
             .clip(rowShape)
             .background(SurfaceDark)
             .border(1.dp, BorderDark, rowShape)
+    } else {
+        modifier
+            .fillMaxWidth()
+            .background(SurfaceDark)
+            .border(1.dp, BorderDark)
+    }
+
+    Column(
+        modifier = rowModifier
             .clickable(
                 interactionSource = null,
                 indication = null,
@@ -2544,12 +2616,11 @@ fun AiDefinitionPanel(
             val isGbPlaying = isPlayingWord && selectedIsGb && !isPlayingSlowLocal
             val isSlowPlaying = isPlayingWord && isPlayingSlowLocal
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
+            @OptIn(ExperimentalLayoutApi::class)
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // US Chip
                 val ipaUs = aiDetail?.ipaUs?.ifBlank { card.ipa } ?: card.ipa

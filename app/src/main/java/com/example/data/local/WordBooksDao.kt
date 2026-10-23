@@ -499,6 +499,7 @@ interface WordBooksDao {
               OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
           )
         ORDER BY
+          CASE WHEN :sortOrder = 'MIXED' THEN ((CAST(e.id AS INTEGER) * 2654435761) & 2147483647) END ASC,
           CASE WHEN :sortOrder = 'AZ' THEN LOWER(e.text) END ASC,
           CASE WHEN :sortOrder = 'ZA' THEN LOWER(e.text) END DESC,
           CASE WHEN :sortOrder = 'LEVEL' THEN
@@ -527,6 +528,70 @@ interface WordBooksDao {
     @Query(
         """
         SELECT e.* FROM entries e
+        WHERE (:deckId = '' OR e.deck = :deckId)
+          AND (:typeFilter = '' OR e.type = :typeFilter)
+          AND (:levelFilter = '' OR e.level = :levelFilter)
+          AND (
+              :posFilter = ''
+              OR LOWER(e.pos) = LOWER(:posFilter)
+              OR (:posFilter = 'noun' AND LOWER(e.pos) IN ('noun', 'n.', 'n'))
+              OR (:posFilter = 'verb' AND LOWER(e.pos) IN ('verb', 'v.', 'v', 'Phrasal Verb'))
+              OR (:posFilter = 'adjective' AND LOWER(e.pos) IN ('adjective', 'adj.', 'adj'))
+              OR (:posFilter = 'adverb' AND LOWER(e.pos) IN ('adverb', 'adv.', 'adv'))
+              OR (:posFilter = 'preposition' AND LOWER(e.pos) IN ('preposition', 'prep.', 'prep'))
+          )
+          AND (
+              :searchQuery = ''
+              OR LOWER(e.text) LIKE '%' || LOWER(:searchQuery) || '%'
+              OR e.arabic LIKE '%' || :searchQuery || '%'
+              OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
+          )
+        ORDER BY LOWER(e.text) ASC, e.pos ASC
+        """
+    )
+    fun getPagedEntriesFastAz(
+        deckId: String,
+        searchQuery: String,
+        typeFilter: String,
+        levelFilter: String,
+        posFilter: String
+    ): PagingSource<Int, EntryEntity>
+
+    @Query(
+        """
+        SELECT e.* FROM entries e
+        WHERE (:deckId = '' OR e.deck = :deckId)
+          AND (:typeFilter = '' OR e.type = :typeFilter)
+          AND (:levelFilter = '' OR e.level = :levelFilter)
+          AND (
+              :posFilter = ''
+              OR LOWER(e.pos) = LOWER(:posFilter)
+              OR (:posFilter = 'noun' AND LOWER(e.pos) IN ('noun', 'n.', 'n'))
+              OR (:posFilter = 'verb' AND LOWER(e.pos) IN ('verb', 'v.', 'v', 'Phrasal Verb'))
+              OR (:posFilter = 'adjective' AND LOWER(e.pos) IN ('adjective', 'adj.', 'adj'))
+              OR (:posFilter = 'adverb' AND LOWER(e.pos) IN ('adverb', 'adv.', 'adv'))
+              OR (:posFilter = 'preposition' AND LOWER(e.pos) IN ('preposition', 'prep.', 'prep'))
+          )
+          AND (
+              :searchQuery = ''
+              OR LOWER(e.text) LIKE '%' || LOWER(:searchQuery) || '%'
+              OR e.arabic LIKE '%' || :searchQuery || '%'
+              OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
+          )
+        ORDER BY ((CAST(e.id AS INTEGER) * 2654435761) & 2147483647) ASC, e.id ASC
+        """
+    )
+    fun getPagedEntriesFastMixed(
+        deckId: String,
+        searchQuery: String,
+        typeFilter: String,
+        levelFilter: String,
+        posFilter: String
+    ): PagingSource<Int, EntryEntity>
+
+    @Query(
+        """
+        SELECT e.* FROM entries e
         INNER JOIN word_progress wp
             ON wp.deck = e.deck AND wp.text = LOWER(e.text) AND wp.is_favorite = 1
         WHERE (:deckId = '' OR e.deck = :deckId)
@@ -548,6 +613,7 @@ interface WordBooksDao {
               OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
           )
         ORDER BY
+          CASE WHEN :sortOrder = 'MIXED' THEN ((CAST(e.id AS INTEGER) * 2654435761) & 2147483647) END ASC,
           CASE WHEN :sortOrder = 'AZ' THEN LOWER(e.text) END ASC,
           CASE WHEN :sortOrder = 'ZA' THEN LOWER(e.text) END DESC,
           CASE WHEN :sortOrder = 'LEVEL' THEN
@@ -598,6 +664,7 @@ interface WordBooksDao {
               OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
           )
         ORDER BY
+          CASE WHEN :sortOrder = 'MIXED' THEN ((CAST(e.id AS INTEGER) * 2654435761) & 2147483647) END ASC,
           CASE WHEN :sortOrder = 'AZ' THEN LOWER(e.text) END ASC,
           CASE WHEN :sortOrder = 'ZA' THEN LOWER(e.text) END DESC,
           CASE WHEN :sortOrder = 'LEVEL' THEN
@@ -647,6 +714,7 @@ interface WordBooksDao {
               OR LOWER(e.definition_en) LIKE '%' || LOWER(:searchQuery) || '%'
           )
         ORDER BY
+          CASE WHEN :sortOrder = 'MIXED' THEN ((CAST(e.id AS INTEGER) * 2654435761) & 2147483647) END ASC,
           CASE WHEN :sortOrder = 'AZ' THEN LOWER(e.text) END ASC,
           CASE WHEN :sortOrder = 'ZA' THEN LOWER(e.text) END DESC,
           CASE WHEN :sortOrder = 'LEVEL' THEN
@@ -1805,6 +1873,26 @@ interface WordBooksDao {
         """
     )
     fun observeWordsForDeckAndLevel(deckId: String, level: String): Flow<List<EntryEntity>>
+
+    @Query(
+        """
+        SELECT
+            COUNT(DISTINCT e.deck || ':' || LOWER(TRIM(e.text))) AS totalCount,
+            COUNT(DISTINCT CASE WHEN wp.is_mastered = 1 THEN e.deck || ':' || LOWER(TRIM(e.text)) ELSE NULL END) AS masteredCount,
+            (SELECT COUNT(*) FROM word_progress wp2 WHERE (:deckId = '' OR LOWER(wp2.deck) = LOWER(:deckId)) AND wp2.is_mastered = 1) AS deckTotalMasteredCount
+        FROM entries e
+        LEFT JOIN word_progress wp
+            ON wp.deck = e.deck AND wp.text = LOWER(TRIM(e.text))
+        WHERE (:deckId = '' OR LOWER(e.deck) = LOWER(:deckId))
+          AND TRIM(e.text) != ''
+          AND (
+              :level = ''
+              OR COALESCE(NULLIF(TRIM(e.effective_level), ''), TRIM(e.level)) = ''
+              OR UPPER(COALESCE(NULLIF(TRIM(e.effective_level), ''), TRIM(e.level))) = UPPER(TRIM(:level))
+          )
+        """
+    )
+    fun observeLevelProgressCounts(deckId: String, level: String): Flow<LevelProgressCountsResult>
 
     // --- ADAPTIVE V2 3-TIER OVERDUENESS & STORY VOCABULARY QUERIES ---
     @Query(

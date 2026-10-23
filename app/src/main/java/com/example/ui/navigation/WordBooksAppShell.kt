@@ -152,8 +152,6 @@ fun WordBooksAppShell(
     val ttsSpeechRate by wordBooksViewModel.ttsSpeechRate.collectAsStateWithLifecycle()
     val preferredAccentUk by wordBooksViewModel.preferredAccentUk.collectAsStateWithLifecycle()
     val autoPlayPronunciation by wordBooksViewModel.autoPlayPronunciation.collectAsStateWithLifecycle()
-    val ttsEngineMode by wordBooksViewModel.ttsEngineMode.collectAsStateWithLifecycle()
-    val neuralVoicePackState by wordBooksViewModel.neuralVoicePackState.collectAsStateWithLifecycle()
     val isDeveloperModeEnabled by wordBooksViewModel.isDeveloperModeEnabled.collectAsStateWithLifecycle()
     val dictationIgnorePunctuation by wordBooksViewModel.dictationIgnorePunctuation.collectAsStateWithLifecycle()
     val autoPlayPracticeAudio by wordBooksViewModel.autoPlayPracticeAudio.collectAsStateWithLifecycle()
@@ -893,8 +891,7 @@ fun WordBooksAppShell(
                         preferredAccentUk = preferredAccentUk,
                         ttsSpeechRate = ttsSpeechRate,
                         autoPlayPronunciation = autoPlayPronunciation,
-                        ttsEngineMode = ttsEngineMode,
-                        neuralVoicePackState = neuralVoicePackState,
+
                         studyPlanProfile = studyPlanProfile,
                         totalEntriesCount = totalEntriesCount,
                         allowAi = batchTranslateState.allowAi,
@@ -905,10 +902,7 @@ fun WordBooksAppShell(
                         onSelectAccentUk = wordBooksViewModel::setPreferredAccentUk,
                         onSelectSpeechRate = wordBooksViewModel::updateTtsSpeechRate,
                         onToggleAutoPlayPronunciation = wordBooksViewModel::setAutoPlayPronunciation,
-                        onSelectTtsEngineMode = wordBooksViewModel::selectTtsEngineMode,
-                        onDownloadNeuralVoicePack = wordBooksViewModel::downloadNeuralVoicePack,
-                        onCancelNeuralVoiceDownload = wordBooksViewModel::cancelNeuralVoiceDownload,
-                        onDeleteNeuralVoicePack = wordBooksViewModel::deleteNeuralVoicePack,
+
                         onTestVoicePreview = { sampleText ->
                             wordBooksViewModel.speakSentenceTts(sampleText, ttsSpeechRate)
                         },

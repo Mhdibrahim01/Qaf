@@ -265,6 +265,28 @@ abstract class WordBooksDatabase : RoomDatabase() {
             }
         }
 
+        private val PERFORMANCE_INDEX_CALLBACK = object : RoomDatabase.Callback() {
+            override fun onOpen(db: SupportSQLiteDatabase) {
+                super.onOpen(db)
+                try {
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_entries_deck_lower_text` ON `entries` (`deck`, LOWER(`text`), `pos`)"
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_entries_lower_text` ON `entries` (LOWER(`text`), `pos`)"
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_entries_deck_mix_hash` ON `entries` (`deck`, ((CAST(`id` AS INTEGER) * 2654435761) & 2147483647), `id`)"
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_entries_mix_hash` ON `entries` (((CAST(`id` AS INTEGER) * 2654435761) & 2147483647), `id`)"
+                    )
+                } catch (_: Exception) {
+                    // Older SQLite engines if any will safely ignore expression index creation
+                }
+            }
+        }
+
         fun getInstance(context: Context): WordBooksDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -281,6 +303,7 @@ abstract class WordBooksDatabase : RoomDatabase() {
                         MIGRATION_14_15,
                         MIGRATION_15_16
                     )
+                    .addCallback(PERFORMANCE_INDEX_CALLBACK)
                     .build()
                 INSTANCE = instance
                 instance

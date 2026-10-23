@@ -690,6 +690,13 @@ data class LetterCountResult(
     val count: Int
 )
 
+@Immutable
+data class LevelProgressCountsResult(
+    val totalCount: Int = 0,
+    val masteredCount: Int = 0,
+    val deckTotalMasteredCount: Int = 0
+)
+
 /**
  * Real stored accuracy & mastery summary computed from `attempts` and `word_progress`,
  * kept strictly separate from daily task completion counts.
