@@ -6,6 +6,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -36,7 +37,11 @@ data class OnboardingPreferencesState(
     val reminderHour: Int = 20,
     val reminderMinute: Int = 0,
     val preferredTopicsJson: String = "[]",
-    val quietModeEnabled: Boolean = false
+    val quietModeEnabled: Boolean = false,
+    val isDeveloperModeEnabled: Boolean = false,
+    val preferredAccentUk: Boolean = false,
+    val autoPlayPronunciation: Boolean = false,
+    val ttsSpeechRate: Float = 0.85f
 ) {
     /**
      * Returns the 1-indexed step (1..5) that should currently be shown when onboarding is active.
@@ -74,6 +79,10 @@ class OnboardingPreferencesRepository(
         val KEY_REMINDER_MINUTE = intPreferencesKey("reminder_minute")
         val KEY_PREFERRED_TOPICS = stringPreferencesKey("preferred_topics_json")
         val KEY_QUIET_MODE = booleanPreferencesKey("quiet_mode_enabled")
+        val KEY_DEVELOPER_MODE_ENABLED = booleanPreferencesKey("developer_mode_enabled")
+        val KEY_PREFERRED_ACCENT_UK = booleanPreferencesKey("preferred_accent_uk")
+        val KEY_AUTO_PLAY_PRONUNCIATION = booleanPreferencesKey("auto_play_pronunciation")
+        val KEY_TTS_SPEECH_RATE = floatPreferencesKey("tts_speech_rate")
 
         /**
          * Kept false until the daily reminder WorkManager notification feature is enabled.
@@ -100,7 +109,11 @@ class OnboardingPreferencesRepository(
             reminderHour = prefs[KEY_REMINDER_HOUR] ?: 20,
             reminderMinute = prefs[KEY_REMINDER_MINUTE] ?: 0,
             preferredTopicsJson = prefs[KEY_PREFERRED_TOPICS] ?: "[]",
-            quietModeEnabled = prefs[KEY_QUIET_MODE] ?: false
+            quietModeEnabled = prefs[KEY_QUIET_MODE] ?: false,
+            isDeveloperModeEnabled = prefs[KEY_DEVELOPER_MODE_ENABLED] ?: false,
+            preferredAccentUk = prefs[KEY_PREFERRED_ACCENT_UK] ?: false,
+            autoPlayPronunciation = prefs[KEY_AUTO_PLAY_PRONUNCIATION] ?: false,
+            ttsSpeechRate = prefs[KEY_TTS_SPEECH_RATE] ?: 0.85f
         )
     }
 
@@ -223,6 +236,30 @@ class OnboardingPreferencesRepository(
             prefs[KEY_NOTIFICATION_PROMPT_SHOWN] = true
             prefs[KEY_REMINDER_HOUR] = hour.coerceIn(0, 23)
             prefs[KEY_REMINDER_MINUTE] = minute.coerceIn(0, 59)
+        }
+    }
+
+    suspend fun setDeveloperModeEnabled(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[KEY_DEVELOPER_MODE_ENABLED] = enabled
+        }
+    }
+
+    suspend fun setPreferredAccentUk(isUk: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[KEY_PREFERRED_ACCENT_UK] = isUk
+        }
+    }
+
+    suspend fun setAutoPlayPronunciation(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[KEY_AUTO_PLAY_PRONUNCIATION] = enabled
+        }
+    }
+
+    suspend fun setTtsSpeechRate(rate: Float) {
+        dataStore.edit { prefs ->
+            prefs[KEY_TTS_SPEECH_RATE] = rate.coerceIn(0.5f, 1.5f)
         }
     }
 

@@ -56,6 +56,9 @@ sealed interface AppRoute {
     data object CorrectionNotebook : AppRoute
 
     @Serializable
+    data object Settings : AppRoute
+
+    @Serializable
     data object More : AppRoute
 }
 

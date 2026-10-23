@@ -47,6 +47,7 @@ class AudioPlayerManager(context: Context) {
     private var pendingSpeechRate: Float? = null
     private var pendingLocale: Locale = Locale.US
     private var defaultSpeechRate: Float = 0.95f
+    private var preferUkAccent: Boolean = false
 
     fun setDefaultSpeechRate(rate: Float) {
         defaultSpeechRate = rate.coerceIn(0.5f, 1.5f)
@@ -54,6 +55,17 @@ class AudioPlayerManager(context: Context) {
     }
 
     fun getDefaultSpeechRate(): Float = defaultSpeechRate
+
+    fun setPreferUkAccent(isUk: Boolean) {
+        preferUkAccent = isUk
+        val targetLocale = if (isUk) Locale.UK else Locale.US
+        pendingLocale = targetLocale
+        if (isTtsReady && tts != null) {
+            tts?.language = targetLocale
+        }
+    }
+
+    fun isPreferUkAccent(): Boolean = preferUkAccent
 
     private fun ensureTtsInitialized() {
         if (tts != null || isTtsInitializing) return
@@ -191,7 +203,7 @@ class AudioPlayerManager(context: Context) {
     }
 
     fun playWordOrUrl(text: String, audioUrl: String = "") {
-        playWordWithVoice(text, audioUrl, isGb = false)
+        playWordWithVoice(text, audioUrl, isGb = preferUkAccent)
     }
 
     fun playWordWithVoice(text: String, audioUrl: String = "", isGb: Boolean = false) {
@@ -219,7 +231,8 @@ class AudioPlayerManager(context: Context) {
         val cleanText = text.trim()
         if (cleanText.isEmpty()) return
         _currentlyPlayingWord.value = text
-        speakWithTts(cleanText, speechRateOverride, locale = Locale.US)
+        val targetLocale = if (preferUkAccent) Locale.UK else Locale.US
+        speakWithTts(cleanText, speechRateOverride, locale = targetLocale)
     }
 
     fun stopAudio() {
