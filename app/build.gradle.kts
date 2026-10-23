@@ -34,6 +34,19 @@ android {
     versionName = "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+    ndk {
+      // Package only 64-bit ARM native libraries (used by 99% of modern Android devices)
+      // to avoid bundling 72 MB of x86/x86_64/armeabi-v7a ONNX Runtime binaries.
+      abiFilters += listOf("arm64-v8a")
+    }
+  }
+
+  packaging {
+    jniLibs {
+      // Compress native .so libraries inside the APK (shrinks libsherpa-onnx-jni.so from 23 MB to ~8.5 MB)
+      useLegacyPackaging = true
+    }
   }
 
   // Do not remove or modify these signingConfigs. They are necessary for building, installing,
