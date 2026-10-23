@@ -66,14 +66,18 @@ fun SlowAudioTurtleButton(
         ) {
             Text(
                 text = "🐢",
-                fontSize = 14.sp
+                fontSize = 14.sp,
+                maxLines = 1,
+                softWrap = false
             )
             if (showSpeedLabel) {
                 Text(
                     text = "0.6x",
                     style = MaterialTheme.typography.labelSmall,
                     color = labelColor,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
         }

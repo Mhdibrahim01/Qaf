@@ -15,14 +15,17 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
+import com.example.data.ai.AiWordDetailJson
 import com.example.data.ai.TranslationEngineMode
 import com.example.data.audio.AudioPlayerManager
 import com.example.data.audio.NeuralVoicePackState
 import com.example.data.audio.PiperVoiceModelManager
 import com.example.data.audio.TtsEngineMode
+import com.example.data.local.GroupedWordCard
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.onboarding.OnboardingPreferencesRepository
 import com.example.ui.components.SlowAudioTurtleButton
+import com.example.ui.screens.AiDefinitionPanel
 import com.example.ui.screens.MoreScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.theme.WordBooksTheme
@@ -425,5 +428,82 @@ class SettingsAndDeveloperModeTest {
         composeTestRule.onNodeWithTag("btn_delete_neural_voice").performClick()
         assertTrue(deleteTriggered)
         assertEquals(TtsEngineMode.STANDARD_SYSTEM, currentMode)
+    }
+
+    @Test
+    fun aiDefinitionPanel_keepsTurtleButtonVisibleOnLongWordsAndSwitchesUsAndGbIndependently() {
+        assertTrue(AudioPlayerManager.isUkLocale(Locale.UK))
+        assertTrue(AudioPlayerManager.isUkLocale(Locale("en", "GB")))
+        assertFalse(AudioPlayerManager.isUkLocale(Locale.US))
+
+        var lastPlayedIsGb: Boolean? = null
+        var lastPlayedSlowIsGb: Boolean? = null
+        var playingWord by mutableStateOf<String?>(null)
+
+        val longWordCard = GroupedWordCard(
+            cardKey = "oxford5000::absolute",
+            deck = "oxford5000",
+            text = "absolute",
+            ipa = "/ˈæb.sə.luːt/",
+            syllables = "ab·so·lute",
+            primaryLevel = "B2",
+            primaryType = "word",
+            isFavorite = false,
+            isMastered = false,
+            posVariants = emptyList()
+        )
+        val detail = AiWordDetailJson(
+            syllables = "ab·so·lute",
+            ipaUs = "/ˈæb.sə.luːt/",
+            ipaGb = "/ˈæb.sə.luːt/"
+        )
+
+        composeTestRule.setContent {
+            WordBooksTheme {
+                AiDefinitionPanel(
+                    card = longWordCard,
+                    aiDetail = detail,
+                    isAiDetailLoading = false,
+                    aiDetailError = null,
+                    currentlyPlayingWord = playingWord,
+                    savedSentenceKeys = emptySet(),
+                    onPlayAudio = {},
+                    onPlayAudioSlow = {},
+                    onPlayVoiceAudioSlow = { isGb ->
+                        lastPlayedSlowIsGb = isGb
+                        playingWord = longWordCard.text
+                    },
+                    onPlayVoiceAudio = { isGb ->
+                        lastPlayedIsGb = isGb
+                        playingWord = longWordCard.text
+                    },
+                    onSpeakSentenceTts = {},
+                    onRetryAiDefinition = {},
+                    onDismiss = {},
+                    onEnrichWithAi = {},
+                    onSaveUserArabic = { _, _ -> },
+                    onToggleSaveSentence = { _, _ -> },
+                    onToggleFavorite = {},
+                    onToggleMastered = {}
+                )
+            }
+        }
+
+        // 1. Verify US, GB, and Slow Turtle buttons are all reachable even with long IPA
+        composeTestRule.onNodeWithTag("pronounce_us_button").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("pronounce_gb_button").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("pronounce_slow_button").performScrollTo().assertIsDisplayed()
+
+        // 2. Click US -> triggers isGb = false
+        composeTestRule.onNodeWithTag("pronounce_us_button").performScrollTo().performClick()
+        assertEquals(false, lastPlayedIsGb)
+
+        // 3. Click GB -> triggers isGb = true independently
+        composeTestRule.onNodeWithTag("pronounce_gb_button").performScrollTo().performClick()
+        assertEquals(true, lastPlayedIsGb)
+
+        // 4. Click Slow Turtle while GB is selected -> triggers slow playback with isGb = true
+        composeTestRule.onNodeWithTag("pronounce_slow_button").performScrollTo().performClick()
+        assertEquals(true, lastPlayedSlowIsGb)
     }
 }

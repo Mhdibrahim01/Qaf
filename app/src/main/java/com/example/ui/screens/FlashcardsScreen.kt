@@ -916,8 +916,16 @@ fun FlashcardsScreen(
                     val url = detailedCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: ""
                     onPlayAudioSlow(detailedCard.text, url)
                 },
+                onPlayVoiceAudioSlow = { isGb ->
+                    val url = if (!isGb) detailedCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: "" else ""
+                    if (isGb) {
+                        onPlayVoiceAudio(detailedCard.text, url, true)
+                    } else {
+                        onPlayAudioSlow(detailedCard.text, url)
+                    }
+                },
                 onPlayVoiceAudio = { isGb ->
-                    val url = detailedCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: ""
+                    val url = if (!isGb) detailedCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: "" else ""
                     onPlayVoiceAudio(detailedCard.text, url, isGb)
                 },
                 onSpeakSentenceTts = onSpeakSentenceTts,

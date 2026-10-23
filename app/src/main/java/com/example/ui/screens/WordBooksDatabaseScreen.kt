@@ -100,6 +100,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -350,7 +351,7 @@ fun WordBooksDatabaseScreen(
     onSaveUserArabic: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     onToggleSaveSentence: (String, String, String) -> Unit = { _, _, _ -> },
     onPlayAudio: (String, String) -> Unit,
-    onPlayAudioSlow: (String, String) -> Unit = { word, url -> onPlayAudio(word, url) },
+    onPlayAudioSlow: (String, String, Boolean) -> Unit = { word, url, _ -> onPlayAudio(word, url) },
     onPlayVoiceAudio: (String, String, Boolean) -> Unit = { word, url, _ -> onPlayAudio(word, url) },
     onSpeakSentenceTts: (String) -> Unit = {},
     onReverifyImport: () -> Unit,
@@ -477,7 +478,11 @@ fun WordBooksDatabaseScreen(
                         },
                         onPlayAudioSlow = {
                             val url = detailedCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: ""
-                            onPlayAudioSlow(detailedCard.text, url)
+                            onPlayAudioSlow(detailedCard.text, url, false)
+                        },
+                        onPlayVoiceAudioSlow = { isGb ->
+                            val url = if (!isGb) detailedCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: "" else ""
+                            onPlayAudioSlow(detailedCard.text, url, isGb)
                         },
                         onPlayVoiceAudio = { isGb ->
                             val url = if (!isGb) detailedCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: "" else ""
@@ -596,7 +601,11 @@ fun WordBooksDatabaseScreen(
                         },
                         onPlayAudioSlow = {
                             val url = detailedCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: ""
-                            onPlayAudioSlow(detailedCard.text, url)
+                            onPlayAudioSlow(detailedCard.text, url, false)
+                        },
+                        onPlayVoiceAudioSlow = { isGb ->
+                            val url = if (!isGb) detailedCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: "" else ""
+                            onPlayAudioSlow(detailedCard.text, url, isGb)
                         },
                         onPlayVoiceAudio = { isGb ->
                             val url = if (!isGb) detailedCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: "" else ""
@@ -2321,6 +2330,7 @@ fun AiDefinitionPanel(
     isOnline: Boolean = true,
     onPlayAudio: () -> Unit,
     onPlayAudioSlow: () -> Unit = {},
+    onPlayVoiceAudioSlow: (isGb: Boolean) -> Unit = { onPlayAudioSlow() },
     onPlayVoiceAudio: (isGb: Boolean) -> Unit,
     onSpeakSentenceTts: (String) -> Unit,
     onRetryAiDefinition: () -> Unit,
@@ -2521,23 +2531,48 @@ fun AiDefinitionPanel(
                 }
             }
 
-            // Section 2: Dual US & GB pronunciation chips
+            // Section 2: Dual US & GB pronunciation chips + Slow Turtle (0.6x)
             val isPlayingWord = currentlyPlayingWord == card.text
+            var selectedIsGb by remember(card.cardKey) { mutableStateOf(false) }
+            var isPlayingSlowLocal by remember(card.cardKey) { mutableStateOf(false) }
+            LaunchedEffect(isPlayingWord) {
+                if (!isPlayingWord) {
+                    isPlayingSlowLocal = false
+                }
+            }
+            val isUsPlaying = isPlayingWord && !selectedIsGb && !isPlayingSlowLocal
+            val isGbPlaying = isPlayingWord && selectedIsGb && !isPlayingSlowLocal
+            val isSlowPlaying = isPlayingWord && isPlayingSlowLocal
+
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // US Chip
                 val ipaUs = aiDetail?.ipaUs?.ifBlank { card.ipa } ?: card.ipa
+                val isUsHighlighted = isUsPlaying || !selectedIsGb
                 Surface(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .clickable { onPlayVoiceAudio(false) }
+                        .clickable {
+                            selectedIsGb = false
+                            isPlayingSlowLocal = false
+                            onPlayVoiceAudio(false)
+                        }
                         .testTag("pronounce_us_button"),
-                    color = if (isPlayingWord) GoldAccent else GoldAccentDim,
+                    color = when {
+                        isUsPlaying -> GoldAccent
+                        !selectedIsGb -> GoldAccentDim
+                        else -> SurfaceElevatedDark
+                    },
                     shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, GoldAccentBorder)
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = if (isUsHighlighted) GoldAccentBorder else BorderDark
+                    )
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -2547,12 +2582,22 @@ fun AiDefinitionPanel(
                         Text(
                             text = if (ipaUs.isNotBlank()) "US $ipaUs" else "US",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = if (isPlayingWord) BackgroundDark else GoldAccent
+                            color = when {
+                                isUsPlaying -> BackgroundDark
+                                !selectedIsGb -> GoldAccent
+                                else -> TextSecondary
+                            },
+                            maxLines = 1,
+                            softWrap = false
                         )
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                             contentDescription = "US Pronunciation",
-                            tint = if (isPlayingWord) BackgroundDark else GoldAccent,
+                            tint = when {
+                                isUsPlaying -> BackgroundDark
+                                !selectedIsGb -> GoldAccent
+                                else -> TextSecondary
+                            },
                             modifier = Modifier.size(15.dp)
                         )
                     }
@@ -2560,14 +2605,26 @@ fun AiDefinitionPanel(
 
                 // GB Chip
                 val ipaGb = aiDetail?.ipaGb ?: ""
+                val isGbHighlighted = isGbPlaying || selectedIsGb
                 Surface(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .clickable { onPlayVoiceAudio(true) }
+                        .clickable {
+                            selectedIsGb = true
+                            isPlayingSlowLocal = false
+                            onPlayVoiceAudio(true)
+                        }
                         .testTag("pronounce_gb_button"),
-                    color = GoldAccentDim,
+                    color = when {
+                        isGbPlaying -> GoldAccent
+                        selectedIsGb -> GoldAccentDim
+                        else -> SurfaceElevatedDark
+                    },
                     shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, GoldAccentBorder)
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = if (isGbHighlighted) GoldAccentBorder else BorderDark
+                    )
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -2577,12 +2634,22 @@ fun AiDefinitionPanel(
                         Text(
                             text = if (ipaGb.isNotBlank()) "GB $ipaGb" else "GB",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = GoldAccent
+                            color = when {
+                                isGbPlaying -> BackgroundDark
+                                selectedIsGb -> GoldAccent
+                                else -> TextSecondary
+                            },
+                            maxLines = 1,
+                            softWrap = false
                         )
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                             contentDescription = "GB Pronunciation",
-                            tint = GoldAccent,
+                            tint = when {
+                                isGbPlaying -> BackgroundDark
+                                selectedIsGb -> GoldAccent
+                                else -> TextSecondary
+                            },
                             modifier = Modifier.size(15.dp)
                         )
                     }
@@ -2590,7 +2657,11 @@ fun AiDefinitionPanel(
 
                 // Slow Turtle (0.6x) Chip
                 SlowAudioTurtleButton(
-                    onClick = onPlayAudioSlow,
+                    onClick = {
+                        isPlayingSlowLocal = true
+                        onPlayVoiceAudioSlow(selectedIsGb)
+                    },
+                    isPlayingSlow = isSlowPlaying,
                     showSpeedLabel = true,
                     testTag = "pronounce_slow_button"
                 )
@@ -2979,6 +3050,7 @@ internal fun WordDetailedDefinitionSheet(
     isOnline: Boolean = true,
     onPlayAudio: () -> Unit,
     onPlayAudioSlow: () -> Unit = {},
+    onPlayVoiceAudioSlow: (Boolean) -> Unit = { _ -> onPlayAudioSlow() },
     onPlayVoiceAudio: (Boolean) -> Unit = { _ -> onPlayAudio() },
     onSpeakSentenceTts: (String) -> Unit = {},
     onRetryAiDefinition: () -> Unit = {},
@@ -3002,6 +3074,7 @@ internal fun WordDetailedDefinitionSheet(
         isOnline = isOnline,
         onPlayAudio = onPlayAudio,
         onPlayAudioSlow = onPlayAudioSlow,
+        onPlayVoiceAudioSlow = onPlayVoiceAudioSlow,
         onPlayVoiceAudio = onPlayVoiceAudio,
         onSpeakSentenceTts = onSpeakSentenceTts,
         onRetryAiDefinition = onRetryAiDefinition,

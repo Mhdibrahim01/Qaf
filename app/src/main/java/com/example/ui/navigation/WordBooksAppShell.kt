@@ -512,7 +512,7 @@ fun WordBooksAppShell(
                         onSaveUserArabic = wordBooksViewModel::saveUserArabicForEntry,
                         onToggleSaveSentence = wordBooksViewModel::toggleSaveExampleSentence,
                         onPlayAudio = wordBooksViewModel::playAudio,
-                        onPlayAudioSlow = { word, url -> wordBooksViewModel.playAudioSlow(word, url) },
+                        onPlayAudioSlow = { word, url, isGb -> wordBooksViewModel.playAudioSlow(word, url, isGb) },
                         onPlayVoiceAudio = wordBooksViewModel::playWordVoiceAudio,
                         onSpeakSentenceTts = wordBooksViewModel::speakSentenceTts,
                         onReverifyImport = { wordBooksViewModel.startImportIfNeeded(forceRecheck = true) },
