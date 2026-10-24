@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Qaf</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_word_books">Word Books</string>
+    <string name="nav_flashcards">Flashcards</string>
+    <string name="nav_sentences">Sentences</string>
+    <string name="nav_grammar">Grammar</string>
+    <string name="nav_reading">Reading</string>
+    <string name="nav_labs">Labs</string>
+    <string name="placeholder_ready">Phase 1 Shell Ready</string>
+</resources>

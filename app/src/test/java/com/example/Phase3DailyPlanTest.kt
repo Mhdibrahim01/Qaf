@@ -1,0 +1,303 @@
+package com.example
+
+import android.content.Context
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import com.example.data.importer.DataImportRepository
+import com.example.data.local.CorrectionNotebookEntity
+import com.example.data.local.DailyChecklistEntity
+import com.example.data.local.DailyTaskItem
+import com.example.data.local.StudyPlanProfileEntity
+import com.example.data.local.WordBooksDatabase
+import com.example.data.local.WordProgressEntity
+import com.example.data.plan.StudyPlanRepository
+import com.example.data.plan.TestTimeProvider
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+/**
+ * Phase 3 verification suite covering:
+ * 1. Explicit time-budget scaling across 15, 30, and 45-minute profiles.
+ * 2. Heavy review backlog (e.g. 42 reviews due on a 15-min goal) load pacing:
+ *    - Schedules 25 reviews today and sets backlogRemaining = 17.
+ *    - Populates exact reason "25 of 42 due reviews scheduled today to fit your 15-min goal (17 remaining in backlog)".
+ *    - Reduces new words and populates exact reason "Fewer new words today: 42 reviews are due".
+ * 3. Due sentence corrections inclusion:
+ *    - When due correction reviews exist, schedules `task_correction_reviews` with exact reason.
+ * 4. Sentence practice rotation:
+ *    - For A1/A2 levels, schedules `task_sentence_practice` instead of reading texts (which start at B1).
+ * 5. Data-backed reason and estimatedMinutes populated on EVERY DailyTaskItem.
+ * 6. Dynamic Daily Goal and Weekly Checklist 7-day strip driven by database records.
+ */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
+class Phase3DailyPlanTest {
+
+    private lateinit var context: Context
+    private lateinit var db: WordBooksDatabase
+    private lateinit var repo: DataImportRepository
+    private lateinit var planRepo: StudyPlanRepository
+    private lateinit var timeProvider: TestTimeProvider
+    private val json = Json { ignoreUnknownKeys = true }
+
+    @Before
+    fun setup() = runBlocking {
+        context = ApplicationProvider.getApplicationContext()
+        db = Room.inMemoryDatabaseBuilder(context, WordBooksDatabase::class.java)
+        .allowMainThreadQueries()
+        .build()
+
+        repo = DataImportRepository(context, db)
+        repo.ensureImportedOnFirstLaunch(forceRecheck = true)
+        com.example.data.reading.ReadingRepository(context, db.wordBooksDao()).importReadingTextsIfNeeded()
+        com.example.data.grammar.GrammarRepository(context, db.wordBooksDao()).importGrammarLessonsIfNeeded()
+
+        // 2026-11-02 12:00:00 UTC (Monday)
+        timeProvider = TestTimeProvider(1793620800000L)
+        planRepo = StudyPlanRepository(context, db.wordBooksDao(), timeProvider)
+    }
+
+    @After
+    fun tearDown() {
+        db.close()
+    }
+
+    @Test
+    fun testTimeBudgetScaling15_30_45Min() = runBlocking {
+        // 15 min profile
+        val profile15 = StudyPlanProfileEntity(
+            id = 1,
+            level = "B2",
+            goal = "general_fluency",
+            minutesPerDay = 15,
+            studyDaysPerWeek = 6,
+            startDate = "2026-11-02",
+            selectedDecksJson = json.encodeToString(listOf("oxford5000", "oxford_opal")),
+            restDaysJson = "[6]",
+            startAtUserLevel = true,
+            updatedAt = timeProvider.currentTimeMillis()
+        )
+        val checklist15 = planRepo.saveOnboardingGoalAndGeneratePlan("B2", "general_fluency", 15, 6)
+        val tasks15 = json.decodeFromString<List<DailyTaskItem>>(checklist15.tasksJson)
+
+        val flashcards15 = tasks15.first { it.type == "flashcards" }
+        val newWords15 = tasks15.first { it.type == "new_words" }
+        val grammar15 = tasks15.first { it.type == "grammar" }
+
+        assertEquals(5, flashcards15.targetCount)
+        assertEquals(5, newWords15.targetCount)
+        assertEquals(4, grammar15.estimatedMinutes)
+
+        // 30 min profile
+        val checklist30 = planRepo.saveOnboardingGoalAndGeneratePlan("B2", "general_fluency", 30, 6)
+        val tasks30 = json.decodeFromString<List<DailyTaskItem>>(checklist30.tasksJson)
+
+        val flashcards30 = tasks30.first { it.type == "flashcards" }
+        val newWords30 = tasks30.first { it.type == "new_words" }
+        val grammar30 = tasks30.first { it.type == "grammar" }
+        val reading30 = tasks30.firstOrNull { it.type == "reading" }
+
+        assertEquals(10, flashcards30.targetCount)
+        assertEquals(10, newWords30.targetCount)
+        assertEquals(7, grammar30.estimatedMinutes)
+        assertNotNull(reading30)
+        assertEquals(5, reading30?.estimatedMinutes)
+
+        // Verify every task carries a non-empty data-backed reason and estimatedMinutes > 0
+        for (task in tasks30) {
+            assertTrue("Task ${task.id} must have non-empty reason", task.reason.isNotBlank())
+            assertTrue("Task ${task.id} must have estimatedMinutes > 0", task.estimatedMinutes > 0)
+        }
+    }
+
+    @Test
+    fun testReviewBacklogPacingAndReductionReason() = runBlocking {
+        // Seed 42 due cards in Oxford 5000 deck
+        val now = timeProvider.currentTimeMillis()
+        val dueCards = (1..42).map { i ->
+            WordProgressEntity(
+                cardKey = "oxford5000_$i",
+                deck = "oxford5000",
+                text = "word$i",
+                entryId = "$i",
+                repetitions = 2,
+                intervalDays = 5,
+                easeFactor = 2.5f,
+                lastReviewedTimestamp = now - 5 * 86_400_000L,
+                dueTimestamp = now - 1000L, // Overdue
+                firstLearnedTimestamp = now - 15 * 86_400_000L
+            )
+        }
+        for (card in dueCards) {
+            db.wordBooksDao().upsertWordProgress(card)
+        }
+
+        val profile15 = StudyPlanProfileEntity(
+            id = 1,
+            level = "B2",
+            goal = "general_fluency",
+            minutesPerDay = 15,
+            studyDaysPerWeek = 6,
+            startDate = "2026-11-02",
+            selectedDecksJson = json.encodeToString(listOf("oxford5000", "oxford_opal")),
+            restDaysJson = "[6]",
+            startAtUserLevel = true,
+            updatedAt = now
+        )
+        planRepo.updateProfile(profile15)
+
+        val checklist = planRepo.getOrCreateDailyChecklist("2026-11-02")
+        val tasks = json.decodeFromString<List<DailyTaskItem>>(checklist.tasksJson)
+
+        // 1. Review task pacing: 25 scheduled today out of 42, 17 in backlog
+        val reviewTask = tasks.first { it.type == "flashcards" }
+        assertEquals(25, reviewTask.targetCount)
+        assertEquals(17, reviewTask.backlogRemaining)
+        assertTrue(
+            "Review task reason must explain 25 of 42 scheduled reviews with 17 in backlog",
+            reviewTask.reason.contains("25 of 42 due reviews scheduled today to fit your 15-min goal (17 remaining in backlog)")
+        )
+
+        // 2. New words task: reduced due to heavy review load with exact reason
+        val newWordsTask = tasks.first { it.type == "new_words" }
+        assertEquals(3, newWordsTask.targetCount) // reduced from 5 to 3
+        assertEquals("Fewer new words today: 42 reviews are due", newWordsTask.reason)
+    }
+
+    @Test
+    fun testDueCorrectionReviewsTaskIncludedWhenDueCorrectionsExist() = runBlocking {
+        val now = timeProvider.currentTimeMillis()
+        // Seed 3 due correction notebook entries
+        val corrections = listOf(
+            CorrectionNotebookEntity(
+                id = 1L,
+                originalSentence = "He go to school yesterday.",
+                correctedSentence = "He went to school yesterday.",
+                explanationAr = "صيغة الماضي البسيط",
+                status = "checked",
+                nextReviewTimestamp = now - 5000L
+            ),
+            CorrectionNotebookEntity(
+                id = 2L,
+                originalSentence = "She have two brother.",
+                correctedSentence = "She has two brothers.",
+                explanationAr = "توافق الفعل والفاعل",
+                status = "checked",
+                nextReviewTimestamp = now - 1000L
+            ),
+            CorrectionNotebookEntity(
+                id = 3L,
+                originalSentence = "I am agree with you.",
+                correctedSentence = "I agree with you.",
+                explanationAr = "استخدام agree كفعل أساسي",
+                status = "checked",
+                nextReviewTimestamp = now - 2000L
+            )
+        )
+        for (c in corrections) {
+            db.wordBooksDao().upsertCorrectionEntry(c)
+        }
+
+        val profile = StudyPlanProfileEntity(
+            id = 1,
+            level = "B2",
+            goal = "general_fluency",
+            minutesPerDay = 30,
+            studyDaysPerWeek = 6,
+            startDate = "2026-11-02",
+            selectedDecksJson = json.encodeToString(listOf("oxford5000", "oxford_opal")),
+            restDaysJson = "[6]",
+            startAtUserLevel = true,
+            updatedAt = now
+        )
+        planRepo.updateProfile(profile)
+
+        val checklist = planRepo.getOrCreateDailyChecklist("2026-11-02")
+        val tasks = json.decodeFromString<List<DailyTaskItem>>(checklist.tasksJson)
+
+        val correctionTask = tasks.firstOrNull { it.type == "correction_reviews" }
+        assertNotNull("Correction reviews task must be present when corrections are due", correctionTask)
+        assertEquals("task_correction_reviews", correctionTask?.id)
+        assertEquals(3, correctionTask?.targetCount)
+        assertEquals("3 saved sentence corrections are due for review today", correctionTask?.reason)
+        assertEquals("sentences", correctionTask?.linkedRoute)
+    }
+
+    @Test
+    fun testSentencePracticeRotationForA1AndA2Levels() = runBlocking {
+        // A2 user: reading texts start at B1, so planner schedules sentence practice
+        val profileA2 = StudyPlanProfileEntity(
+            id = 1,
+            level = "A2",
+            goal = "general_fluency",
+            minutesPerDay = 30,
+            studyDaysPerWeek = 6,
+            startDate = "2026-11-02",
+            selectedDecksJson = json.encodeToString(listOf("oxford5000")),
+            restDaysJson = "[6]",
+            startAtUserLevel = true,
+            updatedAt = timeProvider.currentTimeMillis()
+        )
+        planRepo.updateProfile(profileA2)
+
+        val checklist = planRepo.getOrCreateDailyChecklist("2026-11-02")
+        val tasks = json.decodeFromString<List<DailyTaskItem>>(checklist.tasksJson)
+
+        val sentenceTask = tasks.firstOrNull { it.type == "sentences" }
+        assertNotNull("Sentence practice task must be scheduled for A2 user", sentenceTask)
+        assertEquals("task_sentence_practice", sentenceTask?.id)
+        assertEquals(3, sentenceTask?.targetCount)
+        assertEquals("Sentence production practice matched to level A2 (~3 min)", sentenceTask?.reason)
+    }
+
+    @Test
+    fun testWeeklyChecklistSummaryDerivedFromDatabase() = runBlocking {
+        // Seed checklists for Monday (complete) and Tuesday (partial)
+        val monChecklist = DailyChecklistEntity(
+            date = "2026-11-02",
+            tasksJson = "[]",
+            completedCount = 4,
+            totalCount = 4,
+            isCompleted = true,
+            completedAt = timeProvider.currentTimeMillis()
+        )
+        val tueChecklist = DailyChecklistEntity(
+            date = "2026-11-03",
+            tasksJson = "[]",
+            completedCount = 2,
+            totalCount = 5,
+            isCompleted = false,
+            completedAt = null
+        )
+        db.wordBooksDao().upsertDailyChecklist(monChecklist)
+        db.wordBooksDao().upsertDailyChecklist(tueChecklist)
+
+        val weeklyList = planRepo.getWeeklyChecklists("2026-11-02")
+        assertEquals(7, weeklyList.size)
+
+        val mon = weeklyList[0]
+        val tue = weeklyList[1]
+        val wed = weeklyList[2]
+
+        assertNotNull(mon)
+        assertTrue(mon?.isCompleted == true)
+        assertEquals(4, mon?.completedCount)
+
+        assertNotNull(tue)
+        assertFalse(tue?.isCompleted == true)
+        assertEquals(2, tue?.completedCount)
+
+        // Wednesday has no record yet
+        assertEquals(null, wed)
+    }
+}

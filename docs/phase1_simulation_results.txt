@@ -1,0 +1,46 @@
+=== PHASE 1 AFTER-FIX SIMULATION OUTPUT ===
+PROFILE_A_DAY_1 (Reason: null):
+ID:2 | TEXT:abandon | RAW_LEVEL:B2 | EFF_LEVEL:B2 | DECK:oxford5000
+ID:14 | TEXT:absolute | RAW_LEVEL:B2 | EFF_LEVEL:B2 | DECK:oxford5000
+ID:16 | TEXT:absorb | RAW_LEVEL:B2 | EFF_LEVEL:B2 | DECK:oxford5000
+ID:17 | TEXT:abstract | RAW_LEVEL:B2 | EFF_LEVEL:B2 | DECK:oxford5000
+ID:23 | TEXT:academic | RAW_LEVEL:B2 | EFF_LEVEL:B2 | DECK:oxford5000
+ID:5949 | TEXT:a (little) bit more about | RAW_LEVEL:blank | EFF_LEVEL:NULL | DECK:oxford_opal
+ID:5950 | TEXT:a (whole) range of | RAW_LEVEL:blank | EFF_LEVEL:NULL | DECK:oxford_opal
+ID:5951 | TEXT:a (whole) series of | RAW_LEVEL:blank | EFF_LEVEL:NULL | DECK:oxford_opal
+ID:5988 | TEXT:acceptable | RAW_LEVEL:blank | EFF_LEVEL:B2 | DECK:oxford_opal
+ID:6001 | TEXT:accuracy | RAW_LEVEL:blank | EFF_LEVEL:B2 | DECK:oxford_opal
+PROFILE_A_DAY_7 (Reason: null):
+ID:149 | TEXT:agriculture | RAW_LEVEL:B2 | EFF_LEVEL:B2 | DECK:oxford5000
+ID:152 | TEXT:aid | RAW_LEVEL:B2 | EFF_LEVEL:B2 | DECK:oxford5000
+ID:155 | TEXT:aids | RAW_LEVEL:B2 | EFF_LEVEL:B2 | DECK:oxford5000
+ID:159 | TEXT:aircraft | RAW_LEVEL:B2 | EFF_LEVEL:B2 | DECK:oxford5000
+ID:163 | TEXT:alarm | RAW_LEVEL:B2 | EFF_LEVEL:B2 | DECK:oxford5000
+ID:5967 | TEXT:a number of different | RAW_LEVEL:blank | EFF_LEVEL:NULL | DECK:oxford_opal
+ID:5968 | TEXT:a sense of | RAW_LEVEL:blank | EFF_LEVEL:NULL | DECK:oxford_opal
+ID:5969 | TEXT:a series of | RAW_LEVEL:blank | EFF_LEVEL:NULL | DECK:oxford_opal
+ID:6085 | TEXT:anxiety | RAW_LEVEL:blank | EFF_LEVEL:B2 | DECK:oxford_opal
+ID:6086 | TEXT:apparent | RAW_LEVEL:blank | EFF_LEVEL:B2 | DECK:oxford_opal
+PROFILE_B_DAY_1 (Reason: null):
+ID:100007 | TEXT:hall | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:ielts_core
+ID:100011 | TEXT:pollution | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:ielts_core
+ID:100045 | TEXT:connect | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:ielts_core
+ID:100097 | TEXT:pilot | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:ielts_core
+ID:100132 | TEXT:coach | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:ielts_core
+ID:100179 | TEXT:adventure | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:ielts_core
+ID:200004 | TEXT:program | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:it_industry
+ID:200020 | TEXT:option | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:it_industry
+ID:200021 | TEXT:character | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:it_industry
+ID:200027 | TEXT:record | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:it_industry
+PROFILE_B_DAY_7 (Reason: null):
+ID:100636 | TEXT:ideal | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:ielts_core
+ID:100637 | TEXT:comedy | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:ielts_core
+ID:100639 | TEXT:equipment | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:ielts_core
+ID:100643 | TEXT:feed | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:ielts_core
+ID:100647 | TEXT:background | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:ielts_core
+ID:100652 | TEXT:physical | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:ielts_core
+ID:200112 | TEXT:search | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:it_industry
+ID:200115 | TEXT:column | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:it_industry
+ID:200120 | TEXT:argument | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:it_industry
+ID:200123 | TEXT:store | RAW_LEVEL:B2 | EFF_LEVEL:A2 | DECK:it_industry
+=== SIMULATION OUTPUT END ===

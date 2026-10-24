@@ -1,0 +1,63 @@
+{
+  "month": "2026-11",
+  "level_start": "B2",
+  "level_target": "B2+",
+  "weeks": [
+    {
+      "week": 1,
+      "focus": "Workplace Communication & Advanced Conditionals",
+      "focus_ar": "التواصل المهني وجمل الشرط المتقدمة",
+      "goals": {
+        "new_words": 50,
+        "grammar_lessons": 3,
+        "reading_texts": 3,
+        "sentences": 20,
+        "quizzes": 2
+      }
+    },
+    {
+      "week": 2,
+      "focus": "Academic Collocations & Passive Voice Nuances",
+      "focus_ar": "المتلازمات الأكاديمية ودقائق المبني للمجهول",
+      "goals": {
+        "new_words": 50,
+        "grammar_lessons": 3,
+        "reading_texts": 3,
+        "sentences": 20,
+        "quizzes": 2
+      }
+    },
+    {
+      "week": 3,
+      "focus": "Narrative Tenses & Idiomatic Phrasal Verbs",
+      "focus_ar": "الأزمنة السردية والأفعال المركبة الاصطلاحية",
+      "goals": {
+        "new_words": 50,
+        "grammar_lessons": 3,
+        "reading_texts": 3,
+        "sentences": 20,
+        "quizzes": 2
+      }
+    },
+    {
+      "week": 4,
+      "focus": "Professional Writing, Synthesis & Monthly Consolidation",
+      "focus_ar": "الكتابة المهنية والتلخيص والمراجعة الشاملة",
+      "goals": {
+        "new_words": 50,
+        "grammar_lessons": 3,
+        "reading_texts": 3,
+        "sentences": 20,
+        "quizzes": 2
+      }
+    }
+  ],
+  "daily_template": {
+    "review_cards_min": 8,
+    "new_words": 10,
+    "grammar_min": 7,
+    "reading_min": 5,
+    "quiz_min": 3
+  },
+  "tips_ar": "ركز على ممارسة المفردات الجديدة في جمل سياقية كاملة، وراجع البطاقات المستحقة يومياً قبل البدء في الكلمات الجديدة."
+}
