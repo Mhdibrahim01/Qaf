@@ -107,7 +107,7 @@ class SectionLevelPersonalizationTest {
         }
 
         composeTestRule.onNodeWithTag("reading_recommended_shelf").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Recommended for Your Level (B2)").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Recommended for You").assertIsDisplayed()
         composeTestRule.onNodeWithText("The Psychology of Habits").assertIsDisplayed()
 
         composeTestRule.onNodeWithTag("reading_recommended_card_r_b2_1").performClick()
