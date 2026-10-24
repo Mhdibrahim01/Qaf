@@ -5,64 +5,108 @@ FULL LINGUISTIC AUDIT: GRAMMAR LESSON <-> READING SENTENCES LINKUP
 --------------------------------------------------------------------------------
 LESSON: [g001] A1 - Verb to be : To be: am, is, are
 Arabic Title: الفعل to be: am, is, are
-Tagged Sentences Count: 3
+Tagged Sentences Count: 5
 >>> STATUS: [LINKED]
-    [r001 S#0] EN: Salma wakes up early every morning at six o'clock.
-           AR: تستيقظ سلمى مبكرًا كل صباح في الساعة السادسة.
-    [r001 S#1] EN: She goes to the kitchen and makes hot coffee.
-           AR: تذهب إلى المطبخ وتعد قهوة ساخنة.
-    [r001 S#5] EN: She is ready to start a new day with a smile.
-           AR: هي مستعدة لبدء يوم جديد بابتسامة.
+    [r001 S#0] EN: Salma is an early riser who loves the peaceful morning.
+           AR: سلمى تستيقظ مبكرًا وتحب الصباح الهادئ.
+    [r001 S#1] EN: Her kitchen is warm and smells of freshly brewed coffee.
+           AR: مطبخها دافئ وتفوح منه رائحة القهوة الطازجة.
+    [r001 S#2] EN: Her two younger brothers are still asleep in their room.
+           AR: أخواها الأصغر سنًا لا يزالان نائمين في غرفتهما.
+    [r001 S#3] EN: I am always glad to have a quiet moment before work.
+           AR: أنا سعيد دائمًا بالحصول على لحظة هادئة قبل العمل.
+    [r001 S#5] EN: She is ready to start a productive day with a bright smile.
+           AR: هي مستعدة لبدء يوم مثمر بابتسامة مشرقة.
 
 --------------------------------------------------------------------------------
 LESSON: [g002] A1 - Pronouns : Subject pronouns and possessive adjectives
 Arabic Title: ضمائر الفاعل وصفات الملكية
-Tagged Sentences Count: 2
+Tagged Sentences Count: 6
 >>> STATUS: [LINKED]
-    [r002 S#0] EN: Today is my first computer class at the local center.
-           AR: اليوم هو درسي الأول في الحاسوب في المركز المحلي.
-    [r002 S#2] EN: I learn how to write a short email message.
-           AR: أتعلم كيف أكتب رسالة بريد إلكتروني قصيرة.
+    [r002 S#0] EN: Today is my first computer class, and I am very excited.
+           AR: اليوم هو درسي الأول في الحاسوب، وأنا متحمس جدًا.
+    [r002 S#1] EN: Our teacher introduces her syllabus on our shared screen.
+           AR: معلمتنا تقدم خطتها الدراسية على شاشتنا المشتركة.
+    [r002 S#2] EN: He explains how computers process our digital messages.
+           AR: يشرح كيف تعالج الحواسيب رسائلنا الرقمية.
+    [r002 S#3] EN: We write short emails to our friends to practice our typing.
+           AR: نكتب رسائل بريد إلكتروني قصيرة لأصدقائنا للتدرب على كتابتنا.
+    [r002 S#4] EN: They are happy to help their students with difficult passwords.
+           AR: هم سعداء بمساعدة طلابهم في كلمات المرور الصعبة.
+    [r002 S#5] EN: My computer skills improve noticeably every single week.
+           AR: مهاراتي في الحاسوب تتحسن بشكل ملحوظ كل أسبوع.
 
 --------------------------------------------------------------------------------
 LESSON: [g003] A1 - Nouns and articles : Articles: a, an, the
 Arabic Title: أدوات التعريف والتنكير: a, an, the
-Tagged Sentences Count: 2
+Tagged Sentences Count: 6
 >>> STATUS: [LINKED]
-    [r003 S#0] EN: Karim starts his new job at a clean modern office.
-           AR: يبدأ كريم وظيفته الجديدة في مكتب حديث ونظيف.
-    [r003 S#2] EN: The manager welcomes him and introduces the friendly team.
-           AR: يرحب به المدير ويعرفه على الفريق الودود.
+    [r003 S#0] EN: Karim starts a new job at an international office.
+           AR: يبدأ كريم وظيفة جديدة في مكتب دولي.
+    [r003 S#1] EN: A friendly manager welcomes him and introduces the team.
+           AR: مدير ودود يرحب به ويعرفه على الفريق.
+    [r003 S#2] EN: The modern office has a bright cafeteria and a quiet library.
+           AR: المكتب الحديث يحتوي على مقصف مشرق ومكتبة هادئة.
+    [r003 S#3] EN: They hold an important morning meeting at nine o'clock.
+           AR: يعقدون اجتماعًا صباحيًا مهمًا في الساعة التاسعة.
+    [r003 S#4] EN: Karim places a laptop and a notebook on the wooden desk.
+           AR: يضع كريم حاسوبًا محمولًا ودفترًا على المكتب الخشبي.
+    [r003 S#5] EN: He feels happy with the warm atmosphere in the company.
+           AR: يشعر بالسعادة مع الأجواء الدافئة في الشركة.
 
 --------------------------------------------------------------------------------
 LESSON: [g004] A1 - Nouns and articles : Plural nouns
 Arabic Title: صيغة الجمع للأسماء
-Tagged Sentences Count: 2
+Tagged Sentences Count: 6
 >>> STATUS: [LINKED]
-    [r004 S#0] EN: Doctor Nadia always says that simple exercise is important.
-           AR: تقول الدكتورة نادية دائمًا إن التمرين البسيط مهم.
-    [r004 S#2] EN: I walk in the neighborhood with my neighbor after work.
-           AR: أمشي في الحي مع جاري بعد العمل.
+    [r004 S#0] EN: Doctor Nadia reminds her patients that daily walks protect our hearts.
+           AR: تذكر الدكتورة نادية مرضاها بأن المشي اليومي يحمي قلوبنا.
+    [r004 S#1] EN: Many doctors recommend thirty minutes of exercise in green parks.
+           AR: ينصح العديد من الأطباء بثلاثين دقيقة من التمارين في الحدائق الخضراء.
+    [r004 S#2] EN: My neighbors and I walk between tall trees after work.
+           AR: أمشي أنا وجيراني بين الأشجار العالية بعد العمل.
+    [r004 S#3] EN: We carry two cold water bottles in our backpacks.
+           AR: نحمل زجاجتين من الماء البارد في حقائب الظهر الخاصة بنا.
+    [r004 S#4] EN: These healthy habits give us positive thoughts and better sleep.
+           AR: هذه العادات الصحية تمنحنا أفكارًا إيجابية ونومًا أفضل.
+    [r004 S#5] EN: Regular outdoor activities help adults build stronger bodies.
+           AR: الأنشطة الخارجية المنتظمة تساعد البالغين على بناء أجساد أقوى.
 
 --------------------------------------------------------------------------------
 LESSON: [g005] A1 - Pronouns : This, that, these, those
 Arabic Title: أسماء الإشارة: this, that, these, those
-Tagged Sentences Count: 2
+Tagged Sentences Count: 6
 >>> STATUS: [LINKED]
-    [r005 S#0] EN: Our family loves nature and green spaces around the house.
-           AR: تحب عائلتنا الطبيعة والمساحات الخضراء حول المنزل.
-    [r005 S#2] EN: Today, my father is planting a young lemon tree.
-           AR: اليوم، يزرع والدي شجرة ليمون صغيرة.
+    [r005 S#0] EN: This garden behind our house is our favorite family space.
+           AR: هذه الحديقة خلف منزلنا هي المكان العائلي المفضل لدينا.
+    [r005 S#1] EN: Look at that tall palm tree over there across the fence.
+           AR: انظر إلى تلك النخلة الطويلة هناك عبر السياج.
+    [r005 S#2] EN: My father is planting these young lemon seedlings in the soil.
+           AR: والدي يزرع شتلات الليمون الصغيرة هذه في التربة.
+    [r005 S#3] EN: Those ancient olive trees produce sweet fruit every autumn.
+           AR: أشجار الزيتون القديمة تلك تنتج ثمارًا حلوة كل خريف.
+    [r005 S#4] EN: This peaceful activity connects us closely with the earth.
+           AR: هذا النشاط الهادئ يربطنا بشكل وثيق بالأرض.
+    [r005 S#5] EN: These small green actions help protect our natural environment.
+           AR: هذه الأفعال الخضراء الصغيرة تساعد في حماية بيئتنا الطبيعية.
 
 --------------------------------------------------------------------------------
 LESSON: [g006] A1 - Nouns and articles : There is and there are
 Arabic Title: there is و there are
-Tagged Sentences Count: 4
+Tagged Sentences Count: 8
 >>> STATUS: [LINKED]
-    [r006 S#0] EN: On Saturday, we travel by train to the coastal city.
-           AR: يوم السبت، نسافر بالقطار إلى المدينة الساحلية.
-    [r006 S#2] EN: The station is busy, but our train arrives on time.
-           AR: المحطة مزدحمة، لكن قطارنا يصل في الوقت المحدد.
+    [r006 S#0] EN: There is a fast passenger train departing at eight o'clock.
+           AR: يوجد قطار ركاب سريع يغادر في الساعة الثامنة.
+    [r006 S#1] EN: There are many excited travelers waiting on the station platform.
+           AR: يوجد العديد من المسافرين المتحمسين ينتظرون على رصيف المحطة.
+    [r006 S#2] EN: There is a comfortable seat near the window with a seaside view.
+           AR: يوجد مقعد مريح بالقرب من النافذة مع إطلالة بحرية.
+    [r006 S#3] EN: There are green rolling hills and small farmhouses along the route.
+           AR: توجد تلال خضراء ومزارع صغيرة على طول المسار.
+    [r006 S#4] EN: There is a modern cafe car where passengers can buy warm drinks.
+           AR: يوجد عربة مقهى حديثة حيث يمكن للركاب شراء مشروبات ساخنة.
+    [r006 S#5] EN: There are beautiful sandy beaches waiting for us at our destination.
+           AR: توجد شواطئ رملية جميلة بانتظارنا في وجهتنا.
     [r092 S#3] EN: It has three bedrooms, a large living room, and a bright kitchen.
            AR: تحتوي على ثلاث غرف نوم، وغرفة معيشة كبيرة، ومطبخ مشرق.
     [r092 S#6] EN: There is a small supermarket and a bakery right across the street.
@@ -71,12 +115,20 @@ Tagged Sentences Count: 4
 --------------------------------------------------------------------------------
 LESSON: [g007] A1 - Tenses : Present simple
 Arabic Title: المضارع البسيط
-Tagged Sentences Count: 22
+Tagged Sentences Count: 26
 >>> STATUS: [LINKED]
-    [r007 S#0] EN: Tariq wants to speak and read English with confidence.
-           AR: يريد طارق أن يتحدث ويقرأ الإنجليزية بثقة.
-    [r007 S#2] EN: When he sees a new word, he checks his offline dictionary.
-           AR: عندما يرى كلمة جديدة، يتحقق من قاموسه دون اتصال.
+    [r007 S#0] EN: Tariq wants to speak and read English with great confidence.
+           AR: يريد طارق أن يتحدث ويقرأ الإنجليزية بثقة كبيرة.
+    [r007 S#1] EN: Every night, he reads one graded story before he sleeps.
+           AR: كل ليلة، يقرأ قصة متدرجة واحدة قبل أن ينام.
+    [r007 S#2] EN: When he discovers a difficult word, he checks an offline dictionary.
+           AR: عندما يكتشف كلمة صعبة، يتحقق من قاموس دون اتصال بالإنترنت.
+    [r007 S#3] EN: He writes the new definition in his personal vocabulary notebook.
+           AR: يكتب التعريف الجديد في دفتر مفرداته الشخصي.
+    [r007 S#4] EN: In the morning, he reviews his flashcards for ten minutes.
+           AR: في الصباح، يراجع بطاقاته التعليمية لمدة عشر دقائق.
+    [r007 S#5] EN: He does not waste his study time on social media distractions.
+           AR: هو لا يضيع وقت دراسته في مشتتات وسائل التواصل الاجتماعي.
     [r091 S#0] EN: Friday is my favorite day of the week because I do not work.
            AR: الجمعة هو يومي المفضل في الأسبوع لأنني لا أعمل.
     [r091 S#2] EN: My mother prepares a big breakfast for the whole family.
@@ -121,12 +173,20 @@ Tagged Sentences Count: 22
 --------------------------------------------------------------------------------
 LESSON: [g008] A1 - Tenses : Present continuous
 Arabic Title: المضارع المستمر
-Tagged Sentences Count: 4
+Tagged Sentences Count: 8
 >>> STATUS: [LINKED]
-    [r008 S#0] EN: There is a public library in the center of our town.
-           AR: توجد مكتبة عامة في وسط مدينتنا.
-    [r008 S#2] EN: Many students come here to study and read history books.
-           AR: يأتي العديد من الطلاب إلى هنا للدراسة وقراءة كتب التاريخ.
+    [r008 S#0] EN: Right now, many university students are studying quietly in the library.
+           AR: في الوقت الحالي، يدرس العديد من طلاب الجامعة بهدوء في المكتبة.
+    [r008 S#1] EN: The chief librarian is helping an elderly visitor find an old atlas.
+           AR: أمينة المكتبة الرئيسية تساعد زائرًا مسنًا في العثور على أطلس قديم.
+    [r008 S#2] EN: Two young researchers are typing their project notes on laptops.
+           AR: باحثان شابان يكتبان ملاحظات مشروعهما على الحواسيب المحمولة.
+    [r008 S#3] EN: Outside the window, yellow autumn leaves are falling on the pavement.
+           AR: خارج النافذة، تتساقط أوراق الخريف الصفراء على الرصيف.
+    [r008 S#4] EN: I am reading a fascinating chapter about modern technology and history.
+           AR: أنا أقرأ فصلاً رائعاً عن التكنولوجيا الحديثة والتاريخ.
+    [r008 S#5] EN: Everyone is enjoying the calm and welcoming atmosphere of the study hall.
+           AR: الجميع يستمتعون بالأجواء الهادئة والمرحبة في قاعة الدراسة.
     [r093 S#2] EN: Today, we are making grilled chicken with mashed potatoes.
            AR: اليوم، نحن نصنع دجاجًا مشويًا مع البطاطس المهروسة.
     [r093 S#4] EN: While the potatoes are cooking, I season the chicken with salt and black pepper.
@@ -135,14 +195,38 @@ Tagged Sentences Count: 4
 --------------------------------------------------------------------------------
 LESSON: [g009] A1 - Modal verbs : Can and can't
 Arabic Title: القدرة والاستطاعة
-Tagged Sentences Count: 0
->>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+Tagged Sentences Count: 6
+>>> STATUS: [LINKED]
+    [r017 S#0] EN: Sami can swim very fast in the Olympic pool, but he cannot dive.
+           AR: يستطيع سامي السباحة بسرعة كبيرة في المسبح الأولمبي، لكنه لا يستطيع الغوص.
+    [r017 S#1] EN: His talented sister can play classical piano melodies beautifully.
+           AR: تستطيع أخته الموهوبة عزف ألحان البيانو الكلاسيكية بشكل جميل.
+    [r017 S#2] EN: I cannot play any musical instruments yet.
+           AR: أنا لا أستطيع عزف أي آلة موسيقية حتى الآن.
+    [r017 S#3] EN: However, I can speak three different languages with ease and confidence.
+           AR: ومع ذلك، أستطيع التحدث بثلاث لغات مختلفة بسهولة وثقة.
+    [r017 S#4] EN: We can practice our sports skills together every Saturday afternoon.
+           AR: يمكننا ممارسة مهاراتنا الرياضية معًا بعد ظهر كل سبت.
+    [r017 S#5] EN: With patient dedication, anyone can develop their own unique abilities.
+           AR: بالتفاني والصبر، يمكن لأي شخص تطوير قدراته الفريدة.
 
 --------------------------------------------------------------------------------
 LESSON: [g010] A1 - Questions : Question words
 Arabic Title: أدوات الاستفهام
-Tagged Sentences Count: 0
->>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+Tagged Sentences Count: 6
+>>> STATUS: [LINKED]
+    [r018 S#0] EN: What is the most fascinating planet in our solar system?
+           AR: ما هو الكوكب الأكثر إثارة للاهتمام في نظامنا الشمسي؟
+    [r018 S#1] EN: Where do migratory birds fly when the cold winter arrives?
+           AR: إلى أين تطير الطيور المهاجرة عندما يأتي فصل الشتاء البارد؟
+    [r018 S#2] EN: Adam asks his teacher why the evening sky turns bright orange at sunset.
+           AR: يسأل آدم معلمه لماذا تتحول سماء المساء إلى اللون البرتقالي الساطع عند الغروب.
+    [r018 S#3] EN: The teacher demonstrates how white clouds produce heavy rain.
+           AR: يشرح المعلم كيف تنتج السحب البيضاء أمطارًا غزيرة.
+    [r018 S#4] EN: Who invented the first astronomical telescope in human history?
+           AR: من اخترع أول تلسكوب فلكي في تاريخ البشرية؟
+    [r018 S#5] EN: Asking thoughtful questions helps students understand scientific wonders every day.
+           AR: طرح الأسئلة الذكية يساعد الطلاب على فهم العجائب العلمية كل يوم.
 
 --------------------------------------------------------------------------------
 LESSON: [g011] A1 - Prepositions : Prepositions of place and time: in, on, at
@@ -157,14 +241,36 @@ Tagged Sentences Count: 2
 --------------------------------------------------------------------------------
 LESSON: [g012] A1 - Nouns and articles : Countable and uncountable nouns: some and any
 Arabic Title: المعدود وغير المعدود: some و any
-Tagged Sentences Count: 0
->>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+Tagged Sentences Count: 5
+>>> STATUS: [LINKED]
+    [r019 S#0] EN: We already have some fresh vegetables and tomatoes in the kitchen basket.
+           AR: لدينا بالفعل بعض الخضار الطازجة والطماطم في سلة المطبخ.
+    [r019 S#1] EN: However, there isn't any milk left in the refrigerator for breakfast.
+           AR: ومع ذلك، لا يوجد أي حليب متبقٍ في الثلاجة لتناول الإفطار.
+    [r019 S#2] EN: Do we need any white cheese for the pasta dish tonight?
+           AR: هل نحتاج إلى أي جبن أبيض لطبق المعكرونة الليلة؟
+    [r019 S#3] EN: My mother buys some red apples and two loaves of warm bread at the bakery.
+           AR: تشتري والدتي بعض التفاح الأحمر ورغيفين من الخبز الدافئ من المخبز.
+    [r019 S#4] EN: The grocery store does not have any olive oil on the shelves today.
+           AR: البقالة لا تحتوي على أي زيت زيتون على الرفوف اليوم.
 
 --------------------------------------------------------------------------------
 LESSON: [g013] A1 - Verb forms : The imperative
 Arabic Title: فعل الأمر
-Tagged Sentences Count: 0
->>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+Tagged Sentences Count: 6
+>>> STATUS: [LINKED]
+    [r020 S#0] EN: Always wear your protective goggles before touching any chemical substances.
+           AR: ارتدِ دائمًا نظاراتك الواقية قبل لمس أي مواد كيميائية.
+    [r020 S#1] EN: Do not touch the heated glass beakers with your bare hands.
+           AR: لا تلمس الكؤوس الزجاجية الساخنة بيديك العاريتين.
+    [r020 S#2] EN: Listen attentively to your science instructor's safety directions.
+           AR: استمع بانتباه لإرشادات السلامة الصادرة عن معلم العلوم.
+    [r020 S#3] EN: Wash your hands thoroughly with soap and warm water after each experiment.
+           AR: اغسل يديك جيدًا بالماء الدافئ والصابون بعد كل تجربة.
+    [r020 S#4] EN: Never run or consume food and sugary drinks inside the laboratory room.
+           AR: إياك أن تركض أو تتناول الطعام والمشروبات السكرية داخل غرفة المختبر.
+    [r020 S#5] EN: Follow these clear safety guidelines to prevent accidents and protect your classmates.
+           AR: اتبع هذه الإرشادات الواضحة لمنع الحوادث وحماية زملائك.
 
 --------------------------------------------------------------------------------
 LESSON: [g014] A1 - Tenses : Past simple of to be: was and were
@@ -231,88 +337,150 @@ Tagged Sentences Count: 24
 --------------------------------------------------------------------------------
 LESSON: [g016] A2 - Tenses : Past continuous
 Arabic Title: الماضي المستمر
-Tagged Sentences Count: 3
+Tagged Sentences Count: 6
 >>> STATUS: [LINKED]
-    [r009 S#0] EN: Omar works as a junior software developer at a technology company.
-           AR: يعمل عمر كمطور برمجيات مبتدئ في شركة تقنية.
-    [r009 S#1] EN: Yesterday evening, the team tested a new update for their mobile application.
-           AR: مساء أمس، اختبر الفريق تحديثًا جديدًا لتطبيق الهاتف الخاص بهم.
-    [r009 S#4] EN: Omar carefully checked the code and found the exact problem in ten minutes.
-           AR: فحص عمر الكود بعناية ووجد المشكلة بالضبط في عشر دقائق.
+    [r009 S#0] EN: Yesterday evening, Omar was working late at the technology company.
+           AR: مساء أمس، كان عمر يعمل حتى وقت متأخر في شركة التكنولوجيا.
+    [r009 S#1] EN: While the developers were testing the update, a sudden error occurred.
+           AR: بينما كان المطورون يختبرون التحديث، حدث خطأ مفاجئ.
+    [r009 S#2] EN: Users were experiencing delays while the server was restarting.
+           AR: كان المستخدمون يواجهون تأخيرات بينما كان الخادم يعيد التشغيل.
+    [r009 S#3] EN: Omar was carefully analyzing the database logs when he found the bug.
+           AR: كان عمر يحلل سجلات قاعدة البيانات بعناية عندما وجد الخلل.
+    [r009 S#4] EN: His colleagues were collaborating actively to fix the network code.
+           AR: كان زملاؤه يتعاونون بنشاط لإصلاح كود الشبكة.
+    [r009 S#5] EN: By midnight, the application was functioning smoothly without interruptions.
+           AR: بحلول منتصف الليل، كان التطبيق يعمل بسلاسة دون انقطاع.
 
 --------------------------------------------------------------------------------
 LESSON: [g017] A2 - Tenses : Present perfect (introduction)
 Arabic Title: المضارع التام (مقدمة)
-Tagged Sentences Count: 2
+Tagged Sentences Count: 6
 >>> STATUS: [LINKED]
-    [r010 S#0] EN: Next Tuesday, Lina has an important job interview with an international company.
-           AR: يوم الثلاثاء القادم، لدى لينا مقابلة عمل مهمة مع شركة دولية.
-    [r010 S#2] EN: She also practiced explaining her technical skills in clear English sentences.
-           AR: كما تدربت على شرح مهاراتها التقنية بجمل إنجليزية واضحة.
+    [r010 S#0] EN: Lina has prepared thoroughly for her international job interview.
+           AR: استعدت لينا بدقة لمقابلة عملها الدولية.
+    [r010 S#1] EN: She has researched the software company's recent artificial intelligence projects.
+           AR: بحثت في مشاريع الذكاء الاصطناعي الأخيرة لشركة البرمجيات.
+    [r010 S#2] EN: Her older brother has helped her practice common technical questions.
+           AR: ساعدها شقيقها الأكبر في ممارسة الأسئلة التقنية الشائعة.
+    [r010 S#3] EN: She has improved her English pronunciation through daily audio drills.
+           AR: حسّنت نطقها للغة الإنجليزية من خلال التدريبات الصوتية اليومية.
+    [r010 S#4] EN: Lina has already answered three mock interview sessions with confidence.
+           AR: أجابت لينا بالفعل على ثلاث جلسات مقابلات تجريبية بثقة.
+    [r010 S#5] EN: Her dedicated efforts have created a calm and positive mindset.
+           AR: خلقت جهودها المخلصة عقلية هادئة وإيجابية.
 
 --------------------------------------------------------------------------------
 LESSON: [g018] A2 - Adjectives and adverbs : Comparatives and superlatives
 Arabic Title: صيغتا المقارنة والتفضيل
-Tagged Sentences Count: 3
+Tagged Sentences Count: 7
 >>> STATUS: [LINKED]
-    [r011 S#0] EN: Every Friday afternoon, our whole family gathers at my grandmother's house.
-           AR: بعد ظهر كل يوم جمعة، تجتمع عائلتنا بأكملها في منزل جدتي.
-    [r011 S#2] EN: My grandmother prepares a delicious meal using a traditional family recipe.
-           AR: تحضر جدتي وجبة لذيذة باستخدام وصفة عائلية تقليدية.
+    [r011 S#0] EN: My grandmother's house is warmer and cozier than any modern apartment.
+           AR: منزل جدتي أكثر دفئًا وراحة من أي شقة حديثة.
+    [r011 S#1] EN: She prepares the most delicious traditional meals in our entire city.
+           AR: هي تعد أشهى الوجبات التقليدية في مدينتنا بأكملها.
+    [r011 S#2] EN: Today, our family dining table is much fuller than usual with happy relatives.
+           AR: اليوم، مائدة طعام عائلتنا أكثر امتلاءً بكثير من المعتاد بأقارب سعداء.
+    [r011 S#3] EN: The younger cousins are more energetic and playful than the adults.
+           AR: أبناء العم الأصغر سنًا أكثر حيوية ومرحًا من البالغين.
+    [r011 S#4] EN: Friday family lunch is the most special and heartwarming tradition of our week.
+           AR: غداء العائلة يوم الجمعة هو التقليد الأكثر تميزًا ودفئًا في أسبوعنا.
+    [r011 S#5] EN: Being together makes our relationships stronger and deeper over time.
+           AR: التواجد معًا يجعل علاقاتنا أقوى وأعمق مع مرور الوقت.
     [r096 S#7] EN: Replacing the screen cost much less than buying a brand-new phone.
            AR: تكلفة استبدال الشاشة كانت أقل بكثير من شراء هاتف جديد تمامًا.
 
 --------------------------------------------------------------------------------
 LESSON: [g019] A2 - Tenses : Future: will and be going to
 Arabic Title: المستقبل: will و be going to
-Tagged Sentences Count: 2
+Tagged Sentences Count: 6
 >>> STATUS: [LINKED]
-    [r012 S#0] EN: Many students stay up late when they study for important exams.
-           AR: يسهر العديد من الطلاب لوقت متأخر عندما يدرسون للامتحانات المهمة.
-    [r012 S#2] EN: While you sleep, your brain organizes the words and rules you learned during the day.
-           AR: أثناء نومك، ينظم دماغك الكلمات والقواعد التي تعلمتها خلال اليوم.
+    [r012 S#0] EN: Scientists explain that deep sleep will significantly strengthen your memory.
+           AR: يوضح العلماء أن النوم العميق سيقوي ذاكرتك بشكل كبير.
+    [r012 S#1] EN: Tonight, I am going to turn off my digital screens an hour before bed.
+           AR: الليلة، سأقوم بإيقاف شاشاتي الرقمية قبل النوم بساعة.
+    [r012 S#2] EN: If you get eight hours of rest, your brain will organize newly learned facts easily.
+           AR: إذا حصلت على ثماني ساعات من الراحة، سينظم دماغك الحقائق المتعلمة حديثًا بسهولة.
+    [r012 S#3] EN: Our biology teacher is going to give an interesting presentation on sleep cycles.
+           AR: سيقدم معلم الأحياء لدينا عرضًا تقديميًا ممتعًا حول دورات النوم.
+    [r012 S#4] EN: Consistent sleep schedules will help students perform better in difficult exams.
+           AR: جداول النوم المنتظمة ستساعد الطلاب على الأداء بشكل أفضل في الامتحانات الصعبة.
+    [r012 S#5] EN: We are going to adopt healthier bedtime routines starting this evening.
+           AR: سنعتمد روتين نوم أكثر صحة بدءًا من هذا المساء.
 
 --------------------------------------------------------------------------------
 LESSON: [g020] A2 - Tenses : Present continuous for future plans
 Arabic Title: المضارع المستمر للخطط المستقبلية
-Tagged Sentences Count: 2
+Tagged Sentences Count: 6
 >>> STATUS: [LINKED]
-    [r013 S#0] EN: Sunny desert regions receive bright sunlight for most of the year.
-           AR: تتلقى المناطق الصحراوية المشمسة ضوء شمس ساطعًا معظم أيام السنة.
-    [r013 S#2] EN: Solar energy does not pollute the air or harm the natural environment.
-           AR: الطاقة الشمسية لا تلوث الهواء ولا تضر بالبيئة الطبيعية.
+    [r013 S#0] EN: Tomorrow morning, our engineering team is visiting the desert solar facility.
+           AR: صباح الغد، يزور فريقنا الهندسي منشأة الطاقة الشمسية في الصحراء.
+    [r013 S#1] EN: Next month, the local town council is installing modern solar streetlights.
+           AR: الشهر المقبل، يركب المجلس البلدي المحلي أعمدة إنارة شمسية حديثة في الشوارع.
+    [r013 S#2] EN: The university is hosting a green energy conference this coming Thursday.
+           AR: تستضيف الجامعة مؤتمرًا للطاقة الخضراء يوم الخميس القادم.
+    [r013 S#3] EN: Two foreign specialists are arriving on Friday to train young technicians.
+           AR: يصل متخصصان أجنبيان يوم الجمعة لتدريب الفنيين الشباب.
+    [r013 S#4] EN: Our department is launching a community solar initiative next week.
+           AR: يطلق قسمنا مبادرة مجتمعية للطاقة الشمسية الأسبوع المقبل.
+    [r013 S#5] EN: We are meeting with regional environmental leaders next Monday afternoon.
+           AR: نحن نجتمع مع قادة البيئة الإقليميين بعد ظهر يوم الإثنين المقبل.
 
 --------------------------------------------------------------------------------
 LESSON: [g021] A2 - Modal verbs : Have to, don't have to and must
 Arabic Title: have to و don't have to و must
-Tagged Sentences Count: 3
+Tagged Sentences Count: 7
 >>> STATUS: [LINKED]
-    [r014 S#0] EN: Traveling through a large international airport for the first time can feel overwhelming.
-           AR: قد يبدو السفر عبر مطار دولي كبير لأول مرة أمرًا مربكًا.
-    [r014 S#2] EN: First, you show your passport and ticket at the check-in desk to drop off your luggage.
-           AR: أولًا، تبرز جواز سفرك وتذكرتك عند مكتب التسجيل لتسليم أمتعتك.
+    [r014 S#0] EN: International travelers must hold a valid passport and travel visa before departure.
+           AR: يجب على المسافرين الدوليين حمل جواز سفر وتأشيرة سفر ساريين قبل المغادرة.
+    [r014 S#1] EN: You have to arrive at the airport three hours early for international flights.
+           AR: عليك الوصول إلى المطار قبل ثلاث ساعات من موعد الرحلات الدولية.
+    [r014 S#2] EN: Passengers don't have to print paper tickets if they use the digital airline app.
+           AR: لا يضطر المسافرون لطباعة تذاكر ورقية إذا استخدموا تطبيق شركة الطيران الرقمي.
+    [r014 S#3] EN: Everyone must pass through security gates and follow airport safety procedures.
+           AR: يجب على الجميع المرور عبر بوابات الأمن واتباع إجراءات سلامة المطار.
+    [r014 S#4] EN: You have to check your flight gate number on the overhead screens.
+           AR: يتعين عليك التحقق من رقم بوابة رحلتك على الشاشات المعلقة.
+    [r014 S#5] EN: You must not leave your personal bags unattended anywhere in the terminal.
+           AR: يجب ألا تترك حقائبك الشخصية دون مراقبة في أي مكان في مبنى المطار.
     [r098 S#9] EN: Therefore, patients must only take antibiotics when prescribed by a qualified physician.
            AR: لذلك، يجب على المرضى تناول المضادات الحيوية فقط عندما يصفها طبيب مؤهل.
 
 --------------------------------------------------------------------------------
 LESSON: [g022] A2 - Modal verbs : Should and shouldn't
 Arabic Title: النصيحة: should و shouldn't
-Tagged Sentences Count: 2
+Tagged Sentences Count: 6
 >>> STATUS: [LINKED]
-    [r015 S#0] EN: Many language learners feel shy when they make a mistake in English.
-           AR: يشعر العديد من متعلمي اللغة بالخجل عندما يرتكبون خطأً في الإنجليزية.
-    [r015 S#2] EN: Whenever Youssef misses a grammar rule, he saves the sentence in his correction notebook.
-           AR: كلما أخطأ يوسف في قاعدة نحوية، يحفظ الجملة في دفتر التصحيح الخاص به.
+    [r015 S#0] EN: Language learners should write down their grammatical mistakes in a dedicated notebook.
+           AR: ينبغي لمتعلمي اللغة تدوين أخطائهم النحوية في دفتر مخصص.
+    [r015 S#1] EN: You shouldn't feel embarrassed when you make an error in spoken English.
+           AR: لا ينبغي أن تشعر بالحرج عندما ترتكب خطأ في التحدث بالإنجليزية.
+    [r015 S#2] EN: Students should review their saved correction cards every few days for retention.
+           AR: يجب على الطلاب مراجعة بطاقات التصحيح المحفوظة كل بضعة أيام لتثبيت المعلومات.
+    [r015 S#3] EN: You shouldn't memorize isolated words without understanding their sentence context.
+           AR: لا ينبغي أن تحفظ كلمات معزولة دون فهم سياق جملتها.
+    [r015 S#4] EN: You should compare your original draft with the teacher's corrected version.
+           AR: عليك مقارنة مسودتك الأصلية بالنسخة المصححة للمعلم.
+    [r015 S#5] EN: Learners shouldn't give up when grammar rules seem challenging at first.
+           AR: لا ينبغي للمتعلمين الاستسلام عندما تبدو القواعد النحوية صعبة في البداية.
 
 --------------------------------------------------------------------------------
 LESSON: [g023] A2 - Adjectives and adverbs : Adverbs of frequency
 Arabic Title: ظروف التكرار
-Tagged Sentences Count: 6
+Tagged Sentences Count: 10
 >>> STATUS: [LINKED]
-    [r016 S#0] EN: Over a thousand years ago, Baghdad had one of the greatest libraries in history.
-           AR: قبل أكثر من ألف عام، كان في بغداد واحدة من أعظم المكتبات في التاريخ.
-    [r016 S#2] EN: They translated important scientific books from Greek, Persian, and Sanskrit into Arabic.
-           AR: ترجموا كتبًا علمية مهمة من اليونانية والفارسية والسنسكريتية إلى العربية.
+    [r016 S#0] EN: Scholars in ancient Baghdad always gathered at the House of Wisdom to study.
+           AR: كان العلماء في بغداد القديمة يجتمعون دائمًا في بيت الحكمة للدراسة.
+    [r016 S#1] EN: They usually translated classical scientific manuscripts with extreme precision.
+           AR: كانوا يترجمون عادة المخطوطات العلمية الكلاسيكية بدقة متناهية.
+    [r016 S#2] EN: Astronomers often recorded planetary movements from their desert observatories.
+           AR: كان علماء الفلك يسجلون غالبًا حركات الكواكب من مراصدهم الصحراوية.
+    [r016 S#3] EN: Philosophers sometimes debated logical theories late into the starry night.
+           AR: كان الفلاسفة يناقشون أحيانًا النظريات المنطقية حتى وقت متأخر من الليل.
+    [r016 S#4] EN: Dedicated researchers rarely accepted scientific claims without practical experiments.
+           AR: نادرًا ما كان الباحثون المخلصون يقبلون الادعاءات العلمية دون تجارب عملية.
+    [r016 S#5] EN: Great scholars never ignored valuable wisdom from neighboring civilizations.
+           AR: لم يتجاهل كبار العلماء أبدًا الحكمة القيمة من الحضارات المجاورة.
     [r095 S#3] EN: Before the match starts, we always warm up for ten minutes to avoid injuries.
            AR: قبل أن تبدأ المباراة، نقوم دائمًا بالإحماء لمدة عشر دقائق لتجنب الإصابات.
     [r095 S#7] EN: Even when my team loses, we never get angry at each other.
@@ -325,38 +493,110 @@ Tagged Sentences Count: 6
 --------------------------------------------------------------------------------
 LESSON: [g024] A2 - Adjectives and adverbs : Adverbs of manner
 Arabic Title: ظروف الحال
-Tagged Sentences Count: 0
->>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+Tagged Sentences Count: 6
+>>> STATUS: [LINKED]
+    [r021 S#0] EN: Uncle Hani carves traditional oak furniture patiently in his busy workshop.
+           AR: ينحت العم هاني الأثاث التقليدي المصنوع من خشب البلوط بصبر في ورشته المزدحمة.
+    [r021 S#1] EN: He measures each wooden board carefully before making any cuts.
+           AR: يقيس كل لوح خشبي بعناية قبل إجراء أي قطع.
+    [r021 S#2] EN: His young apprentice works quietly and observes his master's hand movements.
+           AR: يعمل متدربه الشاب بهدوء ويراقب حركات يد معلمه.
+    [r021 S#3] EN: When visitors arrive, Uncle Hani greets them warmly and politely.
+           AR: عندما يصل الزوار، يرحب بهم العم هاني بحرارة ولباقة.
+    [r021 S#4] EN: He smooths the polished table gently with fine sandpaper.
+           AR: يصقل الطاولة الملساء بلطف بورق زجاج ناعم.
+    [r021 S#5] EN: Working skillfully with natural materials creates timeless handmade art.
+           AR: العمل بمهارة مع المواد الطبيعية يخلق فنًا يدويًا خالدًا.
 
 --------------------------------------------------------------------------------
 LESSON: [g025] A2 - Nouns and articles : Much, many, a lot of, a few, a little
 Arabic Title: much و many و a lot of و a few و a little
-Tagged Sentences Count: 0
->>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+Tagged Sentences Count: 6
+>>> STATUS: [LINKED]
+    [r022 S#0] EN: There are many enthusiastic volunteers helping in the community hall today.
+           AR: يوجد العديد من المتطوعين المتحمسين يساعدون في قاعة المجتمع اليوم.
+    [r022 S#1] EN: We do not have much time remaining before the cultural festival opens.
+           AR: ليس لدينا الكثير من الوقت المتبقي قبل افتتاح المهرجان الثقافي.
+    [r022 S#2] EN: A few generous neighbors brought a lot of fresh seasonal fruit and drinks.
+           AR: أحضر عدد قليل من الجيران الكرماء الكثير من الفواكه والمشروبات الموسمية الطازجة.
+    [r022 S#3] EN: We only need a little clean water to prepare the display flower vases.
+           AR: نحتاج فقط إلى القليل من الماء النظيف لتجهيز مزهريات الزهور المعروضة.
+    [r022 S#4] EN: How many entry tickets have the students sold so far this morning?
+           AR: كم عدد تذاكر الدخول التي باعها الطلاب حتى الآن هذا الصباح؟
+    [r022 S#5] EN: Sharing a lot of responsibilities among neighbors makes large events successful.
+           AR: مشاركة الكثير من المسؤوليات بين الجيران تجعل الفعاليات الكبيرة ناجحة.
 
 --------------------------------------------------------------------------------
 LESSON: [g026] A2 - Pronouns : Object pronouns and possessive pronouns
 Arabic Title: ضمائر المفعول وضمائر الملكية
-Tagged Sentences Count: 0
->>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+Tagged Sentences Count: 6
+>>> STATUS: [LINKED]
+    [r023 S#0] EN: Tariq found a blue student backpack under the park bench and opened it.
+           AR: وجد طارق حقيبة ظهر زرقاء تحت مقعد الحديقة وفتحها.
+    [r023 S#1] EN: He recognized the handwriting on the math notebook and knew it was hers.
+           AR: تعرف على خط اليد في دفتر الرياضيات وعرف أنه ملكها.
+    [r023 S#2] EN: Tariq immediately messaged Nadia and offered to return the bag to her.
+           AR: راسل طارق نادية على الفور وعرض إعادة الحقيبة إليها.
+    [r023 S#3] EN: She met him at the school gate and thanked him with a bright smile.
+           AR: التقت به عند بوابة المدرسة وشكرته بابتسامة مشرقة.
+    [r023 S#4] EN: Nadia said, "This blue backpack is mine, and you saved my project!"
+           AR: قالت نادية: "حقيبة الظهر الزرقاء هذه ملكي، وأنت أنقذت مشروعي!"
+    [r023 S#5] EN: He answered, "Friends should always help them and protect their belongings."
+           AR: أجاب: "ينبغي للأصدقاء دائمًا مساعدتهم وحماية ممتلكاتهم."
 
 --------------------------------------------------------------------------------
 LESSON: [g027] A2 - Verb patterns : Verbs followed by -ing or to + infinitive (like, want, enjoy)
 Arabic Title: أفعال بعدها -ing أو to + مصدر
-Tagged Sentences Count: 0
->>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+Tagged Sentences Count: 6
+>>> STATUS: [LINKED]
+    [r024 S#0] EN: Zaid enjoys drawing colorful graphic illustrations on his digital tablet.
+           AR: يستمتع زيد برسم الرسوم التوضيحية الملونة على جهازه اللوحي الرقمي.
+    [r024 S#1] EN: He wants to become an internationally recognized user interface designer.
+           AR: هو يريد أن يصبح مصمم واجهات مستخدم معترفاً به دولياً.
+    [r024 S#2] EN: His supportive parents decided to invest in his specialized art courses.
+           AR: قرر والداه الداعمان الاستثمار في دوراته الفنية المتخصصة.
+    [r024 S#3] EN: Zaid loves creating modern logos and visual identities for local startups.
+           AR: يحب زيد إنشاء شعارات وهويات بصرية حديثة للشركات الناشئة المحلية.
+    [r024 S#4] EN: He hopes to join a prominent creative design agency after graduation.
+           AR: يأمل في الانضمام إلى وكالة تصميم إبداعية بارزة بعد التخرج.
+    [r024 S#5] EN: Practicing creative crafts regularly develops profound professional confidence.
+           AR: ممارسة الحرف الإبداعية بانتظام يطور ثقة مهنية عميقة.
 
 --------------------------------------------------------------------------------
 LESSON: [g028] A2 - Conditionals : First conditional
 Arabic Title: الشرط الأول
-Tagged Sentences Count: 0
->>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+Tagged Sentences Count: 6
+>>> STATUS: [LINKED]
+    [r025 S#0] EN: If the weather is sunny on Saturday, we will hike to the highest mountain peak.
+           AR: إذا كان الطقس مشمسًا يوم السبت، فسنمشي إلى أعلى قمة جبلية.
+    [r025 S#1] EN: If it rains heavily tomorrow morning, we will explore the local geology museum instead.
+           AR: إذا هطل المطر بغزارة صباح الغد، فسنستكشف متحف الجيولوجيا المحلي بدلاً من ذلك.
+    [r025 S#2] EN: I will pack a thermal jacket if the alpine temperature drops below freezing.
+           AR: سأحزم سترة حرارية إذا انخفضت درجة حرارة الجبال إلى ما دون الصفر.
+    [r025 S#3] EN: If our trail guide arrives early, we will start our ascent before sunrise.
+           AR: إذا وصل مرشدنا في وقت مبكر، فسنبدأ صعودنا قبل شروق الشمس.
+    [r025 S#4] EN: We will take magnificent panoramic photos if the morning sky remains clear.
+           AR: سنلتقط صورًا بانورامية رائعة إذا بقيت سماء الصباح صافية.
+    [r025 S#5] EN: Careful preparation guarantees that every mountain adventure will remain safe and memorable.
+           AR: الإعداد الدقيق يضمن أن تظل كل مغامرة جبلية آمنة ولا تُنسى.
 
 --------------------------------------------------------------------------------
 LESSON: [g029] A2 - Adjectives and adverbs : Too and enough
 Arabic Title: too و enough
-Tagged Sentences Count: 0
->>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+Tagged Sentences Count: 6
+>>> STATUS: [LINKED]
+    [r026 S#0] EN: The first downtown apartment was too small for our growing family.
+           AR: كانت شقة وسط المدينة الأولى صغيرة جدًا بالنسبة لعائلتنا المتنامية.
+    [r026 S#1] EN: The second suburban flat was lovely, but the monthly rent was too expensive.
+           AR: كانت الشقة الثانية في الضواحي جميلة، لكن الإيجار الشهري كان باهظًا للغاية.
+    [r026 S#2] EN: Fortunately, the third residential apartment was spacious enough for all of us.
+           AR: لحسن الحظ، كانت الشقة السكنية الثالثة واسعة بما يكفي لجميعنا.
+    [r026 S#3] EN: The surrounding neighborhood is quiet enough for students to study peacefully.
+           AR: الحي المحيط هادئ بما يكفي ليدرس الطلاب بسلام.
+    [r026 S#4] EN: The building was close enough to public transit stations for easy commuting.
+           AR: كان المبنى قريبًا بما يكفي من محطات النقل العام لتسهيل التنقل.
+    [r026 S#5] EN: We were fortunate enough to sign the annual lease agreement yesterday afternoon.
+           AR: كنا محظوظين بما يكفي لتوقيع عقد الإيجار السنوي بعد ظهر أمس.
 
 --------------------------------------------------------------------------------
 LESSON: [g030] B1 - Tenses : Present perfect with for and since

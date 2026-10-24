@@ -147,4 +147,30 @@ class GrammarReadingLinkupQATest {
 
         assertTrue("Found severe level mismatches between reading and grammar: $severeMismatches", severeMismatches.isEmpty())
     }
+
+    @Test
+    fun `QA 7 - 100 percent Grammar Coverage (Zero orphan grammar lessons in reading)`() {
+        val linkedGrammarIds = mutableSetOf<String>()
+        for (reading in readingTextsJson) {
+            linkedGrammarIds.addAll(reading.grammarIds)
+            for (sentence in reading.sentences) {
+                sentence.grammarId?.let { if (it.isNotBlank()) linkedGrammarIds.add(it) }
+            }
+        }
+
+        val orphanLessons = grammarIdsSet - linkedGrammarIds
+        assertTrue(
+            "Found orphan grammar lessons with 0 reading texts: $orphanLessons",
+            orphanLessons.isEmpty()
+        )
+        assertEquals("All 90 grammar lessons must be linked in reading", 90, linkedGrammarIds.size)
+    }
+
+    @Test
+    fun `QA 8 - Total Reading Texts must be at least 97`() {
+        assertTrue(
+            "Expected at least 97 reading texts, but found ${readingTextsJson.size}",
+            readingTextsJson.size >= 97
+        )
+    }
 }

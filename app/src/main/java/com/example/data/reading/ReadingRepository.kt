@@ -830,7 +830,7 @@ class ReadingRepository(
     }
 
     companion object {
-        const val READING_DATA_VERSION = 3
+        const val READING_DATA_VERSION = 4
         const val PREFS_NAME = "reading_repository_prefs"
         private const val KEY_DATA_VERSION = "reading_data_version"
         private const val KEY_ASSET_HASH = "reading_asset_hash"
