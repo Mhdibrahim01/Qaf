@@ -133,7 +133,7 @@ class SettingsAndDeveloperModeTest {
                     ttsSpeechRate = speechRate,
                     autoPlayPronunciation = autoPlay,
                     studyPlanProfile = sampleProfile,
-                    totalEntriesCount = 21624,
+                    totalEntriesCount = 27435,
                     allowAi = allowAi,
                     engineMode = engineMode,
                     apiKeySource = "Custom Gemini Key",

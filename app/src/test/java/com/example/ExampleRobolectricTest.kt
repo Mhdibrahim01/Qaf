@@ -83,15 +83,15 @@ class ExampleRobolectricTest {
         assertEquals(750, phrasesCount)
         assertEquals(600, expressionsCount)
         assertEquals(468, idiomsCount)
-        assertEquals(3575, ieltsCount)
+        assertEquals(9386, ieltsCount)
         assertEquals(1622, itCount)
         assertEquals(1853, cefrC1Count)
         assertEquals(2651, pteCount)
         assertEquals(1250, businessCount)
         assertEquals(406, careerCount)
         assertEquals(405, medicalCount)
-        assertEquals(21624, totalCount)
-        assertEquals(10317, wordDetailsCount)
+        assertEquals(27435, totalCount)
+        assertEquals(13393, wordDetailsCount)
         assertEquals(0, emptyArabicCount)
         assertEquals(0, fakeCount)
 
@@ -106,7 +106,7 @@ class ExampleRobolectricTest {
         assertEquals(4958, oxfordDeckEntity.uniqueWordCount)
         assertEquals(1923, opalDeckEntity.uniqueWordCount)
         assertEquals(462, idiomsDeckEntity.uniqueWordCount)
-        assertEquals(20455, allDecksInDb.filter { it.id != DataImportRepository.SAVED_WORDS_DECK_ID }.sumOf { it.uniqueWordCount })
+        assertEquals(26266, allDecksInDb.filter { it.id != DataImportRepository.SAVED_WORDS_DECK_ID }.sumOf { it.uniqueWordCount })
 
         // Verify CEFR Level Progress count for Oxford 5000 B2 excludes blank levels and matches B2 unique words in Flashcards
         val oxfordB2Counts = dao.observeLevelProgressCounts("oxford5000", "B2").first()

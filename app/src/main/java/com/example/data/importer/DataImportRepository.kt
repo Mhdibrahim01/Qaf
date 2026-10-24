@@ -303,8 +303,8 @@ class DataImportRepository(
     companion object {
         const val BATCH_SIZE = 500
         const val CORE_EXPECTED_ROWS = 9862
-        const val TOTAL_EXPECTED_ROWS = 21624
-        const val DATA_VERSION = 7
+        const val TOTAL_EXPECTED_ROWS = 27435
+        const val DATA_VERSION = 8
         const val SAVED_WORDS_DECK_ID = "saved_words"
         const val DUE_TODAY_DECK_ID = "due_today"
         const val DAY_MILLIS = 24L * 60L * 60L * 1000L
@@ -393,7 +393,7 @@ class DataImportRepository(
             "oxford_phrases.json" to 750,
             "everyday_expressions.json" to 600,
             "essential_idioms.json" to 468,
-            "ielts_core.json" to 3575,
+            "ielts_core.json" to 9386,
             "it_industry.json" to 1622,
             "cefr_c1.json" to 1853,
             "pte_academic.json" to 2651,
@@ -1280,7 +1280,7 @@ class DataImportRepository(
             val careerSourceExists = resolvedSources.any { it.fileName == "career_interview.json" }
             val medicalSourceExists = resolvedSources.any { it.fileName == "medical_healthcare.json" }
 
-            val ieltsNeedsImport = ieltsSourceExists && dao.getEntryCountForDeck("ielts_core") == 0
+            val ieltsNeedsImport = ieltsSourceExists && dao.getEntryCountForDeck("ielts_core") < 9386
             val itNeedsImport = itSourceExists && dao.getEntryCountForDeck("it_industry") == 0
             val cefrC1NeedsImport = cefrC1SourceExists && dao.getEntryCountForDeck("cefr_c1") == 0
             val pteNeedsImport = pteSourceExists && dao.getEntryCountForDeck("pte_academic") == 0
@@ -1298,7 +1298,7 @@ class DataImportRepository(
 
             val versionNeedsUpsert = dbDataVersion < DATA_VERSION
 
-            if (dao.getWordDetailsCount() < 10317 || versionNeedsUpsert) {
+            if (dao.getWordDetailsCount() < 13393 || versionNeedsUpsert) {
                 seedAiWordDetailsIfNeeded()
             }
 
@@ -1679,8 +1679,8 @@ class DataImportRepository(
         ),
         DeckEntity(
             id = "ielts_core",
-            title = "IELTS Core",
-            arabicSubtitle = "مفردات الآيلتس الأساسية",
+            title = "IELTS Vocabulary",
+            arabicSubtitle = "مفردات الآيلتس الشاملة",
             category = "Exam Preparation",
             coverColorHex = "#1F242D",
             accentColorHex = "#9CA3AF",
@@ -1806,7 +1806,7 @@ class DataImportRepository(
     }
 
     private suspend fun seedAiWordDetailsIfNeeded() = withContext(Dispatchers.IO) {
-        if (dao.getWordDetailsCount() >= 10317) return@withContext
+        if (dao.getWordDetailsCount() >= 13393) return@withContext
         try {
             val stream = context.assets.open("data_import/ai_word_details.json")
             val rawText = stream.bufferedReader(Charsets.UTF_8).use { it.readText() }

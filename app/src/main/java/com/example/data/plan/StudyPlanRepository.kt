@@ -1687,7 +1687,7 @@ class StudyPlanRepository(
             "oxford_phrases" -> "Oxford Phrases"
             "everyday_expressions" -> "Everyday Expressions"
             "essential_idioms" -> "Essential Idioms"
-            "ielts_core" -> "IELTS Core"
+            "ielts_core" -> "IELTS Vocabulary"
             "it_industry" -> "IT & Tech Industry"
             "cefr_c1" -> "CEFR C1 Advanced"
             "pte_academic" -> "PTE Academic"

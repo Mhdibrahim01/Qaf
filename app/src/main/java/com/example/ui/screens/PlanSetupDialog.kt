@@ -106,7 +106,7 @@ fun PlanSetupDialog(
         "oxford_phrases" to "Oxford Phrases",
         "everyday_expressions" to "Everyday Expressions",
         "essential_idioms" to "Essential Idioms",
-        "ielts_core" to "IELTS Core",
+        "ielts_core" to "IELTS Vocabulary",
         "it_industry" to "IT & Tech Industry",
         "cefr_c1" to "CEFR C1 Advanced",
         "pte_academic" to "PTE Academic",
