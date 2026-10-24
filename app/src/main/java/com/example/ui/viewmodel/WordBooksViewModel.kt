@@ -2101,9 +2101,20 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         level: String,
         topic: String,
         length: String,
-        targetWords: List<String>
+        targetWords: List<String>,
+        targetGrammarLessonId: String? = null
     ): Result<String> {
-        val res = readingAiService.createNewTextWithAi(level, topic, length, targetWords)
+        val grammarLesson = if (!targetGrammarLessonId.isNullOrBlank()) {
+            grammarRepository.getLessonById(targetGrammarLessonId)
+        } else null
+        val res = readingAiService.createNewTextWithAi(
+            level = level,
+            topic = topic,
+            length = length,
+            targetWords = targetWords,
+            targetGrammarLessonId = targetGrammarLessonId,
+            targetGrammarTitle = grammarLesson?.titleEn
+        )
         if (res.isSuccess) {
             val newId = res.getOrNull()
             if (newId != null) {

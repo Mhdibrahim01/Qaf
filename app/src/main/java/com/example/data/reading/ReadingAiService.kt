@@ -71,7 +71,9 @@ class ReadingAiService(
         level: String,
         topic: String,
         length: String = "medium", // "short" (5-6) | "medium" (8-10) | "long" (12-15)
-        targetWords: List<String> = emptyList()
+        targetWords: List<String> = emptyList(),
+        targetGrammarLessonId: String? = null,
+        targetGrammarTitle: String? = null
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
             checkPreconditions()
@@ -88,6 +90,14 @@ class ReadingAiService(
 """.trimIndent()
             } else ""
 
+            val targetGrammarClause = if (!targetGrammarLessonId.isNullOrBlank()) {
+                val titlePart = if (!targetGrammarTitle.isNullOrBlank()) " ($targetGrammarTitle)" else ""
+                """
+- TARGET GRAMMAR RULE: You MUST naturally and prominently practice the grammar rule "$targetGrammarLessonId$titlePart" throughout the story.
+  For every sentence that demonstrates or applies this grammar rule, include `"grammar_id": "$targetGrammarLessonId"` inside that sentence's JSON object.
+""".trimIndent()
+            } else ""
+
             val prompt = """
 You are an expert English language educator creating reading material for Arabic speakers.
 Generate an engaging, educational reading passage matching the following:
@@ -95,12 +105,14 @@ Generate an engaging, educational reading passage matching the following:
 - Topic: $topic
 - Length: Exactly $sentenceCountDesc
 $targetWordsClause
+$targetGrammarClause
 
 REQUIREMENTS:
 1. Every English sentence must have its accurate Arabic translation.
-2. Provide exactly 5 comprehension multiple-choice questions testing main idea, specific details, vocabulary in context, and inference.
-3. Each question must have 4 options, a 0-based answer_index (0 to 3), and explanation_ar in clear Arabic.
-4. Return ONLY a valid JSON object matching this exact schema:
+2. For sentences that clearly demonstrate the target grammar rule, set "grammar_id": ${if (targetGrammarLessonId != null) "\"$targetGrammarLessonId\"" else "null"} (or null if the sentence does not use that rule).
+3. Provide exactly 5 comprehension multiple-choice questions testing main idea, specific details, vocabulary in context, and inference.
+4. Each question must have 4 options, a 0-based answer_index (0 to 3), and explanation_ar in clear Arabic.
+5. Return ONLY a valid JSON object matching this exact schema:
 {
   "id": "r_ai_${System.currentTimeMillis().toString().takeLast(6)}",
   "level": "${level.uppercase()}",
@@ -108,7 +120,7 @@ REQUIREMENTS:
   "title_en": "Title in English",
   "title_ar": "العنوان بالعربية",
   "sentences": [
-    { "en": "English sentence 1.", "ar": "الترجمة العربية للجملة الأولى." }
+    { "en": "English sentence 1.", "ar": "الترجمة العربية للجملة الأولى.", "grammar_id": ${if (targetGrammarLessonId != null) "\"$targetGrammarLessonId\"" else "null"} }
   ],
   "questions": [
     {
@@ -118,7 +130,8 @@ REQUIREMENTS:
       "explanation_ar": "توضيح الإجابة الصحيحة بالعربية"
     }
   ],
-  "target_words": [${targetWords.joinToString(", ") { "\"$it\"" }}]
+  "target_words": [${targetWords.joinToString(", ") { "\"$it\"" }}],
+  "grammar_ids": [${if (targetGrammarLessonId != null) "\"$targetGrammarLessonId\"" else ""}]
 }
 """.trimIndent()
 
@@ -137,8 +150,27 @@ REQUIREMENTS:
                         throw IllegalStateException("Generated text must contain sentences and questions")
                     }
 
+                    // Auto-Matcher: Ensure sentences that demonstrate the target grammar rule have grammar_id,
+                    // and guarantee targetGrammarLessonId is registered in grammar_ids
+                    val resolvedSentences = if (!targetGrammarLessonId.isNullOrBlank()) {
+                        autoTagGrammarSentences(parsed.sentences, targetGrammarLessonId)
+                    } else {
+                        parsed.sentences
+                    }
+
+                    val resolvedGrammarIds = if (!targetGrammarLessonId.isNullOrBlank()) {
+                        (parsed.grammarIds + targetGrammarLessonId + resolvedSentences.mapNotNull { it.grammarId }).distinct()
+                    } else {
+                        (parsed.grammarIds + resolvedSentences.mapNotNull { it.grammarId }).distinct()
+                    }
+
+                    val finalParsed = parsed.copy(
+                        sentences = resolvedSentences,
+                        grammarIds = resolvedGrammarIds
+                    )
+
                     val saveResult = repository.saveAiCreatedText(
-                        text = parsed,
+                        text = finalParsed,
                         targetWords = targetWords
                     )
                     return@withContext saveResult

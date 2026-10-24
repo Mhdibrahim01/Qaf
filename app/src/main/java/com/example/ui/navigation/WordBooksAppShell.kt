@@ -736,7 +736,9 @@ fun WordBooksAppShell(
                         onExplainWordInContext = wordBooksViewModel::explainWordInContext,
                         onSavePastedText = wordBooksViewModel::savePastedText,
                         onTranslateAndMakeQuestionsForPastedText = wordBooksViewModel::translateAndMakeQuestionsForPastedText,
-                        onCreateNewReadingTextWithAi = wordBooksViewModel::createNewReadingTextWithAi,
+                        onCreateNewReadingTextWithAi = { level, topic, length, targetWords, targetGrammarLessonId ->
+                            wordBooksViewModel.createNewReadingTextWithAi(level, topic, length, targetWords, targetGrammarLessonId)
+                        },
                         onSimplifyReadingText = wordBooksViewModel::simplifyReadingText,
                         onAskAiAboutText = wordBooksViewModel::askAiAboutReadingText,
                         onFeedbackOnOpenQuestion = wordBooksViewModel::feedbackOnOpenReadingQuestion,
