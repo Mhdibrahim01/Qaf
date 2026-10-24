@@ -111,9 +111,8 @@ import com.example.ui.theme.VioletAccentBg
 import com.example.ui.theme.WordBooksSpacing
 import com.example.data.plan.LearnerModelSnapshot
 import com.example.ui.components.AdaptiveInsightBannerCard
-import com.example.ui.components.CefrReadinessBarCard
+import com.example.ui.components.CefrAndLifecycleCard
 import com.example.ui.components.ConqueredWordsTrophyShelf
-import com.example.ui.components.WordLifecycleFunnelCard
 import kotlinx.serialization.json.Json
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -195,13 +194,16 @@ fun HomeScreen(
                 .widthIn(max = if (isTablet) 1100.dp else 720.dp)
                 .fillMaxWidth()
                 .verticalScroll(scrollState)
-                .padding(horizontal = 16.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(22.dp)
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 1. Welcome section: Date eyebrow, Greeting H1, Arabic subtitle, Coral streak badge, and Level & Goal chips
+            // 1. Welcome section: Date eyebrow, Greeting H1, Arabic subtitle, Coral streak badge, Level & Goal chips, and 7-day progress strip
             WelcomeSection(
                 studyStreak = studyStreak,
-                studyPlanProfile = studyPlanProfile
+                studyPlanProfile = studyPlanProfile,
+                todayChecklist = todayChecklist,
+                weeklyChecklists = weeklyChecklists,
+                studiedTodayCount = studiedTodayCount
             )
 
             // 1b. Data-backed Adaptive Insight Banner (Cold-Start guarded < 20 attempts)
@@ -222,7 +224,7 @@ fun HomeScreen(
                 ) {
                     Column(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(22.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         TodayPlanCard(
                             todayChecklist = todayChecklist,
@@ -231,32 +233,22 @@ fun HomeScreen(
                             onToggleTaskCompleted = onToggleTaskCompleted
                         )
 
-                        CefrReadinessBarCard(
+                        CefrAndLifecycleCard(
                             readiness = learnerModelSnapshot.cefrReadiness,
+                            funnel = learnerModelSnapshot.funnel,
                             onAcceptLevelUp = onAcceptLevelUp
                         )
 
-                        WordLifecycleFunnelCard(
-                            funnel = learnerModelSnapshot.funnel
-                        )
-
-                        ConqueredWordsTrophyShelf(
-                            conqueredWords = learnerModelSnapshot.conqueredWords
-                        )
-
-                        WeeklyProgressSummaryCard(
-                            studiedTodayCount = studiedTodayCount,
-                            studyStreak = studyStreak,
-                            masteredCount = masteredCount,
-                            totalEntriesCount = totalEntriesCount,
-                            todayChecklist = todayChecklist,
-                            weeklyChecklists = weeklyChecklists
-                        )
+                        if (learnerModelSnapshot.conqueredWords.isNotEmpty()) {
+                            ConqueredWordsTrophyShelf(
+                                conqueredWords = learnerModelSnapshot.conqueredWords
+                            )
+                        }
                     }
 
                     Column(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(22.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         ReviewDueSection(
                             reviewDueTodayCount = reviewDueTodayCount,
@@ -268,15 +260,11 @@ fun HomeScreen(
                             continueDeck = continueDeck,
                             continueCardPosition = continueCardPosition,
                             continueTotalCards = continueTotalCards,
-                            lastWordText = mostRecentStudyState?.lastWordText,
                             continueDeckId = continueDeckId,
-                            onOpenFlashcardsForDeck = onOpenFlashcardsForDeck
-                        )
-
-                        YourLibrarySection(
-                            decks = displayDecks,
+                            totalDecksCount = displayDecks.size,
                             studyStateByDeck = studyStateByDeck,
-                            onOpenDeck = onOpenDeck
+                            onOpenDeck = onOpenDeck,
+                            onOpenFlashcardsForDeck = onOpenFlashcardsForDeck
                         )
                     }
                 }
@@ -289,6 +277,18 @@ fun HomeScreen(
                     onToggleTaskCompleted = onToggleTaskCompleted
                 )
 
+                CefrAndLifecycleCard(
+                    readiness = learnerModelSnapshot.cefrReadiness,
+                    funnel = learnerModelSnapshot.funnel,
+                    onAcceptLevelUp = onAcceptLevelUp
+                )
+
+                if (learnerModelSnapshot.conqueredWords.isNotEmpty()) {
+                    ConqueredWordsTrophyShelf(
+                        conqueredWords = learnerModelSnapshot.conqueredWords
+                    )
+                }
+
                 ReviewDueSection(
                     reviewDueTodayCount = reviewDueTodayCount,
                     continueDeckId = continueDeckId,
@@ -299,37 +299,11 @@ fun HomeScreen(
                     continueDeck = continueDeck,
                     continueCardPosition = continueCardPosition,
                     continueTotalCards = continueTotalCards,
-                    lastWordText = mostRecentStudyState?.lastWordText,
                     continueDeckId = continueDeckId,
-                    onOpenFlashcardsForDeck = onOpenFlashcardsForDeck
-                )
-
-                YourLibrarySection(
-                    decks = displayDecks,
+                    totalDecksCount = displayDecks.size,
                     studyStateByDeck = studyStateByDeck,
-                    onOpenDeck = onOpenDeck
-                )
-
-                CefrReadinessBarCard(
-                    readiness = learnerModelSnapshot.cefrReadiness,
-                    onAcceptLevelUp = onAcceptLevelUp
-                )
-
-                WordLifecycleFunnelCard(
-                    funnel = learnerModelSnapshot.funnel
-                )
-
-                ConqueredWordsTrophyShelf(
-                    conqueredWords = learnerModelSnapshot.conqueredWords
-                )
-
-                WeeklyProgressSummaryCard(
-                    studiedTodayCount = studiedTodayCount,
-                    studyStreak = studyStreak,
-                    masteredCount = masteredCount,
-                    totalEntriesCount = totalEntriesCount,
-                    todayChecklist = todayChecklist,
-                    weeklyChecklists = weeklyChecklists
+                    onOpenDeck = onOpenDeck,
+                    onOpenFlashcardsForDeck = onOpenFlashcardsForDeck
                 )
             }
 
@@ -342,10 +316,14 @@ fun HomeScreen(
  * Section 1: Welcome Section
  * Date eyebrow, personalized greeting H1, Arabic subtitle on its own line, and streak badge pill.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun WelcomeSection(
     studyStreak: Int,
     studyPlanProfile: StudyPlanProfileEntity? = null,
+    todayChecklist: DailyChecklistEntity? = null,
+    weeklyChecklists: List<DailyChecklistEntity> = emptyList(),
+    studiedTodayCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val dateString = remember {
@@ -365,175 +343,265 @@ private fun WelcomeSection(
         }
     }
 
-    Column(
+    Surface(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        color = SurfaceDark,
+        shape = SquircleCardShape,
+        border = BorderStroke(1.dp, BorderDark)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    text = dateString.uppercase(Locale.ENGLISH),
-                    style = EyebrowStyle
-                )
-                Text(
-                    text = "$greeting, Learner",
-                    style = MaterialTheme.typography.displaySmall.copy(
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.8).sp
-                    ),
-                    color = TextPrimary
-                )
-                BidiText(
-                    text = "جاهز لجلسة تعلم جديدة اليوم؟",
-                    style = ArabicTypography.bodyMedium.copy(
-                        fontSize = 14.sp
-                    ),
-                    color = TextSecondary,
-                    fillMaxWidth = false,
-                    textAlign = TextAlign.Start
-                )
-            }
-
-            // Streak Badge Pill
-            val streakCount = if (studyStreak > 0) studyStreak else 1
-            Surface(
-                color = CoralAccentBg,
-                shape = PillShape,
-                border = BorderStroke(1.dp, CoralAccentBorder),
-                modifier = Modifier
-                    .padding(top = 4.dp)
-                    .testTag("home_study_streak_badge")
-            ) {
-                Row(
-                    modifier = Modifier
-                        .padding(horizontal = 10.dp, vertical = 7.dp)
-                        .heightIn(min = 28.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.LocalFireDepartment,
-                        contentDescription = null,
-                        tint = CoralAccent,
-                        modifier = Modifier.size(16.dp)
+                    Text(
+                        text = dateString.uppercase(Locale.ENGLISH),
+                        style = EyebrowStyle
                     )
                     Text(
-                        text = "$streakCount day streak",
-                        style = MaterialTheme.typography.labelSmall.copy(
+                        text = "$greeting, Learner",
+                        style = MaterialTheme.typography.displaySmall.copy(
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
+                            letterSpacing = (-0.5).sp
                         ),
-                        color = CoralAccent
+                        color = TextPrimary
+                    )
+                    BidiText(
+                        text = "جاهز لجلسة تعلم جديدة اليوم؟",
+                        style = ArabicTypography.bodyMedium.copy(
+                            fontSize = 13.sp
+                        ),
+                        color = TextSecondary,
+                        fillMaxWidth = true,
+                        textAlign = TextAlign.Right
                     )
                 }
-            }
-        }
 
-        // Personalized Profile Row (CEFR Level, Goal, Daily Target)
-        if (studyPlanProfile != null) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // 1. CEFR Level Badge
-                val level = studyPlanProfile.level.ifBlank { "B2" }
-                val levelColor = when (level) {
-                    "A1", "A2" -> EmeraldAccent
-                    "B1", "B2" -> SkyAccent
-                    else -> VioletAccent
-                }
-                val levelBg = when (level) {
-                    "A1", "A2" -> EmeraldAccentBg
-                    "B1", "B2" -> SkyAccentBg
-                    else -> VioletAccentBg
-                }
-                val levelArLabel = when (level) {
-                    "A1" -> "مبتدئ"
-                    "A2" -> "ابتدائي"
-                    "B1" -> "متوسط"
-                    "B2" -> "فوق المتوسط"
-                    "C1" -> "متقدم"
-                    "C2" -> "إتقان"
-                    else -> level
-                }
+                // Streak Badge Pill
+                val streakCount = if (studyStreak > 0) studyStreak else 1
                 Surface(
-                    color = levelBg,
+                    color = CoralAccentBg,
                     shape = PillShape,
-                    border = BorderStroke(1.dp, levelColor.copy(alpha = 0.5f)),
-                    modifier = Modifier.testTag("home_cefr_badge")
+                    border = BorderStroke(1.dp, CoralAccentBorder),
+                    modifier = Modifier
+                        .padding(top = 2.dp)
+                        .testTag("home_study_streak_badge")
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                            .heightIn(min = 26.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(levelColor)
+                        Icon(
+                            imageVector = Icons.Default.LocalFireDepartment,
+                            contentDescription = null,
+                            tint = CoralAccent,
+                            modifier = Modifier.size(15.dp)
                         )
                         Text(
-                            text = "$level · $levelArLabel",
+                            text = "$streakCount day streak",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp
                             ),
-                            color = levelColor
+                            color = CoralAccent
                         )
                     }
                 }
+            }
 
-                // 2. Goal Chip
-                val (goalEn, goalAr) = when (studyPlanProfile.goal) {
-                    "ielts" -> "IELTS Academic" to "تحضير الآيلتس"
-                    "it_career" -> "IT Career" to "تقنية المعلومات"
-                    else -> "General Fluency" to "طلاقة عامة"
-                }
-                Surface(
-                    color = SurfaceElevatedDark,
-                    shape = PillShape,
-                    border = BorderStroke(1.dp, BorderDark),
-                    modifier = Modifier.testTag("home_goal_chip")
+            // Personalized Profile Row (CEFR Level, Goal, Daily Target) wrapped in FlowRow
+            if (studyPlanProfile != null) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text(
-                        text = "$goalEn · $goalAr",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 11.sp
-                        ),
-                        color = TextSecondary,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
+                    // 1. CEFR Level Badge
+                    val level = studyPlanProfile.level.ifBlank { "B2" }
+                    val levelColor = when (level) {
+                        "A1", "A2" -> EmeraldAccent
+                        "B1", "B2" -> SkyAccent
+                        else -> VioletAccent
+                    }
+                    val levelBg = when (level) {
+                        "A1", "A2" -> EmeraldAccentBg
+                        "B1", "B2" -> SkyAccentBg
+                        else -> VioletAccentBg
+                    }
+                    val levelArLabel = when (level) {
+                        "A1" -> "مبتدئ"
+                        "A2" -> "ابتدائي"
+                        "B1" -> "متوسط"
+                        "B2" -> "فوق المتوسط"
+                        "C1" -> "متقدم"
+                        "C2" -> "إتقان"
+                        else -> level
+                    }
+                    Surface(
+                        color = levelBg,
+                        shape = PillShape,
+                        border = BorderStroke(1.dp, levelColor.copy(alpha = 0.5f)),
+                        modifier = Modifier.testTag("home_cefr_badge")
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(levelColor)
+                            )
+                            Text(
+                                text = "$level · $levelArLabel",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp
+                                ),
+                                color = levelColor
+                            )
+                        }
+                    }
 
-                // 3. Pace Chip
-                Surface(
-                    color = SurfaceElevatedDark,
-                    shape = PillShape,
-                    border = BorderStroke(1.dp, BorderDark),
-                    modifier = Modifier.testTag("home_pace_chip")
-                ) {
-                    Text(
-                        text = "${studyPlanProfile.minutesPerDay} min/day",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 11.sp
-                        ),
-                        color = TextMuted,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
+                    // 2. Goal Chip
+                    val (goalEn, goalAr) = when (studyPlanProfile.goal) {
+                        "ielts" -> "IELTS Academic" to "تحضير الآيلتس"
+                        "it_career" -> "IT Career" to "تقنية المعلومات"
+                        else -> "General Fluency" to "طلاقة عامة"
+                    }
+                    Surface(
+                        color = SurfaceElevatedDark,
+                        shape = PillShape,
+                        border = BorderStroke(1.dp, BorderDark),
+                        modifier = Modifier.testTag("home_goal_chip")
+                    ) {
+                        Text(
+                            text = "$goalEn · $goalAr",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 11.sp
+                            ),
+                            color = TextSecondary,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+
+                    // 3. Pace Chip
+                    Surface(
+                        color = SurfaceElevatedDark,
+                        shape = PillShape,
+                        border = BorderStroke(1.dp, BorderDark),
+                        modifier = Modifier.testTag("home_pace_chip")
+                    ) {
+                        Text(
+                            text = "${studyPlanProfile.minutesPerDay} min/day",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 11.sp
+                            ),
+                            color = TextMuted,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+
+            HorizontalDivider(color = BorderSubtle, thickness = 1.dp)
+
+            // 7-day Weekly Progress Strip directly integrated into the Welcome Card
+            val dayNames = listOf("M", "T", "W", "T", "F", "S", "S")
+            val currentDayIndex = remember {
+                val cal = Calendar.getInstance()
+                val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
+                if (dayOfWeek == Calendar.SUNDAY) 6 else dayOfWeek - 2
+            }
+            val sdf = remember { SimpleDateFormat("yyyy-MM-dd", Locale.US) }
+            val baseCal = remember { Calendar.getInstance() }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                dayNames.forEachIndexed { index, dayLetter ->
+                    val isToday = index == currentDayIndex
+                    val calForDay = Calendar.getInstance().apply {
+                        time = baseCal.time
+                        add(Calendar.DAY_OF_MONTH, index - currentDayIndex)
+                    }
+                    val dateStr = sdf.format(calForDay.time)
+                    val checklistForDay = weeklyChecklists.firstOrNull { it.date == dateStr } ?: if (isToday) todayChecklist else null
+                    val isCompleted = checklistForDay?.isCompleted == true || (checklistForDay != null && checklistForDay.totalCount > 0 && checklistForDay.completedCount >= checklistForDay.totalCount)
+                    val hasPartialActivity = (checklistForDay != null && checklistForDay.completedCount > 0) || (isToday && studiedTodayCount > 0)
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = dayLetter,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 10.sp,
+                                fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isToday) GoldAccent else TextSecondary
+                            )
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(26.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    when {
+                                        isCompleted -> EmeraldAccent.copy(alpha = 0.2f)
+                                        hasPartialActivity -> GoldAccentDim
+                                        isToday -> GoldAccentDim
+                                        else -> SurfaceElevatedDark
+                                    }
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = when {
+                                        isCompleted -> EmeraldAccent
+                                        isToday -> GoldAccent
+                                        hasPartialActivity -> GoldAccentBorder
+                                        else -> BorderDark
+                                    },
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isCompleted) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = EmeraldAccent,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                            } else if (hasPartialActivity || isToday) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(GoldAccent)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -600,8 +668,8 @@ private fun TodayPlanCard(
                         colors = listOf(GoldAccentDim, SurfaceDark)
                     )
                 )
-                .padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // Plan Header
             Row(
@@ -694,43 +762,12 @@ private fun TodayPlanCard(
                     )
                 }
             }
-
-            // Clean bottom action button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                Button(
-                    onClick = onOpenPlanScreen,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = GoldAccentDim,
-                        contentColor = GoldAccent
-                    ),
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, GoldAccentBorder),
-                    modifier = Modifier
-                        .heightIn(min = 44.dp)
-                        .testTag("btn_home_open_plan")
-                ) {
-                    Text(
-                        text = "View Checklist",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
-            }
         }
     }
 }
 
 /**
- * Task Row inside Today's Study Plan (Upgraded & synced with PlanScreen)
+ * Task Row inside Today's Study Plan (Upgraded compact 3-line layout)
  */
 @Composable
 private fun TaskCheckRow(
@@ -739,12 +776,6 @@ private fun TaskCheckRow(
     onToggleComplete: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val taskProgress = if (task.targetCount > 0) {
-        (task.completedCount.toFloat() / task.targetCount.toFloat()).coerceIn(0f, 1f)
-    } else {
-        if (task.isCompleted) 1f else 0f
-    }
-
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -755,179 +786,170 @@ private fun TaskCheckRow(
         shape = SquircleTaskShape,
         border = BorderStroke(1.dp, if (task.isCompleted) EmeraldAccent.copy(alpha = 0.55f) else BorderSubtle)
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            // Compact Task check squircle
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .clickable { onToggleComplete() }
+                    .testTag("home_task_checkbox_${task.id}"),
+                contentAlignment = Alignment.Center
             ) {
-                // Task check squircle with 44dp touch target
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .clickable { onToggleComplete() }
-                        .testTag("home_task_checkbox_${task.id}"),
+                        .size(18.dp)
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(if (task.isCompleted) EmeraldAccent else Color.Transparent)
+                        .border(
+                            width = 1.dp,
+                            color = if (task.isCompleted) EmeraldAccent else Color(0xFF55555E),
+                            shape = RoundedCornerShape(5.dp)
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(SquircleCheckShape)
-                            .background(if (task.isCompleted) EmeraldAccent else Color.Transparent)
-                            .border(
-                                width = 1.dp,
-                                color = if (task.isCompleted) EmeraldAccent else Color(0xFF55555E),
-                                shape = SquircleCheckShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (task.isCompleted) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = "Completed",
-                                tint = BackgroundDark,
-                                modifier = Modifier.size(14.dp)
+                    if (task.isCompleted) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Completed",
+                            tint = BackgroundDark,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+                }
+            }
+
+            // 3 Compact Lines Column
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                // Line 1: English Title + Badges (time, count)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = task.titleEn,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            textDecoration = if (task.isCompleted) androidx.compose.ui.text.style.TextDecoration.LineThrough else androidx.compose.ui.text.style.TextDecoration.None
+                        ),
+                        color = if (task.isCompleted) TextMuted else TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+
+                    if (task.estimatedMinutes > 0) {
+                        Surface(
+                            color = SurfaceDark,
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = "${task.estimatedMinutes}m",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium, fontSize = 10.sp),
+                                color = TextSecondary,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    if (task.targetCount > 1) {
+                        Surface(
+                            color = if (task.isCompleted) EmeraldAccent.copy(alpha = 0.15f) else SurfaceDark,
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = "${task.completedCount}/${task.targetCount}",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
+                                color = if (task.isCompleted) EmeraldAccent else GoldAccent,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
                     }
                 }
 
-                // Title, Arabic Title, and Subtitle
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(
-                            text = task.titleEn,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                textDecoration = if (task.isCompleted) androidx.compose.ui.text.style.TextDecoration.LineThrough else androidx.compose.ui.text.style.TextDecoration.None
-                            ),
-                            color = if (task.isCompleted) TextMuted else TextPrimary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
-                        )
-
-                        if (task.estimatedMinutes > 0) {
-                            Surface(
-                                color = SurfaceDark,
-                                shape = RoundedCornerShape(4.dp)
-                            ) {
-                                Text(
-                                    text = "${task.estimatedMinutes}m",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium, fontSize = 10.sp),
-                                    color = TextSecondary,
-                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-
-                        if (task.targetCount > 1) {
-                            Surface(
-                                color = if (task.isCompleted) EmeraldAccent.copy(alpha = 0.15f) else SurfaceDark,
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
-                                Text(
-                                    text = "${task.completedCount}/${task.targetCount}",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
-                                    color = if (task.isCompleted) EmeraldAccent else GoldAccent,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    if (task.titleAr.isNotBlank()) {
-                        BidiText(
-                            text = task.titleAr,
-                            style = ArabicTypography.labelSmall.copy(fontSize = 11.sp),
-                            color = if (task.isCompleted) TextMuted else TextSecondary,
-                            fillMaxWidth = false,
-                            maxLines = 1,
-                            textAlign = TextAlign.Start
-                        )
-                    }
-
-                    if (task.subtitleEn.isNotBlank()) {
-                        Text(
-                            text = task.subtitleEn,
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                            color = GoldAccent
-                        )
-                    }
-
-                    if (task.reason.isNotBlank()) {
-                        Text(
-                            text = task.reason,
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                            color = GoldAccent.copy(alpha = 0.85f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                // Line 2: Arabic Subtitle right-aligned (direction: rtl; text-align: right;)
+                if (task.titleAr.isNotBlank()) {
+                    BidiText(
+                        text = task.titleAr,
+                        style = ArabicTypography.labelSmall.copy(fontSize = 11.sp),
+                        color = if (task.isCompleted) TextMuted else TextSecondary,
+                        fillMaxWidth = true,
+                        maxLines = 1,
+                        textAlign = TextAlign.Right
+                    )
                 }
 
-                // Typed action button matching PlanScreen
-                val actionLabel = when (task.type) {
-                    "quiz" -> if (task.isCompleted) "Retake" else "Quiz"
-                    "flashcards" -> if (task.isCompleted) "Review" else "Start"
-                    "new_words" -> if (task.isCompleted) "Words" else "Learn"
-                    "grammar" -> if (task.isCompleted) "Lesson" else "Study"
-                    "reading" -> if (task.isCompleted) "Story" else "Read"
-                    "sentences" -> "Practice"
-                    "correction_reviews" -> "Review"
-                    else -> "Open"
+                // Line 3: Single concise Metadata line in GoldAccent
+                val metaText = when {
+                    task.subtitleEn.isNotBlank() && task.reason.isNotBlank() && task.subtitleEn != task.reason ->
+                        "${task.subtitleEn} • ${task.reason}"
+                    task.subtitleEn.isNotBlank() -> task.subtitleEn
+                    task.reason.isNotBlank() -> task.reason
+                    else -> ""
                 }
-
-                Button(
-                    onClick = onClick,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (task.isCompleted) SurfaceDark else GoldAccent,
-                        contentColor = if (task.isCompleted) GoldAccent else BackgroundDark
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    modifier = Modifier
-                        .heightIn(min = 32.dp)
-                        .testTag("btn_home_task_action_${task.type}")
-                ) {
-                    Text(actionLabel, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                    Spacer(Modifier.width(4.dp))
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        modifier = Modifier.size(11.dp)
+                if (metaText.isNotBlank()) {
+                    Text(
+                        text = metaText,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = GoldAccent,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
 
-            if (task.explanationAr.isNotBlank()) {
-                BidiText(
-                    text = task.explanationAr,
-                    style = ArabicTypography.labelSmall.copy(fontSize = 10.sp),
-                    color = TextMuted
-                )
+            // Typed action button with dark text #0B0D12 on GoldAccent #F5B82E (Contrast fix)
+            val actionLabel = when (task.type) {
+                "quiz" -> if (task.isCompleted) "Retake" else "Quiz"
+                "flashcards" -> if (task.isCompleted) "Review" else "Start"
+                "new_words" -> if (task.isCompleted) "Words" else "Learn"
+                "grammar" -> if (task.isCompleted) "Lesson" else "Study"
+                "reading" -> if (task.isCompleted) "Story" else "Read"
+                "sentences" -> "Practice"
+                "correction_reviews" -> "Review"
+                else -> "Open"
             }
 
-            if (task.targetCount > 1) {
-                LinearProgressIndicator(
-                    progress = { taskProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(3.dp)
-                        .clip(RoundedCornerShape(2.dp)),
-                    color = if (task.isCompleted) EmeraldAccent else GoldAccent,
-                    trackColor = SurfaceDark
+            val buttonTextColor = if (task.isCompleted) GoldAccent else Color(0xFF0B0D12)
+
+            Button(
+                onClick = onClick,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (task.isCompleted) SurfaceDark else GoldAccent,
+                    contentColor = buttonTextColor
+                ),
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                modifier = Modifier
+                    .heightIn(min = 32.dp)
+                    .testTag("btn_home_task_action_${task.type}")
+            ) {
+                Text(
+                    text = actionLabel,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    color = buttonTextColor
+                )
+                Spacer(Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = buttonTextColor,
+                    modifier = Modifier.size(11.dp)
                 )
             }
         }
@@ -944,292 +966,175 @@ private fun ReviewDueSection(
     onOpenFlashcardsForDeck: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("home_review_due_card"),
+        color = SurfaceDark,
+        shape = SquircleReviewShape,
+        border = BorderStroke(1.dp, if (reviewDueTodayCount > 0) BorderHighlight else BorderDark)
     ) {
-        // Section Header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(text = "SPACED REPETITION", style = EyebrowStyle)
-                Text(
-                    text = "Ready for review",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = TextPrimary
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // Big Count block
+                Column(
+                    modifier = Modifier.widthIn(min = 60.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = reviewDueTodayCount.toString(),
+                        style = StatValueReviewStyle.copy(fontSize = 24.sp),
+                        color = GoldAccent,
+                        modifier = Modifier.testTag("home_review_due_count")
+                    )
+                    Text(
+                        text = "due today",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 10.sp,
+                            color = TextMuted
+                        )
+                    )
+                }
+
+                VerticalDivider(
+                    modifier = Modifier.height(38.dp),
+                    color = BorderDark,
+                    thickness = 1.dp
                 )
+
+                // Description Copy (2 lines matching prototype)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Text(
+                        text = "Keep your memory strong",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        ),
+                        color = TextPrimary
+                    )
+                    BidiText(
+                        text = "حافظ على قوة ذاكرتك واكتمال مراجعاتك",
+                        style = ArabicTypography.labelSmall.copy(
+                            fontSize = 11.sp
+                        ),
+                        color = TextSecondary,
+                        fillMaxWidth = true,
+                        textAlign = TextAlign.Right
+                    )
+                }
             }
 
-            Row(
+            // Primary Action Button
+            Button(
+                onClick = {
+                    if (reviewDueTodayCount > 0) {
+                        onOpenFlashcardsForDeck(DataImportRepository.DUE_TODAY_DECK_ID)
+                    } else {
+                        onOpenFlashcardsForDeck(continueDeckId)
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = GoldAccent,
+                    contentColor = Color(0xFF0B0D12)
+                ),
+                shape = RoundedCornerShape(10.dp),
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { onOpenFlashcardsForDeck(DataImportRepository.DUE_TODAY_DECK_ID) }
-                    .padding(vertical = 6.dp, horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    .fillMaxWidth()
+                    .height(44.dp)
+                    .testTag("home_review_due_button")
             ) {
                 Text(
-                    text = "View all",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 11.sp
-                    ),
-                    color = GoldAccent
+                    text = if (reviewDueTodayCount > 0) "Start review" else "Practice more cards",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    color = Color(0xFF0B0D12)
                 )
+                Spacer(Modifier.width(6.dp))
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = null,
-                    tint = GoldAccent,
-                    modifier = Modifier.size(13.dp)
+                    tint = Color(0xFF0B0D12),
+                    modifier = Modifier.size(15.dp)
                 )
-            }
-        }
-
-        // Asymmetric Review Card
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("home_review_due_card"),
-            color = SurfaceDark,
-            shape = SquircleReviewShape,
-            border = BorderStroke(1.dp, if (reviewDueTodayCount > 0) BorderHighlight else BorderDark)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    // Big Count block
-                    Column(
-                        modifier = Modifier.widthIn(min = 72.dp),
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = reviewDueTodayCount.toString(),
-                            style = StatValueReviewStyle,
-                            color = GoldAccent,
-                            modifier = Modifier.testTag("home_review_due_count")
-                        )
-                        Text(
-                            text = "cards due today",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontSize = 9.sp,
-                                color = TextSubtle
-                            )
-                        )
-                    }
-
-                    VerticalDivider(
-                        modifier = Modifier.height(46.dp),
-                        color = BorderDark,
-                        thickness = 1.dp
-                    )
-
-                    // Description Copy
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(3.dp)
-                    ) {
-                        Text(
-                            text = "Keep your memory strong",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            ),
-                            color = TextPrimary
-                        )
-                        BidiText(
-                            text = "حافظ على قوة ذاكرتك واكتمال مراجعاتك",
-                            style = ArabicTypography.labelSmall.copy(
-                                fontSize = 11.sp
-                            ),
-                            color = TextSecondary,
-                            fillMaxWidth = false,
-                            textAlign = TextAlign.Start
-                        )
-                        val minutesEstimate = (reviewDueTodayCount * 0.4).toInt().coerceAtLeast(1)
-                        Text(
-                            text = if (reviewDueTodayCount > 0) {
-                                "Your review is ready. About $minutesEstimate minutes."
-                            } else {
-                                "All reviews completed for today! Great job."
-                            },
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = 11.sp,
-                                color = TextMuted
-                            )
-                        )
-                    }
-                }
-
-                // Primary Action Button (>= 48dp height)
-                Button(
-                    onClick = {
-                        if (reviewDueTodayCount > 0) {
-                            onOpenFlashcardsForDeck(DataImportRepository.DUE_TODAY_DECK_ID)
-                        } else {
-                            onOpenFlashcardsForDeck(continueDeckId)
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = GoldAccent,
-                        contentColor = OnGoldDark
-                    ),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .testTag("home_review_due_button")
-                ) {
-                    Text(
-                        text = if (reviewDueTodayCount > 0) "Start review" else "Practice more cards",
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 13.sp
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
             }
         }
     }
 }
 
 /**
- * Section 4: Continue Learning Card (Preserves last position)
+ * Section 4: Compact Continue Learning Section
+ * Replaces the long 13-book list with a smart unified active book card + "All X books →" link.
  */
 @Composable
 private fun ContinueLearningSection(
     continueDeck: DeckEntity?,
     continueCardPosition: Int,
     continueTotalCards: Int,
-    lastWordText: String?,
     continueDeckId: String,
+    totalDecksCount: Int,
+    studyStateByDeck: Map<String, DeckStudyStateEntity>,
+    onOpenDeck: (String) -> Unit,
     onOpenFlashcardsForDeck: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .testTag("home_continue_learning_card"),
-        color = SurfaceDark,
-        shape = SquircleCardShape,
-        border = BorderStroke(1.dp, BorderDark)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = "Continue Learning • ${continueDeck?.title ?: "Oxford 5000"}",
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
-                    ),
-                    color = TextPrimary
-                )
-                Text(
-                    text = buildAnnotatedString {
-                        append("Saved position: Card ")
-                        withStyle(SpanStyle(color = GoldAccent, fontWeight = FontWeight.Bold)) {
-                            append(continueCardPosition.toString())
-                        }
-                        append(" / $continueTotalCards")
-                        if (!lastWordText.isNullOrBlank()) {
-                            append(" (\"$lastWordText\")")
-                        }
-                    },
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                    color = TextSecondary,
-                    modifier = Modifier.testTag("home_continue_position_text")
-                )
-            }
+    val activeDeck = continueDeck
 
-            OutlinedButton(
-                onClick = { onOpenFlashcardsForDeck(continueDeckId) },
-                border = BorderStroke(1.dp, GoldAccentBorder),
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .testTag("home_continue_flashcards_button")
-            ) {
-                Text(
-                    text = "Continue",
-                    color = GoldAccent,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp
-                )
-            }
-        }
+    val formattedTotalCards = try {
+        NumberFormat.getNumberInstance(Locale.US).format(continueTotalCards)
+    } catch (_: Exception) {
+        continueTotalCards.toString()
     }
-}
 
-/**
- * Section 5: Your Library (Book Cards Grid)
- * Matching Figma 02-home-library.png with spine covers, color accents, and mini progress bars.
- */
-@Composable
-private fun YourLibrarySection(
-    decks: List<DeckEntity>,
-    studyStateByDeck: Map<String, DeckStudyStateEntity>,
-    onOpenDeck: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
+    val (accentColor, accentBg) = when (activeDeck?.id) {
+        "oxford5000" -> Pair(EmeraldAccent, EmeraldAccentBg)
+        "everyday" -> Pair(SkyAccent, SkyAccentBg)
+        "idioms" -> Pair(VioletAccent, VioletAccentBg)
+        else -> Pair(GoldAccent, GoldAccentDim)
+    }
+
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Section Header
+        // Section Header (Single row: "Continue learning" on left, "All X books →" on right)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(text = "YOUR LIBRARY", style = EyebrowStyle)
-                Text(
-                    text = "Continue learning",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = TextPrimary
-                )
-            }
+            Text(
+                text = "Continue learning",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                ),
+                color = TextPrimary
+            )
 
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
                     .clickable { onOpenDeck("") }
-                    .padding(vertical = 6.dp, horizontal = 4.dp),
+                    .padding(vertical = 4.dp, horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = "All books",
+                    text = "All $totalDecksCount books",
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 11.sp
+                        fontSize = 12.sp
                     ),
                     color = GoldAccent
                 )
@@ -1242,117 +1147,96 @@ private fun YourLibrarySection(
             }
         }
 
-        // Decks List
-        Column(
-            verticalArrangement = Arrangement.spacedBy(9.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            decks.forEach { deck ->
-                val savedState = studyStateByDeck[deck.id]
-                val studiedInDeck = savedState?.totalStudiedInDeck ?: (savedState?.lastCardIndex ?: 0)
-                val totalWords = deck.uniqueWordCount.takeIf { it > 0 } ?: deck.rowCount.coerceAtLeast(1)
-                val progressPercent = ((studiedInDeck.toFloat() / totalWords.toFloat()) * 100).toInt().coerceIn(0, 100)
-
-                val (accentColor, accentBg) = when (deck.id) {
-                    "oxford5000" -> Pair(EmeraldAccent, EmeraldAccentBg)
-                    "everyday" -> Pair(SkyAccent, SkyAccentBg)
-                    "idioms" -> Pair(VioletAccent, VioletAccentBg)
-                    else -> Pair(GoldAccent, GoldAccentDim)
-                }
-
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 72.dp)
-                        .clip(SquircleCardShape)
-                        .clickable(role = Role.Button) { onOpenDeck(deck.id) }
-                        .testTag("home_deck_card_${deck.id}"),
-                    color = SurfaceDark,
-                    shape = SquircleCardShape,
-                    border = BorderStroke(1.dp, BorderDark)
+        // Active Deck Compact Card
+        if (activeDeck != null) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(SquircleCardShape)
+                    .clickable(role = Role.Button) { onOpenFlashcardsForDeck(continueDeckId) }
+                    .testTag("home_continue_learning_card"),
+                color = SurfaceDark,
+                shape = SquircleCardShape,
+                border = BorderStroke(1.dp, BorderDark)
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(13.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    // Book Cover rounded square
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(accentBg)
+                            .border(1.dp, accentColor.copy(alpha = 0.4f), RoundedCornerShape(10.dp)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        // Book Cover with curved spine shape
-                        Box(
-                            modifier = Modifier
-                                .size(width = 44.dp, height = 54.dp)
-                                .clip(BookSpineShape)
-                                .background(accentBg)
-                                .border(1.dp, accentColor.copy(alpha = 0.4f), BookSpineShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.MenuBook,
-                                contentDescription = null,
-                                tint = accentColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                            contentDescription = null,
+                            tint = accentColor,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
 
-                        // Deck Info
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(3.dp)
+                    // Deck Info
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = deck.title,
+                                text = activeDeck.title,
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp
+                                    fontSize = 14.sp
                                 ),
                                 color = TextPrimary,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
                             )
 
-                            if (deck.arabicSubtitle.isNotBlank()) {
-                                BidiText(
-                                    text = deck.arabicSubtitle,
-                                    style = ArabicTypography.labelSmall.copy(
+                            Row(
+                                modifier = Modifier.testTag("home_continue_position_text"),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "Card $continueCardPosition / $formattedTotalCards",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold,
                                         fontSize = 11.sp
                                     ),
-                                    color = TextSecondary,
-                                    fillMaxWidth = false,
-                                    maxLines = 1,
-                                    textAlign = TextAlign.Start
+                                    color = GoldAccent
+                                )
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = GoldAccent,
+                                    modifier = Modifier.size(12.dp)
                                 )
                             }
-
-                            val formattedWords = try {
-                                NumberFormat.getNumberInstance(Locale.US).format(totalWords)
-                            } catch (_: Exception) {
-                                totalWords.toString()
-                            }
-                            Text(
-                                text = "$formattedWords words • $progressPercent% complete",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontSize = 10.sp,
-                                    color = TextMuted
-                                )
-                            )
-
-                            // Mini Progress Bar
-                            LinearProgressIndicator(
-                                progress = { progressPercent / 100f },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(3.dp)
-                                    .clip(PillShape),
-                                color = accentColor,
-                                trackColor = SurfaceContainerHighDark
-                            )
                         }
 
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = "Open deck",
-                            tint = TextMuted,
-                            modifier = Modifier.size(16.dp)
-                        )
+                        if (activeDeck.arabicSubtitle.isNotBlank()) {
+                            BidiText(
+                                text = activeDeck.arabicSubtitle,
+                                style = ArabicTypography.labelSmall.copy(
+                                    fontSize = 11.sp
+                                ),
+                                color = TextSecondary,
+                                fillMaxWidth = true,
+                                maxLines = 1,
+                                textAlign = TextAlign.Right
+                            )
+                        }
                     }
                 }
             }

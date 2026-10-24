@@ -22,14 +22,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -45,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -52,12 +47,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BorderDark
 import com.example.ui.theme.CoralAccent
 import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.GoldAccent
-import com.example.ui.theme.GoldAccentBorder
 import com.example.ui.theme.GoldAccentDim
 import com.example.ui.theme.OnGoldDark
 import com.example.ui.theme.SquircleCardShape
@@ -94,7 +89,7 @@ object OnboardingStep4Defaults {
         OnboardingDeckInfo(
             id = "oxford_opal",
             title = "Academic OPAL",
-            arabicTitle = "المفردات الأكاديمية (OPAL)",
+            arabicTitle = "المفردات الأكاديمية \u2066(OPAL)\u2069",
             entryCount = 2096,
             levelBadge = "B2–C1",
             category = "core",
@@ -174,7 +169,7 @@ object OnboardingStep4Defaults {
         OnboardingDeckInfo(
             id = "cefr_c1",
             title = "CEFR C1 Advanced",
-            arabicTitle = "المستوى المتقدم C1",
+            arabicTitle = "المستوى المتقدم \u2066C1\u2069",
             entryCount = 1853,
             levelBadge = "C1",
             category = "career",
@@ -184,7 +179,7 @@ object OnboardingStep4Defaults {
         OnboardingDeckInfo(
             id = "pte_academic",
             title = "PTE Academic",
-            arabicTitle = "مفردات اختبار PTE الأكاديمي",
+            arabicTitle = "مفردات اختبار \u2066PTE\u2069 الأكاديمي",
             entryCount = 2651,
             levelBadge = "B1–C1",
             category = "career",
@@ -244,7 +239,6 @@ fun OnboardingDecksAndPlacementStep(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(vertical = 6.dp)
             .testTag("onboarding_step_4_decks_placement"),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
@@ -255,9 +249,9 @@ fun OnboardingDecksAndPlacementStep(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Back button to Step 3 + Header
+            // Back button to Step 3
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -266,72 +260,44 @@ fun OnboardingDecksAndPlacementStep(
                 TextButton(
                     onClick = onStep4Back,
                     modifier = Modifier
-                        .heightIn(min = 48.dp)
+                        .heightIn(min = 40.dp)
                         .testTag("btn_onboarding_step4_back")
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back to goal and time",
                         tint = TextSecondary,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                     Text(
                         text = "Goal & Time",
-                        style = MaterialTheme.typography.labelLarge,
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
                         color = TextSecondary,
                         modifier = Modifier.padding(start = 6.dp)
                     )
                 }
             }
 
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Text(
-                    text = "Choose your study decks",
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.ExtraBold
-                    ),
-                    color = TextPrimary,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.testTag("onboarding_step4_header_en")
-                )
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    Text(
-                        text = "اختر قوائم المفردات ونقطة البداية",
-                        style = ArabicTypography.titleMedium,
-                        color = TextSecondary,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.testTag("onboarding_step4_header_ar")
-                    )
-                }
-            }
+            OnboardingHeroHeader(
+                titleEn = "Choose your study decks",
+                titleAr = "اختر قوائم المفردات ونقطة البداية",
+                titleEnTestTag = "onboarding_step4_header_en",
+                titleArTestTag = "onboarding_step4_header_ar"
+            )
 
             // Section 1: Starting Point (Placement / Pacing)
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "1. Starting Point",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                        color = GoldAccent
-                    )
-                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                        Text(
-                            text = "١. نقطة انطلاق الخطة",
-                            style = ArabicTypography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = GoldAccent
-                        )
-                    }
-                }
+                OnboardingSectionHeader(
+                    number = "1",
+                    titleEn = "Starting Point",
+                    titleAr = "نقطة انطلاق الخطة"
+                )
 
                 // Option A: Start at my level (recommended)
                 Surface(
@@ -350,50 +316,65 @@ fun OnboardingDecksAndPlacementStep(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                            .padding(horizontal = 15.dp, vertical = 13.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.weight(1f),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (startAtUserLevel) GoldAccent else SurfaceElevatedDark)
+                                .border(
+                                    width = 1.dp,
+                                    color = if (startAtUserLevel) GoldAccent else BorderDark,
+                                    shape = RoundedCornerShape(12.dp)
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.AutoAwesome,
                                 contentDescription = "Start at level",
-                                tint = if (startAtUserLevel) GoldAccent else TextSecondary,
-                                modifier = Modifier.size(22.dp)
-                            )
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(
-                                    text = "Start at my level ($selectedLevel)",
-                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = if (startAtUserLevel) GoldAccent else TextPrimary
-                                )
-                                Text(
-                                    text = "Prioritizes $selectedLevel words, skipping basics you already know.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = TextSecondary
-                                )
-                                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                                    Text(
-                                        text = "التركيز على مفردات المستوى $selectedLevel وتخطي الأساسيات السهلة.",
-                                        style = ArabicTypography.labelSmall,
-                                        color = TextMuted,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                            }
-                        }
-                        if (startAtUserLevel) {
-                            Icon(
-                                imageVector = Icons.Filled.CheckCircle,
-                                contentDescription = "Selected start at level",
-                                tint = GoldAccent,
+                                tint = if (startAtUserLevel) OnGoldDark else GoldAccent,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
+
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = "Start at my level ($selectedLevel)",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                color = if (startAtUserLevel) GoldAccent else TextPrimary
+                            )
+                            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                Text(
+                                    text = "التركيز على مفردات المستوى \u2066$selectedLevel\u2069 وتخطي الأساسيات السهلة.",
+                                    style = ArabicTypography.labelSmall.copy(
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    ),
+                                    color = Color(0xFFD1D5DB),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Right
+                                )
+                            }
+                            Text(
+                                text = "Prioritizes $selectedLevel words, skipping basics you already know.",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontSize = 12.5.sp,
+                                    lineHeight = 17.sp
+                                ),
+                                color = TextSecondary
+                            )
+                        }
+
+                        OnboardingRadioCircle(isSelected = startAtUserLevel)
                     }
                 }
 
@@ -414,50 +395,65 @@ fun OnboardingDecksAndPlacementStep(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                            .padding(horizontal = 15.dp, vertical = 13.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.weight(1f),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (!startAtUserLevel) GoldAccent else SurfaceElevatedDark)
+                                .border(
+                                    width = 1.dp,
+                                    color = if (!startAtUserLevel) GoldAccent else BorderDark,
+                                    shape = RoundedCornerShape(12.dp)
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.FilterList,
                                 contentDescription = "Start from beginning",
-                                tint = if (!startAtUserLevel) GoldAccent else TextSecondary,
-                                modifier = Modifier.size(22.dp)
-                            )
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(
-                                    text = "Start from the beginning (A1)",
-                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = if (!startAtUserLevel) GoldAccent else TextPrimary
-                                )
-                                Text(
-                                    text = "Comprehensive review from foundational vocabulary.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = TextSecondary
-                                )
-                                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                                    Text(
-                                        text = "مراجعة شاملة متدرجة من الكلمات التأسيسية الأولى.",
-                                        style = ArabicTypography.labelSmall,
-                                        color = TextMuted,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                            }
-                        }
-                        if (!startAtUserLevel) {
-                            Icon(
-                                imageVector = Icons.Filled.CheckCircle,
-                                contentDescription = "Selected start from beginning",
-                                tint = GoldAccent,
+                                tint = if (!startAtUserLevel) OnGoldDark else GoldAccent,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
+
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = "Start from the beginning (A1)",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                color = if (!startAtUserLevel) GoldAccent else TextPrimary
+                            )
+                            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                Text(
+                                    text = "مراجعة شاملة متدرجة من الكلمات التأسيسية الأولى.",
+                                    style = ArabicTypography.labelSmall.copy(
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    ),
+                                    color = Color(0xFFD1D5DB),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Right
+                                )
+                            }
+                            Text(
+                                text = "Comprehensive review from foundational vocabulary.",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontSize = 12.5.sp,
+                                    lineHeight = 17.sp
+                                ),
+                                color = TextSecondary
+                            )
+                        }
+
+                        OnboardingRadioCircle(isSelected = !startAtUserLevel)
                     }
                 }
             }
@@ -465,26 +461,13 @@ fun OnboardingDecksAndPlacementStep(
             // Section 2: Core Decks
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "2. Core Vocabulary Decks",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                        color = GoldAccent
-                    )
-                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                        Text(
-                            text = "٢. القوائم الأساسية",
-                            style = ArabicTypography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = GoldAccent
-                        )
-                    }
-                }
+                OnboardingSectionHeader(
+                    number = "2",
+                    titleEn = "Core Vocabulary Decks",
+                    titleAr = "القوائم الأساسية"
+                )
 
                 OnboardingStep4Defaults.ALL_DECKS.filter { it.category == "core" }.forEach { deck ->
                     val isChecked = deck.id in selectedDecks
@@ -502,29 +485,16 @@ fun OnboardingDecksAndPlacementStep(
                 }
             }
 
-            // Section 3: Goal & Career Decks
+            // Section 3: Specialized & Exam Decks
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "3. Specialized & Exam Decks",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                        color = GoldAccent
-                    )
-                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                        Text(
-                            text = "٣. القوائم التخصصية والامتحانات",
-                            style = ArabicTypography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = GoldAccent
-                        )
-                    }
-                }
+                OnboardingSectionHeader(
+                    number = "3",
+                    titleEn = "Specialized & Exam Decks",
+                    titleAr = "القوائم التخصصية"
+                )
 
                 OnboardingStep4Defaults.ALL_DECKS.filter { it.category == "career" }.forEach { deck ->
                     val isChecked = deck.id in selectedDecks
@@ -581,8 +551,9 @@ fun OnboardingDecksAndPlacementStep(
                     )
                 }
             }
-        }
 
+            Spacer(modifier = Modifier.height(6.dp))
+        }
         if (selectedDecks.isEmpty()) {
             Spacer(modifier = Modifier.height(6.dp))
             Text(
@@ -598,47 +569,15 @@ fun OnboardingDecksAndPlacementStep(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Primary CTA Button
-        Button(
+        // Sticky Primary CTA Footer
+        OnboardingStickyFooter(
+            ctaTextEn = "Continue (${selectedDecks.size} decks)",
+            ctaTextAr = "المتابعة بالقوائم المحددة",
+            buttonTestTag = "btn_onboarding_step4_continue",
             onClick = {
                 onContinueStep4(selectedDecks, startAtUserLevel)
-            },
-            enabled = selectedDecks.isNotEmpty(),
-            shape = SquircleCardShape,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = GoldAccent,
-                contentColor = OnGoldDark,
-                disabledContainerColor = SurfaceElevatedDark,
-                disabledContentColor = TextMuted
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 56.dp)
-                .testTag("btn_onboarding_step4_continue")
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(vertical = 2.dp)
-            ) {
-                Text(
-                    text = if (selectedDecks.isEmpty()) "Select at least 1 wordbook" else "Continue (${selectedDecks.size} decks)",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.ExtraBold
-                    ),
-                    color = if (selectedDecks.isEmpty()) TextMuted else OnGoldDark
-                )
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    Text(
-                        text = if (selectedDecks.isEmpty()) "اختر قائمة واحدة على الأقل" else "المتابعة بالقوائم المحددة",
-                        style = ArabicTypography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = if (selectedDecks.isEmpty()) TextMuted else OnGoldDark.copy(alpha = 0.85f)
-                    )
-                }
             }
-        }
+        )
     }
 }
 
@@ -651,7 +590,7 @@ private fun DeckItemCard(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 60.dp)
+            .heightIn(min = 64.dp)
             .clip(SquircleCardShape)
             .clickable(role = Role.Checkbox, onClick = onToggle)
             .testTag("onboarding_deck_card_${deck.id}"),
@@ -665,79 +604,90 @@ private fun DeckItemCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .padding(horizontal = 15.dp, vertical = 13.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(
-                    checked = isChecked,
-                    onCheckedChange = { onToggle() },
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = GoldAccent,
-                        checkmarkColor = OnGoldDark,
-                        uncheckedColor = BorderDark
-                    ),
-                    modifier = Modifier.size(24.dp)
-                )
+            OnboardingCheckboxSquare(isChecked = isChecked)
 
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Text(
+                        text = deck.title,
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = if (isChecked) GoldAccent else TextPrimary,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+
+                    // Compact Level + Count Metadata Pill
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = Color.White.copy(alpha = 0.06f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f))
                     ) {
-                        Text(
-                            text = deck.title,
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                            color = if (isChecked) GoldAccent else TextPrimary
-                        )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Level badge
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = SurfaceElevatedDark
+                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
                                     text = deck.levelBadge,
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = TextSecondary,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    color = GoldAccent
+                                )
+                                Text(
+                                    text = "•",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                    color = TextMuted
+                                )
+                                Text(
+                                    text = "${deck.entryCount}",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    ),
+                                    color = TextSecondary
                                 )
                             }
-                            Text(
-                                text = "${deck.entryCount}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = TextMuted
-                            )
                         }
                     }
+                }
 
-                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                        Text(
-                            text = deck.arabicTitle,
-                            style = ArabicTypography.labelSmall,
-                            color = if (isChecked) TextPrimary else TextSecondary,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                     Text(
-                        text = deck.descriptionEn,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextMuted
+                        text = deck.arabicTitle,
+                        style = ArabicTypography.labelSmall.copy(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = Color(0xFFD1D5DB),
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Right
                     )
                 }
+
+                Text(
+                    text = deck.descriptionEn,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = 12.5.sp,
+                        lineHeight = 17.sp
+                    ),
+                    color = TextSecondary
+                )
             }
         }
     }

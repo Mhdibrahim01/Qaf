@@ -8,8 +8,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,21 +21,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -48,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
@@ -56,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.data.plan.AdaptiveConfig
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
@@ -89,6 +86,7 @@ data class OnboardingMinutesOption(
     val minutes: Int,
     val newWordsPerDay: Int,
     val flashcardsPerDay: Int,
+    val wordsAr: String,
     val labelEn: String,
     val labelAr: String,
     val isRecommended: Boolean = false
@@ -110,14 +108,14 @@ object OnboardingStep3Defaults {
             titleEn = "IELTS & Academic",
             titleAr = "إعداد لاختبار الآيلتس الأكاديمي",
             subtitleEn = "Academic OPAL, IELTS Core, reading & formal writing",
-            subtitleAr = "المفردات الأكاديمية (OPAL) ومهارات القراءة والكتابة للآيلتس",
+            subtitleAr = "المفردات الأكاديمية \u2066(OPAL)\u2069 ومهارات القراءة والكتابة للآيلتس",
             defaultDecksLabelEn = "Oxford 5000 + OPAL + IELTS Core",
             icon = Icons.Filled.School
         ),
         OnboardingGoalOption(
             id = "it_career",
             titleEn = "IT & Tech Career",
-            titleAr = "المصطلحات التقنية والمهنية البرمجية",
+            titleAr = "المصطلحات التقنية والبرمجية",
             subtitleEn = "Software engineering, standups, RFCs & tech interviews",
             subtitleAr = "هندسة البرمجيات واجتماعات الفرق التقنية والمقابلات المهنية",
             defaultDecksLabelEn = "Oxford 5000 + OPAL + IT & Tech Industry",
@@ -139,6 +137,7 @@ object OnboardingStep3Defaults {
             minutes = 15,
             newWordsPerDay = 5,
             flashcardsPerDay = 5,
+            wordsAr = "٥ كلمات",
             labelEn = "15 min/day • 5 new words",
             labelAr = "١٥ دقيقة يومياً • ٥ كلمات جديدة"
         ),
@@ -146,6 +145,7 @@ object OnboardingStep3Defaults {
             minutes = 30,
             newWordsPerDay = 10,
             flashcardsPerDay = 10,
+            wordsAr = "١٠ كلمات",
             labelEn = "30 min/day • 10 new words",
             labelAr = "٣٠ دقيقة يومياً • ١٠ كلمات جديدة",
             isRecommended = true
@@ -154,6 +154,7 @@ object OnboardingStep3Defaults {
             minutes = 45,
             newWordsPerDay = 15,
             flashcardsPerDay = 15,
+            wordsAr = "١٥ كلمة",
             labelEn = "45 min/day • 15 new words",
             labelAr = "٤٥ دقيقة يومياً • ١٥ كلمة جديدة"
         ),
@@ -161,6 +162,7 @@ object OnboardingStep3Defaults {
             minutes = 60,
             newWordsPerDay = 20,
             flashcardsPerDay = 20,
+            wordsAr = "٢٠ كلمة",
             labelEn = "60 min/day • 20 new words",
             labelAr = "٦٠ دقيقة يومياً • ٢٠ كلمة جديدة"
         )
@@ -181,15 +183,14 @@ object OnboardingStep3Defaults {
     fun restDayDescriptionAr(studyDaysPerWeek: Int): String {
         return when (studyDaysPerWeek) {
             7 -> "٧ أيام دراسة أسبوعياً • بدون يوم راحة"
-            6 -> "٦ أيام دراسة أسبوعياً • الجمعة يوم راحة (يحافظ على الاستمرارية)"
-            5 -> "٥ أيام دراسة أسبوعياً • الجمعة والسبت راحة (يحافظ على الاستمرارية)"
-            4 -> "٤ أيام دراسة أسبوعياً • ٣ أيام راحة (يحافظ على الاستمرارية)"
-            else -> "٣ أيام دراسة أسبوعياً • ٤ أيام راحة (يحافظ على الاستمرارية)"
+            6 -> "٦ أيام دراسة أسبوعياً • الجمعة يوم راحة \u2067(يحافظ على الاستمرارية)\u2069"
+            5 -> "٥ أيام دراسة أسبوعياً • الجمعة والسبت راحة \u2067(يحافظ على الاستمرارية)\u2069"
+            4 -> "٤ أيام دراسة أسبوعياً • ٣ أيام راحة \u2067(يحافظ على الاستمرارية)\u2069"
+            else -> "٣ أيام دراسة أسبوعياً • ٤ أيام راحة \u2067(يحافظ على الاستمرارية)\u2069"
         }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun OnboardingGoalAndTimeStep(
     selectedLevel: String,
@@ -230,7 +231,6 @@ fun OnboardingGoalAndTimeStep(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(vertical = 6.dp)
             .testTag("onboarding_step_3_goal_time"),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
@@ -241,9 +241,9 @@ fun OnboardingGoalAndTimeStep(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Back to Step 2 button + Title Header
+            // Back to Step 2 button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -252,72 +252,44 @@ fun OnboardingGoalAndTimeStep(
                 TextButton(
                     onClick = onStep3Back,
                     modifier = Modifier
-                        .heightIn(min = 48.dp)
+                        .heightIn(min = 40.dp)
                         .testTag("btn_onboarding_step3_back")
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back to level selection",
                         tint = TextSecondary,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                     Text(
                         text = "Level ($selectedLevel)",
-                        style = MaterialTheme.typography.labelLarge,
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
                         color = TextSecondary,
                         modifier = Modifier.padding(start = 6.dp)
                     )
                 }
             }
 
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Text(
-                    text = "Set your goal & daily pace",
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.ExtraBold
-                    ),
-                    color = TextPrimary,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.testTag("onboarding_step3_header_en")
-                )
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    Text(
-                        text = "حدد هدفك ووقت الدراسة اليومي",
-                        style = ArabicTypography.titleMedium,
-                        color = TextSecondary,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.testTag("onboarding_step3_header_ar")
-                    )
-                }
-            }
+            OnboardingHeroHeader(
+                titleEn = "Set your goal & daily pace",
+                titleAr = "حدد هدفك ووقت الدراسة اليومي",
+                titleEnTestTag = "onboarding_step3_header_en",
+                titleArTestTag = "onboarding_step3_header_ar"
+            )
 
-            // Section 1: Learning Goal (General Fluency preselected)
+            // Section 1: Learning Goal
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "1. Learning Goal",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                        color = GoldAccent
-                    )
-                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                        Text(
-                            text = "١. هدف التعلّم",
-                            style = ArabicTypography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = GoldAccent
-                        )
-                    }
-                }
+                OnboardingSectionHeader(
+                    number = "1",
+                    titleEn = "Learning Goal",
+                    titleAr = "هدف التعلّم"
+                )
 
                 OnboardingStep3Defaults.GOAL_OPTIONS.forEach { option ->
                     val isSelected = activeGoalOption.id == option.id
@@ -329,38 +301,25 @@ fun OnboardingGoalAndTimeStep(
                 }
             }
 
-            // Section 2: Daily Time Commitment (30 min preselected)
+            // Section 2: Daily Study Time (2x2 Grid)
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "2. Daily Study Time",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                        color = GoldAccent
-                    )
-                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                        Text(
-                            text = "٢. الوقت اليومي للدراسة",
-                            style = ArabicTypography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = GoldAccent
-                        )
-                    }
-                }
+                OnboardingSectionHeader(
+                    number = "2",
+                    titleEn = "Daily Study Time",
+                    titleAr = "الوقت اليومي للدراسة"
+                )
 
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     OnboardingStep3Defaults.MINUTES_OPTIONS.chunked(2).forEach { rowItems ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             rowItems.forEach { minOpt ->
                                 val isSelected = activeMinutesOption.minutes == minOpt.minutes
@@ -376,40 +335,28 @@ fun OnboardingGoalAndTimeStep(
                 }
             }
 
-            // Section 3: Study Days per Week (6 days/week preselected, Friday rest day)
+            // Section 3: Study Days / Week (5-Column Single Row)
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                OnboardingSectionHeader(
+                    number = "3",
+                    titleEn = "Study Days / Week",
+                    titleAr = "أيام الدراسة"
+                )
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "3. Study Days per Week",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                        color = GoldAccent
-                    )
-                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                        Text(
-                            text = "٣. أيام الدراسة أسبوعياً",
-                            style = ArabicTypography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = GoldAccent
-                        )
-                    }
-                }
-
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     OnboardingStep3Defaults.STUDY_DAYS_OPTIONS.forEach { days ->
                         val isSelected = activeStudyDays == days
                         Surface(
                             modifier = Modifier
-                                .heightIn(min = 48.dp)
+                                .weight(1f)
+                                .heightIn(min = 54.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .clickable(
                                     role = Role.RadioButton,
@@ -423,16 +370,28 @@ fun OnboardingGoalAndTimeStep(
                                 color = if (isSelected) GoldAccent else BorderDark
                             )
                         ) {
-                            Box(
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                                contentAlignment = Alignment.Center
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 10.dp, horizontal = 4.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
                             ) {
                                 Text(
-                                    text = "$days days/wk",
-                                    style = MaterialTheme.typography.labelLarge.copy(
-                                        fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold
+                                    text = "$days",
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.ExtraBold
                                     ),
                                     color = if (isSelected) GoldAccent else TextPrimary
+                                )
+                                Text(
+                                    text = "days/wk",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.Medium
+                                    ),
+                                    color = if (isSelected) GoldAccent.copy(alpha = 0.85f) else TextSecondary
                                 )
                             }
                         }
@@ -451,100 +410,107 @@ fun OnboardingGoalAndTimeStep(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
                         Text(
                             text = OnboardingStep3Defaults.restDayDescriptionEn(activeStudyDays),
-                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 12.5.sp,
+                                fontWeight = FontWeight.SemiBold
+                            ),
                             color = TextPrimary
                         )
                         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                             Text(
                                 text = OnboardingStep3Defaults.restDayDescriptionAr(activeStudyDays),
-                                style = ArabicTypography.labelSmall,
-                                color = TextSecondary
+                                style = ArabicTypography.labelSmall.copy(fontSize = 12.sp),
+                                color = TextSecondary,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Right
                             )
                         }
                     }
                 }
             }
 
-            // Section 4: Pick 3 Reading Topics (drives Today's Lesson story spine)
+            // Section 4: Reading Topics (2-Column Equal-Width Grid)
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "4. Favorite Reading Topics (Pick up to 3)",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                        color = GoldAccent
-                    )
-                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                        Text(
-                            text = "٤. مواضيع القراءة المفضلة (اختر ٣)",
-                            style = ArabicTypography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = GoldAccent
-                        )
-                    }
-                }
+                OnboardingSectionHeader(
+                    number = "4",
+                    titleEn = "Reading Topics",
+                    titleAr = "مواضيع القراءة",
+                    rightBadgeText = "Pick up to 3"
+                )
 
-                FlowRow(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    AdaptiveConfig.MACRO_TOPICS.forEach { (topicId, labelEn, labelAr) ->
-                        val isTopicSelected = topicId in selectedTopics
-                        Surface(
-                            modifier = Modifier
-                                .heightIn(min = 48.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .clickable(
-                                    role = Role.Checkbox,
-                                    onClick = {
-                                        selectedTopics = if (isTopicSelected) {
-                                            if (selectedTopics.size > 1) selectedTopics - topicId else selectedTopics
-                                        } else {
-                                            if (selectedTopics.size < 3) {
-                                                selectedTopics + topicId
-                                            } else {
-                                                selectedTopics.drop(1) + topicId
+                    AdaptiveConfig.MACRO_TOPICS.chunked(2).forEach { rowTopics ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            rowTopics.forEach { (topicId, labelEn, labelAr) ->
+                                val isTopicSelected = topicId in selectedTopics
+                                Surface(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .heightIn(min = 54.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .clickable(
+                                            role = Role.Checkbox,
+                                            onClick = {
+                                                selectedTopics = if (isTopicSelected) {
+                                                    if (selectedTopics.size > 1) selectedTopics - topicId else selectedTopics
+                                                } else {
+                                                    if (selectedTopics.size < 3) {
+                                                        selectedTopics + topicId
+                                                    } else {
+                                                        selectedTopics.drop(1) + topicId
+                                                    }
+                                                }
                                             }
+                                        )
+                                        .testTag("onboarding_topic_chip_$topicId"),
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (isTopicSelected) GoldAccentDim else SurfaceDark,
+                                    border = BorderStroke(
+                                        width = if (isTopicSelected) 1.5.dp else 1.dp,
+                                        color = if (isTopicSelected) GoldAccent else BorderDark
+                                    )
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        horizontalAlignment = Alignment.Start,
+                                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                                    ) {
+                                        Text(
+                                            text = labelEn,
+                                            style = MaterialTheme.typography.labelMedium.copy(
+                                                fontSize = 13.5.sp,
+                                                fontWeight = FontWeight.Bold
+                                            ),
+                                            color = if (isTopicSelected) GoldAccent else TextPrimary
+                                        )
+                                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                            Text(
+                                                text = labelAr,
+                                                style = ArabicTypography.labelSmall.copy(fontSize = 12.sp),
+                                                color = if (isTopicSelected) GoldAccent.copy(alpha = 0.9f) else TextSecondary
+                                            )
                                         }
                                     }
-                                )
-                                .testTag("onboarding_topic_chip_$topicId"),
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (isTopicSelected) GoldAccentDim else SurfaceDark,
-                            border = BorderStroke(
-                                width = if (isTopicSelected) 1.5.dp else 1.dp,
-                                color = if (isTopicSelected) GoldAccent else BorderDark
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = labelEn,
-                                    style = MaterialTheme.typography.labelMedium.copy(
-                                        fontWeight = if (isTopicSelected) FontWeight.ExtraBold else FontWeight.SemiBold
-                                    ),
-                                    color = if (isTopicSelected) GoldAccent else TextPrimary
-                                )
-                                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                                    Text(
-                                        text = labelAr,
-                                        style = ArabicTypography.labelSmall,
-                                        color = if (isTopicSelected) GoldAccent else TextSecondary
-                                    )
                                 }
+                            }
+                            if (rowTopics.size == 1) {
+                                Spacer(modifier = Modifier.weight(1f))
                             }
                         }
                     }
@@ -556,14 +522,14 @@ fun OnboardingGoalAndTimeStep(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("onboarding_quiet_mode_card"),
-                shape = RoundedCornerShape(14.dp),
+                shape = SquircleCardShape,
                 color = SurfaceDark,
                 border = BorderStroke(1.dp, if (quietModeEnabled) GoldAccent else BorderDark)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -571,26 +537,33 @@ fun OnboardingGoalAndTimeStep(
                         modifier = Modifier
                             .weight(1f)
                             .padding(end = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
                         Text(
                             text = "Quiet / Text-Only Mode (No Audio Required)",
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            ),
                             color = if (quietModeEnabled) GoldAccent else TextPrimary
-                        )
-                        Text(
-                            text = "Replaces listening & speaking tasks with silent reading and sentence exercises.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
                         )
                         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                             Text(
-                                text = "الوضع الهادئ (بدون صوت أو ميكروفون — مثالي للمواصلات والأماكن العامة)",
-                                style = ArabicTypography.labelSmall,
-                                color = TextMuted,
-                                modifier = Modifier.fillMaxWidth()
+                                text = "الوضع الهادئ \u2067(بدون صوت أو ميكروفون — مثالي للمواصلات والأماكن العامة)\u2069",
+                                style = ArabicTypography.labelSmall.copy(
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = Color(0xFFD1D5DB),
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Right
                             )
                         }
+                        Text(
+                            text = "Replaces listening & speaking tasks with silent reading and sentence exercises.",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                            color = TextSecondary
+                        )
                     }
 
                     Switch(
@@ -650,26 +623,30 @@ fun OnboardingGoalAndTimeStep(
 
                     Text(
                         text = "• ${activeMinutesOption.newWordsPerDay} new words + ${activeMinutesOption.flashcardsPerDay} review cards/day\n• 1 Grammar lesson + 1 Reading text + 1 Daily Quiz\n• Focus decks: ${activeGoalOption.defaultDecksLabelEn}",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp),
                         color = TextPrimary
                     )
 
                     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                         Text(
                             text = "خطة متكاملة من ٥ أركان: ${activeMinutesOption.newWordsPerDay} كلمات جديدة، مراجعة البطاقات، درس قواعد، نص قراءة، واختبار يومي.",
-                            style = ArabicTypography.labelSmall,
+                            style = ArabicTypography.labelSmall.copy(fontSize = 12.sp),
                             color = TextSecondary,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Right
                         )
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(6.dp))
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Primary CTA Button: Build My Study Plan & Continue to Step 4
-        Button(
+        // Sticky Primary CTA Footer
+        OnboardingStickyFooter(
+            ctaTextEn = "Continue (${activeMinutesOption.minutes} min/day)",
+            ctaTextAr = "حفظ الخطة والمتابعة",
+            buttonTestTag = "btn_onboarding_step3_continue",
             onClick = {
                 if (onContinueStep3WithTopicsAndQuietMode != null) {
                     onContinueStep3WithTopicsAndQuietMode(
@@ -686,40 +663,8 @@ fun OnboardingGoalAndTimeStep(
                         activeStudyDays
                     )
                 }
-            },
-            shape = SquircleCardShape,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = GoldAccent,
-                contentColor = OnGoldDark
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 56.dp)
-                .testTag("btn_onboarding_step3_continue")
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(vertical = 2.dp)
-            ) {
-                Text(
-                    text = "Continue (${activeMinutesOption.minutes} min/day)",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.ExtraBold
-                    ),
-                    color = OnGoldDark
-                )
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    Text(
-                        text = "حفظ الخطة والمتابعة",
-                        style = ArabicTypography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = OnGoldDark.copy(alpha = 0.85f)
-                    )
-                }
             }
-        }
+        )
     }
 }
 
@@ -732,7 +677,7 @@ private fun GoalOptionCard(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 64.dp)
+            .heightIn(min = 68.dp)
             .clip(SquircleCardShape)
             .clickable(role = Role.RadioButton, onClick = onClick)
             .testTag("onboarding_goal_card_${option.id}"),
@@ -746,88 +691,63 @@ private fun GoalOptionCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .padding(horizontal = 15.dp, vertical = 13.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (isSelected) GoldAccent else SurfaceElevatedDark)
+                    .border(
+                        width = 1.dp,
+                        color = if (isSelected) GoldAccent else BorderDark,
+                        shape = RoundedCornerShape(12.dp)
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (isSelected) GoldAccent else SurfaceElevatedDark)
-                        .border(
-                            width = 1.dp,
-                            color = if (isSelected) GoldAccent else BorderDark,
-                            shape = RoundedCornerShape(10.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = option.icon,
-                        contentDescription = option.titleEn,
-                        tint = if (isSelected) OnGoldDark else GoldAccent,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = option.titleEn,
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = if (isSelected) GoldAccent else TextPrimary
-                        )
-                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                            Text(
-                                text = option.titleAr,
-                                style = ArabicTypography.labelMedium.copy(
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                color = if (isSelected) GoldAccent else TextSecondary
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = option.subtitleEn,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
-                    )
-                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                        Text(
-                            text = option.subtitleAr,
-                            style = ArabicTypography.labelSmall,
-                            color = TextMuted,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-            }
-
-            if (isSelected) {
                 Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = "Selected goal ${option.titleEn}",
-                    tint = GoldAccent,
-                    modifier = Modifier
-                        .padding(start = 8.dp)
-                        .size(20.dp)
+                    imageVector = option.icon,
+                    contentDescription = option.titleEn,
+                    tint = if (isSelected) OnGoldDark else GoldAccent,
+                    modifier = Modifier.size(20.dp)
                 )
             }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = option.titleEn,
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = if (isSelected) GoldAccent else TextPrimary
+                )
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                    Text(
+                        text = option.titleAr,
+                        style = ArabicTypography.labelMedium.copy(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = Color(0xFFD1D5DB)
+                    )
+                }
+                Text(
+                    text = option.subtitleEn,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = 12.5.sp,
+                        lineHeight = 17.sp
+                    ),
+                    color = TextSecondary
+                )
+            }
+
+            OnboardingRadioCircle(isSelected = isSelected)
         }
     }
 }
@@ -841,7 +761,7 @@ private fun MinutesOptionCard(
 ) {
     Surface(
         modifier = modifier
-            .heightIn(min = 66.dp)
+            .heightIn(min = 68.dp)
             .clip(SquircleCardShape)
             .clickable(role = Role.RadioButton, onClick = onClick)
             .testTag("onboarding_minutes_chip_${option.minutes}"),
@@ -855,8 +775,8 @@ private fun MinutesOptionCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+                .padding(horizontal = 13.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -866,30 +786,52 @@ private fun MinutesOptionCard(
                 Text(
                     text = "${option.minutes} min/day",
                     style = MaterialTheme.typography.titleSmall.copy(
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.ExtraBold
                     ),
                     color = if (isSelected) GoldAccent else TextPrimary
                 )
                 if (option.isRecommended) {
-                    Text(
-                        text = "Default",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = if (isSelected) GoldAccent else TextMuted
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = GoldAccent.copy(alpha = 0.16f)
+                    ) {
+                        Text(
+                            text = "Default",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = GoldAccent,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
             }
-            Text(
-                text = "${option.newWordsPerDay} new words/day",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary
-            )
-            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                Text(
-                    text = "${option.newWordsPerDay} كلمات يومياً",
-                    style = ArabicTypography.labelSmall,
-                    color = TextMuted,
-                    modifier = Modifier.fillMaxWidth()
-                )
+
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "${option.newWordsPerDay} new words/day",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
+                        color = TextSecondary
+                    )
+                    Text(
+                        text = "•",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
+                        color = TextMuted
+                    )
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                        Text(
+                            text = option.wordsAr,
+                            style = ArabicTypography.labelSmall.copy(fontSize = 11.5.sp),
+                            color = TextSecondary
+                        )
+                    }
+                }
             }
         }
     }

@@ -54,6 +54,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.plan.AdaptiveInsightBanner
@@ -96,13 +98,13 @@ fun AdaptiveInsightBannerCard(
         border = BorderStroke(1.dp, GoldAccentBorder)
     ) {
         Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
                     modifier = Modifier.weight(1f),
@@ -113,47 +115,39 @@ fun AdaptiveInsightBannerCard(
                         imageVector = Icons.Filled.AutoAwesome,
                         contentDescription = null,
                         tint = GoldAccent,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(16.dp)
                     )
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = insight.titleEn,
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                            color = GoldAccent
-                        )
-                        BidiText(
-                            text = insight.titleAr,
-                            style = ArabicTypography.labelSmall,
-                            color = TextPrimary,
-                            fillMaxWidth = false
-                        )
-                    }
+                    Text(
+                        text = insight.titleEn,
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        ),
+                        color = GoldAccent
+                    )
                 }
 
                 IconButton(
                     onClick = { onDismiss(insight.id) },
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(28.dp)
                         .testTag("btn_dismiss_insight")
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Close,
                         contentDescription = "Dismiss insight",
                         tint = TextMuted,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(15.dp)
                     )
                 }
             }
 
-            Text(
-                text = insight.messageEn,
-                style = MaterialTheme.typography.bodySmall,
-                color = TextPrimary
-            )
             BidiText(
                 text = insight.messageAr,
-                style = ArabicTypography.labelSmall,
-                color = TextSecondary
+                style = ArabicTypography.labelSmall.copy(fontSize = 11.sp),
+                color = TextSecondary,
+                fillMaxWidth = true,
+                textAlign = TextAlign.Right
             )
 
             if (insight.actionRoute == "level_up" && insight.suggestedLevel != null && onAcceptLevelUp != null) {
@@ -197,6 +191,269 @@ fun AdaptiveInsightBannerCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CefrAndLifecycleCard(
+    readiness: CefrReadinessSummary,
+    funnel: WordLifecycleFunnel,
+    onAcceptLevelUp: ((String) -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    var showInfoSheet by remember { mutableStateOf(false) }
+    var highlightedStageKey by remember { mutableStateOf<String?>(null) }
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("cefr_readiness_card"),
+        color = SurfaceDark,
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, BorderDark)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Top Part: CEFR Mastery
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "CEFR ${readiness.currentLevel} → ${readiness.nextLevel} Mastery",
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        ),
+                        color = TextPrimary
+                    )
+                    Surface(
+                        color = if (readiness.isReadyForLevelUp) EmeraldAccent.copy(alpha = 0.16f) else GoldAccentDim,
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, if (readiness.isReadyForLevelUp) EmeraldAccent else GoldAccentBorder)
+                    ) {
+                        Text(
+                            text = "${readiness.compositeReadinessPercent}%",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 12.sp
+                            ),
+                            color = if (readiness.isReadyForLevelUp) EmeraldAccent else GoldAccent,
+                            modifier = Modifier
+                                .padding(horizontal = 10.dp, vertical = 3.dp)
+                                .testTag("cefr_readiness_percent")
+                        )
+                    }
+                }
+
+                BidiText(
+                    text = "جاهزية المستوى الموحدة (٥٠٪ مفردات • ٣٠٪ قواعد • ٢٠٪ قراءة)",
+                    style = ArabicTypography.labelSmall.copy(fontSize = 11.sp),
+                    color = TextSecondary,
+                    fillMaxWidth = true,
+                    textAlign = TextAlign.Right
+                )
+            }
+
+            HorizontalDivider(color = BorderSubtle, thickness = 1.dp)
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                ReadinessPillarMetric(
+                    label = "Vocab (50%)",
+                    percent = readiness.vocabScorePercent,
+                    detail = "${readiness.vocabFamiliarOrMatureCount}/${readiness.vocabTargetCount}",
+                    color = GoldAccent
+                )
+                ReadinessPillarMetric(
+                    label = "Grammar (30%)",
+                    percent = readiness.grammarScorePercent,
+                    detail = "${readiness.grammarPassedCount}/${readiness.grammarTotalCount}",
+                    color = VioletAccent
+                )
+                ReadinessPillarMetric(
+                    label = "Reading (20%)",
+                    percent = readiness.readingScorePercent,
+                    detail = "${readiness.readingCompletedCount}/${readiness.readingTargetCount}",
+                    color = SkyAccent
+                )
+            }
+
+            if (readiness.isReadyForLevelUp && readiness.nextLevel != null && onAcceptLevelUp != null) {
+                Button(
+                    onClick = { onAcceptLevelUp(readiness.nextLevel) },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = EmeraldAccent,
+                        contentColor = BackgroundDark
+                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 42.dp)
+                        .testTag("btn_cefr_level_up_confirm")
+                ) {
+                    Text(
+                        text = "Ready! Advance to ${readiness.nextLevel}",
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+
+            HorizontalDivider(color = BorderSubtle, thickness = 1.dp)
+
+            // Bottom Part: Vocabulary Lifecycle Stages
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("word_lifecycle_funnel_card"),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Vocabulary Lifecycle Stages",
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        ),
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "${funnel.activeStudiedCount} active • 🏆 ${funnel.conqueredCount} conquered",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        ),
+                        color = GoldAccent
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Row 1: New & Seen
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FunnelStageChip(
+                            labelEn = "New",
+                            labelAr = "جديدة",
+                            count = funnel.newCount,
+                            color = TextMuted,
+                            testTag = "funnel_stage_new",
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                highlightedStageKey = "new"
+                                showInfoSheet = true
+                            }
+                        )
+                        FunnelStageChip(
+                            labelEn = "Seen",
+                            labelAr = "مقروءة",
+                            count = funnel.seenCount,
+                            color = SkyAccent,
+                            testTag = "funnel_stage_seen",
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                highlightedStageKey = "seen"
+                                showInfoSheet = true
+                            }
+                        )
+                    }
+
+                    // Row 2: Learning & Familiar
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FunnelStageChip(
+                            labelEn = "Learning",
+                            labelAr = "قيد التعلم",
+                            count = funnel.learningCount,
+                            color = CoralAccent,
+                            testTag = "funnel_stage_learning",
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                highlightedStageKey = "learning"
+                                showInfoSheet = true
+                            }
+                        )
+                        FunnelStageChip(
+                            labelEn = "Familiar",
+                            labelAr = "مألوفة",
+                            count = funnel.familiarCount,
+                            color = GoldAccent,
+                            testTag = "funnel_stage_familiar",
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                highlightedStageKey = "familiar"
+                                showInfoSheet = true
+                            }
+                        )
+                    }
+
+                    // Row 3: Mature & Conquered
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FunnelStageChip(
+                            labelEn = "Mature",
+                            labelAr = "متقنة",
+                            count = funnel.matureCount,
+                            color = EmeraldAccent,
+                            testTag = "funnel_stage_mature",
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                highlightedStageKey = "mature"
+                                showInfoSheet = true
+                            }
+                        )
+                        FunnelStageChip(
+                            labelEn = "Conquered",
+                            labelAr = "",
+                            count = funnel.conqueredCount,
+                            color = VioletAccent,
+                            testTag = "funnel_stage_conquered",
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                highlightedStageKey = "conquered"
+                                showInfoSheet = true
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (showInfoSheet) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { showInfoSheet = false },
+            sheetState = sheetState,
+            containerColor = SurfaceDark,
+            contentColor = TextPrimary
+        ) {
+            WordLifecycleStagesGuideSheetContent(
+                funnel = funnel,
+                highlightedStageKey = highlightedStageKey,
+                onDismiss = { showInfoSheet = false }
+            )
+        }
+    }
+}
+
 @Composable
 fun CefrReadinessBarCard(
     readiness: CefrReadinessSummary,
@@ -220,19 +477,11 @@ fun CefrReadinessBarCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = "CEFR ${readiness.currentLevel} → ${readiness.nextLevel} Mastery",
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = TextPrimary
-                    )
-                    BidiText(
-                        text = "جاهزية المستوى الموحدة (٥٠٪ مفردات • ٣٠٪ قواعد • ٢٠٪ قراءة)",
-                        style = ArabicTypography.labelSmall,
-                        color = TextSecondary,
-                        fillMaxWidth = false
-                    )
-                }
+                Text(
+                    text = "CEFR ${readiness.currentLevel} → ${readiness.nextLevel} Mastery",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = TextPrimary
+                )
                 Surface(
                     color = if (readiness.isReadyForLevelUp) EmeraldAccent.copy(alpha = 0.16f) else GoldAccentDim,
                     shape = RoundedCornerShape(8.dp),
@@ -248,6 +497,14 @@ fun CefrReadinessBarCard(
                     )
                 }
             }
+
+            BidiText(
+                text = "جاهزية المستوى الموحدة (٥٠٪ مفردات • ٣٠٪ قواعد • ٢٠٪ قراءة)",
+                style = ArabicTypography.labelSmall,
+                color = TextSecondary,
+                fillMaxWidth = true,
+                textAlign = TextAlign.Right
+            )
 
             LinearProgressIndicator(
                 progress = { (readiness.compositeReadinessPercent / 100f).coerceIn(0f, 1f) },
@@ -398,83 +655,108 @@ fun WordLifecycleFunnelCard(
                     )
                 }
                 Text(
-                    text = "${funnel.activeStudiedCount} active",
+                    text = "${funnel.activeStudiedCount} active • 🏆 ${funnel.conqueredCount} conquered",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                     color = GoldAccent
                 )
             }
 
-            FlowRow(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                FunnelStageChip(
-                    labelEn = "New",
-                    labelAr = "جديدة",
-                    count = funnel.newCount,
-                    color = TextMuted,
-                    testTag = "funnel_stage_new",
-                    onClick = {
-                        highlightedStageKey = "new"
-                        showInfoSheet = true
-                    }
-                )
-                FunnelStageChip(
-                    labelEn = "Seen",
-                    labelAr = "مقروءة",
-                    count = funnel.seenCount,
-                    color = SkyAccent,
-                    testTag = "funnel_stage_seen",
-                    onClick = {
-                        highlightedStageKey = "seen"
-                        showInfoSheet = true
-                    }
-                )
-                FunnelStageChip(
-                    labelEn = "Learning",
-                    labelAr = "قيد التعلم",
-                    count = funnel.learningCount,
-                    color = CoralAccent,
-                    testTag = "funnel_stage_learning",
-                    onClick = {
-                        highlightedStageKey = "learning"
-                        showInfoSheet = true
-                    }
-                )
-                FunnelStageChip(
-                    labelEn = "Familiar",
-                    labelAr = "مألوفة",
-                    count = funnel.familiarCount,
-                    color = GoldAccent,
-                    testTag = "funnel_stage_familiar",
-                    onClick = {
-                        highlightedStageKey = "familiar"
-                        showInfoSheet = true
-                    }
-                )
-                FunnelStageChip(
-                    labelEn = "Mature",
-                    labelAr = "متقنة",
-                    count = funnel.matureCount,
-                    color = EmeraldAccent,
-                    testTag = "funnel_stage_mature",
-                    onClick = {
-                        highlightedStageKey = "mature"
-                        showInfoSheet = true
-                    }
-                )
-                FunnelStageChip(
-                    labelEn = "Conquered",
-                    labelAr = "تم التغلب عليها",
-                    count = funnel.conqueredCount,
-                    color = VioletAccent,
-                    testTag = "funnel_stage_conquered",
-                    onClick = {
-                        highlightedStageKey = "conquered"
-                        showInfoSheet = true
-                    }
-                )
+                // Row 1: New & Seen
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FunnelStageChip(
+                        labelEn = "New",
+                        labelAr = "جديدة",
+                        count = funnel.newCount,
+                        color = TextMuted,
+                        testTag = "funnel_stage_new",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            highlightedStageKey = "new"
+                            showInfoSheet = true
+                        }
+                    )
+                    FunnelStageChip(
+                        labelEn = "Seen",
+                        labelAr = "مقروءة",
+                        count = funnel.seenCount,
+                        color = SkyAccent,
+                        testTag = "funnel_stage_seen",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            highlightedStageKey = "seen"
+                            showInfoSheet = true
+                        }
+                    )
+                }
+
+                // Row 2: Learning & Familiar
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FunnelStageChip(
+                        labelEn = "Learning",
+                        labelAr = "قيد التعلم",
+                        count = funnel.learningCount,
+                        color = CoralAccent,
+                        testTag = "funnel_stage_learning",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            highlightedStageKey = "learning"
+                            showInfoSheet = true
+                        }
+                    )
+                    FunnelStageChip(
+                        labelEn = "Familiar",
+                        labelAr = "مألوفة",
+                        count = funnel.familiarCount,
+                        color = GoldAccent,
+                        testTag = "funnel_stage_familiar",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            highlightedStageKey = "familiar"
+                            showInfoSheet = true
+                        }
+                    )
+                }
+
+                // Row 3: Mature & Conquered
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FunnelStageChip(
+                        labelEn = "Mature",
+                        labelAr = "متقنة",
+                        count = funnel.matureCount,
+                        color = EmeraldAccent,
+                        testTag = "funnel_stage_mature",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            highlightedStageKey = "mature"
+                            showInfoSheet = true
+                        }
+                    )
+                    FunnelStageChip(
+                        labelEn = "Conquered",
+                        labelAr = "",
+                        count = funnel.conqueredCount,
+                        color = VioletAccent,
+                        testTag = "funnel_stage_conquered",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            highlightedStageKey = "conquered"
+                            showInfoSheet = true
+                        }
+                    )
+                }
             }
         }
     }
@@ -709,13 +991,14 @@ private fun FunnelStageChip(
     count: Int,
     color: Color,
     testTag: String,
+    modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
     Surface(
         color = SurfaceElevatedDark,
         shape = RoundedCornerShape(10.dp),
-        border = BorderStroke(1.dp, color.copy(alpha = 0.45f)),
-        modifier = Modifier
+        border = BorderStroke(1.dp, BorderDark),
+        modifier = modifier
             .clip(RoundedCornerShape(10.dp))
             .then(
                 if (onClick != null) {
@@ -727,25 +1010,35 @@ private fun FunnelStageChip(
             .testTag(testTag)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Box(
-                modifier = Modifier
-                    .size(7.dp)
-                    .clip(CircleShape)
-                    .background(color)
-            )
-            Text(
-                text = "$labelEn ($labelAr):",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.weight(1f, fill = false)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(color)
+                )
+                Text(
+                    text = if (labelAr.isNotBlank()) "$labelEn ($labelAr)" else labelEn,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                    color = TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
             Text(
                 text = "$count",
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
-                color = color
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 12.sp),
+                color = if (count > 0 && labelEn != "New") color else TextPrimary
             )
         }
     }
