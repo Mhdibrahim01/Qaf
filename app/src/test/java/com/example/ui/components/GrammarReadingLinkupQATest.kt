@@ -5,6 +5,8 @@ import androidx.test.core.app.ApplicationProvider
 import com.example.data.local.GrammarExerciseItem
 import com.example.data.local.ReadingSentenceItem
 import com.example.data.local.ReadingTextJson
+import com.example.data.reading.GRAMMAR_LESSON_KEYWORDS
+import com.example.data.reading.autoTagGrammarSentences
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
@@ -172,5 +174,49 @@ class GrammarReadingLinkupQATest {
             "Expected at least 97 reading texts, but found ${readingTextsJson.size}",
             readingTextsJson.size >= 97
         )
+    }
+
+    @Test
+    fun `QA 9 - AI Reading Auto-Matcher tags target grammar rule keywords`() {
+        val sentences = listOf(
+            ReadingSentenceItem(en = "The engineer was working late in the lab.", ar = "كان المهندس يعمل متأخراً في المختبر."),
+            ReadingSentenceItem(en = "The laboratory door locked automatically.", ar = "أُقفل باب المختبر تلقائياً."),
+            ReadingSentenceItem(en = "They are analyzing the final results.", ar = "إنهم يحللون النتائج النهائية.")
+        )
+
+        // Tag with g016 (Past continuous: was/were + -ing)
+        val tagged = autoTagGrammarSentences(sentences, "g016")
+
+        // First sentence has 'was working' (matches g016 keywords)
+        assertEquals("Sentence 0 should be tagged with g016", "g016", tagged[0].grammarId)
+        // Third sentence has 'analyzing' (matches g016 keywords)
+        assertEquals("Sentence 2 should be tagged with g016", "g016", tagged[2].grammarId)
+        // Second sentence does not match any g016 keywords
+        assertEquals("Sentence 1 should remain untagged", null, tagged[1].grammarId)
+    }
+
+    @Test
+    fun `QA 10 - AI Reading Fallback guarantees at least one tagged sentence`() {
+        val sentences = listOf(
+            ReadingSentenceItem(en = "Today is a beautiful day.", ar = "اليوم يوم جميل."),
+            ReadingSentenceItem(en = "The sun shines brightly.", ar = "الشمس تشرق بسطوع.")
+        )
+
+        // Tag with g028 (First conditional: if/will) where sentences don't have explicit keywords
+        val tagged = autoTagGrammarSentences(sentences, "g028")
+
+        // Fallback guarantees sentence 0 has the tag so + Rule chip is active
+        assertEquals("Fallback must tag first sentence", "g028", tagged[0].grammarId)
+    }
+
+    @Test
+    fun `QA 11 - Predefined Grammar Keywords cover all 90 lessons`() {
+        assertEquals("GRAMMAR_LESSON_KEYWORDS must contain all 90 lessons", 90, GRAMMAR_LESSON_KEYWORDS.size)
+        for (i in 1..90) {
+            val id = "g%03d".format(i)
+            val keywords = GRAMMAR_LESSON_KEYWORDS[id]
+            assertNotNull("Keywords must exist for $id", keywords)
+            assertTrue("Keywords must not be empty for $id", keywords!!.isNotEmpty())
+        }
     }
 }
