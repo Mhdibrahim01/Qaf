@@ -519,7 +519,13 @@ class LearnerModelRepository(
         val allGrammarProgress = dao.getAllGrammarProgressList().associateBy { it.lessonId }
         val completedGrammarAtLevel = grammarLessonsAtLevel.count { lesson ->
             val gp = allGrammarProgress[lesson.id]
-            gp != null && gp.isCompleted && gp.bestScore >= 70
+            if (gp == null || !gp.isCompleted) return@count false
+            val pct = if (gp.totalExercises > 0 && gp.bestScore <= gp.totalExercises) {
+                (gp.bestScore * 100) / gp.totalExercises
+            } else {
+                gp.bestScore
+            }
+            if (gp.totalExercises == 0) gp.isCompleted else pct >= 70
         }
         val grammarMasteryPct = if (grammarLessonsAtLevel.isNotEmpty()) {
             ((completedGrammarAtLevel.toFloat() / grammarLessonsAtLevel.size.toFloat()) * 100f).roundToInt().coerceIn(0, 100)
@@ -529,7 +535,13 @@ class LearnerModelRepository(
         val allReadingProgress = dao.getAllReadingProgress().associateBy { it.textId }
         val completedStoriesAtLevel = storiesAtLevel.count { st ->
             val rp = allReadingProgress[st.id]
-            rp != null && rp.isCompleted && rp.bestScore >= 70
+            if (rp == null || !rp.isCompleted) return@count false
+            val pct = if (rp.totalQuestions > 0 && rp.bestScore <= rp.totalQuestions) {
+                (rp.bestScore * 100) / rp.totalQuestions
+            } else {
+                rp.bestScore
+            }
+            if (rp.totalQuestions == 0) rp.isCompleted else pct >= 70
         }
         val readingMasteryPct = if (storiesAtLevel.isNotEmpty()) {
             ((completedStoriesAtLevel.toFloat() / storiesAtLevel.size.toFloat()) * 100f).roundToInt().coerceIn(0, 100)

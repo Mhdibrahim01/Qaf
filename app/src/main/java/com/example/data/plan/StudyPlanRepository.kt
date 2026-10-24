@@ -588,10 +588,15 @@ class StudyPlanRepository(
                 val activeNotebookCount = activeNotebookByLesson[lesson.id]?.size ?: 0
                 val isCoolingDown = recentlyRefreshedLessonIds.contains(lesson.id)
                 if (!isCoolingDown) {
-                    if (gp != null && gp.isCompleted && gp.bestScore in 1 until AdaptiveConfig.GRAMMAR_REMEDIATION_SCORE_THRESHOLD) {
+                    val pct = if (gp != null && gp.totalExercises > 0 && gp.bestScore <= gp.totalExercises) {
+                        (gp.bestScore * 100) / gp.totalExercises
+                    } else {
+                        gp?.bestScore ?: 0
+                    }
+                    if (gp != null && gp.isCompleted && pct in 1 until AdaptiveConfig.GRAMMAR_REMEDIATION_SCORE_THRESHOLD) {
                         targetLesson = lesson
                         isGrammarRefresher = true
-                        grammarRefresherReason = "Refresher for ${lesson.level} lesson ${lesson.id} (score ${gp.bestScore}% < 65% • ~$grammarTime min)"
+                        grammarRefresherReason = "Refresher for ${lesson.level} lesson ${lesson.id} (score $pct% < 65% • ~$grammarTime min)"
                         break
                     } else if (activeNotebookCount >= AdaptiveConfig.GRAMMAR_REMEDIATION_NOTEBOOK_THRESHOLD) {
                         targetLesson = lesson

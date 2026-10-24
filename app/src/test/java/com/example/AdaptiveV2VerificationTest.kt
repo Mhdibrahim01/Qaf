@@ -13,6 +13,7 @@ import com.example.data.local.AttemptEntity
 import com.example.data.local.DailyTaskItem
 import com.example.data.local.EntryEntity
 import com.example.data.local.GrammarProgressEntity
+import com.example.data.local.ReadingProgressEntity
 import com.example.data.local.StudyPlanEntity
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.local.WordBooksDao
@@ -738,6 +739,67 @@ class AdaptiveV2VerificationTest {
             assertNotNull(daoProfile)
             val fromDaoSnapshot = learnerModelRepo.buildSnapshot(daoProfile, nowMillis = nowMs)
             assertNull("Cold start banner must stay dismissed when loaded from DAO", fromDaoSnapshot.activeInsight)
+        }
+    }
+
+    @Test
+    fun testGrammarAndReadingWithRawScoreCountInLevelReadiness() {
+        runBlocking {
+            val timeProvider = FixedTestTimeProvider()
+            val grammarRepo = GrammarRepository(context, dao)
+            val readingRepo = ReadingRepository(context, dao)
+            grammarRepo.importGrammarLessonsIfNeeded()
+            readingRepo.importReadingTextsIfNeeded()
+
+            val learnerModelRepo = LearnerModelRepository(context, dao, timeProvider)
+            val profile = StudyPlanProfileEntity(
+                id = 1,
+                level = "B1",
+                selectedDecksJson = """["oxford5000"]"""
+            )
+            dao.upsertStudyPlanProfile(profile)
+
+            // Find a B1 grammar lesson
+            val b1Lessons = dao.getGrammarLessonsByLevel("B1")
+            assertTrue(b1Lessons.isNotEmpty())
+            val lesson = b1Lessons.first()
+
+            // Save grammar progress using raw count (e.g. 5 out of 5 exercises correct)
+            dao.upsertGrammarProgress(
+                GrammarProgressEntity(
+                    lessonId = lesson.id,
+                    completedExercises = 5,
+                    totalExercises = 5,
+                    bestScore = 5, // Raw count: 5 out of 5 = 100%
+                    lastScore = 5,
+                    isCompleted = true,
+                    updatedAt = timeProvider.currentTimeMillis()
+                )
+            )
+
+            // Find a B1 reading story
+            val b1Stories = dao.getAllReadingTexts().filter { it.level.equals("B1", ignoreCase = true) }
+            assertTrue(b1Stories.isNotEmpty())
+            val story = b1Stories.first()
+
+            // Save reading progress using raw count (e.g. 3 out of 3 questions correct)
+            dao.upsertReadingProgress(
+                ReadingProgressEntity(
+                    textId = story.id,
+                    completedQuestions = 3,
+                    totalQuestions = 3,
+                    bestScore = 3, // Raw count: 3 out of 3 = 100%
+                    lastScore = 3,
+                    isCompleted = true,
+                    updatedAt = timeProvider.currentTimeMillis()
+                )
+            )
+
+            val snapshot = learnerModelRepo.buildSnapshot(profile, nowMillis = timeProvider.currentTimeMillis())
+            assertTrue("Grammar passed count must be at least 1", snapshot.cefrReadiness.grammarPassedCount >= 1)
+            assertTrue("Grammar mastery % must be greater than 0", snapshot.cefrReadiness.grammarMasteryPercent > 0)
+            assertTrue("Reading completed count must be at least 1", snapshot.cefrReadiness.readingCompletedCount >= 1)
+            assertTrue("Reading mastery % must be greater than 0", snapshot.cefrReadiness.readingMasteryPercent > 0)
         }
     }
 }

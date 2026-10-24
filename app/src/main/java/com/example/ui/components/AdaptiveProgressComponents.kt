@@ -835,13 +835,13 @@ private fun WordLifecycleStagesGuideSheetContent(
             LifecycleStageGuideItem(
                 key = "seen",
                 titleEn = "Seen",
-                titleAr = "مقروءة",
+                titleAr = "مقروءة / قيد التعرف",
                 count = funnel.seenCount,
                 color = SkyAccent,
-                conditionBadge = "Tapped in Reading",
-                descriptionEn = "Words you encountered in context while reading a story, before studying them as flashcards.",
-                howToTriggerEn = "Open any story in the Reading tab and tap a word to view its instant translation. Seen words are prioritized in your next daily plan!",
-                descriptionAr = "كلمات ضغطت عليها لمعرفة معناها أثناء قراءة القصص، وتُعطى أولوية تلقائياً في خطتك اليومية القادمة."
+                conditionBadge = "Tapped or Intraday (reps = 0)",
+                descriptionEn = "Words you encountered while reading, or flashcards currently in immediate 10m/4h review steps before first recall.",
+                howToTriggerEn = "Tap any word in Reading stories, or rate a new flashcard Again (10m) / Hard (4h).",
+                descriptionAr = "كلمات ضغطت عليها أثناء القراءة، أو بطاقات قيد المراجعة الفورية (10 دقائق أو 4 ساعات) قبل ترسيخها."
             ),
             LifecycleStageGuideItem(
                 key = "learning",
@@ -849,10 +849,10 @@ private fun WordLifecycleStagesGuideSheetContent(
                 titleAr = "قيد التعلم",
                 count = funnel.learningCount,
                 color = CoralAccent,
-                conditionBadge = "Interval < 7 days",
-                descriptionEn = "Words you are actively practicing in flashcards that still have a short review gap (under 7 days).",
-                howToTriggerEn = "Flip a flashcard and rate it Again (10m), Hard (4h / 1d), or Good on your first two reviews (1d → 6d).",
-                descriptionAr = "كلمات بدأت بتدريبها في البطاقات التعليمية وما زال فاصل مراجعتها قصيراً (أقل من ٧ أيام)."
+                conditionBadge = "Recalled (1–6 days)",
+                descriptionEn = "Words you successfully recalled at least once (reps >= 1) with an active review gap under 7 days.",
+                howToTriggerEn = "Rate a flashcard Good (1d) to graduate it from Seen into Learning and start daily spaced intervals.",
+                descriptionAr = "كلمات تذكرتها بنجاح (Good) وبدأت فواصل مراجعتها بالأيام (فاصل يوم إلى ٦ أيام)."
             ),
             LifecycleStageGuideItem(
                 key = "familiar",
