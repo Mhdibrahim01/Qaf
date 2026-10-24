@@ -413,7 +413,7 @@ fun WordBooksAppShell(
                         onDismissInsight = wordBooksViewModel::dismissAdaptiveInsight,
                         onAcceptLevelUp = wordBooksViewModel::acceptSuggestedLevelUp,
                         onOpenDeck = { deckId ->
-                            wordBooksViewModel.selectDeck(deckId)
+                            wordBooksViewModel.selectDeck(deckId.ifBlank { null })
                             navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
                         },
                         onOpenFlashcardsForDeck = { deckId ->
