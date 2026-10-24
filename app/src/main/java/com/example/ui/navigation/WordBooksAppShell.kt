@@ -295,12 +295,46 @@ fun WordBooksAppShell(
         topBar = {
             val isWordBookDetailOpen = currentRoute == AppRoute.WordBooks && selectedDeckId != null
             if (!isWordBookDetailOpen) {
+                val readingSubtitleContent: (@Composable () -> Unit)? = if (currentRoute == AppRoute.Reading && selectedReadingText != null) {
+                    {
+                        val text = selectedReadingText!!
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Surface(
+                                color = Color(0xFFF5C542).copy(alpha = 0.18f),
+                                border = BorderStroke(1.dp, Color(0xFFF5C542).copy(alpha = 0.5f)),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = text.level.uppercase(),
+                                    color = Color(0xFFF5C542),
+                                    fontSize = 10.sp,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                )
+                            }
+                            val topicDisplay = text.topic.split(" ")
+                                .joinToString(" ") { it.replaceFirstChar { c -> if (c.isLowerCase()) c.titlecase() else c.toString() } }
+                            Text(
+                                text = "• $topicDisplay",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                color = TextSecondary,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                } else null
+
                 WordBooksTopAppBar(
                     title = topTitle,
                     subtitle = topSubtitle,
                     arabicTitle = topArabicTitle,
                     canNavigateBack = canNavigateBack,
                     onNavigateBack = onNavigateBack,
+                    subtitleContent = readingSubtitleContent,
                     actions = {
                         if (currentRoute != AppRoute.Settings) {
                             IconButton(

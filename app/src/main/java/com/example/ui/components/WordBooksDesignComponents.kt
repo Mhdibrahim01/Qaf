@@ -95,6 +95,7 @@ fun WordBooksTopAppBar(
     arabicTitle: String? = null,
     canNavigateBack: Boolean = false,
     onNavigateBack: (() -> Unit)? = null,
+    subtitleContent: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     Surface(
@@ -169,7 +170,9 @@ fun WordBooksTopAppBar(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        if (!subtitle.isNullOrBlank()) {
+                        if (subtitleContent != null) {
+                            subtitleContent()
+                        } else if (!subtitle.isNullOrBlank()) {
                             Text(
                                 text = subtitle,
                                 style = MaterialTheme.typography.labelSmall.copy(
