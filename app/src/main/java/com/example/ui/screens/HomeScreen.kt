@@ -279,25 +279,12 @@ fun HomeScreen(
                     }
                 }
             } else {
-                // Single-column phone layout
+                // Single-column phone layout: Actionable study cards first, analytics & milestones below
                 TodayPlanCard(
                     todayChecklist = todayChecklist,
                     onOpenPlanScreen = onOpenPlanScreen,
                     onNavigateToTask = onNavigateToTask,
                     onToggleTaskCompleted = onToggleTaskCompleted
-                )
-
-                CefrReadinessBarCard(
-                    readiness = learnerModelSnapshot.cefrReadiness,
-                    onAcceptLevelUp = onAcceptLevelUp
-                )
-
-                WordLifecycleFunnelCard(
-                    funnel = learnerModelSnapshot.funnel
-                )
-
-                ConqueredWordsTrophyShelf(
-                    conqueredWords = learnerModelSnapshot.conqueredWords
                 )
 
                 ReviewDueSection(
@@ -319,6 +306,19 @@ fun HomeScreen(
                     decks = displayDecks,
                     studyStateByDeck = studyStateByDeck,
                     onOpenDeck = onOpenDeck
+                )
+
+                CefrReadinessBarCard(
+                    readiness = learnerModelSnapshot.cefrReadiness,
+                    onAcceptLevelUp = onAcceptLevelUp
+                )
+
+                WordLifecycleFunnelCard(
+                    funnel = learnerModelSnapshot.funnel
+                )
+
+                ConqueredWordsTrophyShelf(
+                    conqueredWords = learnerModelSnapshot.conqueredWords
                 )
 
                 WeeklyProgressSummaryCard(

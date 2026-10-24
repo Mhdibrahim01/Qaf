@@ -55,14 +55,18 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Flip
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -171,6 +175,7 @@ fun FlashcardsScreen(
     autoShowAnswer: Boolean = false,
     onSelectDeck: (String) -> Unit,
     onSwitchToBooks: () -> Unit = {},
+    onNavigateHome: () -> Unit = {},
     onIndexChanged: (Int) -> Unit,
     onFlipCard: () -> Unit = {},
     onSetCardFlipped: (Boolean) -> Unit = {},
@@ -659,32 +664,79 @@ fun FlashcardsScreen(
                         .fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                    EmptyState(
-                        titleEn = if (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID) {
-                            if (waitingLaterTodayCount > 0) {
-                                "All due-now reviews done! ($waitingLaterTodayCount scheduled for later today)"
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
+                    ) {
+                        EmptyState(
+                            titleEn = if (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID) {
+                                if (waitingLaterTodayCount > 0) {
+                                    "All due-now reviews done! ($waitingLaterTodayCount scheduled for later today)"
+                                } else {
+                                    "All due reviews completed for today!"
+                                }
                             } else {
-                                "All due reviews completed for today!"
-                            }
-                        } else {
-                            "No cards in this deck yet"
-                        },
-                        titleAr = if (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID) {
-                            if (waitingLaterTodayCount > 0) {
-                                "تم إكمال المراجعات المستحقة الآن! ($waitingLaterTodayCount بطاقة مجدولة لوقت لاحق اليوم)"
+                                "No cards in this deck yet"
+                            },
+                            titleAr = if (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID) {
+                                if (waitingLaterTodayCount > 0) {
+                                    "تم إكمال المراجعات المستحقة الآن! ($waitingLaterTodayCount بطاقة مجدولة لوقت لاحق اليوم)"
+                                } else {
+                                    "تم إكمال جميع مراجعات اليوم بنجاح!"
+                                }
                             } else {
-                                "تم إكمال جميع مراجعات اليوم بنجاح!"
+                                "لا توجد بطاقات في هذا الكتاب بعد"
+                            },
+                            descriptionEn = if (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID && waitingLaterTodayCount > 0 && waitingMinutes != null) {
+                                "Short-interval cards are hidden until their timer finishes (~${waitingMinutes}m). Or select a Word Book above to study."
+                            } else {
+                                "Select Oxford 5000 or another Word Book above to study."
+                            },
+                            icon = Icons.AutoMirrored.Filled.MenuBook
+                        )
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedButton(
+                                onClick = onNavigateHome,
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, BorderDark),
+                                modifier = Modifier.testTag("btn_empty_flashcards_home")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Home,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = TextSecondary
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Home / الرئيسية", color = TextPrimary)
                             }
-                        } else {
-                            "لا توجد بطاقات في هذا الكتاب بعد"
-                        },
-                        descriptionEn = if (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID && waitingLaterTodayCount > 0 && waitingMinutes != null) {
-                            "Short-interval cards are hidden until their timer finishes (~${waitingMinutes}m). Or select a Word Book above to study."
-                        } else {
-                            "Select Oxford 5000 or another Word Book above to study."
-                        },
-                        icon = Icons.AutoMirrored.Filled.MenuBook
-                    )
+
+                            Button(
+                                onClick = onSwitchToBooks,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = GoldAccent,
+                                    contentColor = BackgroundDark
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.testTag("btn_empty_flashcards_switch_books")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Word Books / الكتب", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                 }
             } else {
                 val card = displayedCard

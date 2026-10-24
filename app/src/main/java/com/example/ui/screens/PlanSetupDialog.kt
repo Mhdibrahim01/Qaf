@@ -39,6 +39,7 @@ import com.example.data.plan.AdaptiveConfig
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
+import com.example.ui.theme.CoralAccent
 import com.example.ui.theme.GoldAccent
 import com.example.ui.theme.GoldAccentDim
 import com.example.ui.theme.SurfaceDark
@@ -125,6 +126,9 @@ fun PlanSetupDialog(
     )
 
     val activeStudyDaysCount = (7 - selectedRestDays.size).coerceIn(1, 7)
+    val isDecksValid = selectedDecks.isNotEmpty()
+    val isScheduleValid = selectedRestDays.size < 7
+    val isPlanValid = isDecksValid && isScheduleValid
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -432,6 +436,30 @@ fun PlanSetupDialog(
                         )
                     }
                 }
+
+                if (!isPlanValid) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        if (!isDecksValid) {
+                            Text(
+                                text = "• Select at least 1 wordbook / اختر قائمة واحدة على الأقل",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = CoralAccent
+                            )
+                        }
+                        if (!isScheduleValid) {
+                            Text(
+                                text = "• You cannot set all 7 days as rest days / يجب تحديد يوم دراسي واحد على الأقل",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = CoralAccent
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
@@ -450,9 +478,12 @@ fun PlanSetupDialog(
                     onSaveProfile(updated)
                     onDismiss()
                 },
+                enabled = isPlanValid,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = GoldAccent,
-                    contentColor = BackgroundDark
+                    contentColor = BackgroundDark,
+                    disabledContainerColor = SurfaceElevatedDark,
+                    disabledContentColor = TextMuted
                 ),
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.testTag("btn_save_plan_profile")

@@ -53,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -102,13 +103,31 @@ fun QuizDialog(
             onDismissRequest = onDismiss,
             containerColor = SurfaceDark,
             title = { Text(title, color = TextPrimary, fontWeight = FontWeight.Bold) },
-            text = { Text("No questions could be generated. Please make sure you have translated words and lessons.", color = TextMuted) },
-            confirmButton = { Button(onClick = onDismiss) { Text("OK") } }
+            text = {
+                Text(
+                    text = "No questions are available right now. Study a few words or complete a reading passage to unlock new quiz challenges.\n\nلا توجد أسئلة متاحة حالياً. ادرس بعض الكلمات أو اقرأ نصاً لفتح اختبارات جديدة.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = GoldAccent,
+                        contentColor = BackgroundDark
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Got It / حسناً", fontWeight = FontWeight.Bold)
+                }
+            }
         )
         return
     }
 
     var currentIndex by remember { mutableIntStateOf(0) }
+    var showExitConfirmDialog by remember { mutableStateOf(false) }
     val userAnswers = remember { mutableStateMapOf<String, Int>() }
     var selectedOptionIndex by remember(currentIndex) { mutableStateOf<Int?>(null) }
     var arrangedWordIndices by remember(currentIndex) { mutableStateOf<List<Int>>(emptyList()) }
@@ -136,7 +155,7 @@ fun QuizDialog(
     }
 
     AlertDialog(
-        onDismissRequest = { if (isFinished) onDismiss() },
+        onDismissRequest = { if (isFinished) onDismiss() else showExitConfirmDialog = true },
         containerColor = SurfaceDark,
         title = {
             Row(
@@ -144,7 +163,7 @@ fun QuizDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -154,6 +173,26 @@ fun QuizDialog(
                         text = if (!isFinished) "Question ${currentIndex + 1} of ${questions.size} • Skill: ${currentQuestion.skill.uppercase()}" else "Quiz Summary & Word Review",
                         style = MaterialTheme.typography.labelSmall,
                         color = GoldAccent
+                    )
+                }
+
+                IconButton(
+                    onClick = {
+                        if (!isFinished) {
+                            showExitConfirmDialog = true
+                        } else {
+                            onDismiss()
+                        }
+                    },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .testTag("btn_quiz_close")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close Quiz",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -800,12 +839,61 @@ fun QuizDialog(
         },
         dismissButton = {
             if (!isFinished) {
-                TextButton(onClick = onDismiss) {
-                    Text("Quit Quiz", color = TextMuted)
+                TextButton(
+                    onClick = { showExitConfirmDialog = true },
+                    modifier = Modifier.testTag("btn_quiz_quit")
+                ) {
+                    Text("Quit Quiz / خروج", color = TextMuted)
                 }
             }
         }
     )
+
+    if (showExitConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitConfirmDialog = false },
+            containerColor = SurfaceDark,
+            shape = RoundedCornerShape(16.dp),
+            title = {
+                Text(
+                    text = "Exit Quiz? / الخروج من الاختبار",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = TextPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = "If you leave now, your answers for this session will not be saved. Are you sure you want to exit?\n\nإذا خرجت الآن، فلن يتم حفظ إجاباتك في هذه الجلسة. هل أنت متأكد من الخروج؟",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showExitConfirmDialog = false
+                        onDismiss()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = CoralAccent,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.testTag("btn_confirm_exit_quiz")
+                ) {
+                    Text("Exit / خروج", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showExitConfirmDialog = false },
+                    modifier = Modifier.testTag("btn_resume_quiz")
+                ) {
+                    Text("Resume / استكمال", color = TextMuted)
+                }
+            }
+        )
+    }
 }
 
 @Composable

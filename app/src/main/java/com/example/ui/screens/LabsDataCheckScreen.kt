@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -44,6 +45,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -53,6 +55,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -153,6 +156,7 @@ fun LabsDataCheckScreen(
     val enabledStates = remember { mutableStateMapOf<String, Boolean>() }
     var suggestionText by remember { mutableStateOf("") }
     var suggestionSaved by remember { mutableStateOf(false) }
+    var showResetConfirmDialog by remember { mutableStateOf(false) }
 
     val jsonPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
@@ -619,7 +623,7 @@ fun LabsDataCheckScreen(
                             }
 
                             OutlinedButton(
-                                onClick = onResetAndReimport,
+                                onClick = { showResetConfirmDialog = true },
                                 enabled = !importState.isImporting,
                                 border = BorderStroke(1.dp, CoralAccent.copy(alpha = 0.6f)),
                                 modifier = Modifier
@@ -1034,6 +1038,52 @@ fun LabsDataCheckScreen(
                 }
             }
         }
+    }
+
+    if (showResetConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetConfirmDialog = false },
+            containerColor = SurfaceDark,
+            shape = RoundedCornerShape(16.dp),
+            title = {
+                Text(
+                    text = "Clear & Re-import Database? / إعادة تعيين قاعدة البيانات",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = TextPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = "This will completely clear your database and re-seed all wordbooks from assets/JSON. Any custom edits and progress may be reset. Are you sure you want to proceed?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showResetConfirmDialog = false
+                        onResetAndReimport()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = CoralAccent,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.testTag("btn_confirm_clear_reimport")
+                ) {
+                    Text("Clear & Re-import / تفريغ واستيراد", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showResetConfirmDialog = false },
+                    modifier = Modifier.testTag("btn_cancel_clear_reimport")
+                ) {
+                    Text("Cancel / إلغاء", color = TextMuted)
+                }
+            }
+        )
     }
 }
 
