@@ -18,6 +18,7 @@ import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.local.WordBooksDao
 import com.example.data.local.WordBooksDatabase
 import com.example.data.local.WordProgressEntity
+import com.example.data.plan.AdaptiveConfig
 import com.example.data.plan.LearnerModelRepository
 import com.example.data.plan.LocalQuizEngine
 import com.example.data.plan.StudyPlanRepository
@@ -563,6 +564,146 @@ class AdaptiveV2VerificationTest {
         assertEquals(b2Lesson.id, grammarTask.linkedId)
         assertTrue("Grammar task title must include [Refresher]", grammarTask.titleEn.contains("[Refresher]"))
         assertTrue("Grammar task reason must explain the <65% remediation trigger", grammarTask.reason.contains("45%"))
+    }
+
+    @Test
+    fun testDataVersion7AndDeckEffectiveLevels() {
+        assertEquals("DataImportRepository DATA_VERSION must be 7", 7, DataImportRepository.DATA_VERSION)
+    }
+
+    @Test
+    fun testNewWordsTargetPacingAndFastTrackScaling() = runBlocking {
+        val timeProvider = FixedTestTimeProvider()
+        val planRepo = StudyPlanRepository(context, dao, timeProvider)
+
+        val profile = StudyPlanProfileEntity(
+            id = 1,
+            level = "A1",
+            goal = "general_fluency",
+            minutesPerDay = 15, // base = 5
+            studyDaysPerWeek = 6,
+            selectedDecksJson = """["oxford5000"]""",
+            updatedAt = timeProvider.currentTimeMillis()
+        )
+        dao.upsertStudyPlanProfile(profile)
+
+        // Seed 10 new words so selection doesn't starve
+        val entries = (1..10).map { i ->
+            EntryEntity(
+                id = "10$i",
+                type = "word",
+                deck = "oxford5000",
+                text = "word$i",
+                pos = "noun",
+                level = "A1",
+                effectiveLevel = "A1",
+                definitionEn = "definition $i",
+                noteEn = "",
+                examplesEn = "example $i",
+                examplesAr = "",
+                definitionUrl = "",
+                audioUrl = "",
+                arabic = "كلمة $i",
+                arabicSource = "file",
+                dataVersion = 7
+            )
+        }
+        dao.upsertEntriesBatchPreservingUserEdits(entries)
+
+        // 1. Standard day: 15-min profile gets base 5 words (NEW_WORDS_MIN)
+        val normalChecklist = planRepo.regenerateDailyChecklist("2026-11-02")
+        val normalTasks = json.decodeFromString<List<DailyTaskItem>>(normalChecklist.tasksJson)
+        val normalNewWords = normalTasks.first { it.type == "new_words" }
+        assertEquals(AdaptiveConfig.NEW_WORDS_MIN, normalNewWords.targetCount)
+
+        // 2. Fast-track scaling: when 7-day accuracy >= 88%, target increases by +3 (5 -> 8)
+        val nowMs = timeProvider.currentTimeMillis()
+        for (i in 1..10) {
+            dao.insertAttempt(
+                AttemptEntity(
+                    activityType = "flashcard_review",
+                    itemId = "oxford5000:w$i",
+                    timestamp = nowMs - 1000L * i,
+                    sm2Rating = 3,
+                    isCorrect = true,
+                    score = 100f
+                )
+            )
+        }
+        val fastTrackChecklist = planRepo.regenerateDailyChecklist("2026-11-02")
+        val fastTrackTasks = json.decodeFromString<List<DailyTaskItem>>(fastTrackChecklist.tasksJson)
+        val fastTrackNewWords = fastTrackTasks.first { it.type == "new_words" }
+        assertEquals(AdaptiveConfig.NEW_WORDS_MIN + 3, fastTrackNewWords.targetCount) // 5 + 3 = 8
+    }
+
+    @Test
+    fun testLapsedMasteredCardClassifiesAsSeenNotMature() {
+        val lapsedCard = WordProgressEntity(
+            cardKey = "oxford5000:test",
+            deck = "oxford5000",
+            text = "test",
+            isMastered = true, // Legacy or un-cleared mastered flag
+            intervalDays = 0,
+            repetitions = 0,
+            againCount = 2,
+            lastReviewedTimestamp = 100000L,
+            firstLearnedTimestamp = 50000L
+        )
+        val stage = LearnerModelRepository.classifyWordStage(lapsedCard)
+        assertEquals("A card with repetitions = 0 and intervalDays = 0 must be classified as SEEN, not MATURE", WordStage.SEEN, stage)
+    }
+
+    @Test
+    fun testConsecutiveGrammarRefresherBlockedByCooldown() = runBlocking {
+        val timeProvider = FixedTestTimeProvider()
+        val grammarRepo = GrammarRepository(context, dao)
+        val planRepo = StudyPlanRepository(context, dao, timeProvider)
+
+        grammarRepo.importGrammarLessonsIfNeeded()
+        val b2Lessons = dao.getAllGrammarLessons().filter { it.level == "B2" }
+        assertTrue("Must have B2 grammar lessons", b2Lessons.size >= 2)
+        val firstLesson = b2Lessons[0]
+        val secondLesson = b2Lessons[1]
+
+        val profile = StudyPlanProfileEntity(
+            id = 1,
+            level = "B2",
+            goal = "general_fluency",
+            minutesPerDay = 30,
+            studyDaysPerWeek = 6,
+            selectedDecksJson = """["oxford5000"]""",
+            updatedAt = timeProvider.currentTimeMillis()
+        )
+        dao.upsertStudyPlanProfile(profile)
+
+        // Set low score on firstLesson (< 65%)
+        val nowMs = timeProvider.currentTimeMillis()
+        dao.upsertGrammarProgress(
+            GrammarProgressEntity(
+                lessonId = firstLesson.id,
+                completedExercises = 4,
+                totalExercises = 6,
+                bestScore = 40,
+                lastScore = 40,
+                isCompleted = true,
+                updatedAt = nowMs - 86400_000L * 2
+            )
+        )
+
+        // Day 1: Schedules refresher for firstLesson
+        val day1Checklist = planRepo.regenerateDailyChecklist("2026-11-02")
+        val day1Tasks = json.decodeFromString<List<DailyTaskItem>>(day1Checklist.tasksJson)
+        val day1Grammar = day1Tasks.first { it.type == "grammar" }
+        assertEquals(firstLesson.id, day1Grammar.linkedId)
+        assertTrue(day1Grammar.titleEn.contains("[Refresher]"))
+
+        // Day 2: Next consecutive day must NOT schedule consecutive refresher for firstLesson
+        val day2Checklist = planRepo.getOrCreateDailyChecklist("2026-11-03")
+        val day2Tasks = json.decodeFromString<List<DailyTaskItem>>(day2Checklist.tasksJson)
+        val day2Grammar = day2Tasks.first { it.type == "grammar" }
+        assertNotEquals("Day 2 must not repeat refresher for the same lesson", firstLesson.id, day2Grammar.linkedId)
+        assertEquals("Day 2 should advance to next uncompleted syllabus lesson", secondLesson.id, day2Grammar.linkedId)
+        assertTrue("Day 2 should be regular lesson, not refresher", !day2Grammar.titleEn.contains("[Refresher]"))
     }
 }
 

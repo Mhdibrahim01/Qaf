@@ -158,7 +158,8 @@ private data class ReadingTokenItem(
     val token: String,
     val cleanWord: String,
     val isTarget: Boolean,
-    val isGrammar: Boolean
+    val isGrammar: Boolean,
+    val stage: com.example.data.plan.WordStage? = null
 )
 
 private fun extractGrammarKeywords(lesson: GrammarLessonEntity?): Set<String> {
@@ -238,7 +239,7 @@ fun ReadingScreen(
     openQuestionHistory: List<AiHistoryEntity>,
     grammarLessons: List<GrammarLessonEntity> = emptyList(),
     onSelectText: (ReadingTextEntity?) -> Unit,
-    onSaveProgress: (textId: String, completed: Int, total: Int, score: Int, isDone: Boolean) -> Unit,
+    onSaveProgress: (textId: String, completed: Int, total: Int, score: Int, isDone: Boolean, elapsedMs: Long?) -> Unit,
     onOpenGrammarLesson: (GrammarLessonEntity) -> Unit = {},
     onSaveCorrectionSentence: ((textId: String, lessonId: String, lessonTitle: String, original: String, corrected: String, expAr: String, alt: String, status: String) -> Unit)? = null,
     onCheckCorrectionWithAi: (suspend (CorrectionNotebookEntity) -> Result<Unit>)? = null,
@@ -265,6 +266,7 @@ fun ReadingScreen(
     userLevel: String = "B2",
     onScheduleWordForToday: suspend (String) -> Boolean = { false },
     storyReadabilityById: Map<String, com.example.data.plan.StoryReadabilityReport> = emptyMap(),
+    wordStageMap: Map<String, com.example.data.plan.WordStage> = emptyMap(),
     modifier: Modifier = Modifier
 ) {
     if (selectedText != null) {
@@ -278,8 +280,8 @@ fun ReadingScreen(
                 onStopAudio()
                 onSelectText(null)
             },
-            onSaveProgress = { completed, total, score, isDone ->
-                onSaveProgress(selectedText.id, completed, total, score, isDone)
+            onSaveProgress = { completed, total, score, isDone, elapsedMs ->
+                onSaveProgress(selectedText.id, completed, total, score, isDone, elapsedMs)
             },
             onOpenGrammarLesson = onOpenGrammarLesson,
             onSaveCorrectionSentence = onSaveCorrectionSentence,
@@ -312,6 +314,7 @@ fun ReadingScreen(
             ttsSpeechRate = ttsSpeechRate,
             onScheduleWordForToday = onScheduleWordForToday,
             readabilityReport = storyReadabilityById[selectedText.id],
+            wordStageMap = wordStageMap,
             modifier = modifier
         )
     } else {
@@ -1072,7 +1075,7 @@ fun ReadingDetailScreen(
     openQuestionHistory: List<AiHistoryEntity>,
     grammarLessons: List<GrammarLessonEntity> = emptyList(),
     onBack: () -> Unit,
-    onSaveProgress: (completed: Int, total: Int, score: Int, isDone: Boolean) -> Unit,
+    onSaveProgress: (completed: Int, total: Int, score: Int, isDone: Boolean, elapsedMs: Long?) -> Unit,
     onOpenGrammarLesson: (GrammarLessonEntity) -> Unit = {},
     onSaveCorrectionSentence: ((textId: String, lessonId: String, lessonTitle: String, original: String, corrected: String, expAr: String, alt: String, status: String) -> Unit)? = null,
     onCheckCorrectionWithAi: (suspend (CorrectionNotebookEntity) -> Result<Unit>)? = null,
@@ -1092,9 +1095,12 @@ fun ReadingDetailScreen(
     ttsSpeechRate: Float,
     onScheduleWordForToday: suspend (String) -> Boolean = { false },
     readabilityReport: com.example.data.plan.StoryReadabilityReport? = null,
+    wordStageMap: Map<String, com.example.data.plan.WordStage> = emptyMap(),
     modifier: Modifier = Modifier
 ) {
     BackHandler { onBack() }
+
+    val quizStartTimeMillis = remember(text.id) { System.currentTimeMillis() }
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -1549,6 +1555,7 @@ fun ReadingDetailScreen(
                                 grammarLabel = grammarTitle,
                                 linkedGrammarLesson = linkedGrammarLesson,
                                 targetWords = targetWords,
+                                wordStageMap = wordStageMap,
                                 onSelectSentence = {
                                     selectedSentenceIndex = if (selectedSentenceIndex == sIndex) null else sIndex
                                 },
@@ -1606,11 +1613,13 @@ fun ReadingDetailScreen(
                                     userAnswers[idx] == questions[idx].answerIndex
                                 }
                                 val isDone = completedCount >= questions.size
+                                val elapsedMs = System.currentTimeMillis() - quizStartTimeMillis
                                 onSaveProgress(
                                     completedCount,
                                     questions.size,
                                     correctCount,
-                                    isDone
+                                    isDone,
+                                    elapsedMs
                                 )
                             }
                         }
@@ -1768,6 +1777,7 @@ fun ReadingSentenceBlock(
     grammarLabel: String = "Grammar Rule",
     linkedGrammarLesson: GrammarLessonEntity? = null,
     targetWords: Set<String>,
+    wordStageMap: Map<String, com.example.data.plan.WordStage> = emptyMap(),
     onSelectSentence: () -> Unit = {},
     onToggleArabic: () -> Unit,
     onWordClicked: (String) -> Unit,
@@ -1837,8 +1847,8 @@ fun ReadingSentenceBlock(
 
             Spacer(Modifier.width(4.dp))
 
-            // Flow of clickable words with smart in-text grammar keyword highlighting
-            val parsedTokens = remember(sentence.en, targetWords, grammarKeywords, showGrammarHints, isSelected) {
+            // Flow of clickable words with smart in-text grammar keyword highlighting & word stage indicators
+            val parsedTokens = remember(sentence.en, targetWords, grammarKeywords, showGrammarHints, isSelected, wordStageMap) {
                 sentence.en.split(READING_WHITESPACE_REGEX)
                     .filter { it.isNotBlank() }
                     .map { token ->
@@ -1847,7 +1857,10 @@ fun ReadingSentenceBlock(
                         val isTarget = cleanWord.isNotBlank() && targetWords.contains(lowerClean)
                         val isGrammar = hasGrammar && (showGrammarHints || isSelected) &&
                                 lowerClean.isNotBlank() && grammarKeywords.contains(lowerClean)
-                        ReadingTokenItem(token, cleanWord, isTarget, isGrammar)
+                        val stage = if (!isTarget && !isGrammar && lowerClean.isNotBlank()) {
+                            wordStageMap[lowerClean]
+                        } else null
+                        ReadingTokenItem(token, cleanWord, isTarget, isGrammar, stage)
                     }
             }
             FlowRow(
@@ -1855,7 +1868,7 @@ fun ReadingSentenceBlock(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                for ((token, cleanWord, isTarget, isGrammar) in parsedTokens) {
+                for ((token, cleanWord, isTarget, isGrammar, stage) in parsedTokens) {
 
                     Box(
                         modifier = Modifier
@@ -1864,16 +1877,31 @@ fun ReadingSentenceBlock(
                                 when {
                                     isTarget -> Color(0xFFFFD54F)
                                     isGrammar -> Color(0xFFE5C158).copy(alpha = 0.20f)
+                                    stage == com.example.data.plan.WordStage.LEARNING -> Color(0xFF00E5FF).copy(alpha = 0.15f)
+                                    stage == com.example.data.plan.WordStage.FAMILIAR -> Color(0xFF10B981).copy(alpha = 0.12f)
                                     else -> Color.Transparent
                                 }
                             )
                             .then(
-                                if (isGrammar) {
-                                    Modifier.border(
+                                when {
+                                    isGrammar -> Modifier.border(
                                         BorderStroke(1.dp, Color(0xFFE5C158).copy(alpha = 0.65f)),
                                         RoundedCornerShape(4.dp)
                                     )
-                                } else Modifier
+                                    stage == com.example.data.plan.WordStage.LEARNING -> Modifier.border(
+                                        BorderStroke(1.dp, Color(0xFF00E5FF).copy(alpha = 0.45f)),
+                                        RoundedCornerShape(4.dp)
+                                    )
+                                    stage == com.example.data.plan.WordStage.FAMILIAR -> Modifier.border(
+                                        BorderStroke(1.dp, Color(0xFF10B981).copy(alpha = 0.40f)),
+                                        RoundedCornerShape(4.dp)
+                                    )
+                                    stage == com.example.data.plan.WordStage.SEEN -> Modifier.border(
+                                        BorderStroke(1.dp, Color(0xFF9CA3AF).copy(alpha = 0.30f)),
+                                        RoundedCornerShape(4.dp)
+                                    )
+                                    else -> Modifier
+                                }
                             )
                             .clickable {
                                 if (isGrammar) {
@@ -1882,7 +1910,7 @@ fun ReadingSentenceBlock(
                                     onWordClicked(cleanWord)
                                 }
                             }
-                            .padding(horizontal = if (isGrammar) 4.dp else 2.dp, vertical = 1.dp)
+                            .padding(horizontal = if (isGrammar || stage != null) 4.dp else 2.dp, vertical = 1.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -1894,9 +1922,12 @@ fun ReadingSentenceBlock(
                                 fontSize = 18.sp,
                                 lineHeight = 28.sp,
                                 fontWeight = if (isTarget || isGrammar) FontWeight.Bold else FontWeight.Normal,
+                                textDecoration = if (stage == com.example.data.plan.WordStage.SEEN) androidx.compose.ui.text.style.TextDecoration.Underline else null,
                                 color = when {
                                     isTarget -> Color(0xFF3E2723)
                                     isGrammar -> Color(0xFFE5C158)
+                                    stage == com.example.data.plan.WordStage.LEARNING -> Color(0xFF00E5FF)
+                                    stage == com.example.data.plan.WordStage.FAMILIAR -> Color(0xFF34D399)
                                     else -> MaterialTheme.colorScheme.onSurface
                                 }
                             )

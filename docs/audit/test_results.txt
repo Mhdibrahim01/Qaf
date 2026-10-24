@@ -1,0 +1,33 @@
+================================================================================
+Qaf (قاف) Adaptive V2 Baseline Unit Test Run
+Command: ./gradlew.bat testDebugUnitTest --continue
+Execution Timestamp: 2026-10-24T03:05:00+03:00
+Status: BUILD FAILED (2 tests failed, 91 passed, 93 total)
+================================================================================
+
+FAILURE: Build completed with 2 failures.
+
+1: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':app:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///c:/Users/EGYPT_LAPTOP/Downloads/wordbooks/app/build/reports/tests/testDebugUnitTest/index.html
+
+Failed Tests:
+--------------------------------------------------------------------------------
+1. Phase3DailyPlanTest > testSentencePracticeRotationForA1AndA2Levels
+   Status: FAILED
+   Class: com.example.Phase3DailyPlanTest
+   Method: testSentencePracticeRotationForA1AndA2Levels
+   Error: java.lang.AssertionError: Sentence practice task must be scheduled for A2 user
+   Location: Phase3DailyPlanTest.kt:257
+   Root Cause: Stale test assertion. The test expects A1/A2 learners to receive a sentence practice task due to lack of A1/A2 reading stories. Adaptive V2 introduced 16 A1/A2 micro-stories (r001-r016) in assets/reading_texts.json, so StudyPlanRepository correctly schedules a reading task now.
+
+2. DatabaseMigration13To15Test > migrationToV15PreservesAllUserDataBackfillsFirstLearnedTimestampOnlyForRatedCardsAndCreatesEmptyAttemptsTable
+   Status: FAILED
+   Class: com.example.DatabaseMigration13To15Test
+   Method: migrationToV15PreservesAllUserDataBackfillsFirstLearnedTimestampOnlyForRatedCardsAndCreatesEmptyAttemptsTable
+   Error: android.database.sqlite.SQLiteCantOpenDatabaseException
+   Location: DatabaseMigration13To15Test.kt:49
+   Root Cause: Stale test setup. The test attempts to instantiate WordBooksDatabase directly via Room.databaseBuilder without supporting schema v16 migrations.
+================================================================================

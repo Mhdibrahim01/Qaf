@@ -1,0 +1,20 @@
+================================================================================
+Qaf (قاف) Adaptive V2 Baseline Android Lint Run
+Command: ./gradlew.bat lintDebug
+Execution Timestamp: 2026-10-24T03:10:00+03:00
+Status: BUILD FAILED (2 errors, 89 warnings)
+================================================================================
+
+Errors (2):
+--------------------------------------------------------------------------------
+1. BatchTranslateManager.kt:882: Error: Call requires API level 26 (current min is 24): java.time.LocalDate#now [NewApi]
+       val today = LocalDate.now().toString()
+                             ~~~
+2. BatchTranslateManager.kt:896: Error: Call requires API level 26 (current min is 24): java.time.LocalDate#now [NewApi]
+       val today = LocalDate.now().toString()
+                             ~~~
+
+Summary:
+- 2 errors, 89 warnings.
+- NewApi errors will result in fatal NoClassDefFoundError crashes on physical devices running Android 7.0 (API 24) or Android 7.1 (API 25).
+================================================================================

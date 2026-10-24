@@ -20,7 +20,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.time.LocalDate
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
 
@@ -878,8 +880,12 @@ class BatchTranslateManager(
         return remainingBatches * perBatchSec
     }
 
+    private fun getTodayDateString(): String {
+        return SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+    }
+
     private fun getPersistedRequestsUsedToday(): Int {
-        val today = LocalDate.now().toString()
+        val today = getTodayDateString()
         val savedDate = prefs.getString(KEY_REQUESTS_DATE, "") ?: ""
         return if (savedDate == today) {
             prefs.getInt(KEY_REQUESTS_USED_TODAY, 0)
@@ -893,7 +899,7 @@ class BatchTranslateManager(
     }
 
     private fun incrementRequestsUsedToday(): Int {
-        val today = LocalDate.now().toString()
+        val today = getTodayDateString()
         val current = getPersistedRequestsUsedToday()
         val updated = current + 1
         prefs.edit()

@@ -153,7 +153,8 @@ data class LearnerModelSnapshot(
     val totalAttemptsCount: Int = 0,
     val isColdStart: Boolean = true,
     val activeInsight: AdaptiveInsightBanner? = null,
-    val storyReadabilityById: Map<String, StoryReadabilityReport> = emptyMap()
+    val storyReadabilityById: Map<String, StoryReadabilityReport> = emptyMap(),
+    val wordStageByHeadword: Map<String, WordStage> = emptyMap()
 ) {
     val conqueredWords: List<ConqueredWordBadge>
         get() = funnel.conqueredWords
@@ -163,7 +164,7 @@ data class LearnerModelSnapshot(
 
 @Serializable
 data class ReadingWordLinkItem(
-    val id: String = "",
+    @SerialName("text_id") val id: String = "",
     val level: String = "B1",
     @SerialName("raw_topic") val rawTopic: String = "",
     @SerialName("macro_topic") val macroTopic: String = "daily_life",
@@ -217,16 +218,17 @@ class LearnerModelRepository(
 
         fun classifyWordStage(progress: WordProgressEntity?): WordStage {
             if (progress == null) return WordStage.NEW
-            if (progress.isMastered || progress.intervalDays >= AdaptiveConfig.STAGE_MATURE_MIN_INTERVAL_DAYS) {
+            if (progress.isMastered && progress.intervalDays >= AdaptiveConfig.STAGE_MATURE_MIN_INTERVAL_DAYS) {
                 return WordStage.MATURE
             }
-            if (progress.intervalDays >= AdaptiveConfig.STAGE_FAMILIAR_MIN_INTERVAL_DAYS) {
-                return WordStage.FAMILIAR
+            if (progress.repetitions >= 1) {
+                return when {
+                    progress.isMastered || progress.intervalDays >= AdaptiveConfig.STAGE_MATURE_MIN_INTERVAL_DAYS -> WordStage.MATURE
+                    progress.intervalDays >= AdaptiveConfig.STAGE_FAMILIAR_MIN_INTERVAL_DAYS -> WordStage.FAMILIAR
+                    else -> WordStage.LEARNING
+                }
             }
-            if (progress.firstLearnedTimestamp > 0L || progress.repetitions > 0 || progress.lastReviewedTimestamp > 0L) {
-                return WordStage.LEARNING
-            }
-            if (progress.lookupCount > 0) {
+            if (progress.lookupCount > 0 || progress.againCount > 0 || progress.lastReviewedTimestamp > 0L || progress.firstLearnedTimestamp > 0L) {
                 return WordStage.SEEN
             }
             return WordStage.NEW
@@ -362,26 +364,19 @@ class LearnerModelRepository(
         val isColdStart = allAttempts.size < AdaptiveConfig.COLD_START_MIN_ATTEMPTS
 
         // 1. Classify word stages across selected decks (and globally for conquered shelf)
-        var seenCount = 0
-        var learningCount = 0
-        var familiarCount = 0
-        var matureCount = 0
-        val conqueredBadges = mutableListOf<ConqueredWordBadge>()
-        val stageByHeadword = HashMap<String, WordStage>(allProgress.size * 2)
+        val scopedProgress = if (selectedDecks.isEmpty()) allProgress else allProgress.filter { it.deck in selectedDecks }
+        val stageByHeadword = HashMap<String, WordStage>(scopedProgress.size * 2)
 
-        for (wp in allProgress) {
+        for (wp in scopedProgress) {
             val stage = classifyWordStage(wp)
             val currentBest = stageByHeadword[wp.text.lowercase()]
             if (currentBest == null || stage.ordinal > currentBest.ordinal) {
                 stageByHeadword[wp.text.lowercase()] = stage
             }
-            when (stage) {
-                WordStage.NEW -> Unit
-                WordStage.SEEN -> seenCount++
-                WordStage.LEARNING -> learningCount++
-                WordStage.FAMILIAR -> familiarCount++
-                WordStage.MATURE -> matureCount++
-            }
+        }
+
+        val conqueredBadges = mutableListOf<ConqueredWordBadge>()
+        for (wp in allProgress) {
             if (isWordConquered(wp)) {
                 conqueredBadges.add(
                     ConqueredWordBadge(
@@ -395,6 +390,11 @@ class LearnerModelRepository(
                 )
             }
         }
+
+        val seenCount = stageByHeadword.values.count { it == WordStage.SEEN }
+        val learningCount = stageByHeadword.values.count { it == WordStage.LEARNING }
+        val familiarCount = stageByHeadword.values.count { it == WordStage.FAMILIAR }
+        val matureCount = stageByHeadword.values.count { it == WordStage.MATURE }
 
         // Enrich conquered badges with Arabic translations from entries if available
         val sortedConquered = conqueredBadges
@@ -528,9 +528,20 @@ class LearnerModelRepository(
             ((completedStoriesAtLevel.toFloat() / storiesAtLevel.size.toFloat()) * 100f).roundToInt().coerceIn(0, 100)
         } else 0
 
-        // Vocab coverage at user level in selected decks (target 120 familiar/mature words per level)
-        val levelTargetWords = 120
-        val familiarOrMatureTotal = familiarCount + matureCount
+        // Vocab coverage at user level in selected decks
+        val levelTargetWords = AdaptiveConfig.getCefrVocabTarget(userLevel)
+        val levelEntries = dao.getRecommendedWordsForLevel(userLevel, limit = 10000)
+        val levelHeadwords = levelEntries
+            .filter { selectedDecks.isEmpty() || it.deck in selectedDecks }
+            .map { it.text.trim().lowercase() }
+            .toSet()
+        val familiarOrMatureTotal = if (levelHeadwords.isNotEmpty()) {
+            stageByHeadword.count { (word, stage) ->
+                word in levelHeadwords && (stage == WordStage.FAMILIAR || stage == WordStage.MATURE)
+            }
+        } else {
+            familiarCount + matureCount
+        }
         val vocabCoveragePct = ((familiarOrMatureTotal.toFloat() / levelTargetWords.toFloat()) * 100f)
             .roundToInt()
             .coerceIn(0, 100)
@@ -601,6 +612,22 @@ class LearnerModelRepository(
         )
 
         // 8. Data-Backed Insight Banner (with Cold-Start & 7-day dismissal cooldown)
+        val quizScoresWithTime = mutableListOf<Pair<Long, Float>>()
+        val allQuizResults = dao.getAllQuizResultsList()
+        for (qr in allQuizResults) {
+            quizScoresWithTime.add(qr.timestamp to qr.accuracyPercent)
+        }
+        for (att in allAttempts) {
+            if (att.activityType in listOf("grammar_quiz", "reading_quiz") && att.score != null) {
+                quizScoresWithTime.add(att.timestamp to att.score)
+            }
+        }
+        val last3QuizScores = quizScoresWithTime
+            .sortedByDescending { it.first }
+            .take(3)
+            .map { it.second }
+        val hasMasteredQuizzesForLevelUp = last3QuizScores.size >= 3 && last3QuizScores.all { it >= 80f }
+
         val activeInsight = selectActiveInsight(
             profile = resolvedProfile,
             isColdStart = isColdStart,
@@ -608,7 +635,10 @@ class LearnerModelRepository(
             conqueredThisWeek = conqueredThisWeek,
             promotedThisWeek = promotedThisWeek,
             personalPaceSeconds = personalPaceSeconds,
-            nowMillis = nowMillis
+            nowMillis = nowMillis,
+            recent7dAttemptsCount = recent7dAttempts.size,
+            rollingAccuracy = rollingAccuracy,
+            hasMasteredQuizzesForLevelUp = hasMasteredQuizzesForLevelUp
         )
 
         LearnerModelSnapshot(
@@ -622,7 +652,8 @@ class LearnerModelRepository(
             totalAttemptsCount = allAttempts.size,
             isColdStart = isColdStart,
             activeInsight = activeInsight,
-            storyReadabilityById = storyReadabilityMap
+            storyReadabilityById = storyReadabilityMap,
+            wordStageByHeadword = stageByHeadword
         )
     }
 
@@ -641,7 +672,10 @@ class LearnerModelRepository(
         conqueredThisWeek: Int,
         promotedThisWeek: Int,
         personalPaceSeconds: Float,
-        nowMillis: Long
+        nowMillis: Long,
+        recent7dAttemptsCount: Int = 0,
+        rollingAccuracy: Int? = null,
+        hasMasteredQuizzesForLevelUp: Boolean = true
     ): AdaptiveInsightBanner? {
         if (isColdStart) {
             return AdaptiveInsightBanner(
@@ -661,14 +695,37 @@ class LearnerModelRepository(
             return (nowMillis - dismissedAt) >= cooldownMillis
         }
 
-        if (cefrReadiness.isReadyForLevelUp && cefrReadiness.nextLevel != null && isEligible("level_up_${cefrReadiness.nextLevel}")) {
+        if (
+            recent7dAttemptsCount >= 15 &&
+            rollingAccuracy != null &&
+            rollingAccuracy < (AdaptiveConfig.STRUGGLE_DOWNSHIFT_ACCURACY * 100f) &&
+            isEligible("struggle_downshift")
+        ) {
+            return AdaptiveInsightBanner(
+                id = "struggle_downshift",
+                titleEn = "Learning Pace Adjustment",
+                titleAr = "تعديل وتيرة التعلم",
+                reasonEn = "Recent 7-day accuracy is $rollingAccuracy% across $recent7dAttemptsCount practice sessions. Consider lowering daily target pace to solidify retention.",
+                badgeText = "Pace Recommendation",
+                messageAr = "دقة الاستذكار في الأيام السبعة الماضية $rollingAccuracy% خلال $recent7dAttemptsCount تدريباً. يُنصح بتخفيف الهدف اليومي لترسيخ الذاكرة.",
+                actionRoute = "plan",
+                actionLabelEn = "Adjust Study Target"
+            )
+        }
+
+        if (
+            cefrReadiness.isReadyForLevelUp &&
+            cefrReadiness.nextLevel != null &&
+            hasMasteredQuizzesForLevelUp &&
+            isEligible("level_up_${cefrReadiness.nextLevel}")
+        ) {
             return AdaptiveInsightBanner(
                 id = "level_up_${cefrReadiness.nextLevel}",
                 titleEn = "Ready for Level ${cefrReadiness.nextLevel}!",
                 titleAr = "أنت مستعد للانتقال إلى المستوى ${cefrReadiness.nextLevel}!",
-                reasonEn = "You reached ${cefrReadiness.overallReadinessPercent}% mastery in ${cefrReadiness.currentLevel} (${cefrReadiness.vocabCoveragePercent}% vocab, ${cefrReadiness.grammarMasteryPercent}% grammar, ${cefrReadiness.readingMasteryPercent}% reading).",
+                reasonEn = "You reached ${cefrReadiness.overallReadinessPercent}% mastery in ${cefrReadiness.currentLevel} (${cefrReadiness.vocabCoveragePercent}% vocab, ${cefrReadiness.grammarMasteryPercent}% grammar, ${cefrReadiness.readingMasteryPercent}% reading) and passed your last 3 mastery quizzes.",
                 badgeText = "${cefrReadiness.overallReadinessPercent}% Ready",
-                messageAr = "حققت ${cefrReadiness.overallReadinessPercent}% إتقاناً في المستوى ${cefrReadiness.currentLevel}.",
+                messageAr = "حققت ${cefrReadiness.overallReadinessPercent}% إتقاناً في المستوى ${cefrReadiness.currentLevel} واجتزت آخر ٣ اختبارات بنجاح.",
                 actionRoute = "level_up",
                 actionLabelEn = "Advance to ${cefrReadiness.nextLevel}",
                 suggestedLevel = cefrReadiness.nextLevel

@@ -150,6 +150,7 @@ object Sm2Algorithm {
             result.intervalDays >= 21 -> nowMillis
             else -> 0L
         }
+        val newIsMastered = if (rating == Sm2Rating.AGAIN) false else progress.isMastered
         return progress.copy(
             repetitions = result.repetitions,
             intervalDays = result.intervalDays,
@@ -158,7 +159,8 @@ object Sm2Algorithm {
             lastReviewedTimestamp = nowMillis,
             againCount = updatedAgainCount,
             firstLearnedTimestamp = firstLearned,
-            conqueredTimestamp = conqueredTime
+            conqueredTimestamp = conqueredTime,
+            isMastered = newIsMastered
         )
     }
 }

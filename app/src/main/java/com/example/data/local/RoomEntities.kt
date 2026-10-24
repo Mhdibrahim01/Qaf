@@ -24,6 +24,7 @@ data class RawJsonEntry(
     val text: String = "",
     val pos: String = "",
     val level: String = "",
+    @SerialName("effective_level") val effectiveLevel: String? = null,
     val ipa: String = "",
     @SerialName("definition_en") val definitionEn: String = "",
     @SerialName("note_en") val noteEn: String = "",

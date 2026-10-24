@@ -597,6 +597,7 @@ fun WordBooksAppShell(
                         currentlyPlayingText = currentlyPlayingWord,
                         explainingSentenceIds = explainingSentenceIds,
                         aiErrorMessage = aiStatus.error,
+                        quietModeEnabled = studyPlanProfile?.quietModeEnabled ?: false,
                         onPlaySentenceAudio = wordBooksViewModel::playAudio,
                         onSpeakSentenceTts = wordBooksViewModel::speakSentenceTts,
                         onToggleSaveSentence = wordBooksViewModel::toggleSaveExampleSentence,
@@ -706,7 +707,8 @@ fun WordBooksAppShell(
                         ttsSpeechRate = ttsSpeechRate,
                         userLevel = userLevel,
                         onScheduleWordForToday = wordBooksViewModel::scheduleLookedUpWordForToday,
-                        storyReadabilityById = learnerModelSnapshot.storyReadabilityById
+                        storyReadabilityById = learnerModelSnapshot.storyReadabilityById,
+                        wordStageMap = learnerModelSnapshot.wordStageByHeadword
                     )
                 }
                 composable<AppRoute.Labs> {
