@@ -1,5 +1,7 @@
 package com.example.ui.components
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -101,5 +103,26 @@ class BiDiTextFormatterTest {
         val pureArabic = "تستخدم الأسماء المعدودة للتعبير عن الأشياء التي يمكن عدها."
         val annotated = buildBiDiPillAnnotatedString(pureArabic)
         assertEquals(pureArabic, annotated.text)
+    }
+
+    @Test
+    fun testInlineEnglishSpansHaveNoBackgroundBox() {
+        val input = "نستخدم 'a' قبل الكلمات ونضيف not بعد is"
+        val normalAnnotated = buildBiDiPillAnnotatedString(input, isMistake = false)
+
+        assertTrue("Normal text has span styles", normalAnnotated.spanStyles.isNotEmpty())
+        for (span in normalAnnotated.spanStyles) {
+            assertEquals("Background must be Color.Unspecified (no tall box)", Color.Unspecified, span.item.background)
+            assertEquals("Normal inline text color must be gold", BiDiGoldInlineText, span.item.color)
+            assertEquals("Font weight must be bold", FontWeight.Bold, span.item.fontWeight)
+        }
+
+        val mistakeAnnotated = buildBiDiPillAnnotatedString(input, isMistake = true)
+        assertTrue("Mistake text has span styles", mistakeAnnotated.spanStyles.isNotEmpty())
+        for (span in mistakeAnnotated.spanStyles) {
+            assertEquals("Background must be Color.Unspecified for mistakes", Color.Unspecified, span.item.background)
+            assertEquals("Mistake inline text color must be red/coral", BiDiRedInlineText, span.item.color)
+            assertEquals("Font weight must be bold", FontWeight.Bold, span.item.fontWeight)
+        }
     }
 }

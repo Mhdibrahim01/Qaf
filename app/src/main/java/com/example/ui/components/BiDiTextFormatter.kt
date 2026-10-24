@@ -142,7 +142,6 @@ fun buildBiDiPillAnnotatedString(
     }
 
     val textColor = if (isMistake) BiDiRedInlineText else BiDiGoldInlineText
-    val bgColor = if (isMistake) BiDiRedInlineBg else BiDiGoldInlineBg
 
     return buildAnnotatedString {
         var lastIndex = 0
@@ -178,7 +177,6 @@ fun buildBiDiPillAnnotatedString(
                     withStyle(
                         SpanStyle(
                             color = textColor,
-                            background = bgColor,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.SansSerif
                         )
@@ -268,6 +266,7 @@ fun BiDiParsedText(
                 ) {
                     Text(
                         text = ex,
+                        modifier = Modifier.fillMaxWidth(),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontFamily = InterFontFamily,
                             textDirection = TextDirection.Ltr,
