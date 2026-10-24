@@ -54,6 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.plan.AdaptiveInsightBanner
@@ -398,83 +399,108 @@ fun WordLifecycleFunnelCard(
                     )
                 }
                 Text(
-                    text = "${funnel.activeStudiedCount} active",
+                    text = "${funnel.activeStudiedCount} active • 🏆 ${funnel.conqueredCount} conquered",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                     color = GoldAccent
                 )
             }
 
-            FlowRow(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                FunnelStageChip(
-                    labelEn = "New",
-                    labelAr = "جديدة",
-                    count = funnel.newCount,
-                    color = TextMuted,
-                    testTag = "funnel_stage_new",
-                    onClick = {
-                        highlightedStageKey = "new"
-                        showInfoSheet = true
-                    }
-                )
-                FunnelStageChip(
-                    labelEn = "Seen",
-                    labelAr = "مقروءة",
-                    count = funnel.seenCount,
-                    color = SkyAccent,
-                    testTag = "funnel_stage_seen",
-                    onClick = {
-                        highlightedStageKey = "seen"
-                        showInfoSheet = true
-                    }
-                )
-                FunnelStageChip(
-                    labelEn = "Learning",
-                    labelAr = "قيد التعلم",
-                    count = funnel.learningCount,
-                    color = CoralAccent,
-                    testTag = "funnel_stage_learning",
-                    onClick = {
-                        highlightedStageKey = "learning"
-                        showInfoSheet = true
-                    }
-                )
-                FunnelStageChip(
-                    labelEn = "Familiar",
-                    labelAr = "مألوفة",
-                    count = funnel.familiarCount,
-                    color = GoldAccent,
-                    testTag = "funnel_stage_familiar",
-                    onClick = {
-                        highlightedStageKey = "familiar"
-                        showInfoSheet = true
-                    }
-                )
-                FunnelStageChip(
-                    labelEn = "Mature",
-                    labelAr = "متقنة",
-                    count = funnel.matureCount,
-                    color = EmeraldAccent,
-                    testTag = "funnel_stage_mature",
-                    onClick = {
-                        highlightedStageKey = "mature"
-                        showInfoSheet = true
-                    }
-                )
-                FunnelStageChip(
-                    labelEn = "Conquered",
-                    labelAr = "تم التغلب عليها",
-                    count = funnel.conqueredCount,
-                    color = VioletAccent,
-                    testTag = "funnel_stage_conquered",
-                    onClick = {
-                        highlightedStageKey = "conquered"
-                        showInfoSheet = true
-                    }
-                )
+                // Row 1: New & Seen
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FunnelStageChip(
+                        labelEn = "New",
+                        labelAr = "جديدة",
+                        count = funnel.newCount,
+                        color = TextMuted,
+                        testTag = "funnel_stage_new",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            highlightedStageKey = "new"
+                            showInfoSheet = true
+                        }
+                    )
+                    FunnelStageChip(
+                        labelEn = "Seen",
+                        labelAr = "مقروءة",
+                        count = funnel.seenCount,
+                        color = SkyAccent,
+                        testTag = "funnel_stage_seen",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            highlightedStageKey = "seen"
+                            showInfoSheet = true
+                        }
+                    )
+                }
+
+                // Row 2: Learning & Familiar
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FunnelStageChip(
+                        labelEn = "Learning",
+                        labelAr = "قيد التعلم",
+                        count = funnel.learningCount,
+                        color = CoralAccent,
+                        testTag = "funnel_stage_learning",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            highlightedStageKey = "learning"
+                            showInfoSheet = true
+                        }
+                    )
+                    FunnelStageChip(
+                        labelEn = "Familiar",
+                        labelAr = "مألوفة",
+                        count = funnel.familiarCount,
+                        color = GoldAccent,
+                        testTag = "funnel_stage_familiar",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            highlightedStageKey = "familiar"
+                            showInfoSheet = true
+                        }
+                    )
+                }
+
+                // Row 3: Mature & Conquered
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FunnelStageChip(
+                        labelEn = "Mature",
+                        labelAr = "متقنة",
+                        count = funnel.matureCount,
+                        color = EmeraldAccent,
+                        testTag = "funnel_stage_mature",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            highlightedStageKey = "mature"
+                            showInfoSheet = true
+                        }
+                    )
+                    FunnelStageChip(
+                        labelEn = "Conquered",
+                        labelAr = "",
+                        count = funnel.conqueredCount,
+                        color = VioletAccent,
+                        testTag = "funnel_stage_conquered",
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            highlightedStageKey = "conquered"
+                            showInfoSheet = true
+                        }
+                    )
+                }
             }
         }
     }
@@ -709,13 +735,14 @@ private fun FunnelStageChip(
     count: Int,
     color: Color,
     testTag: String,
+    modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
     Surface(
         color = SurfaceElevatedDark,
         shape = RoundedCornerShape(10.dp),
-        border = BorderStroke(1.dp, color.copy(alpha = 0.45f)),
-        modifier = Modifier
+        border = BorderStroke(1.dp, color.copy(alpha = 0.35f)),
+        modifier = modifier
             .clip(RoundedCornerShape(10.dp))
             .then(
                 if (onClick != null) {
@@ -727,24 +754,34 @@ private fun FunnelStageChip(
             .testTag(testTag)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Box(
-                modifier = Modifier
-                    .size(7.dp)
-                    .clip(CircleShape)
-                    .background(color)
-            )
-            Text(
-                text = "$labelEn ($labelAr):",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.weight(1f, fill = false)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(color)
+                )
+                Text(
+                    text = if (labelAr.isNotBlank()) "$labelEn ($labelAr)" else labelEn,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                    color = TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
             Text(
                 text = "$count",
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 12.sp),
                 color = color
             )
         }
