@@ -1,47 +1,41 @@
-*.iml
-.gradle
-.kotlin
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
-.env
-debug.keystore
-debug.keystore.base64
+# Built application packages and bundles
+*.apk
+*.aab
 
+# Gradle and Android build outputs
+.gradle/
+build/
+app/build/
+captures/
+.externalNativeBuild/
+.cxx/
+.kotlin/
+
+# IDE, OS, and editor files
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Signing keystores, certificates, and credentials
 *.jks
 *.keystore
+debug.keystore
+debug.keystore.base64
 my-upload-key.jks
 
-# Python & IDE scratch files
-__pycache__/
-*.py[cod]
-.vscode/
-data_import_backup/
-public/
-
-.idea/
-.aistudio/
-*.apk
-
-.gradle/
-build/
-app/build/
+# Environment and local machine properties
 local.properties
-
-.gradle/
-build/
-app/build/
-local.properties
+.env
 
 # Prebuilt native AARs downloaded at build/configuration time
 app/libs/*.aar
+
+# AI Studio and scratch artifacts
+.aistudio/
+__pycache__/
+*.py[cod]
+scratch/
+data_import_backup/
+public/
