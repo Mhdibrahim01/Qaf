@@ -896,7 +896,7 @@ fun ReadingTextCard(
         "ai" -> "AI Generated"
         "user" -> "My Text"
         "file" -> "Imported"
-        else -> "Curated"
+        else -> null
     }
 
     val isDone = progress?.isCompleted == true
@@ -918,7 +918,7 @@ fun ReadingTextCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(horizontal = 16.dp, vertical = 16.dp)
         ) {
             // Badges row
             Row(
@@ -927,6 +927,9 @@ fun ReadingTextCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .padding(end = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -940,12 +943,15 @@ fun ReadingTextCard(
                             color = Color(0xFFE5C158),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
 
                     if (text.topic.isNotBlank()) {
                         Surface(
+                            modifier = Modifier.weight(1f, fill = false),
                             color = Color(0xFF22242E),
                             shape = RoundedCornerShape(6.dp)
                         ) {
@@ -953,25 +959,36 @@ fun ReadingTextCard(
                                 text = text.topic.replaceFirstChar { it.uppercase() },
                                 color = Color(0xFFD1D5DB),
                                 style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }
                     }
 
-                    Surface(
-                        color = Color(0xFF1E2029),
-                        border = BorderStroke(1.dp, Color(0xFF2B2E3B)),
-                        shape = RoundedCornerShape(6.dp)
-                    ) {
-                        Text(
-                            text = sourceBadgeText,
-                            color = Color(0xFF9CA3AF),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
-                        )
+                    if (sourceBadgeText != null) {
+                        Surface(
+                            color = Color(0xFF1E2029),
+                            border = BorderStroke(1.dp, Color(0xFF2B2E3B)),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = sourceBadgeText,
+                                color = Color(0xFF9CA3AF),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                            )
+                        }
                     }
+                }
 
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     if (readabilityReport != null) {
                         Surface(
                             color = EmeraldAccentBg,
@@ -984,34 +1001,38 @@ fun ReadingTextCard(
                                 color = EmeraldAccent,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                softWrap = false,
                                 modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                             )
                         }
                     }
-                }
 
-                if (isDone) {
-                    Surface(
-                        color = Color(0xFF34D399).copy(alpha = 0.14f),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    if (isDone) {
+                        Surface(
+                            color = Color(0xFF34D399).copy(alpha = 0.14f),
+                            shape = RoundedCornerShape(8.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = "Completed",
-                                tint = Color(0xFF34D399),
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = "${progress.bestScore ?: 0}/$questionsCount",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF34D399)
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = "Completed",
+                                    tint = Color(0xFF34D399),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = "${progress.bestScore ?: 0}/$questionsCount",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF34D399),
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
                         }
                     }
                 }
@@ -4183,7 +4204,6 @@ fun ReadingRecommendedCard(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val totalWords = remember(text.sentencesJson) {
@@ -4198,16 +4218,26 @@ fun ReadingRecommendedCard(
                 Text(
                     text = "~$durationMin min • $totalWords words",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF9CA3AF)
+                    color = Color(0xFF9CA3AF),
+                    maxLines = 1,
+                    softWrap = false
                 )
 
                 if (text.topic.isNotBlank()) {
                     Text(
-                        text = text.topic,
+                        text = " • ",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF6B7280),
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                    Text(
+                        text = text.topic.replaceFirstChar { it.uppercase() },
                         style = MaterialTheme.typography.labelSmall.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
                         color = Color(0xFF6B7280),
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
