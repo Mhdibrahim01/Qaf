@@ -1279,12 +1279,23 @@ private fun PagedDeckWordListScreen(
                             }
                         }
 
-                        val hasActiveFilters = filterState.searchQuery.isNotBlank() ||
+                        val hasNonSortFilters = filterState.searchQuery.isNotBlank() ||
                             (filterState.levelFilter.isNotBlank() && !filterState.levelFilter.equals("All", ignoreCase = true)) ||
                             filterState.posFilter.isNotBlank() ||
                             filterState.onlyFavorites ||
                             filterState.onlyMastered ||
                             filterState.onlyLearning
+
+                        val isMixedOrder = filterState.sortOrder == WordSortOrder.MIXED
+                        val hasActiveFilters = hasNonSortFilters || isMixedOrder || filterState.sortOrder != WordSortOrder.AZ
+
+                        val studyButtonText = when {
+                            hasNonSortFilters && isMixedOrder -> "Study mixed"
+                            hasNonSortFilters -> "Study filtered"
+                            isMixedOrder -> "Study mixed"
+                            filterState.sortOrder != WordSortOrder.AZ -> "Study sorted"
+                            else -> "Study cards"
+                        }
 
                         Button(
                             onClick = {
@@ -1303,7 +1314,7 @@ private fun PagedDeckWordListScreen(
                             modifier = Modifier.testTag("study_cards_header_btn")
                         ) {
                             Text(
-                                text = if (hasActiveFilters) "Study filtered" else "Study cards",
+                                text = studyButtonText,
                                 style = MaterialTheme.typography.labelLarge.copy(
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp

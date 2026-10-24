@@ -2,6 +2,7 @@ package com.example.ui.viewmodel
 
 import android.app.Application
 import android.net.Uri
+import java.util.Locale
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -376,6 +377,8 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _isCurrentCardFlipped = MutableStateFlow(false)
     val isCurrentCardFlipped: StateFlow<Boolean> = _isCurrentCardFlipped.asStateFlow()
+
+    private var cardDisplayStartTimeMillis: Long = System.currentTimeMillis()
 
     private val _flashcardDirection = MutableStateFlow(repository.getFlashcardDirection())
     val flashcardDirection: StateFlow<FlashcardDirection> = _flashcardDirection.asStateFlow()
@@ -1077,9 +1080,12 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
 
                     matchesLevel && matchesPos && matchesStatus && matchesQuery
                 }
-                _flashcardCards.value = if (filteredCards.isNotEmpty()) filteredCards else allCards
+                val rawList = if (filteredCards.isNotEmpty()) filteredCards else allCards
+                val sortedCards = if (deckId == DataImportRepository.DUE_TODAY_DECK_ID) rawList else sortGroupedCards(rawList, filterState.sortOrder)
+                _flashcardCards.value = sortedCards
                 _flashcardIndex.value = 0
                 _isCurrentCardFlipped.value = false
+                cardDisplayStartTimeMillis = System.currentTimeMillis()
             } finally {
                 _isFlashcardsLoading.value = false
             }
@@ -1154,10 +1160,20 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                     deckId = deckId,
                     selectedDecks = selectedDecks
                 )
-                _flashcardCards.value = cards
-                val restoredIndex = if (cards.isEmpty()) 0 else studyState.lastCardIndex.coerceIn(0, cards.size - 1)
+                val currentSortOrder = _filterState.value.sortOrder
+                val sortedCards = if (deckId == DataImportRepository.DUE_TODAY_DECK_ID) cards else sortGroupedCards(cards, currentSortOrder)
+                _flashcardCards.value = sortedCards
+                val restoredIndex = if (sortedCards.isEmpty()) {
+                    0
+                } else {
+                    val matchingIndex = sortedCards.indexOfFirst {
+                        it.text.equals(studyState.lastWordText, ignoreCase = true)
+                    }
+                    if (matchingIndex >= 0) matchingIndex else studyState.lastCardIndex.coerceIn(0, sortedCards.size - 1)
+                }
                 _flashcardIndex.value = restoredIndex
                 _isCurrentCardFlipped.value = false
+                cardDisplayStartTimeMillis = System.currentTimeMillis()
                 val nowMillis = System.currentTimeMillis()
                 _waitingLaterTodayCount.value = repository.getLaterTodayCardsCount(
                     nowMillis = nowMillis,
@@ -1180,6 +1196,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         if (_flashcardIndex.value == clamped) return
         _flashcardIndex.value = clamped
         _isCurrentCardFlipped.value = false
+        cardDisplayStartTimeMillis = System.currentTimeMillis()
         val currentCard = cards[clamped]
         val deckId = _flashcardDeckId.value
         viewModelScope.launch {
@@ -1301,6 +1318,9 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         }
         val nextWordText = remainingCards.getOrNull(nextIndex)?.text ?: currentCard.text
 
+        val elapsedMs = (nowMillis - cardDisplayStartTimeMillis).coerceIn(100L, 300_000L)
+        cardDisplayStartTimeMillis = nowMillis
+
         _isCurrentCardFlipped.value = false
         _flashcardIndex.value = nextIndex
         viewModelScope.launch {
@@ -1308,7 +1328,8 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 deckId = currentCard.deck,
                 wordText = currentCard.text,
                 rating = rating,
-                nowMillis = nowMillis
+                nowMillis = nowMillis,
+                elapsedMs = elapsedMs
             )
             if (rating == Sm2Rating.EASY) {
                 refreshDetailedCardIfOpen(currentCard.deck, currentCard.text)
@@ -1896,7 +1917,8 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         completed: Int,
         total: Int,
         score: Int,
-        isDone: Boolean
+        isDone: Boolean,
+        elapsedMs: Long? = null
     ) {
         viewModelScope.launch {
             grammarRepository.saveLessonProgress(
@@ -1904,7 +1926,8 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 completedExercises = completed,
                 totalExercises = total,
                 score = score,
-                isCompleted = isDone
+                isCompleted = isDone,
+                elapsedMs = elapsedMs
             )
             refreshDailyChecklist()
         }
@@ -1980,7 +2003,8 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         completed: Int,
         total: Int,
         score: Int,
-        isDone: Boolean
+        isDone: Boolean,
+        elapsedMs: Long? = null
     ) {
         viewModelScope.launch {
             readingRepository.saveReadingProgress(
@@ -1988,7 +2012,8 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 completedQuestions = completed,
                 totalQuestions = total,
                 score = score,
-                isCompleted = isDone
+                isCompleted = isDone,
+                elapsedMs = elapsedMs
             )
             refreshDailyChecklist()
         }
@@ -2461,11 +2486,13 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun recordSentencePracticeAttempt(sentenceIdOrText: String, scorePercent: Int) {
+    fun recordSentencePracticeAttempt(sentenceIdOrText: String, scorePercent: Int, elapsedMs: Long? = null) {
         viewModelScope.launch {
             repository.recordSentencePracticeAttempt(
                 sentenceIdOrText = sentenceIdOrText,
-                scorePercent = scorePercent
+                scorePercent = scorePercent,
+                nowMillis = System.currentTimeMillis(),
+                elapsedMs = elapsedMs
             )
             refreshDailyChecklist()
         }
@@ -2736,7 +2763,38 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         super.onCleared()
         audioPlayer.release()
     }
+
+    companion object {
+        /**
+         * Sorts a list of [GroupedWordCard] according to [WordSortOrder].
+         * For [WordSortOrder.MIXED], uses Knuth's multiplicative 32-bit golden-ratio hash
+         * to produce an identical deterministic distribution across initial letters as Room SQLite.
+         */
+        internal fun sortGroupedCards(cards: List<GroupedWordCard>, sortOrder: WordSortOrder): List<GroupedWordCard> {
+            if (cards.size <= 1) return cards
+            return when (sortOrder) {
+                WordSortOrder.AZ -> cards.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.text })
+                WordSortOrder.ZA -> cards.sortedWith(compareByDescending(String.CASE_INSENSITIVE_ORDER) { it.text })
+                WordSortOrder.LEVEL -> {
+                    val levelRank = mapOf("A1" to 1, "A2" to 2, "B1" to 3, "B2" to 4, "C1" to 5)
+                    cards.sortedWith(
+                        compareBy<GroupedWordCard> { levelRank[it.primaryLevel.uppercase(Locale.ROOT)] ?: 99 }
+                            .thenBy(String.CASE_INSENSITIVE_ORDER) { it.text }
+                    )
+                }
+                WordSortOrder.MIXED -> {
+                    cards.sortedBy { card ->
+                        val entryIdLong = card.posVariants.firstOrNull()?.entryId?.toLongOrNull()
+                        val seed = entryIdLong ?: (card.cardKey.hashCode().toLong() and 0x7FFFFFFFL)
+                        (seed * 2654435761L) and 0x7FFFFFFFL
+                    }
+                }
+            }
+        }
+    }
+
 }
+
 
 data class ActiveQuizSession(
     val title: String,

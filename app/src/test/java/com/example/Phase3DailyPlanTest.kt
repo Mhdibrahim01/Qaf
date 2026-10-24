@@ -235,7 +235,7 @@ class Phase3DailyPlanTest {
 
     @Test
     fun testSentencePracticeRotationForA1AndA2Levels() = runBlocking {
-        // A2 user: reading texts start at B1, so planner schedules sentence practice
+        // A2 user: when A2 reading texts are imported in assets, planner schedules reading task for A2
         val profileA2 = StudyPlanProfileEntity(
             id = 1,
             level = "A2",
@@ -253,8 +253,18 @@ class Phase3DailyPlanTest {
         val checklist = planRepo.getOrCreateDailyChecklist("2026-11-02")
         val tasks = json.decodeFromString<List<DailyTaskItem>>(checklist.tasksJson)
 
-        val sentenceTask = tasks.firstOrNull { it.type == "sentences" }
-        assertNotNull("Sentence practice task must be scheduled for A2 user", sentenceTask)
+        val readingTask = tasks.firstOrNull { it.type == "reading" }
+        assertNotNull("Reading task matched to A2 level must be scheduled when A2 texts exist", readingTask)
+        assertTrue("Reading task should link to reading story", readingTask?.id?.startsWith("task_reading_") == true)
+
+        // When reading texts are absent/exhausted for the level, planner falls back to sentence production practice
+        db.wordBooksDao().deleteAllReadingTexts()
+        val planRepoFallback = StudyPlanRepository(context, db.wordBooksDao(), timeProvider)
+        val checklistFallback = planRepoFallback.getOrCreateDailyChecklist("2026-11-03")
+        val tasksFallback = json.decodeFromString<List<DailyTaskItem>>(checklistFallback.tasksJson)
+
+        val sentenceTask = tasksFallback.firstOrNull { it.type == "sentences" }
+        assertNotNull("Sentence practice task must be scheduled when no reading texts exist for level", sentenceTask)
         assertEquals("task_sentence_practice", sentenceTask?.id)
         assertEquals(3, sentenceTask?.targetCount)
         assertEquals("Sentence production practice matched to level A2 (~3 min)", sentenceTask?.reason)

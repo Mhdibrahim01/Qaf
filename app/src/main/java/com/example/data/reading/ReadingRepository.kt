@@ -290,7 +290,8 @@ class ReadingRepository(
         totalQuestions: Int,
         score: Int,
         isCompleted: Boolean,
-        nowMillis: Long = System.currentTimeMillis()
+        nowMillis: Long = System.currentTimeMillis(),
+        elapsedMs: Long? = null
     ) = withContext(Dispatchers.IO) {
         val existing = dao.getReadingProgress(textId)
         val bestScore = maxOf(existing?.bestScore ?: 0, score)
@@ -310,7 +311,8 @@ class ReadingRepository(
             sm2Rating = null,
             isCorrect = score >= 60,
             score = score.toFloat(),
-            deck = null
+            deck = null,
+            elapsedMs = elapsedMs
         )
         dao.upsertReadingProgressWithAttempt(progress, attempt)
     }

@@ -19,6 +19,9 @@ import com.example.data.ai.AiWordDetailJson
 import com.example.data.ai.TranslationEngineMode
 import com.example.data.audio.AudioPlayerManager
 import com.example.data.local.GroupedWordCard
+import com.example.data.importer.PosSenseVariant
+import com.example.data.importer.WordSortOrder
+import com.example.ui.viewmodel.WordBooksViewModel
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.onboarding.OnboardingPreferencesRepository
 import com.example.ui.components.SlowAudioTurtleButton
@@ -446,5 +449,84 @@ class SettingsAndDeveloperModeTest {
         // 4. Click Slow Turtle while GB is selected -> triggers slow playback with isGb = true
         composeTestRule.onNodeWithTag("pronounce_slow_button").performScrollTo().performClick()
         assertEquals(true, lastPlayedSlowIsGb)
+    }
+
+    @Test
+    fun flashcardSorting_routesMixOrderAndDispersesWordsProperly() {
+        fun makeCard(id: String, text: String, level: String): GroupedWordCard {
+            return GroupedWordCard(
+                cardKey = "test::$text",
+                deck = "oxford5000",
+                text = text,
+                primaryLevel = level,
+                primaryType = "word",
+                ipa = "",
+                syllables = "",
+                posVariants = listOf(
+                    PosSenseVariant(
+                        entryId = id,
+                        pos = "noun",
+                        level = level,
+                        type = "word",
+                        arabicMeaning = "معنى",
+                        definitionEn = "definition",
+                        noteEn = "",
+                        examplesEn = emptyList(),
+                        examplesAr = emptyList(),
+                        definitionUrl = "",
+                        audioUrl = ""
+                    )
+                ),
+                isFavorite = false,
+                isMastered = false
+            )
+        }
+
+        // Create cards starting with A, B, C, D, E, F
+        val card1 = makeCard("1", "apple", "A1")
+        val card2 = makeCard("2", "banana", "A2")
+        val card3 = makeCard("3", "cat", "B1")
+        val card4 = makeCard("4", "dog", "B2")
+        val card5 = makeCard("5", "elephant", "C1")
+        val card6 = makeCard("6", "fish", "A1")
+        val card7 = makeCard("7", "grape", "A2")
+        val card8 = makeCard("8", "house", "B1")
+        val card9 = makeCard("9", "island", "B2")
+        val card10 = makeCard("10", "jacket", "C1")
+
+        val originalCards = listOf(card1, card2, card3, card4, card5, card6, card7, card8, card9, card10)
+
+        // 1. A-Z Sort
+        val azSorted = WordBooksViewModel.sortGroupedCards(originalCards, WordSortOrder.AZ)
+        assertEquals("apple", azSorted.first().text)
+        assertEquals("jacket", azSorted.last().text)
+
+        // 2. Z-A Sort
+        val zaSorted = WordBooksViewModel.sortGroupedCards(originalCards, WordSortOrder.ZA)
+        assertEquals("jacket", zaSorted.first().text)
+        assertEquals("apple", zaSorted.last().text)
+
+        // 3. Level Sort (A1 -> A2 -> B1 -> B2 -> C1)
+        val levelSorted = WordBooksViewModel.sortGroupedCards(originalCards, WordSortOrder.LEVEL)
+        assertEquals("A1", levelSorted[0].primaryLevel)
+        assertEquals("A1", levelSorted[1].primaryLevel)
+        assertEquals("C1", levelSorted.last().primaryLevel)
+
+        // 4. MIXED Sort (Knuth Multiplicative Golden-Ratio Hash)
+        val mixedSorted = WordBooksViewModel.sortGroupedCards(originalCards, WordSortOrder.MIXED)
+        // Verify it is NOT identical to the raw A-Z list
+        val mixedTexts = mixedSorted.map { it.text }
+        val azTexts = azSorted.map { it.text }
+        assertTrue("Mixed cards must not be in identical A-Z order", mixedTexts != azTexts)
+
+        // Verify deterministic reproduction
+        val mixedSecondRun = WordBooksViewModel.sortGroupedCards(originalCards, WordSortOrder.MIXED)
+        assertEquals(mixedTexts, mixedSecondRun.map { it.text })
+
+        // Check that initial element is dispersed based on hash:
+        // Entry 1: (1 * 2654435761) & 0x7FFFFFFF = 507000889
+        // Entry 5: (5 * 2654435761) & 0x7FFFFFFF = 387520747 (lower hash -> comes first!)
+        // Entry 9 ("island"): (9 * 2654435761) & 0x7FFFFFFF = 264024825 (lowest hash -> comes first!)
+        assertEquals("island", mixedSorted.first().text)
     }
 }

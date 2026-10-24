@@ -152,7 +152,7 @@ fun GrammarScreen(
     onOpenReadingText: (ReadingTextEntity) -> Unit = {},
     onNavigateToNotebook: () -> Unit = {},
     onSpeakTts: (String) -> Unit,
-    onSaveProgress: (lessonId: String, completed: Int, total: Int, score: Int, isDone: Boolean) -> Unit,
+    onSaveProgress: (lessonId: String, completed: Int, total: Int, score: Int, isDone: Boolean, elapsedMs: Long?) -> Unit,
     onAskAi: suspend (lesson: GrammarLessonEntity, question: String) -> Result<String>,
     onExplainMistake: suspend (lessonId: String, title: String, prompt: String, wrong: String, correct: String) -> Result<String>,
     onCheckSentence: suspend (lesson: GrammarLessonEntity, sentence: String) -> Result<GrammarSentenceCheckResult>,
@@ -911,7 +911,7 @@ fun GrammarLessonDetailScreen(
     onBack: () -> Unit,
     onSpeakTts: (String) -> Unit,
     onOpenReadingText: (ReadingTextEntity) -> Unit = {},
-    onSaveProgress: (lessonId: String, completed: Int, total: Int, score: Int, isDone: Boolean) -> Unit,
+    onSaveProgress: (lessonId: String, completed: Int, total: Int, score: Int, isDone: Boolean, elapsedMs: Long?) -> Unit,
     onAskAi: suspend (lesson: GrammarLessonEntity, question: String) -> Result<String>,
     onExplainMistake: suspend (lessonId: String, title: String, prompt: String, wrong: String, correct: String) -> Result<String>,
     onCheckSentence: suspend (lesson: GrammarLessonEntity, sentence: String) -> Result<GrammarSentenceCheckResult>,
@@ -919,6 +919,8 @@ fun GrammarLessonDetailScreen(
     modifier: Modifier = Modifier
 ) {
     BackHandler(onBack = onBack)
+
+    val quizStartTimeMillis = remember(lesson.id) { System.currentTimeMillis() }
 
     val jsonHelper = remember {
         Json {
@@ -1456,7 +1458,8 @@ fun GrammarLessonDetailScreen(
                                                 val score = exercises.indices.count { i ->
                                                     isGrammarAnswerCorrect(userAnswers[i].orEmpty(), exercises[i].answer)
                                                 }
-                                                onSaveProgress(lesson.id, exercises.size, exercises.size, score, true)
+                                                val elapsedMs = System.currentTimeMillis() - quizStartTimeMillis
+                                                onSaveProgress(lesson.id, exercises.size, exercises.size, score, true, elapsedMs)
                                             }
                                         },
                                         mistakeExplanation = mistakeExplanations[safeQuestionIndex],
@@ -1513,7 +1516,8 @@ fun GrammarLessonDetailScreen(
                                                         val score = exercises.indices.count { i ->
                                                             isGrammarAnswerCorrect(userAnswers[i].orEmpty(), exercises[i].answer)
                                                         }
-                                                        onSaveProgress(lesson.id, exercises.size, exercises.size, score, true)
+                                                        val elapsedMs = System.currentTimeMillis() - quizStartTimeMillis
+                                                        onSaveProgress(lesson.id, exercises.size, exercises.size, score, true, elapsedMs)
                                                     }
                                                 },
                                                 enabled = userAnswers[safeQuestionIndex].orEmpty().isNotBlank(),

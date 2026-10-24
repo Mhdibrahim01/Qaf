@@ -358,7 +358,8 @@ class GrammarRepository(
         totalExercises: Int,
         score: Int,
         isCompleted: Boolean,
-        nowMillis: Long = System.currentTimeMillis()
+        nowMillis: Long = System.currentTimeMillis(),
+        elapsedMs: Long? = null
     ) = withContext(Dispatchers.IO) {
         val existing = dao.getGrammarProgress(lessonId)
         val bestScore = maxOf(existing?.bestScore ?: 0, score)
@@ -378,7 +379,8 @@ class GrammarRepository(
             sm2Rating = null,
             isCorrect = score >= 60,
             score = score.toFloat(),
-            deck = null
+            deck = null,
+            elapsedMs = elapsedMs
         )
         dao.upsertGrammarProgressWithAttempt(progress, attempt)
     }

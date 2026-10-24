@@ -302,7 +302,7 @@ class DataImportRepository(
         const val BATCH_SIZE = 500
         const val CORE_EXPECTED_ROWS = 9862
         const val TOTAL_EXPECTED_ROWS = 21624
-        const val DATA_VERSION = 4
+        const val DATA_VERSION = 7
         const val SAVED_WORDS_DECK_ID = "saved_words"
         const val DUE_TODAY_DECK_ID = "due_today"
         const val DAY_MILLIS = 24L * 60L * 60L * 1000L
@@ -581,37 +581,41 @@ class DataImportRepository(
         }
 
         // Closed-loop Leech & Conquered integration with Correction Notebook
-        if (rating == Sm2Rating.AGAIN && updated.againCount >= 3) {
-            val allNotebook = dao.getAllCorrectionEntriesList()
-            val existingLeech = allNotebook.firstOrNull {
-                it.textId == cardKey && it.status != "mastered"
-            }
-            if (existingLeech == null) {
-                val entryRow = resolvedEntryId?.let { dao.getEntryById(it) }
-                val arabicMeaning = entryRow?.arabic?.takeIf { it.isNotBlank() } ?: ""
-                val exampleEn = entryRow?.examplesEn?.lines()?.firstOrNull { it.isNotBlank() }
-                    ?: "Use '${wordText.trim()}' in a complete sentence."
-                dao.upsertCorrectionEntry(
-                    com.example.data.local.CorrectionNotebookEntity(
-                        textId = cardKey,
-                        grammarLessonId = "leech_vocab",
-                        grammarLessonTitle = "Difficult Word (Leech): ${wordText.trim()}",
-                        originalSentence = wordText.trim(),
-                        correctedSentence = exampleEn,
-                        explanationAr = if (arabicMeaning.isNotBlank()) {
-                            "كلمة متعثرة (${updated.againCount} مرات): $arabicMeaning — تدرّب عليها في جملة لتثبيتها."
-                        } else {
-                            "كلمة متعثرة (${updated.againCount} مرات) — تدرّب عليها في جملة لتثبيتها."
-                        },
-                        status = "checked",
-                        reviewStep = 0,
-                        nextReviewTimestamp = nowMillis,
-                        situationPrompt = "Write or complete a sentence using '${wordText.trim()}'",
-                        attemptsCount = updated.againCount,
-                        createdAt = nowMillis,
-                        updatedAt = nowMillis
+        if (rating == Sm2Rating.AGAIN) {
+            val cutoff = nowMillis - com.example.data.plan.AdaptiveConfig.LEECH_WINDOW_DAYS * 86_400_000L
+            val recentLapses = dao.getRecentAttemptLapsesCount(cardKey, cutoff)
+            if (recentLapses >= com.example.data.plan.AdaptiveConfig.LEECH_LAPSE_THRESHOLD) {
+                val allNotebook = dao.getAllCorrectionEntriesList()
+                val existingLeech = allNotebook.firstOrNull {
+                    it.textId == cardKey && it.status != "mastered"
+                }
+                if (existingLeech == null) {
+                    val entryRow = resolvedEntryId?.let { dao.getEntryById(it) }
+                    val arabicMeaning = entryRow?.arabic?.takeIf { it.isNotBlank() } ?: ""
+                    val exampleEn = entryRow?.examplesEn?.lines()?.firstOrNull { it.isNotBlank() }
+                        ?: "Use '${wordText.trim()}' in a complete sentence."
+                    dao.upsertCorrectionEntry(
+                        com.example.data.local.CorrectionNotebookEntity(
+                            textId = cardKey,
+                            grammarLessonId = "",
+                            grammarLessonTitle = "Vocabulary Priority (Leech): ${wordText.trim()}",
+                            originalSentence = wordText.trim(),
+                            correctedSentence = exampleEn,
+                            explanationAr = if (arabicMeaning.isNotBlank()) {
+                                "كلمة متعثرة ($recentLapses مرات خلال 14 يوماً): $arabicMeaning — تدرّب عليها في جملة لتثبيتها."
+                            } else {
+                                "كلمة متعثرة ($recentLapses مرات خلال 14 يوماً) — تدرّب عليها في جملة لتثبيتها."
+                            },
+                            status = "checked",
+                            reviewStep = 0,
+                            nextReviewTimestamp = nowMillis,
+                            situationPrompt = "Write or complete a sentence using '${wordText.trim()}'",
+                            attemptsCount = recentLapses,
+                            createdAt = nowMillis,
+                            updatedAt = nowMillis
+                        )
                     )
-                )
+                }
             }
         } else if (updated.conqueredTimestamp > 0L) {
             val allNotebook = dao.getAllCorrectionEntriesList()
@@ -957,7 +961,8 @@ class DataImportRepository(
     suspend fun recordSentencePracticeAttempt(
         sentenceIdOrText: String,
         scorePercent: Int,
-        nowMillis: Long = System.currentTimeMillis()
+        nowMillis: Long = System.currentTimeMillis(),
+        elapsedMs: Long? = null
     ): AttemptEntity = withContext(Dispatchers.IO) {
         val cleanScore = scorePercent.coerceIn(0, 100)
         val attempt = AttemptEntity(
@@ -967,7 +972,8 @@ class DataImportRepository(
             sm2Rating = null,
             isCorrect = cleanScore >= 70,
             score = cleanScore.toFloat(),
-            deck = null
+            deck = null,
+            elapsedMs = elapsedMs
         )
         val id = dao.insertAttempt(attempt)
         attempt.copy(id = id)
@@ -1498,11 +1504,12 @@ class DataImportRepository(
         }
 
         val oxLevel = oxfordHeadwordLevels[textTrimmed.lowercase(java.util.Locale.US)]
-        val effectiveLevel = EntryEntity.computeInitialEffectiveLevel(
-            deck = normalizedDeck,
-            level = raw.level,
-            oxfordHeadwordLevel = oxLevel
-        )
+        val effectiveLevel = raw.effectiveLevel?.trim()?.uppercase()?.takeIf { it in EntryEntity.VALID_CEFR_LEVELS }
+            ?: EntryEntity.computeInitialEffectiveLevel(
+                deck = normalizedDeck,
+                level = raw.level,
+                oxfordHeadwordLevel = oxLevel
+            )
 
         return EntryEntity(
             id = idTrimmed,

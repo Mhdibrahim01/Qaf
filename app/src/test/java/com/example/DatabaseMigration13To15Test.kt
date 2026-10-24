@@ -48,20 +48,11 @@ class DatabaseMigration13To15Test {
     @Test
     fun migrationToV15PreservesAllUserDataBackfillsFirstLearnedTimestampOnlyForRatedCardsAndCreatesEmptyAttemptsTable(): Unit = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val dbName = "test_migration_to_15.db"
-        context.deleteDatabase(dbName)
-
-        // Create a v12 database and migrate 12 -> 13 -> 14 -> 15 with pre-populated data
-        val baseRoomDb = Room.databaseBuilder(context, WordBooksDatabase::class.java, dbName)
-            .allowMainThreadQueries()
-            .build()
-        // Close immediately and downgrade user_version to 13 while removing v14/v15 columns/tables to test real SQLite migration 13 -> 14 -> 15
-        baseRoomDb.openHelper.writableDatabase.close()
-        baseRoomDb.close()
-        context.deleteDatabase(dbName)
+        val dbFile = File.createTempFile("m15_", ".db")
+        if (dbFile.exists()) dbFile.delete()
 
         val config = SupportSQLiteOpenHelper.Configuration.builder(context)
-            .name(dbName)
+            .name(dbFile.absolutePath)
             .callback(object : SupportSQLiteOpenHelper.Callback(9) {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     db.execSQL("""
@@ -283,7 +274,7 @@ class DatabaseMigration13To15Test {
         )
 
         sqliteDb.close()
-        context.deleteDatabase(dbName)
+        dbFile.delete()
     }
 
     @Test

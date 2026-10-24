@@ -1305,6 +1305,9 @@ interface WordBooksDao {
     @Query("DELETE FROM reading_texts WHERE id = :id")
     suspend fun deleteReadingTextById(id: String)
 
+    @Query("DELETE FROM reading_texts")
+    suspend fun deleteAllReadingTexts()
+
     @Query("SELECT COUNT(*) FROM reading_texts")
     fun observeReadingTextsCount(): Flow<Int>
 
@@ -1534,6 +1537,9 @@ interface WordBooksDao {
 
     @Query("SELECT * FROM attempts WHERE activity_type = :activityType AND item_id = :itemId ORDER BY timestamp ASC, id ASC")
     suspend fun getAttemptsForItem(activityType: String, itemId: String): List<AttemptEntity>
+
+    @Query("SELECT COUNT(*) FROM attempts WHERE item_id = :cardKey AND sm2_rating = 0 AND timestamp >= :cutoff")
+    suspend fun getRecentAttemptLapsesCount(cardKey: String, cutoff: Long): Int
 
     @Query("SELECT COUNT(*) FROM attempts")
     suspend fun getTotalAttemptsCount(): Int

@@ -437,12 +437,15 @@ class StudyPlanRepository(
         val waitingLaterToday = maxOf(0, dueToday - dueNow)
         val totalDue = maxOf(dueToday, dueNow)
 
-        val maxScheduledReviewsCap = when {
-            minutes <= 15 -> 25
-            minutes <= 30 -> 50
-            minutes <= 45 -> 75
-            else -> 100
-        }
+        val maxScheduledReviewsCap = minOf(
+            AdaptiveConfig.OVERDUE_CAP_MAX,
+            when {
+                minutes <= 15 -> 25
+                minutes <= 30 -> 50
+                minutes <= 45 -> 75
+                else -> 100
+            }
+        )
 
         val flashcardTarget: Int
         val backlogRemaining: Int
@@ -518,21 +521,27 @@ class StudyPlanRepository(
 
         // Priority 3: New Words (scaled by minutes per day, deck-weighted, closeness-ordered, deterministic)
         val baseNewWords = when {
-            minutes <= 15 -> 5
+            minutes <= 15 -> AdaptiveConfig.NEW_WORDS_MIN
             minutes <= 30 -> 10
             minutes <= 45 -> 15
-            else -> 20
+            else -> AdaptiveConfig.NEW_WORDS_MAX
         }
-        val isReviewsHeavy = (backlogRemaining > 0 || totalDue >= 25)
-        val newWordsTarget = if (isRestDay) {
-            3
-        } else if (isReviewsHeavy) {
-            maxOf(3, (baseNewWords * 0.6f).roundToInt())
-        } else if (isAdjustedAfterMissedDay) {
-            maxOf(3, baseNewWords / 2)
-        } else {
-            baseNewWords
-        }
+        val isReviewsHeavy = (backlogRemaining > 0 || totalDue >= AdaptiveConfig.BACKLOG_HEAVY_THRESHOLD)
+        val sevenDaysAgo = now - 7L * 86_400_000L
+        val recentAttempts = dao.getAttemptsInRange(sevenDaysAgo, now)
+        val gradedAttempts = recentAttempts.filter { it.isCorrect != null }
+        val rolling7dAccuracy = if (gradedAttempts.size >= 10) {
+            gradedAttempts.count { it.isCorrect == true }.toFloat() / gradedAttempts.size.toFloat()
+        } else null
+
+        val newWordsTarget = when {
+            isRestDay -> 3
+            isReviewsHeavy -> maxOf(3, (baseNewWords * 0.6f).roundToInt())
+            isAdjustedAfterMissedDay -> maxOf(3, baseNewWords / 2)
+            rolling7dAccuracy != null && rolling7dAccuracy >= AdaptiveConfig.ACCURACY_FAST_TRACK_THRESHOLD ->
+                minOf(AdaptiveConfig.NEW_WORDS_MAX, baseNewWords + 3)
+            else -> baseNewWords
+        }.coerceIn(3, AdaptiveConfig.NEW_WORDS_MAX)
 
         // Resolve Grammar & Anchor Story first so we can pre-teach story target words in Today's New Words
         val closenessSearch = levelsByCloseness(profile.level, profile.startAtUserLevel)
@@ -553,19 +562,44 @@ class StudyPlanRepository(
             .groupBy { it.grammarLessonId }
 
         val levelGrammarLessons = dao.getGrammarLessonsByLevel(profile.level)
-        for (lesson in levelGrammarLessons) {
-            val gp = allGrammarProgressMap[lesson.id]
-            val activeNotebookCount = activeNotebookByLesson[lesson.id]?.size ?: 0
-            if (gp != null && gp.isCompleted && gp.bestScore in 1 until AdaptiveConfig.GRAMMAR_REMEDIATION_SCORE_THRESHOLD) {
-                targetLesson = lesson
-                isGrammarRefresher = true
-                grammarRefresherReason = "Refresher for ${lesson.level} lesson ${lesson.id} (score ${gp.bestScore}% < 65% • ~$grammarTime min)"
-                break
-            } else if (activeNotebookCount >= AdaptiveConfig.GRAMMAR_REMEDIATION_NOTEBOOK_THRESHOLD) {
-                targetLesson = lesson
-                isGrammarRefresher = true
-                grammarRefresherReason = "Refresher for ${lesson.level} lesson ${lesson.id} ($activeNotebookCount active corrections • ~$grammarTime min)"
-                break
+        val prevHadGrammarRefresher = latestPrevious?.let { prev ->
+            try {
+                val prevTasks = json.decodeFromString<List<DailyTaskItem>>(prev.tasksJson)
+                prevTasks.any { it.type == "grammar" && it.reason.contains("Refresher", ignoreCase = true) }
+            } catch (_: Exception) { false }
+        } ?: false
+
+        if (!prevHadGrammarRefresher) {
+            val cooldownCutoff = now - AdaptiveConfig.GRAMMAR_REFRESHER_COOLDOWN_DAYS * 86_400_000L
+            val allPastChecklists = dao.getAllDailyChecklists().filter { it.date != date }
+            val recentlyRefreshedLessonIds = allPastChecklists.filter { ch ->
+                val chStart = timeProvider.startOfDayMillis(ch.date)
+                chStart >= cooldownCutoff
+            }.flatMap { ch ->
+                try {
+                    val chTasks = json.decodeFromString<List<DailyTaskItem>>(ch.tasksJson)
+                    chTasks.filter { it.type == "grammar" && it.reason.contains("Refresher", ignoreCase = true) }
+                        .mapNotNull { it.linkedId }
+                } catch (_: Exception) { emptyList() }
+            }.toSet()
+
+            for (lesson in levelGrammarLessons) {
+                val gp = allGrammarProgressMap[lesson.id]
+                val activeNotebookCount = activeNotebookByLesson[lesson.id]?.size ?: 0
+                val isCoolingDown = recentlyRefreshedLessonIds.contains(lesson.id)
+                if (!isCoolingDown) {
+                    if (gp != null && gp.isCompleted && gp.bestScore in 1 until AdaptiveConfig.GRAMMAR_REMEDIATION_SCORE_THRESHOLD) {
+                        targetLesson = lesson
+                        isGrammarRefresher = true
+                        grammarRefresherReason = "Refresher for ${lesson.level} lesson ${lesson.id} (score ${gp.bestScore}% < 65% • ~$grammarTime min)"
+                        break
+                    } else if (activeNotebookCount >= AdaptiveConfig.GRAMMAR_REMEDIATION_NOTEBOOK_THRESHOLD) {
+                        targetLesson = lesson
+                        isGrammarRefresher = true
+                        grammarRefresherReason = "Refresher for ${lesson.level} lesson ${lesson.id} ($activeNotebookCount active corrections • ~$grammarTime min)"
+                        break
+                    }
+                }
             }
         }
 

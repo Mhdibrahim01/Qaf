@@ -13,14 +13,21 @@ object AdaptiveConfig {
 
     // 2. Leech & Remediation Thresholds
     const val LEECH_LAPSE_THRESHOLD = 3
+    const val LEECH_WINDOW_DAYS = 14
     const val GRAMMAR_REMEDIATION_SCORE_THRESHOLD = 65
     const val GRAMMAR_REMEDIATION_NOTEBOOK_THRESHOLD = 3
+    const val GRAMMAR_REFRESHER_COOLDOWN_DAYS = 3
+    const val MAX_CONSECUTIVE_GRAMMAR_REFRESHERS = 1
 
     // 3. Backlog & Pacing Thresholds
     const val OVERDUE_CAP_MAX = 30
     const val HEAVY_BACKLOG_THRESHOLD = 15
+    const val BACKLOG_HEAVY_THRESHOLD = 15
     const val MODERATE_BACKLOG_THRESHOLD = 8
     const val COLD_START_MIN_ATTEMPTS = 20
+    const val NEW_WORDS_MIN = 5
+    const val NEW_WORDS_MAX = 20
+    const val ACCURACY_FAST_TRACK_THRESHOLD = 0.88f
 
     // 4. Personal Pace EMA Constants
     const val DEFAULT_SECONDS_PER_WORD = 20f
@@ -43,7 +50,17 @@ object AdaptiveConfig {
     const val CEFR_WEIGHT_GRAMMAR = 0.30f
     const val CEFR_WEIGHT_READING = 0.20f
     const val CEFR_LEVEL_UP_READY_PERCENT = 80
+    const val STRUGGLE_DOWNSHIFT_ACCURACY = 0.55f
     const val INSIGHT_DISMISS_COOLDOWN_DAYS = 7
+
+    fun getCefrVocabTarget(level: String): Int = when (level.uppercase()) {
+        "A1" -> 300
+        "A2" -> 400
+        "B1" -> 500
+        "B2" -> 600
+        "C1" -> 600
+        else -> 400
+    }
 
     data class MacroTopic(
         val id: String,

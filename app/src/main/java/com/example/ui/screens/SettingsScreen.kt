@@ -50,8 +50,10 @@ import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -155,14 +157,58 @@ fun SettingsScreen(
         }
     }
 
+    var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
+
     val importBackupLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri != null) {
-            onImportBackupFromUri(uri) { success, msg ->
-                backupStatusMessage = success to msg
-            }
+            pendingRestoreUri = uri
         }
+    }
+
+    if (pendingRestoreUri != null) {
+        val targetUri = pendingRestoreUri!!
+        AlertDialog(
+            onDismissRequest = { pendingRestoreUri = null },
+            title = {
+                Text(
+                    text = "Restore Backup / استعادة النسخة الاحتياطية",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = TextPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = "Restoring this backup will merge and update your progress, learning history, and study plan. Are you sure you want to proceed?\n\nاستعادة هذه النسخة ستؤدي إلى دمج وتحديث تقدمك وسجل دراستك. هل ترغب بالاستمرار؟",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextMuted
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        pendingRestoreUri = null
+                        onImportBackupFromUri(targetUri) { success, msg ->
+                            backupStatusMessage = success to msg
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = GoldAccent,
+                        contentColor = BackgroundDark
+                    )
+                ) {
+                    Text("Restore / استعادة", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRestoreUri = null }) {
+                    Text("Cancel / إلغاء", color = TextMuted)
+                }
+            },
+            containerColor = SurfaceDark
+        )
     }
 
     val activeLevel = studyPlanProfile?.level?.ifBlank { "B2" } ?: "B2"

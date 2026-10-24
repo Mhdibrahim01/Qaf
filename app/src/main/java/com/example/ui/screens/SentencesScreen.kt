@@ -170,6 +170,7 @@ fun SentencesScreen(
     onNavigateToWordBooks: () -> Unit,
     onNavigateToFlashcards: () -> Unit,
     onRecordSentencePracticeAttempt: (String, Int) -> Unit = { _, _ -> },
+    quietModeEnabled: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -347,6 +348,7 @@ fun SentencesScreen(
                             onPlayNormalTts = { text -> onSpeakSentenceTts(text, null) },
                             onPlaySlowTts = { text -> onSpeakSentenceTts(text, AudioPlayerManager.SLOW_TURTLE_RATE) },
                             onRecordAttempt = onRecordSentencePracticeAttempt,
+                            quietModeEnabled = quietModeEnabled,
                             onSwitchToFavorites = { activeTab = SentencesTab.FAVORITES }
                         )
                     }
@@ -1296,6 +1298,7 @@ private fun DictationTabContent(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SpeakingTabContent(
     savedSentences: List<SentenceEntity>,
@@ -1307,6 +1310,7 @@ private fun SpeakingTabContent(
     onPlayNormalTts: (String) -> Unit,
     onPlaySlowTts: (String) -> Unit = { onPlayNormalTts(it) },
     onRecordAttempt: (String, Int) -> Unit = { _, _ -> },
+    quietModeEnabled: Boolean = false,
     onSwitchToFavorites: () -> Unit
 ) {
     val context = LocalContext.current
@@ -1321,6 +1325,14 @@ private fun SpeakingTabContent(
 
     val currentSentence = savedSentences[currentIndex.coerceIn(0, savedSentences.size - 1)]
     val scrollState = rememberScrollState()
+
+    var quietTypedInput by remember(currentSentence.id) { mutableStateOf("") }
+    val quietTokens = remember(currentSentence.id) {
+        currentSentence.englishText
+            .split(Regex("\\s+"))
+            .filter { it.isNotBlank() }
+            .shuffled()
+    }
 
     var hasAudioPermission by remember {
         mutableStateOf(
@@ -1338,12 +1350,13 @@ private fun SpeakingTabContent(
     var offlinePackWarningMessage by remember { mutableStateOf<String?>(null) }
     var recognitionStatusText by remember { mutableStateOf("Tap the microphone and read the sentence aloud.") }
 
-    // Check if SpeechRecognizer is available & probe offline English pack support
+    // Check if SpeechRecognizer is available & probe offline English pack support (suppressed in quiet mode)
     val isSpeechRecognitionAvailable = remember(context) {
         SpeechRecognizer.isRecognitionAvailable(context)
     }
 
-    LaunchedEffect(context, isSpeechRecognitionAvailable) {
+    LaunchedEffect(context, isSpeechRecognitionAvailable, quietModeEnabled) {
+        if (quietModeEnabled) return@LaunchedEffect
         if (!isSpeechRecognitionAvailable) {
             offlinePackWarningMessage =
                 "No offline English speech pack or SpeechRecognizer service found on this device. Install Google Voice Typing / Offline English (US) speech pack in system settings."
@@ -1495,8 +1508,8 @@ private fun SpeakingTabContent(
             onNext = { if (currentIndex + 1 < savedSentences.size) onIndexChange(currentIndex + 1) }
         )
 
-        // Offline English Speech Pack Notice Banner (shown when device lacks offline English pack)
-        if (!offlinePackWarningMessage.isNullOrBlank()) {
+        // Offline English Speech Pack Notice Banner (shown when device lacks offline English pack and quiet mode is disabled)
+        if (!quietModeEnabled && !offlinePackWarningMessage.isNullOrBlank()) {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1639,72 +1652,201 @@ private fun SpeakingTabContent(
 
                 HorizontalDivider(color = BorderDark)
 
-                // Record Button & Live Transcript Status
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Button(
-                        onClick = {
-                            if (isListening) {
-                                runCatching { speechRecognizerRef.value?.stopListening() }
-                                isListening = false
-                            } else if (hasAudioPermission) {
-                                startListeningSession()
-                            } else {
-                                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isListening) CoralAccent else GoldAccent,
-                            contentColor = BackgroundDark
-                        ),
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("speaking_record_button")
-                    ) {
-                        Icon(
-                            imageVector = if (isListening) Icons.Default.MicOff else Icons.Default.Mic,
-                            contentDescription = "Record with SpeechRecognizer",
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (isListening) "Stop Recording" else "Record & Compare",
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                Text(
-                    text = recognitionStatusText,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (isListening) GoldAccent else TextSecondary,
-                    modifier = Modifier.testTag("speaking_status_text")
-                )
-
-                if (spokenTranscript.isNotBlank()) {
+                if (quietModeEnabled) {
+                    // Quiet Mode tile assembly & input
                     Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = SurfaceElevatedDark,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("speaking_quiet_mode_banner"),
+                        color = AmberAccent.copy(alpha = 0.12f),
                         shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, BorderDark)
+                        border = BorderStroke(1.dp, AmberAccent.copy(alpha = 0.5f))
                     ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                text = "Recognized Speech:",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = GoldAccent
+                            Icon(
+                                Icons.Default.School,
+                                contentDescription = null,
+                                tint = AmberAccent,
+                                modifier = Modifier.size(16.dp)
                             )
                             Text(
-                                text = spokenTranscript,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = TextPrimary
+                                text = "Quiet Mode: Sentence Construction • وضع الهدوء",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = AmberAccent
                             )
+                        }
+                    }
+
+                    Text(
+                        text = "Tap words to assemble sentence:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary
+                    )
+
+                    FlowRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("quiet_mode_word_tiles"),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        quietTokens.forEach { token ->
+                            Surface(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        quietTypedInput = if (quietTypedInput.isBlank()) token else "$quietTypedInput $token"
+                                    },
+                                color = SurfaceElevatedDark,
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, BorderDark)
+                            ) {
+                                Text(
+                                    text = token,
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = GoldAccent,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = quietTypedInput,
+                        onValueChange = { quietTypedInput = it },
+                        label = { Text("Assembled Sentence") },
+                        placeholder = { Text("Tap word tiles or type sentence...", color = TextMuted) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("speaking_quiet_input_field"),
+                        minLines = 2,
+                        maxLines = 3,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = GoldAccent,
+                            unfocusedBorderColor = BorderDark,
+                            focusedContainerColor = SurfaceElevatedDark,
+                            unfocusedContainerColor = SurfaceElevatedDark,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedLabelColor = GoldAccent,
+                            unfocusedLabelColor = TextSecondary
+                        )
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                val computed = SentencePracticeUtils.computeSentenceDiff(
+                                    expected = currentSentence.englishText,
+                                    actual = quietTypedInput,
+                                    ignorePunctuation = ignorePunctuation
+                                )
+                                speakingDiff = computed
+                                spokenTranscript = quietTypedInput
+                                val itemId = if (currentSentence.id > 0L) {
+                                    "sentence:${currentSentence.id}"
+                                } else {
+                                    currentSentence.englishText
+                                }
+                                onRecordAttempt(itemId, computed.accuracyPercent)
+                            },
+                            enabled = quietTypedInput.isNotBlank(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = GoldAccent,
+                                contentColor = BackgroundDark
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("speaking_check_button")
+                        ) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Check Sentence • تحقق", fontWeight = FontWeight.Bold)
+                        }
+
+                        OutlinedButton(
+                            onClick = { quietTypedInput = "" },
+                            border = BorderStroke(1.dp, BorderDark),
+                            modifier = Modifier.testTag("speaking_clear_button")
+                        ) {
+                            Text("Clear", color = TextSecondary)
+                        }
+                    }
+                } else {
+                    // Record Button & Live Transcript Status
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Button(
+                            onClick = {
+                                if (isListening) {
+                                    runCatching { speechRecognizerRef.value?.stopListening() }
+                                    isListening = false
+                                } else if (hasAudioPermission) {
+                                    startListeningSession()
+                                } else {
+                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isListening) CoralAccent else GoldAccent,
+                                contentColor = BackgroundDark
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("speaking_record_button")
+                        ) {
+                            Icon(
+                                imageVector = if (isListening) Icons.Default.MicOff else Icons.Default.Mic,
+                                contentDescription = "Record with SpeechRecognizer",
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (isListening) "Stop Recording" else "Record & Compare",
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = recognitionStatusText,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (isListening) GoldAccent else TextSecondary,
+                        modifier = Modifier.testTag("speaking_status_text")
+                    )
+
+                    if (spokenTranscript.isNotBlank()) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = SurfaceElevatedDark,
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, BorderDark)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "Recognized Speech:",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = GoldAccent
+                                )
+                                Text(
+                                    text = spokenTranscript,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = TextPrimary
+                                )
+                            }
                         }
                     }
                 }
