@@ -406,6 +406,9 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     private val _isDeveloperModeEnabled = MutableStateFlow(false)
     val isDeveloperModeEnabled: StateFlow<Boolean> = _isDeveloperModeEnabled.asStateFlow()
 
+    private val _themeMode = MutableStateFlow(com.example.ui.theme.AppThemeMode.DARK)
+    val themeMode: StateFlow<com.example.ui.theme.AppThemeMode> = _themeMode.asStateFlow()
+
 
     private val _dictationIgnorePunctuation = MutableStateFlow(true)
     val dictationIgnorePunctuation: StateFlow<Boolean> = _dictationIgnorePunctuation.asStateFlow()
@@ -597,6 +600,8 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             val existingProfile = database.wordBooksDao().getStudyPlanProfile()
             val onboardingSnap = onboardingRepository.getSnapshot()
             _isDeveloperModeEnabled.value = onboardingSnap.isDeveloperModeEnabled
+            _themeMode.value = com.example.ui.theme.AppThemeMode.fromId(onboardingSnap.themeMode)
+            com.example.ui.theme.AppThemeState.themeMode = _themeMode.value
             _preferredAccentUk.value = onboardingSnap.preferredAccentUk
             _autoPlayPronunciation.value = onboardingSnap.autoPlayPronunciation
             _autoPlayPracticeAudio.value = onboardingSnap.autoPlayPronunciation
@@ -612,10 +617,13 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             }
         }
 
-        // 1b. Observe preference updates for developer mode and audio settings
+        // 1b. Observe preference updates for developer mode, theme mode, and audio settings
         viewModelScope.launch {
             onboardingRepository.stateFlow.collectLatest { prefs ->
                 _isDeveloperModeEnabled.value = prefs.isDeveloperModeEnabled
+                val resolvedTheme = com.example.ui.theme.AppThemeMode.fromId(prefs.themeMode)
+                _themeMode.value = resolvedTheme
+                com.example.ui.theme.AppThemeState.themeMode = resolvedTheme
                 _preferredAccentUk.value = prefs.preferredAccentUk
                 _autoPlayPronunciation.value = prefs.autoPlayPronunciation
                 _ttsSpeechRate.value = prefs.ttsSpeechRate
@@ -1895,6 +1903,23 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             onboardingRepository.setDeveloperModeEnabled(enabled)
         }
+    }
+
+    fun setThemeMode(mode: com.example.ui.theme.AppThemeMode) {
+        _themeMode.value = mode
+        com.example.ui.theme.AppThemeState.themeMode = mode
+        viewModelScope.launch {
+            onboardingRepository.setThemeMode(mode.id)
+        }
+    }
+
+    fun toggleLightDarkTheme() {
+        val nextMode = if (com.example.ui.theme.AppThemeState.isLightMode) {
+            com.example.ui.theme.AppThemeMode.DARK
+        } else {
+            com.example.ui.theme.AppThemeMode.LIGHT
+        }
+        setThemeMode(nextMode)
     }
 
 

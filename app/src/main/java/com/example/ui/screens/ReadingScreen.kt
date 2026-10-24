@@ -136,12 +136,21 @@ import com.example.data.local.ReadingTextEntity
 import com.example.ui.components.BidiText
 import com.example.ui.components.SlowAudioTurtleButton
 import com.example.ui.theme.ArabicTypography
+import com.example.ui.theme.BackgroundDark
+import com.example.ui.theme.BorderDark
+import com.example.ui.theme.BorderSubtle
 import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.EmeraldAccentBg
 import com.example.ui.theme.GoldAccent
+import com.example.ui.theme.GoldAccentDim
 import com.example.ui.theme.GoldAccentBorder
 import com.example.ui.theme.SkyAccent
 import com.example.ui.theme.SkyAccentBg
+import com.example.ui.theme.SurfaceDark
+import com.example.ui.theme.SurfaceElevatedDark
+import com.example.ui.theme.TextMuted
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.VioletAccent
 import com.example.ui.theme.VioletAccentBg
 import kotlinx.coroutines.CoroutineScope
@@ -558,7 +567,7 @@ fun ReadingListScreen(
 
     Scaffold(
         modifier = modifier.testTag("reading_list_screen"),
-        containerColor = Color(0xFF0E0F13),
+        containerColor = BackgroundDark,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         LazyColumn(
@@ -599,8 +608,8 @@ fun ReadingListScreen(
                             .fillMaxWidth()
                             .testTag("reading_progress_banner"),
                         shape = RoundedCornerShape(14.dp),
-                        color = Color(0xFF13161F),
-                        border = BorderStroke(1.dp, Color(0xFF232734))
+                        color = SurfaceDark,
+                        border = BorderStroke(1.dp, BorderDark)
                     ) {
                         Column(
                             modifier = Modifier
@@ -621,12 +630,12 @@ fun ReadingListScreen(
                                     Text(
                                         text = "$completedCount Completed",
                                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 15.sp),
-                                        color = Color(0xFFF5B82E)
+                                        color = GoldAccent
                                     )
                                     Text(
                                         text = " • $totalPassages Passages",
                                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                                        color = Color(0xFF9CA3AF)
+                                        color = TextSecondary
                                     )
                                 }
 
@@ -636,8 +645,8 @@ fun ReadingListScreen(
                                 ) {
                                     Surface(
                                         shape = RoundedCornerShape(8.dp),
-                                        color = Color(0xFFF5B82E).copy(alpha = 0.14f),
-                                        border = BorderStroke(1.dp, Color(0xFFF5B82E).copy(alpha = 0.40f)),
+                                        color = GoldAccent.copy(alpha = 0.14f),
+                                        border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.40f)),
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(8.dp))
                                             .clickable {
@@ -654,13 +663,13 @@ fun ReadingListScreen(
                                             Icon(
                                                 imageVector = Icons.Default.AutoAwesome,
                                                 contentDescription = "Create with AI",
-                                                tint = Color(0xFFF5B82E),
+                                                tint = GoldAccent,
                                                 modifier = Modifier.size(14.dp)
                                             )
                                             Text(
                                                 text = "+ AI Text",
                                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                                color = Color(0xFFF5B82E)
+                                                color = GoldAccent
                                             )
                                         }
                                     }
@@ -673,26 +682,26 @@ fun ReadingListScreen(
                                             Icon(
                                                 imageVector = Icons.Default.MoreVert,
                                                 contentDescription = "More Options",
-                                                tint = Color(0xFF9CA3AF),
+                                                tint = TextSecondary,
                                                 modifier = Modifier.size(18.dp)
                                             )
                                         }
                                         DropdownMenu(
                                             expanded = showOverflowMenu,
                                             onDismissRequest = { showOverflowMenu = false },
-                                            modifier = Modifier.background(Color(0xFF17181E))
+                                            modifier = Modifier.background(SurfaceDark)
                                         ) {
                                             DropdownMenuItem(
-                                                text = { Text("Correction Notebook", color = Color(0xFFF3F4F6)) },
-                                                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFFE5C158)) },
+                                                text = { Text("Correction Notebook", color = TextPrimary) },
+                                                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = GoldAccent) },
                                                 onClick = {
                                                     showOverflowMenu = false
                                                     onNavigateToNotebook()
                                                 }
                                             )
                                             DropdownMenuItem(
-                                                text = { Text("Paste Text", color = Color(0xFFF3F4F6)) },
-                                                leadingIcon = { Icon(Icons.Default.ContentPaste, contentDescription = null, tint = Color(0xFFE5C158)) },
+                                                text = { Text("Paste Text", color = TextPrimary) },
+                                                leadingIcon = { Icon(Icons.Default.ContentPaste, contentDescription = null, tint = GoldAccent) },
                                                 onClick = {
                                                     showOverflowMenu = false
                                                     initialAddTab = 1
@@ -700,8 +709,8 @@ fun ReadingListScreen(
                                                 }
                                             )
                                             DropdownMenuItem(
-                                                text = { Text("Import JSON", color = Color(0xFFF3F4F6)) },
-                                                leadingIcon = { Icon(Icons.Default.UploadFile, contentDescription = null, tint = Color(0xFFE5C158)) },
+                                                text = { Text("Import JSON", color = TextPrimary) },
+                                                leadingIcon = { Icon(Icons.Default.UploadFile, contentDescription = null, tint = GoldAccent) },
                                                 onClick = {
                                                     showOverflowMenu = false
                                                     initialAddTab = 2
@@ -709,8 +718,8 @@ fun ReadingListScreen(
                                                 }
                                             )
                                             DropdownMenuItem(
-                                                text = { Text("Sync Assets", color = Color(0xFFF3F4F6)) },
-                                                leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null, tint = Color(0xFFE5C158)) },
+                                                text = { Text("Sync Assets", color = TextPrimary) },
+                                                leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null, tint = GoldAccent) },
                                                 onClick = {
                                                     showOverflowMenu = false
                                                     initialAddTab = 3
@@ -728,7 +737,7 @@ fun ReadingListScreen(
                                     .fillMaxWidth()
                                     .height(6.dp)
                                     .clip(RoundedCornerShape(3.dp))
-                                    .background(Color(0xFF1E2330))
+                                    .background(SurfaceElevatedDark)
                             ) {
                                 if (progressFraction > 0f) {
                                     Box(
@@ -738,7 +747,7 @@ fun ReadingListScreen(
                                             .clip(RoundedCornerShape(3.dp))
                                             .background(
                                                 Brush.horizontalGradient(
-                                                    colors = listOf(Color(0xFFF5B82E), Color(0xFFFDE047))
+                                                    colors = listOf(GoldAccent, Color(0xFFFDE047))
                                                 )
                                             )
                                     )
@@ -754,12 +763,12 @@ fun ReadingListScreen(
                                 Text(
                                     text = "CEFR A1–C1 • Graded Bilingual Reading",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFF9CA3AF)
+                                    color = TextSecondary
                                 )
                                 Text(
                                     text = "$progressPercent%",
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                    color = Color(0xFF9CA3AF)
+                                    color = TextSecondary
                                 )
                             }
                         }
@@ -773,14 +782,14 @@ fun ReadingListScreen(
                             Text(
                                 "Search passages by title or topic...",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF6B7280)
+                                color = TextMuted
                             )
                         },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Search,
                                 contentDescription = "Search",
-                                tint = Color(0xFFE5C158),
+                                tint = GoldAccent,
                                 modifier = Modifier.size(18.dp)
                             )
                         },
@@ -793,14 +802,14 @@ fun ReadingListScreen(
                                     Icon(
                                         imageVector = Icons.Default.Close,
                                         contentDescription = "Clear search",
-                                        tint = Color(0xFF9CA3AF),
+                                        tint = TextSecondary,
                                         modifier = Modifier.size(16.dp)
                                     )
                                 }
                             }
                         },
                         singleLine = true,
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFFF3F4F6)),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = TextPrimary),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -843,10 +852,10 @@ fun ReadingListScreen(
                                 }
                                 Surface(
                                     shape = RoundedCornerShape(20.dp),
-                                    color = if (isSelected) Color(0xFFE5C158) else Color(0xFF17181E),
+                                    color = if (isSelected) GoldAccent else SurfaceDark,
                                     border = BorderStroke(
                                         width = 1.dp,
-                                        color = if (isSelected) Color(0xFFE5C158) else Color(0xFF262834)
+                                        color = if (isSelected) GoldAccent else BorderDark
                                     ),
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(20.dp))
@@ -857,7 +866,7 @@ fun ReadingListScreen(
                                         text = labelText,
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) Color(0xFF111216) else Color(0xFFD1D5DB),
+                                        color = if (isSelected) com.example.ui.theme.OnGoldDark else TextPrimary,
                                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
                                     )
                                 }
@@ -870,7 +879,7 @@ fun ReadingListScreen(
                                 .height(38.dp)
                                 .background(
                                     Brush.horizontalGradient(
-                                        colors = listOf(Color.Transparent, Color(0xFF0E0F13))
+                                        colors = listOf(Color.Transparent, BackgroundDark)
                                     )
                                 )
                         )
@@ -897,10 +906,10 @@ fun ReadingListScreen(
                                     val displayTopic = if (topic == "ALL") "All Topics" else topic.replaceFirstChar { it.uppercase() }
                                     Surface(
                                         shape = RoundedCornerShape(8.dp),
-                                        color = if (isSelected) Color(0xFF262834) else Color(0xFF14151B),
+                                        color = if (isSelected) SurfaceElevatedDark else SurfaceDark,
                                         border = BorderStroke(
                                             width = 1.dp,
-                                            color = if (isSelected) Color(0xFFE5C158).copy(alpha = 0.65f) else Color(0xFF232530)
+                                            color = if (isSelected) GoldAccent.copy(alpha = 0.65f) else BorderDark
                                         ),
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(8.dp))
@@ -911,7 +920,7 @@ fun ReadingListScreen(
                                             text = displayTopic,
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                            color = if (isSelected) Color(0xFFE5C158) else Color(0xFF9CA3AF),
+                                            color = if (isSelected) GoldAccent else TextSecondary,
                                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                                         )
                                     }
@@ -924,7 +933,7 @@ fun ReadingListScreen(
                                     .height(34.dp)
                                     .background(
                                         Brush.horizontalGradient(
-                                            colors = listOf(Color.Transparent, Color(0xFF0E0F13))
+                                            colors = listOf(Color.Transparent, BackgroundDark)
                                         )
                                     )
                             )
@@ -947,14 +956,14 @@ fun ReadingListScreen(
                                 imageVector = Icons.AutoMirrored.Filled.MenuBook,
                                 contentDescription = null,
                                 modifier = Modifier.size(56.dp),
-                                tint = Color(0xFF6B7280)
+                                tint = TextMuted
                             )
                             Spacer(Modifier.height(14.dp))
                             Text(
                                 text = if (texts.isEmpty()) "No reading passages found" else "No passages match your filters",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFFF3F4F6)
+                                color = TextPrimary
                             )
                             Spacer(Modifier.height(6.dp))
                             Text(
@@ -964,7 +973,7 @@ fun ReadingListScreen(
                                     "Try switching the CEFR level pill or clearing your search query."
                                 },
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFF9CA3AF),
+                                color = TextSecondary,
                                 textAlign = TextAlign.Center
                             )
                             Spacer(Modifier.height(16.dp))
@@ -978,8 +987,8 @@ fun ReadingListScreen(
                                         }
                                     },
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFFE5C158),
-                                        contentColor = Color(0xFF111216)
+                                        containerColor = GoldAccent,
+                                        contentColor = com.example.ui.theme.OnGoldDark
                                     )
                                 ) {
                                     Icon(Icons.Default.Refresh, contentDescription = null)
@@ -993,9 +1002,9 @@ fun ReadingListScreen(
                                         selectedTopicFilter = "ALL"
                                         searchQuery = ""
                                     },
-                                    border = BorderStroke(1.dp, Color(0xFFE5C158))
+                                    border = BorderStroke(1.dp, GoldAccent)
                                 ) {
-                                    Text("Reset Filters", color = Color(0xFFE5C158))
+                                    Text("Reset Filters", color = GoldAccent)
                                 }
                             }
                         }
@@ -1103,12 +1112,12 @@ fun ReadingTextCard(
             .clickable(onClick = onClick)
             .testTag("reading_card_${text.id}"),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF17181E)
+            containerColor = SurfaceDark
         ),
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(
             width = 1.dp,
-            color = if (isDone) Color(0xFF34D399).copy(alpha = 0.45f) else Color(0xFF262834)
+            color = if (isDone) EmeraldAccent.copy(alpha = 0.45f) else BorderDark
         )
     ) {
         Column(
@@ -1130,13 +1139,13 @@ fun ReadingTextCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Surface(
-                        color = Color(0xFFE5C158).copy(alpha = 0.16f),
-                        border = BorderStroke(1.dp, Color(0xFFE5C158).copy(alpha = 0.45f)),
+                        color = GoldAccent.copy(alpha = 0.16f),
+                        border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.45f)),
                         shape = RoundedCornerShape(6.dp)
                     ) {
                         Text(
                             text = text.level.uppercase(),
-                            color = Color(0xFFE5C158),
+                            color = GoldAccent,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
@@ -1148,12 +1157,12 @@ fun ReadingTextCard(
                     if (text.topic.isNotBlank()) {
                         Surface(
                             modifier = Modifier.weight(1f, fill = false),
-                            color = Color(0xFF22242E),
+                            color = SurfaceElevatedDark,
                             shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(
                                 text = text.topic.replaceFirstChar { it.uppercase() },
-                                color = Color(0xFFD1D5DB),
+                                color = TextSecondary,
                                 style = MaterialTheme.typography.labelSmall,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -1164,13 +1173,13 @@ fun ReadingTextCard(
 
                     if (sourceBadgeText != null) {
                         Surface(
-                            color = Color(0xFF1E2029),
-                            border = BorderStroke(1.dp, Color(0xFF2B2E3B)),
+                            color = SurfaceElevatedDark,
+                            border = BorderStroke(1.dp, BorderDark),
                             shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(
                                 text = sourceBadgeText,
-                                color = Color(0xFF9CA3AF),
+                                color = TextSecondary,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 1,
@@ -1206,7 +1215,7 @@ fun ReadingTextCard(
 
                     if (isDone) {
                         Surface(
-                            color = Color(0xFF34D399).copy(alpha = 0.14f),
+                            color = EmeraldAccent.copy(alpha = 0.14f),
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Row(
@@ -1216,7 +1225,7 @@ fun ReadingTextCard(
                                 Icon(
                                     imageVector = Icons.Default.CheckCircle,
                                     contentDescription = "Completed",
-                                    tint = Color(0xFF34D399),
+                                    tint = EmeraldAccent,
                                     modifier = Modifier.size(14.dp)
                                 )
                                 Spacer(Modifier.width(4.dp))
@@ -1224,7 +1233,7 @@ fun ReadingTextCard(
                                     text = "${progress.bestScore ?: 0}/$questionsCount",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF34D399),
+                                    color = EmeraldAccent,
                                     maxLines = 1,
                                     softWrap = false
                                 )
@@ -1241,16 +1250,16 @@ fun ReadingTextCard(
                 text = text.titleEn,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFFF3F4F6)
+                color = TextPrimary
             )
 
-            // Title Arabic (preserved RTL alignment with soft gray color #9CA3AF)
+            // Title Arabic (preserved RTL alignment)
             if (text.titleAr.isNotBlank()) {
                 Spacer(Modifier.height(4.dp))
                 BidiText(
                     text = text.titleAr,
                     style = ArabicTypography.bodyMedium,
-                    color = Color(0xFF9CA3AF),
+                    color = TextSecondary,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Right,
                     fillMaxWidth = true
                 )
@@ -1261,7 +1270,7 @@ fun ReadingTextCard(
             // Subtle divider above footer
             HorizontalDivider(
                 thickness = 1.dp,
-                color = Color.White.copy(alpha = 0.05f)
+                color = BorderSubtle
             )
 
             Spacer(Modifier.height(10.dp))
@@ -1275,13 +1284,13 @@ fun ReadingTextCard(
                 Text(
                     text = "$sentencesCount sentences • $questionsCount quiz questions",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF9CA3AF)
+                    color = TextSecondary
                 )
 
                 Text(
                     text = "Read & Practice →",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFFE5C158),
+                    color = GoldAccent,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -1429,7 +1438,7 @@ fun ReadingDetailScreen(
 
     Scaffold(
         modifier = modifier.testTag("reading_detail_screen"),
-        containerColor = Color(0xFF0A0A0C),
+        containerColor = BackgroundDark,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         LazyColumn(
@@ -1444,9 +1453,9 @@ fun ReadingDetailScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFF141417)
+                        containerColor = SurfaceDark
                     ),
-                    border = BorderStroke(1.dp, Color(0xFF27272E)),
+                    border = BorderStroke(1.dp, BorderDark),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -1464,12 +1473,12 @@ fun ReadingDetailScreen(
                                 Icon(
                                     imageVector = Icons.Default.AutoAwesome,
                                     contentDescription = null,
-                                    tint = Color(0xFFF5C542),
+                                    tint = GoldAccent,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Text(
                                     text = "${targetWords.size} Gold Words",
-                                    color = Color(0xFFF5C542),
+                                    color = GoldAccent,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -1483,14 +1492,14 @@ fun ReadingDetailScreen(
                                 val readablePercent = readabilityReport?.readabilityPercent ?: 86
                                 val focusWords = readabilityReport?.focusWords?.size ?: targetWords.size
                                 Surface(
-                                    color = Color(0xFF34D399).copy(alpha = 0.12f),
-                                    border = BorderStroke(1.dp, Color(0xFF34D399).copy(alpha = 0.35f)),
+                                    color = EmeraldAccent.copy(alpha = 0.12f),
+                                    border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.35f)),
                                     shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier.testTag("reading_detail_readability_badge")
                                 ) {
                                     Text(
                                         text = "$readablePercent% Readable • $focusWords Focus",
-                                        color = Color(0xFF34D399),
+                                        color = EmeraldAccent,
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 1,
@@ -1508,7 +1517,7 @@ fun ReadingDetailScreen(
                                         Icon(
                                             imageVector = Icons.Default.MoreVert,
                                             contentDescription = "Options",
-                                            tint = Color(0xFF8E8E99),
+                                            tint = TextSecondary,
                                             modifier = Modifier.size(18.dp)
                                         )
                                     }
@@ -1518,7 +1527,7 @@ fun ReadingDetailScreen(
                                     ) {
                                         DropdownMenuItem(
                                             text = { Text("Correction Notebook") },
-                                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFFF5C542)) },
+                                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = GoldAccent) },
                                             onClick = {
                                                 showMoreMenu = false
                                                 onNavigateToNotebook()
@@ -1527,7 +1536,7 @@ fun ReadingDetailScreen(
                                         )
                                         DropdownMenuItem(
                                             text = { Text("Ask AI about text") },
-                                            leadingIcon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color(0xFFF5C542)) },
+                                            leadingIcon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = GoldAccent) },
                                             onClick = {
                                                 showMoreMenu = false
                                                 showChatSheet = true
@@ -1552,9 +1561,9 @@ fun ReadingDetailScreen(
 
                         Spacer(Modifier.height(14.dp))
 
-                        // Subtle Horizontal Divider #27272E
+                        // Subtle Horizontal Divider
                         HorizontalDivider(
-                            color = Color(0xFF27272E),
+                            color = BorderDark,
                             thickness = 1.dp
                         )
 
@@ -1575,10 +1584,10 @@ fun ReadingDetailScreen(
                                 },
                                 shape = RoundedCornerShape(20.dp),
                                 color = if (isListenActive) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
-                                        else Color(0xFF1C1C21),
+                                        else SurfaceElevatedDark,
                                 border = BorderStroke(
                                     1.dp,
-                                    if (isListenActive) MaterialTheme.colorScheme.error else Color(0xFF27272E)
+                                    if (isListenActive) MaterialTheme.colorScheme.error else BorderDark
                                 ),
                                 modifier = Modifier
                                     .weight(1f)
@@ -1593,7 +1602,7 @@ fun ReadingDetailScreen(
                                     Icon(
                                         imageVector = if (isListenActive) Icons.Default.Stop else Icons.Default.Headphones,
                                         contentDescription = null,
-                                        tint = if (isListenActive) MaterialTheme.colorScheme.error else Color(0xFF8E8E99),
+                                        tint = if (isListenActive) MaterialTheme.colorScheme.error else TextSecondary,
                                         modifier = Modifier.size(15.dp)
                                     )
                                     Spacer(Modifier.width(4.dp))
@@ -1601,7 +1610,7 @@ fun ReadingDetailScreen(
                                         text = if (isListenActive) "Stop" else "Listen",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Medium,
-                                        color = if (isListenActive) MaterialTheme.colorScheme.error else Color(0xFF8E8E99),
+                                        color = if (isListenActive) MaterialTheme.colorScheme.error else TextSecondary,
                                         maxLines = 1,
                                         softWrap = false,
                                         overflow = TextOverflow.Clip
@@ -1614,10 +1623,10 @@ fun ReadingDetailScreen(
                             Surface(
                                 onClick = { toggleAllTranslations() },
                                 shape = RoundedCornerShape(20.dp),
-                                color = if (isArabicActive) Color(0xFFF5C542).copy(alpha = 0.14f) else Color(0xFF1C1C21),
+                                color = if (isArabicActive) GoldAccent.copy(alpha = 0.14f) else SurfaceElevatedDark,
                                 border = BorderStroke(
                                     1.dp,
-                                    if (isArabicActive) Color(0xFFF5C542) else Color(0xFF27272E)
+                                    if (isArabicActive) GoldAccent else BorderDark
                                 ),
                                 modifier = Modifier
                                     .weight(1f)
@@ -1632,7 +1641,7 @@ fun ReadingDetailScreen(
                                     Icon(
                                         imageVector = Icons.Default.Translate,
                                         contentDescription = null,
-                                        tint = if (isArabicActive) Color(0xFFF5C542) else Color(0xFF8E8E99),
+                                        tint = if (isArabicActive) GoldAccent else TextSecondary,
                                         modifier = Modifier.size(15.dp)
                                     )
                                     Spacer(Modifier.width(4.dp))
@@ -1640,7 +1649,7 @@ fun ReadingDetailScreen(
                                         text = "Arabic",
                                         fontSize = 12.sp,
                                         fontWeight = if (isArabicActive) FontWeight.SemiBold else FontWeight.Medium,
-                                        color = if (isArabicActive) Color(0xFFF5C542) else Color(0xFF8E8E99),
+                                        color = if (isArabicActive) GoldAccent else TextSecondary,
                                         maxLines = 1,
                                         softWrap = false,
                                         overflow = TextOverflow.Clip
@@ -1653,10 +1662,10 @@ fun ReadingDetailScreen(
                             Surface(
                                 onClick = { grammarHintsEnabled = !grammarHintsEnabled },
                                 shape = RoundedCornerShape(20.dp),
-                                color = if (isHintsActive) Color(0xFFF5C542).copy(alpha = 0.14f) else Color(0xFF1C1C21),
+                                color = if (isHintsActive) GoldAccent.copy(alpha = 0.14f) else SurfaceElevatedDark,
                                 border = BorderStroke(
                                     1.dp,
-                                    if (isHintsActive) Color(0xFFF5C542) else Color(0xFF27272E)
+                                    if (isHintsActive) GoldAccent else BorderDark
                                 ),
                                 modifier = Modifier
                                     .weight(1f)
@@ -1671,7 +1680,7 @@ fun ReadingDetailScreen(
                                     Icon(
                                         imageVector = Icons.Default.School,
                                         contentDescription = null,
-                                        tint = if (isHintsActive) Color(0xFFF5C542) else Color(0xFF8E8E99),
+                                        tint = if (isHintsActive) GoldAccent else TextSecondary,
                                         modifier = Modifier.size(15.dp)
                                     )
                                     Spacer(Modifier.width(4.dp))
@@ -1679,7 +1688,7 @@ fun ReadingDetailScreen(
                                         text = "Hints",
                                         fontSize = 12.sp,
                                         fontWeight = if (isHintsActive) FontWeight.SemiBold else FontWeight.Medium,
-                                        color = if (isHintsActive) Color(0xFFF5C542) else Color(0xFF8E8E99),
+                                        color = if (isHintsActive) GoldAccent else TextSecondary,
                                         maxLines = 1,
                                         softWrap = false,
                                         overflow = TextOverflow.Clip
@@ -1705,8 +1714,8 @@ fun ReadingDetailScreen(
                                 },
                                 enabled = !isSimplifying,
                                 shape = RoundedCornerShape(20.dp),
-                                color = Color(0xFF1C1C21),
-                                border = BorderStroke(1.dp, Color(0xFF27272E)),
+                                color = SurfaceElevatedDark,
+                                border = BorderStroke(1.dp, BorderDark),
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(38.dp)
@@ -1721,13 +1730,13 @@ fun ReadingDetailScreen(
                                         CircularProgressIndicator(
                                             modifier = Modifier.size(12.dp),
                                             strokeWidth = 2.dp,
-                                            color = Color(0xFFF5C542)
+                                            color = GoldAccent
                                         )
                                     } else {
                                         Icon(
                                             imageVector = Icons.Default.AutoAwesome,
                                             contentDescription = null,
-                                            tint = Color(0xFF8E8E99),
+                                            tint = TextSecondary,
                                             modifier = Modifier.size(15.dp)
                                         )
                                     }
@@ -1736,7 +1745,7 @@ fun ReadingDetailScreen(
                                         text = "Simplify",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Medium,
-                                        color = Color(0xFF8E8E99),
+                                        color = TextSecondary,
                                         maxLines = 1,
                                         softWrap = false,
                                         overflow = TextOverflow.Clip
@@ -1808,10 +1817,10 @@ fun ReadingDetailScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFF141417)
+                        containerColor = SurfaceDark
                     ),
                     shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, Color(0xFF27272E))
+                    border = BorderStroke(1.dp, BorderDark)
                 ) {
                     Column(
                         modifier = Modifier
@@ -1822,7 +1831,7 @@ fun ReadingDetailScreen(
                         sentences.forEachIndexed { sIndex, sentenceItem ->
                             if (sIndex > 0) {
                                 HorizontalDivider(
-                                    color = Color(0xFF27272E),
+                                    color = BorderDark,
                                     thickness = 1.dp,
                                     modifier = Modifier.padding(vertical = 4.dp)
                                 )
@@ -1880,7 +1889,7 @@ fun ReadingDetailScreen(
                         text = "Comprehension Questions (${questions.size})",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFF4F4F6),
+                        color = TextPrimary,
                         modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
                     )
                 }
@@ -2081,8 +2090,8 @@ fun ReadingSentenceBlock(
     val grammarKeywords = remember(linkedGrammarLesson) { extractGrammarKeywords(linkedGrammarLesson) }
 
     val targetBg = when {
-        isHighlighted -> Color(0xFFF5C542).copy(alpha = 0.12f)
-        isSelected -> Color(0xFF1C1C21)
+        isHighlighted -> GoldAccentDim
+        isSelected -> SurfaceElevatedDark
         else -> Color.Transparent
     }
 
@@ -2099,7 +2108,7 @@ fun ReadingSentenceBlock(
             .then(
                 if (isSelected) {
                     Modifier.border(
-                        BorderStroke(1.dp, Color(0xFF27272E)),
+                        BorderStroke(1.dp, BorderDark),
                         RoundedCornerShape(12.dp)
                     )
                 } else {
@@ -2116,11 +2125,11 @@ fun ReadingSentenceBlock(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left: Pill with Normal Speaker + Flat Outline Turtle Icon (#34D399)
+            // Left: Pill with Normal Speaker + Flat Outline Turtle Icon
             Surface(
                 shape = RoundedCornerShape(20.dp),
-                color = Color(0xFF1C1C21),
-                border = BorderStroke(1.dp, Color(0xFF27272E))
+                color = SurfaceElevatedDark,
+                border = BorderStroke(1.dp, BorderDark)
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -2139,7 +2148,7 @@ fun ReadingSentenceBlock(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                             contentDescription = "Speak sentence",
-                            tint = if (isHighlighted) Color(0xFFF5C542) else Color(0xFF8E8E99),
+                            tint = if (isHighlighted) GoldAccent else TextSecondary,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -2156,7 +2165,7 @@ fun ReadingSentenceBlock(
                         Icon(
                             painter = painterResource(id = com.example.R.drawable.ic_turtle_flat),
                             contentDescription = "Play slow pronunciation at 0.6x speed",
-                            tint = Color(0xFF34D399),
+                            tint = EmeraldAccent,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -2171,8 +2180,8 @@ fun ReadingSentenceBlock(
                 if (hasGrammar && (showGrammarHints || isSelected)) {
                     Surface(
                         shape = RoundedCornerShape(20.dp),
-                        color = Color(0xFF1C1C21),
-                        border = BorderStroke(1.dp, Color(0xFFF5C542).copy(alpha = 0.6f)),
+                        color = SurfaceElevatedDark,
+                        border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.6f)),
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
                             .clickable { onGrammarClicked?.invoke() }
@@ -2186,14 +2195,14 @@ fun ReadingSentenceBlock(
                             Icon(
                                 imageVector = Icons.Default.School,
                                 contentDescription = "Grammar Rule",
-                                tint = Color(0xFFF5C542),
+                                tint = GoldAccent,
                                 modifier = Modifier.size(13.dp)
                             )
                             Text(
                                 text = "Rule",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFFF5C542),
+                                color = GoldAccent,
                                 fontSize = 11.sp
                             )
                         }
@@ -2213,7 +2222,7 @@ fun ReadingSentenceBlock(
                         Icon(
                             imageVector = Icons.Default.Translate,
                             contentDescription = "Toggle translation",
-                            tint = if (isArabicVisible) Color(0xFFF5C542) else Color(0xFF8E8E99),
+                            tint = if (isArabicVisible) GoldAccent else TextSecondary,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -2250,14 +2259,14 @@ fun ReadingSentenceBlock(
                 val isArticle = lowerClean in setOf("a", "an", "the")
 
                 when {
-                    // Gold Words: Soft translucent gold background (#24F5C542), light gold text (#FDE08D), rounded 6dp, subtle gold border
+                    // Gold Words: Soft translucent gold background, gold text, rounded 6dp, subtle gold border
                     isTarget -> {
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(Color(0x24F5C542))
+                                .background(GoldAccentDim)
                                 .border(
-                                    BorderStroke(1.dp, Color(0xFFF5C542).copy(alpha = 0.55f)),
+                                    BorderStroke(1.dp, GoldAccentBorder),
                                     RoundedCornerShape(6.dp)
                                 )
                                 .clickable {
@@ -2272,22 +2281,23 @@ fun ReadingSentenceBlock(
                                     lineHeight = 30.sp,
                                     fontWeight = FontWeight.SemiBold
                                 ),
-                                color = Color(0xFFFDE08D)
+                                color = GoldAccent
                             )
                         }
                     }
 
-                    // Grammar Words (e.g. was): Dark inner background (#1C1C21), dashed gold border, gold text (#F5C542), NO graduation cap icon inside
+                    // Grammar Words (e.g. was): Elevated inner background, dashed gold border, gold text
                     isGrammar -> {
+                        val dashGold = GoldAccent
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(Color(0xFF1C1C21))
+                                .background(SurfaceElevatedDark)
                                 .drawBehind {
                                     val strokeWidth = 1.dp.toPx()
                                     val radius = 6.dp.toPx()
                                     drawRoundRect(
-                                        color = Color(0xFFF5C542),
+                                        color = dashGold,
                                         style = Stroke(
                                             width = strokeWidth,
                                             pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
@@ -2307,20 +2317,21 @@ fun ReadingSentenceBlock(
                                     lineHeight = 30.sp,
                                     fontWeight = FontWeight.SemiBold
                                 ),
-                                color = Color(0xFFF5C542)
+                                color = GoldAccent
                             )
                         }
                     }
 
                     // Articles (a, an, the) when Hints are enabled: subtle dotted bottom underline
                     isArticle && showGrammarHints -> {
+                        val dotColor = TextSecondary
                         Box(
                             modifier = Modifier
                                 .drawBehind {
                                     val strokeWidth = 2.dp.toPx()
                                     val y = size.height - 1.dp.toPx()
                                     drawLine(
-                                        color = Color(0xFF8E8E99),
+                                        color = dotColor,
                                         start = Offset(0f, y),
                                         end = Offset(size.width, y),
                                         strokeWidth = strokeWidth,
@@ -2339,7 +2350,7 @@ fun ReadingSentenceBlock(
                                     lineHeight = 30.sp,
                                     fontWeight = FontWeight.Normal
                                 ),
-                                color = Color(0xFFF4F4F6)
+                                color = TextPrimary
                             )
                         }
                     }
@@ -2347,10 +2358,10 @@ fun ReadingSentenceBlock(
                     // Word Stages (LEARNING, FAMILIAR, etc.)
                     stage != null -> {
                         val stageColor = when (stage) {
-                            com.example.data.plan.WordStage.LEARNING -> Color(0xFF00E5FF)
-                            com.example.data.plan.WordStage.FAMILIAR -> Color(0xFF34D399)
-                            com.example.data.plan.WordStage.SEEN -> Color(0xFF8E8E99)
-                            else -> Color(0xFF8E8E99)
+                            com.example.data.plan.WordStage.LEARNING -> SkyAccent
+                            com.example.data.plan.WordStage.FAMILIAR -> EmeraldAccent
+                            com.example.data.plan.WordStage.SEEN -> TextSecondary
+                            else -> TextSecondary
                         }
                         Box(
                             modifier = Modifier
@@ -2393,7 +2404,7 @@ fun ReadingSentenceBlock(
                                     lineHeight = 30.sp,
                                     fontWeight = FontWeight.Normal
                                 ),
-                                color = Color(0xFFF4F4F6)
+                                color = TextPrimary
                             )
                         }
                     }
@@ -2408,7 +2419,7 @@ fun ReadingSentenceBlock(
             exit = fadeOut()
         ) {
             Surface(
-                color = Color(0xFF1C1C21).copy(alpha = 0.7f),
+                color = SurfaceElevatedDark,
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -2420,7 +2431,7 @@ fun ReadingSentenceBlock(
                         fontSize = 15.sp,
                         lineHeight = 22.sp
                     ),
-                    color = Color(0xFFD1D5DB),
+                    color = TextSecondary,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 8.dp)
@@ -2583,7 +2594,9 @@ fun GrammarSentenceBottomSheet(
                     )
                     Spacer(Modifier.height(6.dp))
                     val sheetKeywords = remember(lesson) { extractGrammarKeywords(lesson) }
-                    val annotatedSentence = remember(sentence.en, sheetKeywords) {
+                    val highlightColor = GoldAccent
+                    val highlightBg = GoldAccentDim
+                    val annotatedSentence = remember(sentence.en, sheetKeywords, highlightColor, highlightBg) {
                         buildAnnotatedString {
                             val tokens = sentence.en.split(READING_WHITESPACE_REGEX)
                             tokens.forEachIndexed { idx, token ->
@@ -2591,9 +2604,9 @@ fun GrammarSentenceBottomSheet(
                                 if (clean in sheetKeywords) {
                                     withStyle(
                                         SpanStyle(
-                                            color = Color(0xFFE5C158),
+                                            color = highlightColor,
                                             fontWeight = FontWeight.Bold,
-                                            background = Color(0xFFE5C158).copy(alpha = 0.22f)
+                                            background = highlightBg
                                         )
                                     ) {
                                         append(token)
@@ -2634,8 +2647,8 @@ fun GrammarSentenceBottomSheet(
                 Button(
                     onClick = onPractiseThis,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFE5C158),
-                        contentColor = Color(0xFF1E1E2A)
+                        containerColor = GoldAccent,
+                        contentColor = com.example.ui.theme.OnGoldDark
                     ),
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
@@ -2796,8 +2809,8 @@ fun OfflineGrammarPracticeDialog(
                                                 enabled = textInput.isNotBlank(),
                                                 shape = RoundedCornerShape(8.dp),
                                                 colors = ButtonDefaults.buttonColors(
-                                                    containerColor = Color(0xFFE5C158),
-                                                    contentColor = Color(0xFF1E1E2A)
+                                                    containerColor = GoldAccent,
+                                                    contentColor = com.example.ui.theme.OnGoldDark
                                                 ),
                                                 modifier = Modifier.testTag("dialog_fill_submit_$index")
                                             ) {
@@ -2976,9 +2989,9 @@ fun YourTurnGrammarCard(
 
             // Target structure box
             Surface(
-                color = Color(0xFFFFD54F).copy(alpha = 0.15f),
+                color = GoldAccentDim,
                 shape = RoundedCornerShape(10.dp),
-                border = BorderStroke(1.dp, Color(0xFFFFD54F).copy(alpha = 0.4f)),
+                border = BorderStroke(1.dp, GoldAccentBorder),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
@@ -2986,7 +2999,7 @@ fun YourTurnGrammarCard(
                         text = "Target Structure: $lessonTitle ($lessonTitleAr)",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF3E2723)
+                        color = TextPrimary
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
@@ -3517,21 +3530,21 @@ fun ReadingQuestionCard(
             .testTag("reading_question_$index"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.outlinedCardColors(
-            containerColor = Color(0xFF141417)
+            containerColor = SurfaceDark
         ),
         border = BorderStroke(
             1.dp,
             if (isAnswered) {
                 if (isCorrect) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
-            } else Color(0xFF27272E)
+            } else BorderDark
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Prompt
             Row(verticalAlignment = Alignment.Top) {
                 Surface(
-                    color = Color(0x24F5C542),
-                    border = BorderStroke(1.dp, Color(0xFFF5C542).copy(alpha = 0.5f)),
+                    color = GoldAccentDim,
+                    border = BorderStroke(1.dp, GoldAccentBorder),
                     shape = CircleShape,
                     modifier = Modifier.size(26.dp)
                 ) {
@@ -3540,7 +3553,7 @@ fun ReadingQuestionCard(
                             text = "${index + 1}",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFF5C542)
+                            color = GoldAccent
                         )
                     }
                 }
@@ -3549,7 +3562,7 @@ fun ReadingQuestionCard(
                     text = question.prompt,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFFF4F4F6)
+                    color = TextPrimary
                 )
             }
 
@@ -3563,13 +3576,13 @@ fun ReadingQuestionCard(
 
                     val (containerColor, contentColor, borderColor) = when {
                         !isAnswered -> Triple(
-                            Color(0xFF1C1C21),
-                            Color(0xFFF4F4F6),
-                            Color(0xFF27272E)
+                            SurfaceElevatedDark,
+                            TextPrimary,
+                            BorderDark
                         )
                         isSelected && isRightAnswer -> Triple(
                             Color(0xFF1B5E20).copy(alpha = 0.25f),
-                            Color(0xFF81C784),
+                            EmeraldAccent,
                             Color(0xFF2E7D32)
                         )
                         isSelected && !isRightAnswer -> Triple(
@@ -3579,13 +3592,13 @@ fun ReadingQuestionCard(
                         )
                         isRightAnswer -> Triple(
                             Color(0xFF1B5E20).copy(alpha = 0.25f),
-                            Color(0xFF81C784),
+                            EmeraldAccent,
                             Color(0xFF2E7D32)
                         )
                         else -> Triple(
-                            Color(0xFF1C1C21).copy(alpha = 0.4f),
-                            Color(0xFF8E8E99).copy(alpha = 0.6f),
-                            Color(0xFF27272E).copy(alpha = 0.4f)
+                            SurfaceElevatedDark.copy(alpha = 0.5f),
+                            TextSecondary.copy(alpha = 0.6f),
+                            BorderDark.copy(alpha = 0.4f)
                         )
                     }
 
@@ -3609,7 +3622,7 @@ fun ReadingQuestionCard(
                             Text(
                                 text = "${('A'.code + optIndex).toChar()}.",
                                 fontWeight = FontWeight.Bold,
-                                color = if (isSelected || (isAnswered && isRightAnswer)) contentColor else Color(0xFF8E8E99),
+                                color = if (isSelected || (isAnswered && isRightAnswer)) contentColor else TextSecondary,
                                 modifier = Modifier.width(24.dp)
                             )
                             Text(
@@ -4469,17 +4482,17 @@ fun ReadingRecommendedShelf(
                     Text(
                         text = "Recommended for You",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Color(0xFFF3F4F6)
+                        color = TextPrimary
                     )
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = Color(0xFF38BDF8).copy(alpha = 0.12f),
-                        border = BorderStroke(1.dp, Color(0xFF38BDF8).copy(alpha = 0.35f))
+                        color = SkyAccentBg,
+                        border = BorderStroke(1.dp, SkyAccent.copy(alpha = 0.35f))
                     ) {
                         Text(
                             text = userLevel.uppercase(),
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp),
-                            color = Color(0xFF38BDF8),
+                            color = SkyAccent,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -4487,14 +4500,14 @@ fun ReadingRecommendedShelf(
                 Text(
                     text = "نصوص قراءة موصى بها لمستواك ($levelAr)",
                     style = ArabicTypography.labelSmall,
-                    color = Color(0xFF9CA3AF)
+                    color = TextSecondary
                 )
             }
 
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = Color(0xFF17181E),
-                border = BorderStroke(1.dp, Color(0xFF262834))
+                color = SurfaceDark,
+                border = BorderStroke(1.dp, BorderDark)
             ) {
                 Text(
                     text = "${recommendedTexts.size} passages",
@@ -4544,7 +4557,7 @@ fun ReadingRecommendedCard(
             .clickable(onClick = onClick)
             .testTag("reading_recommended_card_${text.id}"),
         shape = RoundedCornerShape(14.dp),
-        color = Color(0xFF17181E),
+        color = SurfaceDark,
         border = BorderStroke(1.dp, if (isDone) EmeraldAccent.copy(alpha = 0.4f) else GoldAccentBorder.copy(alpha = 0.4f))
     ) {
         Column(
@@ -4573,7 +4586,7 @@ fun ReadingRecommendedCard(
 
                 Surface(
                     shape = RoundedCornerShape(10.dp),
-                    color = if (isDone) EmeraldAccent.copy(alpha = 0.15f) else Color(0xFF222430)
+                    color = if (isDone) EmeraldAccent.copy(alpha = 0.15f) else SurfaceElevatedDark
                 ) {
                     Text(
                         text = if (isDone) "✓ Completed" else "Read →",
@@ -4591,7 +4604,7 @@ fun ReadingRecommendedCard(
             Text(
                 text = text.titleEn,
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 20.sp),
-                color = Color(0xFFF3F4F6),
+                color = TextPrimary,
                 maxLines = 2,
                 minLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -4614,7 +4627,7 @@ fun ReadingRecommendedCard(
             HorizontalDivider(
                 modifier = Modifier.padding(top = 2.dp),
                 thickness = 1.dp,
-                color = Color.White.copy(alpha = 0.06f)
+                color = BorderSubtle
             )
 
             Row(
@@ -4634,7 +4647,7 @@ fun ReadingRecommendedCard(
                 Text(
                     text = "~$durationMin min • $totalWords words",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF9CA3AF),
+                    color = TextSecondary,
                     maxLines = 1,
                     softWrap = false
                 )
@@ -4643,7 +4656,7 @@ fun ReadingRecommendedCard(
                     Text(
                         text = "• ${text.topic}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF9CA3AF),
+                        color = TextSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

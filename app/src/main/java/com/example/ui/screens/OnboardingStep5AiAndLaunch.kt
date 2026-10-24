@@ -300,7 +300,7 @@ fun OnboardingAiAndLaunchStep(
                                     fontSize = 12.sp,
                                     lineHeight = 17.sp
                                 ),
-                                color = Color(0xFFD1D5DB)
+                                color = TextSecondary
                             )
                             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                                 Text(
@@ -385,26 +385,26 @@ fun OnboardingAiAndLaunchStep(
                             valueEn = goalTitleEn,
                             valueAr = goalTitleAr
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.04f))
+                        HorizontalDivider(color = BorderDark)
                         PlanSummaryRow(
                             labelEn = "Daily Commitment",
                             labelAr = "الوقت اليومي",
                             valueEn = "$selectedMinutesPerDay min/day • $newWordsPace words/day"
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.04f))
+                        HorizontalDivider(color = BorderDark)
                         PlanSummaryRow(
                             labelEn = "Weekly Schedule",
                             labelAr = "الجدول الأسبوعي",
                             valueEn = "$selectedStudyDaysPerWeek days/week",
                             valueAr = "Friday rest day • الجمعة راحة"
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.04f))
+                        HorizontalDivider(color = BorderDark)
                         PlanSummaryRow(
                             labelEn = "Active Decks",
                             labelAr = "القوائم المختارة",
                             valueEn = "$selectedDecksCount focus decks"
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.04f))
+                        HorizontalDivider(color = BorderDark)
                         PlanSummaryRow(
                             labelEn = "Offline Dictionary",
                             labelAr = "المعجم المدمج",

@@ -673,7 +673,7 @@ private fun TodayTabContent(
                             else -> "Open"
                         }
 
-                        val btnTextColor = if (task.isCompleted) GoldAccent else androidx.compose.ui.graphics.Color(0xFF0B0D12)
+                        val btnTextColor = if (task.isCompleted) GoldAccent else com.example.ui.theme.OnGoldDark
                         if (task.type == "quiz") {
                             Button(
                                 onClick = onStartMiniQuiz,

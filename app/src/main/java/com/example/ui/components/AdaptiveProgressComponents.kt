@@ -93,9 +93,9 @@ fun AdaptiveInsightBannerCard(
         modifier = modifier
             .fillMaxWidth()
             .testTag("adaptive_insight_banner"),
-        color = Color(0xFF1A1610),
+        color = SurfaceDark,
         shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, Color(0x59F5B82E))
+        border = BorderStroke(1.dp, GoldAccentBorder)
     ) {
         Row(
             modifier = Modifier
@@ -115,7 +115,7 @@ fun AdaptiveInsightBannerCard(
                     Icon(
                         imageVector = Icons.Filled.AutoAwesome,
                         contentDescription = null,
-                        tint = Color(0xFFF5B82E),
+                        tint = GoldAccent,
                         modifier = Modifier.size(15.dp)
                     )
                     Text(
@@ -124,14 +124,14 @@ fun AdaptiveInsightBannerCard(
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.5.sp
                         ),
-                        color = Color(0xFFF5B82E)
+                        color = GoldAccent
                     )
                 }
 
                 BidiText(
                     text = insight.messageAr,
                     style = ArabicTypography.labelSmall.copy(fontSize = 12.sp),
-                    color = Color(0xFFD1D5DB),
+                    color = TextSecondary,
                     fillMaxWidth = true,
                     textAlign = TextAlign.Right
                 )
@@ -140,8 +140,8 @@ fun AdaptiveInsightBannerCard(
                     Button(
                         onClick = { onAcceptLevelUp(insight.suggestedLevel) },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFF5B82E),
-                            contentColor = Color(0xFF0B0D12)
+                            containerColor = GoldAccent,
+                            contentColor = BackgroundDark
                         ),
                         shape = RoundedCornerShape(10.dp),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
@@ -154,14 +154,14 @@ fun AdaptiveInsightBannerCard(
                             text = insight.actionLabelEn ?: "Advance to ${insight.suggestedLevel}",
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
-                            color = Color(0xFF0B0D12)
+                            color = BackgroundDark
                         )
                     }
                 } else if (!insight.actionRoute.isNullOrBlank() && onNavigateToRoute != null) {
                     OutlinedButton(
                         onClick = { onNavigateToRoute(insight.actionRoute) },
                         shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, Color(0x59F5B82E)),
+                        border = BorderStroke(1.dp, GoldAccentBorder),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                         modifier = Modifier
                             .padding(top = 4.dp)
@@ -170,7 +170,7 @@ fun AdaptiveInsightBannerCard(
                     ) {
                         Text(
                             text = insight.actionLabelEn ?: "Open",
-                            color = Color(0xFFF5B82E),
+                            color = GoldAccent,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp
                         )
@@ -210,9 +210,9 @@ fun CefrAndLifecycleCard(
         modifier = modifier
             .fillMaxWidth()
             .testTag("cefr_readiness_card"),
-        color = Color(0xFF13161F),
+        color = SurfaceDark,
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Color(0xFF232734))
+        border = BorderStroke(1.dp, BorderDark)
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
@@ -248,11 +248,11 @@ fun CefrAndLifecycleCard(
                 }
 
                 Surface(
-                    color = if (readiness.isReadyForLevelUp) EmeraldAccent.copy(alpha = 0.16f) else Color(0xFF231D12),
+                    color = if (readiness.isReadyForLevelUp) EmeraldAccent.copy(alpha = 0.16f) else GoldAccentDim,
                     shape = RoundedCornerShape(8.dp),
                     border = BorderStroke(
                         width = 1.dp,
-                        color = if (readiness.isReadyForLevelUp) EmeraldAccent else Color(0x59F5B82E)
+                        color = if (readiness.isReadyForLevelUp) EmeraldAccent else GoldAccentBorder
                     )
                 ) {
                     Text(
@@ -261,7 +261,7 @@ fun CefrAndLifecycleCard(
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.5.sp
                         ),
-                        color = if (readiness.isReadyForLevelUp) EmeraldAccent else Color(0xFFF5B82E),
+                        color = if (readiness.isReadyForLevelUp) EmeraldAccent else GoldAccent,
                         modifier = Modifier
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                             .testTag("cefr_readiness_percent")
@@ -269,7 +269,7 @@ fun CefrAndLifecycleCard(
                 }
             }
 
-            HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 1.dp)
+            HorizontalDivider(color = BorderSubtle, thickness = 1.dp)
 
             // 3-Column Mastery Breakdown Grid
             Row(
@@ -281,7 +281,7 @@ fun CefrAndLifecycleCard(
                         label = "Vocab (50%)",
                         percent = readiness.vocabScorePercent,
                         detail = "${readiness.vocabFamiliarOrMatureCount}/${readiness.vocabTargetCount}",
-                        color = Color(0xFFF5B82E)
+                        color = GoldAccent
                     )
                 }
                 Box(modifier = Modifier.weight(1f)) {
@@ -289,7 +289,7 @@ fun CefrAndLifecycleCard(
                         label = "Grammar (30%)",
                         percent = readiness.grammarScorePercent,
                         detail = "${readiness.grammarPassedCount}/${readiness.grammarTotalCount}",
-                        color = Color(0xFFA855F7)
+                        color = VioletAccent
                     )
                 }
                 Box(modifier = Modifier.weight(1f)) {
@@ -297,7 +297,7 @@ fun CefrAndLifecycleCard(
                         label = "Reading (20%)",
                         percent = readiness.readingScorePercent,
                         detail = "${readiness.readingCompletedCount}/${readiness.readingTargetCount}",
-                        color = Color(0xFF38BDF8)
+                        color = SkyAccent
                     )
                 }
             }
@@ -307,7 +307,7 @@ fun CefrAndLifecycleCard(
                     onClick = { onAcceptLevelUp(readiness.nextLevel) },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = EmeraldAccent,
-                        contentColor = Color(0xFF0B0D12)
+                        contentColor = BackgroundDark
                     ),
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
@@ -319,12 +319,12 @@ fun CefrAndLifecycleCard(
                         text = "Ready! Advance to ${readiness.nextLevel}",
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 13.sp,
-                        color = Color(0xFF0B0D12)
+                        color = BackgroundDark
                     )
                 }
             }
 
-            HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 1.dp)
+            HorizontalDivider(color = BorderSubtle, thickness = 1.dp)
 
             // Bottom Part: Vocabulary Lifecycle Stages (2-Column x 3-Row Grid)
             Column(
@@ -352,7 +352,7 @@ fun CefrAndLifecycleCard(
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 11.5.sp
                         ),
-                        color = Color(0xFFF5B82E)
+                        color = GoldAccent
                     )
                 }
 
@@ -1018,9 +1018,9 @@ private fun FunnelStageChip(
     onClick: (() -> Unit)? = null
 ) {
     Surface(
-        color = Color(0xFF181C28),
+        color = SurfaceElevatedDark,
         shape = RoundedCornerShape(9.dp),
-        border = BorderStroke(1.dp, Color(0xFF232734)),
+        border = BorderStroke(1.dp, BorderDark),
         modifier = modifier
             .clip(RoundedCornerShape(9.dp))
             .then(

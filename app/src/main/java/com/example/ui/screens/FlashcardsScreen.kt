@@ -132,6 +132,7 @@ import com.example.ui.components.EmptyState
 import com.example.ui.components.GoldBadge
 import com.example.ui.components.LoadingState
 import com.example.ui.components.SlowAudioTurtleButton
+import com.example.ui.theme.AmberAccent
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
@@ -415,6 +416,7 @@ fun FlashcardsScreen(
                                     label = {
                                         Text(
                                             text = "Due Today ($reviewDueTodayCount)",
+                                            color = if (isDueSelected) GoldAccent else TextSecondary,
                                             fontWeight = if (isDueSelected) FontWeight.Bold else FontWeight.Medium
                                         )
                                     },
@@ -443,6 +445,7 @@ fun FlashcardsScreen(
                                     label = {
                                         Text(
                                             text = deck.title,
+                                            color = if (isSelected) GoldAccent else TextSecondary,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                         )
                                     },
@@ -527,7 +530,7 @@ fun FlashcardsScreen(
                     ) {
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = Color.White.copy(alpha = 0.04f),
+                            color = SurfaceElevatedDark,
                             border = BorderStroke(1.dp, BorderDark),
                             modifier = Modifier
                                 .size(32.dp)
@@ -615,7 +618,7 @@ fun FlashcardsScreen(
 
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = Color.White.copy(alpha = 0.04f),
+                            color = SurfaceElevatedDark,
                             border = BorderStroke(1.dp, BorderDark),
                             modifier = Modifier
                                 .size(32.dp)
@@ -1107,8 +1110,8 @@ private fun FlipFlashcardItem(
 
 private fun Sm2Rating.ratingAccent(): Color = when (this) {
     Sm2Rating.AGAIN -> CoralAccent
-    Sm2Rating.HARD -> Color(0xFFF59E0B)
-    Sm2Rating.GOOD -> Color(0xFFFACC15)
+    Sm2Rating.HARD -> AmberAccent
+    Sm2Rating.GOOD -> GoldAccent
     Sm2Rating.EASY -> EmeraldAccent
 }
 
@@ -1254,13 +1257,13 @@ private fun FlashcardFrontFace(
                     if (primaryPos.isNotBlank()) {
                         Surface(
                             shape = RoundedCornerShape(999.dp),
-                            color = Color(0xFF1B1E28),
-                            border = BorderStroke(1.dp, Color(0xFF282C3A))
+                            color = SurfaceElevatedDark,
+                            border = BorderStroke(1.dp, BorderDark)
                         ) {
                             Text(
                                 text = primaryPos,
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    color = Color(0xFF9CA3AF),
+                                    color = TextSecondary,
                                     fontSize = 12.sp
                                 ),
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
@@ -1504,9 +1507,9 @@ private fun FlashcardBackFace(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("flashcard_arabic_section"),
-                color = Color(0xFF13161F),
+                color = SurfaceElevatedDark,
                 shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, Color(0xFF232734))
+                border = BorderStroke(1.dp, BorderDark)
             ) {
                 Column(
                     modifier = Modifier
@@ -1593,7 +1596,7 @@ private fun FlashcardBackFace(
                 Text(
                     text = primaryDefinitionEn,
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = Color(0xFFE5E7EB),
+                        color = TextPrimary,
                         lineHeight = 20.sp
                     )
                 )
@@ -1625,9 +1628,9 @@ private fun FlashcardBackFace(
                                 onLongClick = { onToggleSaveSentence(sentenceEn, sentenceAr) }
                             )
                             .testTag("flashcard_example_card_$idx"),
-                        color = Color(0xFF13161F),
+                        color = SurfaceElevatedDark,
                         shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, if (isSaved) GoldAccentBorder else Color(0xFF232734))
+                        border = BorderStroke(1.dp, if (isSaved) GoldAccentBorder else BorderDark)
                     ) {
                         Row(
                             modifier = Modifier
@@ -1806,7 +1809,7 @@ private fun FlashcardBottomActionsBar(
             Sm2RateButton(
                 label = "Hard",
                 intervalText = intervalPreview.hardLabel,
-                accentColor = Color(0xFFF59E0B),
+                accentColor = AmberAccent,
                 testTag = "sm2_button_hard",
                 enabled = isCardFlipped && !isRatingLocked,
                 onClick = { if (isCardFlipped && !isRatingLocked) onRateCard(Sm2Rating.HARD) },
@@ -1815,7 +1818,7 @@ private fun FlashcardBottomActionsBar(
             Sm2RateButton(
                 label = "Good",
                 intervalText = intervalPreview.goodLabel,
-                accentColor = Color(0xFFFACC15),
+                accentColor = GoldAccent,
                 testTag = "sm2_button_good",
                 enabled = isCardFlipped && !isRatingLocked,
                 onClick = { if (isCardFlipped && !isRatingLocked) onRateCard(Sm2Rating.GOOD) },
@@ -1985,8 +1988,8 @@ private fun RatingStampOverlay(
 ) {
     val (label, color, icon) = when (rating) {
         Sm2Rating.AGAIN -> Triple("AGAIN", CoralAccent, Icons.Default.Refresh)
-        Sm2Rating.HARD -> Triple("HARD", Color(0xFFF59E0B), Icons.Default.FitnessCenter)
-        Sm2Rating.GOOD -> Triple("GOOD", Color(0xFFFACC15), Icons.Default.ThumbUp)
+        Sm2Rating.HARD -> Triple("HARD", AmberAccent, Icons.Default.FitnessCenter)
+        Sm2Rating.GOOD -> Triple("GOOD", GoldAccent, Icons.Default.ThumbUp)
         Sm2Rating.EASY -> Triple("EASY", EmeraldAccent, Icons.Default.AutoAwesome)
     }
 

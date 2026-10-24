@@ -79,6 +79,12 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.components.BidiText
+import com.example.ui.theme.BorderSubtle
+import com.example.ui.theme.GoldAccent
+import com.example.ui.theme.SurfaceDark
+import com.example.ui.theme.SurfaceElevatedDark
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
 import com.example.data.local.CorrectionNotebookEntity
 import com.example.data.local.GrammarLessonEntity
 import com.example.data.local.ReadingTextEntity
@@ -459,10 +465,10 @@ fun WeeklyStudyPlanCard(
             .fillMaxWidth()
             .testTag("weekly_study_plan_card"),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF1E232A)
+            containerColor = SurfaceDark
         ),
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Color(0xFFFFD54F).copy(alpha = 0.5f))
+        border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.5f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -472,7 +478,7 @@ fun WeeklyStudyPlanCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
-                        color = Color(0xFFFFD54F),
+                        color = GoldAccent,
                         shape = CircleShape,
                         modifier = Modifier.size(28.dp)
                     ) {
@@ -480,7 +486,7 @@ fun WeeklyStudyPlanCard(
                             Text(
                                 text = "9",
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF3E2723),
+                                color = com.example.ui.theme.OnGoldDark,
                                 fontSize = 13.sp
                             )
                         }
@@ -491,23 +497,23 @@ fun WeeklyStudyPlanCard(
                             text = "Weekly Study Goal (Phase 9)",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFFFD54F)
+                            color = GoldAccent
                         )
                         Text(
                             text = "الخطة الأسبوعية: قراءة • قاعدة • تصحيح",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.7f)
+                            color = TextSecondary
                         )
                     }
                 }
 
                 Surface(
-                    color = Color(0xFFFFD54F).copy(alpha = 0.2f),
+                    color = GoldAccent.copy(alpha = 0.16f),
                     shape = RoundedCornerShape(6.dp)
                 ) {
                     Text(
                         text = "1 Lesson + 1 Text",
-                        color = Color(0xFFFFD54F),
+                        color = GoldAccent,
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
@@ -528,15 +534,15 @@ fun WeeklyStudyPlanCard(
                         .clickable(enabled = targetText != null) {
                             if (targetText != null) onOpenText(targetText)
                         },
-                    color = Color.White.copy(alpha = 0.08f),
+                    color = SurfaceElevatedDark,
                     shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+                    border = BorderStroke(1.dp, BorderSubtle)
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
-                        Text("Session 1", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFFD54F), fontWeight = FontWeight.Bold)
+                        Text("Session 1", style = MaterialTheme.typography.labelSmall, color = GoldAccent, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(4.dp))
-                        Text("Read & Mark", style = MaterialTheme.typography.bodySmall, color = Color.White, fontWeight = FontWeight.SemiBold)
-                        Text("نص القراءة", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f))
+                        Text("Read & Mark", style = MaterialTheme.typography.bodySmall, color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                        Text("نص القراءة", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
                     }
                 }
 
@@ -547,30 +553,30 @@ fun WeeklyStudyPlanCard(
                         .clickable(enabled = targetLesson != null) {
                             if (targetLesson != null) onOpenLesson(targetLesson)
                         },
-                    color = Color.White.copy(alpha = 0.08f),
+                    color = SurfaceElevatedDark,
                     shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+                    border = BorderStroke(1.dp, BorderSubtle)
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
-                        Text("Session 2", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFFD54F), fontWeight = FontWeight.Bold)
+                        Text("Session 2", style = MaterialTheme.typography.labelSmall, color = GoldAccent, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(4.dp))
-                        Text("Lesson & Quiz", style = MaterialTheme.typography.bodySmall, color = Color.White, fontWeight = FontWeight.SemiBold)
-                        Text("شرح وتمارين", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f))
+                        Text("Lesson & Quiz", style = MaterialTheme.typography.bodySmall, color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                        Text("شرح وتمارين", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
                     }
                 }
 
                 // Session 3: Write & Review
                 Surface(
                     modifier = Modifier.weight(1f),
-                    color = Color(0xFFFFD54F).copy(alpha = 0.18f),
+                    color = GoldAccent.copy(alpha = 0.16f),
                     shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, Color(0xFFFFD54F).copy(alpha = 0.5f))
+                    border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.5f))
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
-                        Text("Session 3", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFFD54F), fontWeight = FontWeight.Bold)
+                        Text("Session 3", style = MaterialTheme.typography.labelSmall, color = GoldAccent, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(4.dp))
-                        Text("Write & Review", style = MaterialTheme.typography.bodySmall, color = Color.White, fontWeight = FontWeight.SemiBold)
-                        Text("اكتب وراجع", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.8f))
+                        Text("Write & Review", style = MaterialTheme.typography.bodySmall, color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                        Text("اكتب وراجع", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
                     }
                 }
             }
@@ -600,9 +606,9 @@ fun CorrectionEntryCard(
     val isDueForReview = entry.nextReviewTimestamp in 1..now && entry.status != "mastered"
 
     val (statusColor, statusText) = when (entry.status) {
-        "mastered" -> Pair(Color(0xFFFFD54F), "Mastered")
-        "checked" -> Pair(Color(0xFF34D399), "Checked")
-        else -> Pair(Color(0xFFFBBF24), "Pending")
+        "mastered" -> Pair(GoldAccent, "Mastered")
+        "checked" -> Pair(com.example.ui.theme.EmeraldAccent, "Checked")
+        else -> Pair(com.example.ui.theme.AmberAccent, "Pending")
     }
 
     OutlinedCard(
@@ -612,7 +618,7 @@ fun CorrectionEntryCard(
         shape = RoundedCornerShape(14.dp),
         border = BorderStroke(
             1.dp,
-            if (isDueForReview) Color(0xFFFFD54F) else MaterialTheme.colorScheme.outlineVariant
+            if (isDueForReview) GoldAccent else MaterialTheme.colorScheme.outlineVariant
         ),
         colors = CardDefaults.outlinedCardColors(
             containerColor = if (entry.status == "mastered") MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
@@ -782,11 +788,11 @@ fun CorrectionEntryCard(
                     OutlinedButton(
                         onClick = onStartReview,
                         colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = if (isDueForReview) Color(0xFFFFD54F).copy(alpha = 0.15f) else Color.Transparent
+                            containerColor = if (isDueForReview) com.example.ui.theme.GoldAccentDim else Color.Transparent
                         ),
                         border = BorderStroke(
                             1.dp,
-                            if (isDueForReview) Color(0xFFFFD54F) else MaterialTheme.colorScheme.outlineVariant
+                            if (isDueForReview) GoldAccent else MaterialTheme.colorScheme.outlineVariant
                         ),
                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                         modifier = Modifier.testTag("notebook_review_button_${entry.id}")

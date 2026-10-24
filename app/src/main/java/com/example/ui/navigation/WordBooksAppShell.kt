@@ -33,6 +33,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -129,6 +131,7 @@ fun WordBooksAppShell(
     val selectedDeckId by wordBooksViewModel.selectedDeckId.collectAsStateWithLifecycle()
     val flashcardDeckId by wordBooksViewModel.flashcardDeckId.collectAsStateWithLifecycle()
     val isDeveloperModeEnabled by wordBooksViewModel.isDeveloperModeEnabled.collectAsStateWithLifecycle()
+    val themeMode by wordBooksViewModel.themeMode.collectAsStateWithLifecycle()
     val batchTranslateState by wordBooksViewModel.batchTranslateState.collectAsStateWithLifecycle()
     val selectedGrammarLesson by wordBooksViewModel.selectedGrammarLesson.collectAsStateWithLifecycle()
     val selectedReadingText by wordBooksViewModel.selectedReadingText.collectAsStateWithLifecycle()
@@ -303,13 +306,13 @@ fun WordBooksAppShell(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Surface(
-                                color = Color(0xFFF5C542).copy(alpha = 0.18f),
-                                border = BorderStroke(1.dp, Color(0xFFF5C542).copy(alpha = 0.5f)),
+                                color = GoldAccentDim,
+                                border = BorderStroke(1.dp, GoldAccentBorder),
                                 shape = RoundedCornerShape(4.dp)
                             ) {
                                 Text(
                                     text = text.level.uppercase(),
-                                    color = Color(0xFFF5C542),
+                                    color = GoldAccent,
                                     fontSize = 10.sp,
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                                     modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
@@ -336,6 +339,24 @@ fun WordBooksAppShell(
                     onNavigateBack = onNavigateBack,
                     subtitleContent = readingSubtitleContent,
                     actions = {
+                        IconButton(
+                            onClick = { wordBooksViewModel.toggleLightDarkTheme() },
+                            modifier = Modifier.testTag("btn_top_theme_toggle")
+                        ) {
+                            Icon(
+                                imageVector = if (com.example.ui.theme.AppThemeState.isLightMode) {
+                                    Icons.Filled.DarkMode
+                                } else {
+                                    Icons.Filled.LightMode
+                                },
+                                contentDescription = if (com.example.ui.theme.AppThemeState.isLightMode) {
+                                    "Switch to Dark Mode"
+                                } else {
+                                    "Switch to Light Mode"
+                                },
+                                tint = GoldAccent
+                            )
+                        }
                         if (currentRoute != AppRoute.Settings) {
                             IconButton(
                                 onClick = {
@@ -972,6 +993,8 @@ fun WordBooksAppShell(
                         apiKeySource = currentKeySource,
                         isApiKeyConfigured = isApiKeyConfigured,
                         isDeveloperModeEnabled = isDeveloperModeEnabled,
+                        themeMode = themeMode,
+                        onSelectThemeMode = wordBooksViewModel::setThemeMode,
                         onSelectAccentUk = wordBooksViewModel::setPreferredAccentUk,
                         onSelectSpeechRate = wordBooksViewModel::updateTtsSpeechRate,
                         onToggleAutoPlayPronunciation = wordBooksViewModel::setAutoPlayPronunciation,

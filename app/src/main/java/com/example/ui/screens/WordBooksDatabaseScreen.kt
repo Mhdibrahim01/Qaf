@@ -148,6 +148,7 @@ import com.example.ui.components.SlowAudioTurtleButton
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
+import com.example.ui.theme.BorderSubtle
 import com.example.ui.theme.CoralAccent
 import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.EmeraldAccentBg
@@ -902,14 +903,14 @@ fun NumberedBookCard(
                 ) {
                     Surface(
                         shape = RoundedCornerShape(7.dp),
-                        color = Color.White.copy(alpha = 0.04f),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f))
+                        color = SurfaceElevatedDark,
+                        border = BorderStroke(1.dp, BorderDark)
                     ) {
                         Text(
                             text = formattedIndex,
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF9CA3AF),
+                                color = TextSecondary,
                                 fontSize = 11.sp
                             ),
                             modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
@@ -959,7 +960,7 @@ fun NumberedBookCard(
                         text = isolatedNameAr,
                         style = ArabicTypography.bodyMedium.copy(
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFE5E7EB),
+                            color = TextPrimary,
                             fontSize = 14.sp
                         ),
                         textAlign = androidx.compose.ui.text.style.TextAlign.End,
@@ -992,7 +993,7 @@ fun NumberedBookCard(
             // 3. Subtle divider above footer buttons
             HorizontalDivider(
                 thickness = 1.dp,
-                color = Color.White.copy(alpha = 0.05f)
+                color = BorderSubtle
             )
 
             // 4. Footer buttons

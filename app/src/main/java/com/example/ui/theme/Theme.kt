@@ -2,11 +2,14 @@ package com.example.ui.theme
 
 import android.app.Activity
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
@@ -18,30 +21,59 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 
-private val WordBooksDarkColorScheme = darkColorScheme(
-    primary = GoldAccent,
-    onPrimary = OnGoldDark,
-    primaryContainer = GoldAccentDim,
-    onPrimaryContainer = GoldAccent,
-    secondary = SkyAccent,
-    onSecondary = BackgroundDark,
-    secondaryContainer = SurfaceElevatedDark,
-    onSecondaryContainer = TextPrimary,
-    tertiary = EmeraldAccent,
-    onTertiary = BackgroundDark,
-    background = BackgroundDark,
-    onBackground = TextPrimary,
-    surface = SurfaceDark,
-    onSurface = TextPrimary,
-    surfaceVariant = SurfaceElevatedDark,
-    onSurfaceVariant = TextSecondary,
-    surfaceContainerLowest = BackgroundDark,
-    surfaceContainerLow = SurfaceDark,
-    surfaceContainer = SurfaceElevatedDark,
-    surfaceContainerHigh = SurfaceContainerHighDark,
-    outline = BorderDark,
-    outlineVariant = BorderDark
-)
+private fun buildWordBooksColorScheme(isLight: Boolean): ColorScheme {
+    return if (isLight) {
+        lightColorScheme(
+            primary = GoldAccent,
+            onPrimary = OnGoldDark,
+            primaryContainer = GoldAccentDim,
+            onPrimaryContainer = GoldAccent,
+            secondary = SkyAccent,
+            onSecondary = SurfaceDark,
+            secondaryContainer = SurfaceElevatedDark,
+            onSecondaryContainer = TextPrimary,
+            tertiary = EmeraldAccent,
+            onTertiary = SurfaceDark,
+            background = BackgroundDark,
+            onBackground = TextPrimary,
+            surface = SurfaceDark,
+            onSurface = TextPrimary,
+            surfaceVariant = SurfaceElevatedDark,
+            onSurfaceVariant = TextSecondary,
+            surfaceContainerLowest = SurfaceDark,
+            surfaceContainerLow = BackgroundDark,
+            surfaceContainer = SurfaceElevatedDark,
+            surfaceContainerHigh = SurfaceContainerHighDark,
+            outline = BorderDark,
+            outlineVariant = BorderSubtle
+        )
+    } else {
+        darkColorScheme(
+            primary = GoldAccent,
+            onPrimary = OnGoldDark,
+            primaryContainer = GoldAccentDim,
+            onPrimaryContainer = GoldAccent,
+            secondary = SkyAccent,
+            onSecondary = BackgroundDark,
+            secondaryContainer = SurfaceElevatedDark,
+            onSecondaryContainer = TextPrimary,
+            tertiary = EmeraldAccent,
+            onTertiary = BackgroundDark,
+            background = BackgroundDark,
+            onBackground = TextPrimary,
+            surface = SurfaceDark,
+            onSurface = TextPrimary,
+            surfaceVariant = SurfaceElevatedDark,
+            onSurfaceVariant = TextSecondary,
+            surfaceContainerLowest = BackgroundDark,
+            surfaceContainerLow = SurfaceDark,
+            surfaceContainer = SurfaceElevatedDark,
+            surfaceContainerHigh = SurfaceContainerHighDark,
+            outline = BorderDark,
+            outlineVariant = BorderDark
+        )
+    }
+}
 
 val WordBooksShapes = Shapes(
     extraSmall = RoundedCornerShape(6.dp),
@@ -65,9 +97,12 @@ val SquircleFlashcardShape = RoundedCornerShape(28.dp)
 val PillShape = RoundedCornerShape(999.dp)
 
 // Reusable Border Tokens (Single Source of Truth)
-val HairlineDarkBorderStroke = BorderStroke(1.dp, BorderDark)
-val GoldAccentBorderStroke = BorderStroke(1.dp, GoldAccentBorder)
-val EmeraldMasteredBorderStroke = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.45f))
+val HairlineDarkBorderStroke: BorderStroke
+    get() = BorderStroke(1.dp, BorderDark)
+val GoldAccentBorderStroke: BorderStroke
+    get() = BorderStroke(1.dp, GoldAccentBorder)
+val EmeraldMasteredBorderStroke: BorderStroke
+    get() = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.45f))
 
 /**
  * Single Source of Truth (SSOT) for Cross-Device Viewport Normalization & Design Tokens.
@@ -98,16 +133,26 @@ object WordBooksSpacing {
 
 @Composable
 fun WordBooksTheme(
+    themeMode: AppThemeMode = AppThemeState.themeMode,
     content: @Composable () -> Unit
 ) {
+    val systemInDark = isSystemInDarkTheme()
+    val resolvedIsLight = when (themeMode) {
+        AppThemeMode.LIGHT -> true
+        AppThemeMode.DARK -> false
+        AppThemeMode.SYSTEM -> !systemInDark
+    }
+    AppThemeState.themeMode = themeMode
+    AppThemeState.isLightMode = resolvedIsLight
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as? Activity)?.window
             if (window != null) {
                 WindowCompat.getInsetsController(window, view).apply {
-                    isAppearanceLightStatusBars = false
-                    isAppearanceLightNavigationBars = false
+                    isAppearanceLightStatusBars = resolvedIsLight
+                    isAppearanceLightNavigationBars = resolvedIsLight
                 }
             }
         }
@@ -131,10 +176,20 @@ fun WordBooksTheme(
         )
     }
 
-    CompositionLocalProvider(LocalDensity provides normalizedDensity) {
+    val colorScheme = remember(resolvedIsLight) {
+        buildWordBooksColorScheme(resolvedIsLight)
+    }
+    val typography = remember(resolvedIsLight) {
+        Typography
+    }
+
+    CompositionLocalProvider(
+        LocalDensity provides normalizedDensity,
+        androidx.compose.material3.LocalContentColor provides TextPrimary
+    ) {
         MaterialTheme(
-            colorScheme = WordBooksDarkColorScheme,
-            typography = Typography,
+            colorScheme = colorScheme,
+            typography = typography,
             shapes = WordBooksShapes,
             content = content
         )
@@ -147,5 +202,8 @@ fun MyApplicationTheme(
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    WordBooksTheme(content = content)
+    WordBooksTheme(
+        themeMode = if (darkTheme) AppThemeMode.DARK else AppThemeMode.LIGHT,
+        content = content
+    )
 }
