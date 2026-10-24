@@ -336,6 +336,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
 
     val progressMap: StateFlow<Map<String, WordProgressEntity>> = repository.allProgressFlow
         .map { list -> list.associateBy { it.cardKey } }
+        .flowOn(Dispatchers.Default)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -433,6 +434,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
 
     val savedSentenceKeys: StateFlow<Set<String>> = repository.sentencesNewestFirstFlow
         .map { list -> list.mapTo(HashSet()) { it.englishText.trim().lowercase() } }
+        .flowOn(Dispatchers.Default)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -485,16 +487,16 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         initialValue = emptyList()
     )
 
-    val recentAttempts: StateFlow<List<AttemptEntity>> = database.wordBooksDao().observeAllAttempts()
-        .map { it.take(8) }
+    val recentAttempts: StateFlow<List<AttemptEntity>> = database.wordBooksDao().observeRecentAttempts(8)
+        .flowOn(Dispatchers.Default)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
 
-    val totalAttemptsCount: StateFlow<Int> = database.wordBooksDao().observeAllAttempts()
-        .map { it.size }
+    val totalAttemptsCount: StateFlow<Int> = database.wordBooksDao().observeTotalAttemptsCount()
+        .flowOn(Dispatchers.Default)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -533,6 +535,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 emit(words)
             }
         }
+        .flowOn(Dispatchers.Default)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -629,6 +632,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             database.wordBooksDao().observeAllReadingProgress()
         ) { _, _, _, _ -> System.currentTimeMillis() }
             .debounce(300L)
+            .flowOn(Dispatchers.Default)
             .onEach {
                 if (database.wordBooksDao().getStudyPlanProfile() != null) {
                     val updated = studyPlanRepository.recomputeTodayChecklistCompletion()

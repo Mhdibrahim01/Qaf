@@ -30,9 +30,11 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -55,14 +57,18 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Flip
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -171,6 +177,7 @@ fun FlashcardsScreen(
     autoShowAnswer: Boolean = false,
     onSelectDeck: (String) -> Unit,
     onSwitchToBooks: () -> Unit = {},
+    onNavigateHome: () -> Unit = {},
     onIndexChanged: (Int) -> Unit,
     onFlipCard: () -> Unit = {},
     onSetCardFlipped: (Boolean) -> Unit = {},
@@ -518,24 +525,33 @@ fun FlashcardsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(
-                            onClick = { if (safeIndex > 0 && !isAnimatingRating) onIndexChanged(safeIndex - 1) },
-                            enabled = safeIndex > 0 && !isAnimatingRating,
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color.White.copy(alpha = 0.04f),
+                            border = BorderStroke(1.dp, BorderDark),
                             modifier = Modifier
-                                .size(38.dp)
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable(
+                                    enabled = safeIndex > 0 && !isAnimatingRating,
+                                    onClick = { if (safeIndex > 0 && !isAnimatingRating) onIndexChanged(safeIndex - 1) }
+                                )
                                 .testTag("flashcard_prev_button")
                         ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                                contentDescription = "Previous card",
-                                tint = if (safeIndex > 0) TextPrimary else TextMuted
-                            )
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                                    contentDescription = "Previous card",
+                                    tint = if (safeIndex > 0) TextPrimary else TextMuted,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
 
-                        // "N / total" counter with current number in Gold (#F5C542)
+                        // Center: "N / total" counter + Focus pill badge together in the center
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
                                 text = buildAnnotatedString {
@@ -543,7 +559,7 @@ fun FlashcardsScreen(
                                         SpanStyle(
                                             color = GoldAccent,
                                             fontWeight = FontWeight.ExtraBold,
-                                            fontSize = 18.sp
+                                            fontSize = 17.sp
                                         )
                                     ) {
                                         append(if (cards.isEmpty()) "0" else formatter.format(safeIndex + 1))
@@ -552,7 +568,7 @@ fun FlashcardsScreen(
                                         SpanStyle(
                                             color = TextSecondary,
                                             fontWeight = FontWeight.SemiBold,
-                                            fontSize = 15.sp
+                                            fontSize = 14.sp
                                         )
                                     ) {
                                         append(" / ${formatter.format(cards.size)}")
@@ -562,15 +578,6 @@ fun FlashcardsScreen(
                                 modifier = Modifier.testTag("flashcard_counter")
                             )
 
-                            if (reviewDueTodayCount > 0) {
-                                GoldBadge(text = "Due: $reviewDueTodayCount")
-                            }
-                        }
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
                             Surface(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
@@ -588,7 +595,7 @@ fun FlashcardsScreen(
                                         imageVector = Icons.Default.AutoAwesome,
                                         contentDescription = "Toggle Focus Mode",
                                         tint = GoldAccent,
-                                        modifier = Modifier.size(14.dp)
+                                        modifier = Modifier.size(13.dp)
                                     )
                                     Text(
                                         text = if (isDistractionFreeMode) "Exit Focus" else "Focus",
@@ -601,17 +608,30 @@ fun FlashcardsScreen(
                                 }
                             }
 
-                            IconButton(
-                                onClick = { if (safeIndex + 1 < cards.size && !isAnimatingRating) onIndexChanged(safeIndex + 1) },
-                                enabled = safeIndex + 1 < cards.size && !isAnimatingRating,
-                                modifier = Modifier
-                                    .size(38.dp)
-                                    .testTag("flashcard_next_button")
-                            ) {
+                            if (reviewDueTodayCount > 0) {
+                                GoldBadge(text = "Due: $reviewDueTodayCount")
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color.White.copy(alpha = 0.04f),
+                            border = BorderStroke(1.dp, BorderDark),
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable(
+                                    enabled = safeIndex + 1 < cards.size && !isAnimatingRating,
+                                    onClick = { if (safeIndex + 1 < cards.size && !isAnimatingRating) onIndexChanged(safeIndex + 1) }
+                                )
+                                .testTag("flashcard_next_button")
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                     contentDescription = "Next card",
-                                    tint = if (safeIndex + 1 < cards.size) TextPrimary else TextMuted
+                                    tint = if (safeIndex + 1 < cards.size) TextPrimary else TextMuted,
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         }
@@ -659,32 +679,79 @@ fun FlashcardsScreen(
                         .fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                    EmptyState(
-                        titleEn = if (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID) {
-                            if (waitingLaterTodayCount > 0) {
-                                "All due-now reviews done! ($waitingLaterTodayCount scheduled for later today)"
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
+                    ) {
+                        EmptyState(
+                            titleEn = if (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID) {
+                                if (waitingLaterTodayCount > 0) {
+                                    "All due-now reviews done! ($waitingLaterTodayCount scheduled for later today)"
+                                } else {
+                                    "All due reviews completed for today!"
+                                }
                             } else {
-                                "All due reviews completed for today!"
-                            }
-                        } else {
-                            "No cards in this deck yet"
-                        },
-                        titleAr = if (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID) {
-                            if (waitingLaterTodayCount > 0) {
-                                "تم إكمال المراجعات المستحقة الآن! ($waitingLaterTodayCount بطاقة مجدولة لوقت لاحق اليوم)"
+                                "No cards in this deck yet"
+                            },
+                            titleAr = if (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID) {
+                                if (waitingLaterTodayCount > 0) {
+                                    "تم إكمال المراجعات المستحقة الآن! ($waitingLaterTodayCount بطاقة مجدولة لوقت لاحق اليوم)"
+                                } else {
+                                    "تم إكمال جميع مراجعات اليوم بنجاح!"
+                                }
                             } else {
-                                "تم إكمال جميع مراجعات اليوم بنجاح!"
+                                "لا توجد بطاقات في هذا الكتاب بعد"
+                            },
+                            descriptionEn = if (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID && waitingLaterTodayCount > 0 && waitingMinutes != null) {
+                                "Short-interval cards are hidden until their timer finishes (~${waitingMinutes}m). Or select a Word Book above to study."
+                            } else {
+                                "Select Oxford 5000 or another Word Book above to study."
+                            },
+                            icon = Icons.AutoMirrored.Filled.MenuBook
+                        )
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedButton(
+                                onClick = onNavigateHome,
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, BorderDark),
+                                modifier = Modifier.testTag("btn_empty_flashcards_home")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Home,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = TextSecondary
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Home / الرئيسية", color = TextPrimary)
                             }
-                        } else {
-                            "لا توجد بطاقات في هذا الكتاب بعد"
-                        },
-                        descriptionEn = if (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID && waitingLaterTodayCount > 0 && waitingMinutes != null) {
-                            "Short-interval cards are hidden until their timer finishes (~${waitingMinutes}m). Or select a Word Book above to study."
-                        } else {
-                            "Select Oxford 5000 or another Word Book above to study."
-                        },
-                        icon = Icons.AutoMirrored.Filled.MenuBook
-                    )
+
+                            Button(
+                                onClick = onSwitchToBooks,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = GoldAccent,
+                                    contentColor = BackgroundDark
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.testTag("btn_empty_flashcards_switch_books")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Word Books / الكتب", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                 }
             } else {
                 val card = displayedCard
@@ -1115,28 +1182,16 @@ private fun FlashcardFrontFace(
                         tint = if (isFavorite) GoldAccent else TextSecondary
                     )
                 }
-                IconButton(
-                    onClick = onOpenDetailedDefinition,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .testTag("flashcard_detail_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Info,
-                        contentDescription = "Detailed definition",
-                        tint = GoldAccent
-                    )
-                }
             }
         }
 
-        // Center Content: Large Word (or Arabic meaning in Arabic-to-English mode) + Audio Button
+        // Center Content: Large Word (or Arabic meaning in Arabic-to-English mode) + Part of Speech + Audio Button
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(22.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (effectiveDirection == FlashcardDirection.ARABIC_TO_ENGLISH) {
                 if (variantsWithArabic.isNotEmpty()) {
@@ -1177,16 +1232,42 @@ private fun FlashcardFrontFace(
                     }
                 }
             } else {
-                Text(
-                    text = card.text,
-                    style = MaterialTheme.typography.displayMedium.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = (-0.5).sp
-                    ),
-                    color = TextPrimary,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.testTag("flashcard_word_text")
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = card.text,
+                        style = MaterialTheme.typography.displayMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = (-0.5).sp
+                        ),
+                        color = TextPrimary,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.testTag("flashcard_word_text")
+                    )
+
+                    val primaryPos = remember(card) {
+                        card.posVariants.firstOrNull { it.pos.isNotBlank() }?.pos?.ifBlank { card.primaryType }
+                            ?: card.primaryType
+                    }
+                    if (primaryPos.isNotBlank()) {
+                        Surface(
+                            shape = RoundedCornerShape(999.dp),
+                            color = Color(0xFF1B1E28),
+                            border = BorderStroke(1.dp, Color(0xFF282C3A))
+                        ) {
+                            Text(
+                                text = primaryPos,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color(0xFF9CA3AF),
+                                    fontSize = 12.sp
+                                ),
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
+                            )
+                        }
+                    }
+                }
             }
 
             // Audio Buttons — consume their own clicks so tapping audio NEVER flips the card
@@ -1264,7 +1345,7 @@ private fun FlashcardBackFace(
         card.posVariants.filter { it.arabicMeaning.isNotBlank() }
     }
 
-    // Collect up to 2 distinct examples across variants so examples are shown whenever present
+    // Collect single example across variants to prevent overcrowding on flip
     val examplePairs = remember(card.posVariants) {
         val list = mutableListOf<Pair<String, String>>()
         val seen = HashSet<String>()
@@ -1277,7 +1358,7 @@ private fun FlashcardBackFace(
                 }
             }
         }
-        list.take(2)
+        list.take(1)
     }
 
     val primaryDefinitionEn = remember(card.posVariants) {
@@ -1300,7 +1381,7 @@ private fun FlashcardBackFace(
             .testTag("flashcard_back_face"),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Back Top Row: CEFR Level badge (if non-empty) + English Word reference + Audio, Heart & Info icons
+        // Back Top Row: CEFR Level badge (if non-empty) + Audio, Turtle & Heart icons (No duplicate info button)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -1365,47 +1446,72 @@ private fun FlashcardBackFace(
                         tint = if (isFavorite) GoldAccent else TextSecondary
                     )
                 }
-                IconButton(
-                    onClick = onOpenDetailedDefinition,
+            }
+        }
+
+        // Word + Pronunciation chip combined into a single row to save vertical space
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = card.text,
+                style = if (effectiveDirection == FlashcardDirection.ARABIC_TO_ENGLISH) {
+                    MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold)
+                } else {
+                    MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold)
+                },
+                color = TextPrimary,
+                modifier = Modifier.testTag("flashcard_word_text")
+            )
+
+            if (card.ipa.isNotBlank()) {
+                Surface(
                     modifier = Modifier
-                        .size(40.dp)
-                        .testTag("flashcard_detail_button")
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable(onClick = onPlayAudio)
+                        .testTag("flashcard_ipa_speaker_chip"),
+                    color = if (isPlayingAudio) GoldAccent else GoldAccentDim,
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, GoldAccentBorder)
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Info,
-                        contentDescription = "Detailed definition",
-                        tint = GoldAccent
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = "Play pronunciation",
+                            tint = if (isPlayingAudio) BackgroundDark else GoldAccent,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "US ${card.ipa}",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = if (isPlayingAudio) BackgroundDark else GoldAccent,
+                            modifier = Modifier.testTag("flashcard_ipa_text")
+                        )
+                    }
                 }
             }
         }
 
-        // English Word Title on Back (prominent in Arabic-to-English mode, compact reference in English-to-Arabic)
-        Text(
-            text = card.text,
-            style = if (effectiveDirection == FlashcardDirection.ARABIC_TO_ENGLISH) {
-                MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold)
-            } else {
-                MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
-            },
-            color = TextPrimary,
-            modifier = Modifier.testTag("flashcard_word_text")
-        )
-
-        // 1. Arabic meanings grouped by part of speech (or small "No Arabic yet" label if empty)
+        // 1. Meaning Box: POS on left, Arabic meaning on right (RTL)
         if (variantsWithArabic.isNotEmpty()) {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("flashcard_arabic_section"),
-                color = SurfaceElevatedDark,
-                shape = RoundedCornerShape(14.dp),
-                border = BorderStroke(1.dp, GoldAccentBorder)
+                color = Color(0xFF13161F),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, Color(0xFF232734))
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(14.dp),
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     val groupedByPos = variantsWithArabic.groupBy { it.pos.trim() }
@@ -1414,23 +1520,43 @@ private fun FlashcardBackFace(
                             .map { it.arabicMeaning.trim() }
                             .filter { it.isNotEmpty() }
                             .distinct()
-                            .joinToString(" • ")
+                            .joinToString("، ")
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             if (pos.isNotBlank()) {
-                                GoldBadge(text = pos)
+                                Surface(
+                                    shape = RoundedCornerShape(999.dp),
+                                    color = GoldAccentDim,
+                                    border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.35f))
+                                ) {
+                                    Text(
+                                        text = pos,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = GoldAccent,
+                                            fontSize = 11.sp
+                                        ),
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                    )
+                                }
+                            } else {
+                                Spacer(modifier = Modifier.width(4.dp))
                             }
-                            Box(modifier = Modifier.weight(1f)) {
-                                ArabicText(
-                                    text = combinedArabic,
-                                    style = ArabicTypography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = TextPrimary
-                                )
-                            }
+
+                            ArabicText(
+                                text = combinedArabic,
+                                style = ArabicTypography.titleMedium.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 17.sp
+                                ),
+                                color = TextPrimary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                modifier = Modifier.weight(1f)
+                            )
                         }
                     }
                 }
@@ -1451,39 +1577,7 @@ private fun FlashcardBackFace(
             }
         }
 
-        // 2. IPA chip with speaker — hidden if card.ipa is empty!
-        if (card.ipa.isNotBlank()) {
-            Surface(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .clickable(onClick = onPlayAudio)
-                    .testTag("flashcard_ipa_speaker_chip"),
-                color = if (isPlayingAudio) GoldAccent else GoldAccentDim,
-                shape = RoundedCornerShape(10.dp),
-                border = BorderStroke(1.dp, GoldAccentBorder)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                        contentDescription = "Play pronunciation",
-                        tint = if (isPlayingAudio) BackgroundDark else GoldAccent,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        text = "US ${card.ipa}",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                        color = if (isPlayingAudio) BackgroundDark else GoldAccent,
-                        modifier = Modifier.testTag("flashcard_ipa_text")
-                    )
-                }
-            }
-        }
-
-        // Optional English Definition — hidden if empty!
+        // 2. Optional English Definition
         if (primaryDefinitionEn.isNotBlank()) {
             Column(
                 modifier = Modifier
@@ -1493,18 +1587,20 @@ private fun FlashcardBackFace(
             ) {
                 Text(
                     text = "Definition",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                     color = GoldAccent
                 )
                 Text(
                     text = primaryDefinitionEn,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = TextPrimary
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = Color(0xFFE5E7EB),
+                        lineHeight = 20.sp
+                    )
                 )
             }
         }
 
-        // 3. Examples (examples_en with target word highlighted in gold, examples_ar below) — hidden if empty!
+        // 3. Examples (Single example limit to prevent overcrowding on flipped card)
         if (examplePairs.isNotEmpty()) {
             Column(
                 modifier = Modifier
@@ -1512,79 +1608,74 @@ private fun FlashcardBackFace(
                     .testTag("flashcard_examples_section"),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Examples",
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = GoldAccent
-                    )
-                    Text(
-                        text = "Long-press or bookmark to save",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextMuted
-                    )
-                }
+                Text(
+                    text = "Examples",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = GoldAccent
+                )
 
                 examplePairs.forEachIndexed { idx, (sentenceEn, sentenceAr) ->
                     val isSaved = sentenceEn.trim().lowercase() in savedSentenceKeys
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .combinedClickable(
                                 onClick = {},
                                 onLongClick = { onToggleSaveSentence(sentenceEn, sentenceAr) }
                             )
                             .testTag("flashcard_example_card_$idx"),
-                        color = SurfaceElevatedDark,
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, if (isSaved) GoldAccentBorder else BorderDark)
+                        color = Color(0xFF13161F),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, if (isSaved) GoldAccentBorder else Color(0xFF232734))
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.Top,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                .height(IntrinsicSize.Min)
                         ) {
+                            Box(
+                                modifier = Modifier
+                                    .width(3.dp)
+                                    .fillMaxHeight()
+                                    .background(GoldAccent)
+                            )
                             Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Text(
                                     text = highlightWordInGold(sentenceEn, card.text),
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                        lineHeight = 20.sp
+                                    ),
                                     color = TextPrimary
                                 )
-                                // Hide examples_ar if empty
                                 if (sentenceAr.isNotEmpty()) {
                                     ArabicText(
                                         text = sentenceAr,
                                         style = ArabicTypography.bodyMedium,
-                                        color = TextSecondary
+                                        color = TextSecondary,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                        modifier = Modifier.fillMaxWidth()
                                     )
                                 }
-                            }
-                            IconButton(
-                                onClick = { onToggleSaveSentence(sentenceEn, sentenceAr) },
-                                modifier = Modifier
-                                    .size(34.dp)
-                                    .testTag("flashcard_bookmark_example_$idx")
-                            ) {
-                                Icon(
-                                    imageVector = if (isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                                    contentDescription = if (isSaved) "Remove saved sentence" else "Save sentence",
-                                    tint = if (isSaved) GoldAccent else TextMuted,
-                                    modifier = Modifier.size(18.dp)
-                                )
                             }
                         }
                     }
                 }
+
+                Text(
+                    text = "Long-press or bookmark to save",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextMuted,
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(top = 2.dp)
+                )
             }
         }
     }

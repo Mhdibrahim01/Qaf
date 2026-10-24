@@ -40,6 +40,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -64,6 +66,7 @@ import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -98,10 +101,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextDirection
@@ -598,6 +603,8 @@ private fun FavoritesSentencesTabContent(
     onNavigateToFlashcards: () -> Unit,
     onNavigateToWordBooks: () -> Unit
 ) {
+    var pendingDeleteSentence by remember { mutableStateOf<SentenceEntity?>(null) }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -817,11 +824,64 @@ private fun FavoritesSentencesTabContent(
                     onPlay = { onPlaySentence(sentence) },
                     onPlaySlow = { onPlaySentenceSlow(sentence) },
                     onCopy = { onCopySentence(sentence) },
-                    onDelete = { onDeleteSentence(sentence.id) },
+                    onDelete = { pendingDeleteSentence = sentence },
                     onTapAiExplain = { onTapAiExplainSparkle(sentence) }
                 )
             }
         }
+    }
+
+    pendingDeleteSentence?.let { sentenceToDelete ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteSentence = null },
+            containerColor = SurfaceDark,
+            shape = RoundedCornerShape(16.dp),
+            title = {
+                Text(
+                    text = "Delete Saved Sentence? / حذف الجملة",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = TextPrimary
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Are you sure you want to remove this sentence from your saved collection?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
+                    Text(
+                        text = "\"${sentenceToDelete.englishText}\"",
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = GoldAccent
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDeleteSentence(sentenceToDelete.id)
+                        pendingDeleteSentence = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = CoralAccent,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.testTag("btn_confirm_delete_sentence")
+                ) {
+                    Text("Delete / حذف", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { pendingDeleteSentence = null },
+                    modifier = Modifier.testTag("btn_cancel_delete_sentence")
+                ) {
+                    Text("Cancel / إلغاء", color = TextMuted)
+                }
+            }
+        )
     }
 }
 
@@ -874,22 +934,22 @@ private fun SavedSentenceRowCard(
                     )
                 }
 
-                // Row icons: Play, Copy, Delete, and AI Explain (sparkle)
+                // Row icons: Play, Slow, Copy, AI Explain, and Delete (far right)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     IconButton(
                         onClick = onPlay,
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(40.dp)
                             .testTag("sentence_play_${sentence.id}")
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                             contentDescription = "Play sentence audio",
                             tint = if (isPlaying) GoldAccent else TextSecondary,
-                            modifier = Modifier.size(19.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
 
@@ -902,27 +962,13 @@ private fun SavedSentenceRowCard(
                     IconButton(
                         onClick = onCopy,
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(40.dp)
                             .testTag("sentence_copy_${sentence.id}")
                     ) {
                         Icon(
                             imageVector = Icons.Default.ContentCopy,
                             contentDescription = "Copy sentence",
                             tint = TextSecondary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-
-                    IconButton(
-                        onClick = onDelete,
-                        modifier = Modifier
-                            .size(36.dp)
-                            .testTag("sentence_delete_${sentence.id}")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.DeleteOutline,
-                            contentDescription = "Delete sentence",
-                            tint = CoralAccent,
                             modifier = Modifier.size(19.dp)
                         )
                     }
@@ -931,12 +977,12 @@ private fun SavedSentenceRowCard(
                         onClick = onTapAiExplain,
                         enabled = !isExplaining,
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(40.dp)
                             .testTag("sentence_ai_explain_${sentence.id}")
                     ) {
                         if (isExplaining) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(18.dp),
                                 strokeWidth = 2.dp,
                                 color = GoldAccent
                             )
@@ -945,9 +991,23 @@ private fun SavedSentenceRowCard(
                                 imageVector = Icons.Default.AutoAwesome,
                                 contentDescription = "AI explain grammar and vocabulary",
                                 tint = if (sentence.aiExplanation.isNotBlank()) GoldAccent else TextSecondary,
-                                modifier = Modifier.size(19.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
+                    }
+
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .testTag("sentence_delete_${sentence.id}")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DeleteOutline,
+                            contentDescription = "Delete sentence",
+                            tint = CoralAccent,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
             }
@@ -1071,6 +1131,7 @@ private fun DictationTabContent(
     }
 
     val currentSentence = savedSentences[currentIndex.coerceIn(0, savedSentences.size - 1)]
+    val focusManager = LocalFocusManager.current
     var typedInput by remember(currentSentence.id) { mutableStateOf("") }
     var diffResult by remember(currentSentence.id) { mutableStateOf<DictationDiffResult?>(null) }
     var showEnglishHint by remember(currentSentence.id) { mutableStateOf(false) }
@@ -1224,6 +1285,26 @@ private fun DictationTabContent(
                         .testTag("dictation_input_field"),
                     minLines = 2,
                     maxLines = 4,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            focusManager.clearFocus()
+                            if (typedInput.isNotBlank()) {
+                                val computed = SentencePracticeUtils.computeSentenceDiff(
+                                    expected = currentSentence.englishText,
+                                    actual = typedInput,
+                                    ignorePunctuation = ignorePunctuation
+                                )
+                                diffResult = computed
+                                val itemId = if (currentSentence.id > 0L) {
+                                    "sentence:${currentSentence.id}"
+                                } else {
+                                    currentSentence.englishText
+                                }
+                                onRecordAttempt(itemId, computed.accuracyPercent)
+                            }
+                        }
+                    ),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = GoldAccent,
                         unfocusedBorderColor = BorderDark,

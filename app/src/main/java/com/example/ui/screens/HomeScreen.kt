@@ -125,6 +125,8 @@ private val homeTaskJson = Json {
     isLenient = true
 }
 
+private val HOME_TASKS_CACHE = java.util.concurrent.ConcurrentHashMap<String, List<DailyTaskItem>>()
+
 /**
  * Figma-aligned Dark Learning Dashboard for Home destination.
  * Matches 01-home.png and 02-home-library.png with real database data.
@@ -267,7 +269,7 @@ fun HomeScreen(
                     }
                 }
             } else {
-                // Single-column phone layout
+                // Single-column phone layout: Actionable study cards first, analytics & milestones below
                 TodayPlanCard(
                     todayChecklist = todayChecklist,
                     onOpenPlanScreen = onOpenPlanScreen,
@@ -626,11 +628,14 @@ private fun TodayPlanCard(
     }
 
     val tasks: List<DailyTaskItem> = remember(todayChecklist?.tasksJson) {
-        if (!todayChecklist?.tasksJson.isNullOrBlank()) {
-            try {
-                homeTaskJson.decodeFromString<List<DailyTaskItem>>(todayChecklist.tasksJson)
-            } catch (_: Exception) {
-                emptyList()
+        val raw = todayChecklist?.tasksJson
+        if (!raw.isNullOrBlank()) {
+            HOME_TASKS_CACHE.computeIfAbsent(raw) {
+                try {
+                    homeTaskJson.decodeFromString<List<DailyTaskItem>>(it)
+                } catch (_: Exception) {
+                    emptyList()
+                }
             }
         } else {
             emptyList()

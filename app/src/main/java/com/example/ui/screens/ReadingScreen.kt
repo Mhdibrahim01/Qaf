@@ -105,9 +105,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -153,6 +159,11 @@ private val readingJson = Json {
 
 private val READING_WHITESPACE_REGEX = Regex("\\s+")
 private val READING_TOKEN_CLEAN_REGEX = Regex("^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$")
+private val READING_LOWER_CLEAN_REGEX = Regex("^[^a-z0-9']+|[^a-z0-9']+$")
+private val READING_PAREN_REGEX = Regex("\\(([^)]+)\\)")
+private val READING_PUNCT_PAREN_REGEX = Regex("[,:()]")
+private val READING_SENTENCE_COUNT_CACHE = java.util.concurrent.ConcurrentHashMap<String, Int>()
+private val READING_QUESTION_COUNT_CACHE = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
 private data class ReadingTokenItem(
     val token: String,
@@ -172,7 +183,7 @@ private fun extractGrammarKeywords(lesson: GrammarLessonEntity?): Set<String> {
         val afterColon = title.substringAfter(":")
         afterColon.split(',', '/', ';').forEach { raw ->
             raw.trim().split(" and ", " or ").forEach { word ->
-                val clean = word.trim().replace(Regex("^[^a-z0-9']+|[^a-z0-9']+$"), "")
+                val clean = word.trim().replace(READING_LOWER_CLEAN_REGEX, "")
                 if (clean.isNotBlank() && clean.length > 1) {
                     keywords.add(clean)
                 }
@@ -181,12 +192,12 @@ private fun extractGrammarKeywords(lesson: GrammarLessonEntity?): Set<String> {
     }
 
     // 2. Text inside parentheses: e.g. "Zero conditional and time clauses (when, as soon as, unless)"
-    val parenMatch = Regex("\\(([^)]+)\\)").find(title)
+    val parenMatch = READING_PAREN_REGEX.find(title)
     if (parenMatch != null) {
         val inside = parenMatch.groupValues[1]
         inside.split(',', '/', ';').forEach { raw ->
             raw.trim().split(" and ", " or ").forEach { word ->
-                val clean = word.trim().replace(Regex("^[^a-z0-9']+|[^a-z0-9']+$"), "")
+                val clean = word.trim().replace(READING_LOWER_CLEAN_REGEX, "")
                 if (clean.isNotBlank() && clean.length > 1) {
                     keywords.add(clean)
                 }
@@ -195,7 +206,7 @@ private fun extractGrammarKeywords(lesson: GrammarLessonEntity?): Set<String> {
     }
 
     // 3. Known connector phrases in title: "with for and since", "so and such", "too and enough", "used to and would"
-    val parts = title.replace(Regex("[,:()]"), " ").split(Regex("\\s+"))
+    val parts = title.replace(READING_PUNCT_PAREN_REGEX, " ").split(READING_WHITESPACE_REGEX)
     for (w in parts) {
         if (w in listOf(
                 "whereas", "albeit", "notwithstanding", "although", "though",
@@ -385,6 +396,27 @@ fun ReadingListScreen(
         }
     }
 
+    val sentenceCountsById = remember(texts) {
+        texts.associate { entity ->
+            val count = READING_SENTENCE_COUNT_CACHE.computeIfAbsent(entity.sentencesJson) {
+                try {
+                    readingJson.decodeFromString<List<ReadingSentenceItem>>(it).size
+                } catch (_: Exception) { 0 }
+            }
+            entity.id to count
+        }
+    }
+    val questionCountsById = remember(texts) {
+        texts.associate { entity ->
+            val count = READING_QUESTION_COUNT_CACHE.computeIfAbsent(entity.questionsJson) {
+                try {
+                    readingJson.decodeFromString<List<ReadingQuestionItem>>(it).size
+                } catch (_: Exception) { 0 }
+            }
+            entity.id to count
+        }
+    }
+
     val levels = remember { listOf("ALL", "A1", "A2", "B1", "B2", "C1") }
     val levelCounts = remember(texts) {
         val map = mutableMapOf<String, Int>()
@@ -461,118 +493,178 @@ fun ReadingListScreen(
                         if (idx >= 0) topicListState.animateScrollToItem(idx)
                     }
 
-                    // Header: Stats Summary + Primary AI Action + Overflow Menu
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "${filteredTexts.size} of ${texts.size} Passages • $completedCount Completed",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFFE5C158),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = "CEFR A1–C1 • Graded Bilingual Reading",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFF9CA3AF),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+                    // 1. Progress Banner Card
+                    val totalPassages = texts.size
+                    val progressFraction = if (totalPassages > 0) (completedCount.toFloat() / totalPassages.toFloat()).coerceIn(0f, 1f) else 0f
+                    val progressPercent = (progressFraction * 100).toInt()
 
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("reading_progress_banner"),
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color(0xFF13161F),
+                        border = BorderStroke(1.dp, Color(0xFF232734))
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = Color(0xFFE5C158).copy(alpha = 0.16f),
-                                border = BorderStroke(1.dp, Color(0xFFE5C158)),
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable {
-                                        initialAddTab = 0
-                                        showAddDialog = true
-                                    }
-                                    .testTag("reading_add_fab")
+                            // Top Row: Completed • Total on Left, + AI Text + Overflow Menu on Right
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    modifier = Modifier.weight(1f)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.AutoAwesome,
-                                        contentDescription = "Create with AI",
-                                        tint = Color(0xFFE5C158),
-                                        modifier = Modifier.size(14.dp)
+                                    Text(
+                                        text = "$completedCount Completed",
+                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 15.sp),
+                                        color = Color(0xFFF5B82E)
                                     )
                                     Text(
-                                        text = "+ AI Text",
-                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                        color = Color(0xFFE5C158)
+                                        text = " • $totalPassages Passages",
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                        color = Color(0xFF9CA3AF)
+                                    )
+                                }
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = Color(0xFFF5B82E).copy(alpha = 0.14f),
+                                        border = BorderStroke(1.dp, Color(0xFFF5B82E).copy(alpha = 0.40f)),
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable {
+                                                initialAddTab = 0
+                                                showAddDialog = true
+                                            }
+                                            .testTag("reading_add_fab")
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.AutoAwesome,
+                                                contentDescription = "Create with AI",
+                                                tint = Color(0xFFF5B82E),
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Text(
+                                                text = "+ AI Text",
+                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                                color = Color(0xFFF5B82E)
+                                            )
+                                        }
+                                    }
+
+                                    Box {
+                                        IconButton(
+                                            onClick = { showOverflowMenu = true },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.MoreVert,
+                                                contentDescription = "More Options",
+                                                tint = Color(0xFF9CA3AF),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                        DropdownMenu(
+                                            expanded = showOverflowMenu,
+                                            onDismissRequest = { showOverflowMenu = false },
+                                            modifier = Modifier.background(Color(0xFF17181E))
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text("Correction Notebook", color = Color(0xFFF3F4F6)) },
+                                                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFFE5C158)) },
+                                                onClick = {
+                                                    showOverflowMenu = false
+                                                    onNavigateToNotebook()
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Paste Text", color = Color(0xFFF3F4F6)) },
+                                                leadingIcon = { Icon(Icons.Default.ContentPaste, contentDescription = null, tint = Color(0xFFE5C158)) },
+                                                onClick = {
+                                                    showOverflowMenu = false
+                                                    initialAddTab = 1
+                                                    showAddDialog = true
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Import JSON", color = Color(0xFFF3F4F6)) },
+                                                leadingIcon = { Icon(Icons.Default.UploadFile, contentDescription = null, tint = Color(0xFFE5C158)) },
+                                                onClick = {
+                                                    showOverflowMenu = false
+                                                    initialAddTab = 2
+                                                    showAddDialog = true
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Sync Assets", color = Color(0xFFF3F4F6)) },
+                                                leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null, tint = Color(0xFFE5C158)) },
+                                                onClick = {
+                                                    showOverflowMenu = false
+                                                    initialAddTab = 3
+                                                    showAddDialog = true
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Middle: Progress Bar with linear-gradient(90deg, #F5B82E, #FDE047)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(Color(0xFF1E2330))
+                            ) {
+                                if (progressFraction > 0f) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(fraction = progressFraction)
+                                            .height(6.dp)
+                                            .clip(RoundedCornerShape(3.dp))
+                                            .background(
+                                                Brush.horizontalGradient(
+                                                    colors = listOf(Color(0xFFF5B82E), Color(0xFFFDE047))
+                                                )
+                                            )
                                     )
                                 }
                             }
 
-                            Box {
-                                IconButton(
-                                    onClick = { showOverflowMenu = true },
-                                    modifier = Modifier.size(34.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.MoreVert,
-                                        contentDescription = "More Options",
-                                        tint = Color(0xFF9CA3AF),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                DropdownMenu(
-                                    expanded = showOverflowMenu,
-                                    onDismissRequest = { showOverflowMenu = false },
-                                    modifier = Modifier.background(Color(0xFF17181E))
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("Correction Notebook", color = Color(0xFFF3F4F6)) },
-                                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFFE5C158)) },
-                                        onClick = {
-                                            showOverflowMenu = false
-                                            onNavigateToNotebook()
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Paste Text", color = Color(0xFFF3F4F6)) },
-                                        leadingIcon = { Icon(Icons.Default.ContentPaste, contentDescription = null, tint = Color(0xFFE5C158)) },
-                                        onClick = {
-                                            showOverflowMenu = false
-                                            initialAddTab = 1
-                                            showAddDialog = true
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Import JSON", color = Color(0xFFF3F4F6)) },
-                                        leadingIcon = { Icon(Icons.Default.UploadFile, contentDescription = null, tint = Color(0xFFE5C158)) },
-                                        onClick = {
-                                            showOverflowMenu = false
-                                            initialAddTab = 2
-                                            showAddDialog = true
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Sync Assets", color = Color(0xFFF3F4F6)) },
-                                        leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null, tint = Color(0xFFE5C158)) },
-                                        onClick = {
-                                            showOverflowMenu = false
-                                            initialAddTab = 3
-                                            showAddDialog = true
-                                        }
-                                    )
-                                }
+                            // Bottom Row: Subtitle & Percentage
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "CEFR A1–C1 • Graded Bilingual Reading",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color(0xFF9CA3AF)
+                                )
+                                Text(
+                                    text = "$progressPercent%",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = Color(0xFF9CA3AF)
+                                )
                             }
                         }
                     }
@@ -824,6 +916,8 @@ fun ReadingListScreen(
                         text = textEntity,
                         progress = prog,
                         readabilityReport = storyReadabilityById[textEntity.id],
+                        inputSentencesCount = sentenceCountsById[textEntity.id],
+                        inputQuestionsCount = questionCountsById[textEntity.id],
                         onClick = { onSelectText(textEntity) }
                     )
                 }
@@ -879,24 +973,30 @@ fun ReadingTextCard(
     progress: ReadingProgressEntity?,
     onClick: () -> Unit,
     readabilityReport: com.example.data.plan.StoryReadabilityReport? = null,
+    inputSentencesCount: Int? = null,
+    inputQuestionsCount: Int? = null,
     modifier: Modifier = Modifier
 ) {
-    val sentencesCount = remember(text.sentencesJson) {
-        try {
-            readingJson.decodeFromString<List<ReadingSentenceItem>>(text.sentencesJson).size
-        } catch (_: Exception) { 0 }
+    val sentencesCount = inputSentencesCount ?: remember(text.sentencesJson) {
+        READING_SENTENCE_COUNT_CACHE.computeIfAbsent(text.sentencesJson) {
+            try {
+                readingJson.decodeFromString<List<ReadingSentenceItem>>(it).size
+            } catch (_: Exception) { 0 }
+        }
     }
-    val questionsCount = remember(text.questionsJson) {
-        try {
-            readingJson.decodeFromString<List<ReadingQuestionItem>>(text.questionsJson).size
-        } catch (_: Exception) { 0 }
+    val questionsCount = inputQuestionsCount ?: remember(text.questionsJson) {
+        READING_QUESTION_COUNT_CACHE.computeIfAbsent(text.questionsJson) {
+            try {
+                readingJson.decodeFromString<List<ReadingQuestionItem>>(it).size
+            } catch (_: Exception) { 0 }
+        }
     }
 
     val sourceBadgeText = when (text.source.lowercase()) {
         "ai" -> "AI Generated"
         "user" -> "My Text"
         "file" -> "Imported"
-        else -> "Curated"
+        else -> null
     }
 
     val isDone = progress?.isCompleted == true
@@ -918,7 +1018,7 @@ fun ReadingTextCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(horizontal = 16.dp, vertical = 16.dp)
         ) {
             // Badges row
             Row(
@@ -927,6 +1027,9 @@ fun ReadingTextCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .padding(end = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -940,12 +1043,15 @@ fun ReadingTextCard(
                             color = Color(0xFFE5C158),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
 
                     if (text.topic.isNotBlank()) {
                         Surface(
+                            modifier = Modifier.weight(1f, fill = false),
                             color = Color(0xFF22242E),
                             shape = RoundedCornerShape(6.dp)
                         ) {
@@ -953,25 +1059,36 @@ fun ReadingTextCard(
                                 text = text.topic.replaceFirstChar { it.uppercase() },
                                 color = Color(0xFFD1D5DB),
                                 style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }
                     }
 
-                    Surface(
-                        color = Color(0xFF1E2029),
-                        border = BorderStroke(1.dp, Color(0xFF2B2E3B)),
-                        shape = RoundedCornerShape(6.dp)
-                    ) {
-                        Text(
-                            text = sourceBadgeText,
-                            color = Color(0xFF9CA3AF),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
-                        )
+                    if (sourceBadgeText != null) {
+                        Surface(
+                            color = Color(0xFF1E2029),
+                            border = BorderStroke(1.dp, Color(0xFF2B2E3B)),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = sourceBadgeText,
+                                color = Color(0xFF9CA3AF),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                            )
+                        }
                     }
+                }
 
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     if (readabilityReport != null) {
                         Surface(
                             color = EmeraldAccentBg,
@@ -984,34 +1101,38 @@ fun ReadingTextCard(
                                 color = EmeraldAccent,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                softWrap = false,
                                 modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                             )
                         }
                     }
-                }
 
-                if (isDone) {
-                    Surface(
-                        color = Color(0xFF34D399).copy(alpha = 0.14f),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    if (isDone) {
+                        Surface(
+                            color = Color(0xFF34D399).copy(alpha = 0.14f),
+                            shape = RoundedCornerShape(8.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = "Completed",
-                                tint = Color(0xFF34D399),
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = "${progress.bestScore ?: 0}/$questionsCount",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF34D399)
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = "Completed",
+                                    tint = Color(0xFF34D399),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = "${progress.bestScore ?: 0}/$questionsCount",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF34D399),
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
                         }
                     }
                 }
@@ -1027,17 +1148,27 @@ fun ReadingTextCard(
                 color = Color(0xFFF3F4F6)
             )
 
-            // Title Arabic
+            // Title Arabic (preserved RTL alignment with soft gray color #9CA3AF)
             if (text.titleAr.isNotBlank()) {
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(4.dp))
                 BidiText(
                     text = text.titleAr,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF9CA3AF)
+                    style = ArabicTypography.bodyMedium,
+                    color = Color(0xFF9CA3AF),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Right,
+                    fillMaxWidth = true
                 )
             }
 
             Spacer(Modifier.height(12.dp))
+
+            // Subtle divider above footer
+            HorizontalDivider(
+                thickness = 1.dp,
+                color = Color.White.copy(alpha = 0.05f)
+            )
+
+            Spacer(Modifier.height(10.dp))
 
             // Footer info
             Row(
@@ -1183,7 +1314,7 @@ fun ReadingDetailScreen(
                 val sentence = sentences[idx].en
                 onSpeakSentence(sentence)
                 // Estimate sentence reading duration based on word count & rate
-                val wordCount = sentence.split("\\s+".toRegex()).size
+                val wordCount = sentence.split(READING_WHITESPACE_REGEX).size
                 val estDurationMs = ((wordCount * 450L) / ttsSpeechRate.coerceAtLeast(0.5f)).toLong() + 900L
                 delay(estDurationMs)
             }
@@ -1202,7 +1333,7 @@ fun ReadingDetailScreen(
 
     Scaffold(
         modifier = modifier.testTag("reading_detail_screen"),
-        containerColor = Color(0xFF0E0F13),
+        containerColor = Color(0xFF0A0A0C),
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         LazyColumn(
@@ -1217,248 +1348,304 @@ fun ReadingDetailScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFF17181E)
+                        containerColor = Color(0xFF141417)
                     ),
-                    border = BorderStroke(1.dp, Color(0xFF262834)),
+                    border = BorderStroke(1.dp, Color(0xFF27272E)),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
+                        // Stats Row: ✦ 8 Gold Words (left) + 86% Readable • 6 Focus (right)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            // Left: Sparkle + Gold Words count
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Surface(
-                                    onClick = onBack,
-                                    color = Color(0xFF22242E),
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.testTag("reading_detail_back_button")
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.ArrowBack,
-                                            contentDescription = "Back",
-                                            tint = Color(0xFFD1D5DB),
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                        Text(
-                                            text = "Passages",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = Color(0xFFD1D5DB),
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                    }
-                                }
-                                Surface(
-                                    color = Color(0xFFE5C158).copy(alpha = 0.16f),
-                                    border = BorderStroke(1.dp, Color(0xFFE5C158).copy(alpha = 0.45f)),
-                                    shape = RoundedCornerShape(6.dp)
-                                ) {
-                                    Text(
-                                        text = text.level.uppercase(),
-                                        color = Color(0xFFE5C158),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                    )
-                                }
-                                if (targetWords.isNotEmpty()) {
-                                    Surface(
-                                        color = Color(0xFFE5C158).copy(alpha = 0.14f),
-                                        shape = RoundedCornerShape(6.dp)
-                                    ) {
-                                        Text(
-                                            text = "${targetWords.size} Gold Words",
-                                            color = Color(0xFFE5C158),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                        )
-                                    }
-                                }
-                                if (readabilityReport != null) {
-                                    Surface(
-                                        color = EmeraldAccentBg,
-                                        border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.45f)),
-                                        shape = RoundedCornerShape(6.dp),
-                                        modifier = Modifier.testTag("reading_detail_readability_badge")
-                                    ) {
-                                        Text(
-                                            text = readabilityReport.badgeLabelEn,
-                                            color = EmeraldAccent,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.SemiBold,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                        )
-                                    }
-                                }
+                                Icon(
+                                    imageVector = Icons.Default.AutoAwesome,
+                                    contentDescription = null,
+                                    tint = Color(0xFFF5C542),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "${targetWords.size} Gold Words",
+                                    color = Color(0xFFF5C542),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
 
+                            // Right: Readability Pill (Single Line) & Optional More Options Menu
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                IconButton(
-                                    onClick = onNavigateToNotebook,
-                                    modifier = Modifier
-                                        .size(34.dp)
-                                        .testTag("reading_detail_open_notebook_button")
+                                val readablePercent = readabilityReport?.readabilityPercent ?: 86
+                                val focusWords = readabilityReport?.focusWords?.size ?: targetWords.size
+                                Surface(
+                                    color = Color(0xFF34D399).copy(alpha = 0.12f),
+                                    border = BorderStroke(1.dp, Color(0xFF34D399).copy(alpha = 0.35f)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.testTag("reading_detail_readability_badge")
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = "Correction Notebook",
-                                        tint = Color(0xFFE5C158),
-                                        modifier = Modifier.size(18.dp)
+                                    Text(
+                                        text = "$readablePercent% Readable • $focusWords Focus",
+                                        color = Color(0xFF34D399),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                     )
                                 }
 
-                                IconButton(
-                                    onClick = { showChatSheet = true },
-                                    modifier = Modifier
-                                        .size(34.dp)
-                                        .testTag("reading_ask_ai_chat_button")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.AutoAwesome,
-                                        contentDescription = "Ask AI about this text",
-                                        tint = Color(0xFFE5C158),
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-
-                                if (text.source == "user" || text.source == "ai") {
+                                var showMoreMenu by remember { mutableStateOf(false) }
+                                Box {
                                     IconButton(
-                                        onClick = { showDeleteConfirmDialog = true },
-                                        modifier = Modifier
-                                            .size(34.dp)
-                                            .testTag("reading_delete_text_button")
+                                        onClick = { showMoreMenu = true },
+                                        modifier = Modifier.size(28.dp)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.Delete,
-                                            contentDescription = "Delete Text",
-                                            tint = Color(0xFFF87171),
+                                            imageVector = Icons.Default.MoreVert,
+                                            contentDescription = "Options",
+                                            tint = Color(0xFF8E8E99),
                                             modifier = Modifier.size(18.dp)
                                         )
+                                    }
+                                    DropdownMenu(
+                                        expanded = showMoreMenu,
+                                        onDismissRequest = { showMoreMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Correction Notebook") },
+                                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFFF5C542)) },
+                                            onClick = {
+                                                showMoreMenu = false
+                                                onNavigateToNotebook()
+                                            },
+                                            modifier = Modifier.testTag("reading_detail_open_notebook_button")
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Ask AI about text") },
+                                            leadingIcon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color(0xFFF5C542)) },
+                                            onClick = {
+                                                showMoreMenu = false
+                                                showChatSheet = true
+                                            },
+                                            modifier = Modifier.testTag("reading_ask_ai_chat_button")
+                                        )
+                                        if (text.source == "user" || text.source == "ai") {
+                                            DropdownMenuItem(
+                                                text = { Text("Delete Text", color = Color(0xFFF87171)) },
+                                                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFF87171)) },
+                                                onClick = {
+                                                    showMoreMenu = false
+                                                    showDeleteConfirmDialog = true
+                                                },
+                                                modifier = Modifier.testTag("reading_delete_text_button")
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
 
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(14.dp))
 
-                        // Condensed Audio, Translation, Hints & Simplify Toolbar
+                        // Subtle Horizontal Divider #27272E
+                        HorizontalDivider(
+                            color = Color(0xFF27272E),
+                            thickness = 1.dp
+                        )
+
+                        Spacer(Modifier.height(14.dp))
+
+                        // 4-Column Action Grid (Equal width, 12sp, 15dp icon, singleLine=true, never truncates!)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Listen button
-                            Button(
+                            // 1. Listen
+                            val isListenActive = isReadingAudioActive
+                            Surface(
                                 onClick = {
                                     if (isReadingAudioActive) stopFullTextAudio()
                                     else startFullTextAudio()
                                 },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (isReadingAudioActive) MaterialTheme.colorScheme.errorContainer
-                                    else Color(0xFFE5C158).copy(alpha = 0.2f),
-                                    contentColor = if (isReadingAudioActive) MaterialTheme.colorScheme.onErrorContainer
-                                    else Color(0xFFE5C158)
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (isListenActive) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+                                        else Color(0xFF1C1C21),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isListenActive) MaterialTheme.colorScheme.error else Color(0xFF27272E)
                                 ),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .testTag("reading_listen_audio_button"),
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                                    .height(38.dp)
+                                    .testTag("reading_listen_audio_button")
                             ) {
-                                Icon(
-                                    imageVector = if (isReadingAudioActive) Icons.Default.Stop else Icons.Default.Headphones,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(if (isReadingAudioActive) "Stop" else "Listen", fontSize = 12.sp, maxLines = 1)
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (isListenActive) Icons.Default.Stop else Icons.Default.Headphones,
+                                        contentDescription = null,
+                                        tint = if (isListenActive) MaterialTheme.colorScheme.error else Color(0xFF8E8E99),
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        text = if (isListenActive) "Stop" else "Listen",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (isListenActive) MaterialTheme.colorScheme.error else Color(0xFF8E8E99),
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Clip
+                                    )
+                                }
                             }
 
-                            // Translation Toggle All
-                            OutlinedButton(
+                            // 2. Arabic Toggle
+                            val isArabicActive = areAllTranslationsVisible
+                            Surface(
                                 onClick = { toggleAllTranslations() },
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (isArabicActive) Color(0xFFF5C542).copy(alpha = 0.14f) else Color(0xFF1C1C21),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isArabicActive) Color(0xFFF5C542) else Color(0xFF27272E)
+                                ),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .testTag("reading_toggle_all_translations_button"),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = if (areAllTranslationsVisible) Color(0xFFE5C158) else Color(0xFFD1D5DB)
-                                ),
-                                border = BorderStroke(1.dp, if (areAllTranslationsVisible) Color(0xFFE5C158) else Color(0xFF262834)),
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                                    .height(38.dp)
+                                    .testTag("reading_toggle_all_translations_button")
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Translate,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(if (areAllTranslationsVisible) "Arabic On" else "Arabic Off", fontSize = 12.sp, maxLines = 1)
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Translate,
+                                        contentDescription = null,
+                                        tint = if (isArabicActive) Color(0xFFF5C542) else Color(0xFF8E8E99),
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        text = "Arabic",
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isArabicActive) FontWeight.SemiBold else FontWeight.Medium,
+                                        color = if (isArabicActive) Color(0xFFF5C542) else Color(0xFF8E8E99),
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Clip
+                                    )
+                                }
                             }
 
-                            // Grammar Hints Toggle
-                            OutlinedButton(
+                            // 3. Hints Toggle
+                            val isHintsActive = grammarHintsEnabled
+                            Surface(
                                 onClick = { grammarHintsEnabled = !grammarHintsEnabled },
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (isHintsActive) Color(0xFFF5C542).copy(alpha = 0.14f) else Color(0xFF1C1C21),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isHintsActive) Color(0xFFF5C542) else Color(0xFF27272E)
+                                ),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .testTag("reading_toggle_grammar_hints_button"),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = if (grammarHintsEnabled) Color(0xFFE5C158) else Color(0xFF9CA3AF)
-                                ),
-                                border = BorderStroke(1.dp, if (grammarHintsEnabled) Color(0xFFE5C158) else Color(0xFF262834)),
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                                    .height(38.dp)
+                                    .testTag("reading_toggle_grammar_hints_button")
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.School,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(if (grammarHintsEnabled) "Hints On" else "Hints", fontSize = 12.sp, maxLines = 1)
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.School,
+                                        contentDescription = null,
+                                        tint = if (isHintsActive) Color(0xFFF5C542) else Color(0xFF8E8E99),
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        text = "Hints",
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isHintsActive) FontWeight.SemiBold else FontWeight.Medium,
+                                        color = if (isHintsActive) Color(0xFFF5C542) else Color(0xFF8E8E99),
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Clip
+                                    )
+                                }
                             }
 
-                            // Simplify
-                            OutlinedButton(
+                            // 4. Simplify (Guaranteed NO truncation)
+                            Surface(
                                 onClick = {
-                                    isSimplifying = true
-                                    scope.launch {
-                                        val res = onSimplifyText()
-                                        isSimplifying = false
-                                        if (res.isSuccess) {
-                                            snackbarHostState.showSnackbar("Created simplified version at lower CEFR level!")
-                                        } else {
-                                            snackbarHostState.showSnackbar("Simplify failed: ${res.exceptionOrNull()?.message}")
+                                    if (!isSimplifying) {
+                                        isSimplifying = true
+                                        scope.launch {
+                                            val res = onSimplifyText()
+                                            isSimplifying = false
+                                            if (res.isSuccess) {
+                                                snackbarHostState.showSnackbar("Created simplified version at lower CEFR level!")
+                                            } else {
+                                                snackbarHostState.showSnackbar("Simplify failed: ${res.exceptionOrNull()?.message}")
+                                            }
                                         }
                                     }
                                 },
                                 enabled = !isSimplifying,
+                                shape = RoundedCornerShape(20.dp),
+                                color = Color(0xFF1C1C21),
+                                border = BorderStroke(1.dp, Color(0xFF27272E)),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .testTag("reading_simplify_button"),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = Color(0xFFD1D5DB)
-                                ),
-                                border = BorderStroke(1.dp, Color(0xFF262834)),
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                                    .height(38.dp)
+                                    .testTag("reading_simplify_button")
                             ) {
-                                if (isSimplifying) {
-                                    CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp, color = Color(0xFFE5C158))
-                                } else {
-                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    if (isSimplifying) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(12.dp),
+                                            strokeWidth = 2.dp,
+                                            color = Color(0xFFF5C542)
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.AutoAwesome,
+                                            contentDescription = null,
+                                            tint = Color(0xFF8E8E99),
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                    }
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        text = "Simplify",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color(0xFF8E8E99),
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Clip
+                                    )
                                 }
-                                Spacer(Modifier.width(4.dp))
-                                Text("Simplify", fontSize = 12.sp, maxLines = 1)
                             }
                         }
                     }
@@ -1525,10 +1712,10 @@ fun ReadingDetailScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFF17181E)
+                        containerColor = Color(0xFF141417)
                     ),
                     shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, Color(0xFF262834))
+                    border = BorderStroke(1.dp, Color(0xFF27272E))
                 ) {
                     Column(
                         modifier = Modifier
@@ -1537,6 +1724,13 @@ fun ReadingDetailScreen(
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         sentences.forEachIndexed { sIndex, sentenceItem ->
+                            if (sIndex > 0) {
+                                HorizontalDivider(
+                                    color = Color(0xFF27272E),
+                                    thickness = 1.dp,
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                )
+                            }
                             val isHighlighted = isReadingAudioActive && currentReadingSentenceIndex == sIndex
                             val isArabicVisible = sentenceTranslationVisibility[sIndex] ?: areAllTranslationsVisible
                             val isSentenceSelected = selectedSentenceIndex == sIndex
@@ -1590,7 +1784,8 @@ fun ReadingDetailScreen(
                         text = "Comprehension Questions (${questions.size})",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp)
+                        color = Color(0xFFF4F4F6),
+                        modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
                     )
                 }
 
@@ -1790,8 +1985,8 @@ fun ReadingSentenceBlock(
     val grammarKeywords = remember(linkedGrammarLesson) { extractGrammarKeywords(linkedGrammarLesson) }
 
     val targetBg = when {
-        isHighlighted -> Color(0xFFE5C158).copy(alpha = 0.16f)
-        isSelected -> Color(0xFF262834)
+        isHighlighted -> Color(0xFFF5C542).copy(alpha = 0.12f)
+        isSelected -> Color(0xFF1C1C21)
         else -> Color.Transparent
     }
 
@@ -1803,210 +1998,338 @@ fun ReadingSentenceBlock(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(backgroundColor)
             .then(
                 if (isSelected) {
                     Modifier.border(
-                        BorderStroke(1.dp, Color(0xFF383A4A)),
-                        RoundedCornerShape(10.dp)
+                        BorderStroke(1.dp, Color(0xFF27272E)),
+                        RoundedCornerShape(12.dp)
                     )
                 } else {
                     Modifier
                 }
             )
             .clickable(onClick = onSelectSentence)
-            .padding(8.dp)
+            .padding(vertical = 4.dp)
             .testTag("reading_sentence_$sentenceIndex")
     ) {
-        // English Words Flow & Controls
+        // 1. Paragraph Toolbar (Placed ABOVE the text - Full Width Text Freedom!)
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Top
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Speaker icon to play this individual sentence (High contrast) + Slow Turtle button
-            IconButton(
-                onClick = onSpeakSentence,
-                modifier = Modifier
-                    .size(32.dp)
-                    .testTag("sentence_speak_${sentenceIndex}")
+            // Left: Pill with Normal Speaker + Flat Outline Turtle Icon (#34D399)
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = Color(0xFF1C1C21),
+                border = BorderStroke(1.dp, Color(0xFF27272E))
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                    contentDescription = "Speak sentence",
-                    tint = if (isHighlighted) Color(0xFFE5C158) else Color(0xFFD1D5DB),
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            SlowAudioTurtleButton(
-                onClick = onSpeakSentenceSlow,
-                showSpeedLabel = false,
-                testTag = "sentence_speak_slow_${sentenceIndex}"
-            )
-
-            Spacer(Modifier.width(4.dp))
-
-            // Flow of clickable words with smart in-text grammar keyword highlighting & word stage indicators
-            val parsedTokens = remember(sentence.en, targetWords, grammarKeywords, showGrammarHints, isSelected, wordStageMap) {
-                sentence.en.split(READING_WHITESPACE_REGEX)
-                    .filter { it.isNotBlank() }
-                    .map { token ->
-                        val cleanWord = token.replace(READING_TOKEN_CLEAN_REGEX, "")
-                        val lowerClean = cleanWord.lowercase()
-                        val isTarget = cleanWord.isNotBlank() && targetWords.contains(lowerClean)
-                        val isGrammar = hasGrammar && (showGrammarHints || isSelected) &&
-                                lowerClean.isNotBlank() && grammarKeywords.contains(lowerClean)
-                        val stage = if (!isTarget && !isGrammar && lowerClean.isNotBlank()) {
-                            wordStageMap[lowerClean]
-                        } else null
-                        ReadingTokenItem(token, cleanWord, isTarget, isGrammar, stage)
-                    }
-            }
-            FlowRow(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                for ((token, cleanWord, isTarget, isGrammar, stage) in parsedTokens) {
-
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Normal Speaker Button
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(
-                                when {
-                                    isTarget -> Color(0xFFFFD54F)
-                                    isGrammar -> Color(0xFFE5C158).copy(alpha = 0.20f)
-                                    stage == com.example.data.plan.WordStage.LEARNING -> Color(0xFF00E5FF).copy(alpha = 0.15f)
-                                    stage == com.example.data.plan.WordStage.FAMILIAR -> Color(0xFF10B981).copy(alpha = 0.12f)
-                                    else -> Color.Transparent
-                                }
-                            )
-                            .then(
-                                when {
-                                    isGrammar -> Modifier.border(
-                                        BorderStroke(1.dp, Color(0xFFE5C158).copy(alpha = 0.65f)),
-                                        RoundedCornerShape(4.dp)
-                                    )
-                                    stage == com.example.data.plan.WordStage.LEARNING -> Modifier.border(
-                                        BorderStroke(1.dp, Color(0xFF00E5FF).copy(alpha = 0.45f)),
-                                        RoundedCornerShape(4.dp)
-                                    )
-                                    stage == com.example.data.plan.WordStage.FAMILIAR -> Modifier.border(
-                                        BorderStroke(1.dp, Color(0xFF10B981).copy(alpha = 0.40f)),
-                                        RoundedCornerShape(4.dp)
-                                    )
-                                    stage == com.example.data.plan.WordStage.SEEN -> Modifier.border(
-                                        BorderStroke(1.dp, Color(0xFF9CA3AF).copy(alpha = 0.30f)),
-                                        RoundedCornerShape(4.dp)
-                                    )
-                                    else -> Modifier
-                                }
-                            )
-                            .clickable {
-                                if (isGrammar) {
-                                    onGrammarClicked?.invoke()
-                                } else if (cleanWord.isNotBlank()) {
-                                    onWordClicked(cleanWord)
-                                }
-                            }
-                            .padding(horizontal = if (isGrammar || stage != null) 4.dp else 2.dp, vertical = 1.dp)
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .clickable(onClick = onSpeakSentence)
+                            .testTag("sentence_speak_${sentenceIndex}"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = "Speak sentence",
+                            tint = if (isHighlighted) Color(0xFFF5C542) else Color(0xFF8E8E99),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    // Flat Vector Turtle Icon
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .clickable(onClick = onSpeakSentenceSlow)
+                            .testTag("sentence_speak_slow_${sentenceIndex}"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = com.example.R.drawable.ic_turtle_flat),
+                            contentDescription = "Play slow pronunciation at 0.6x speed",
+                            tint = Color(0xFF34D399),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
+            // Right: + Rule chip (only when Hints active & rule exists) + Translate button
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (hasGrammar && (showGrammarHints || isSelected)) {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color(0xFF1C1C21),
+                        border = BorderStroke(1.dp, Color(0xFFF5C542).copy(alpha = 0.6f)),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .clickable { onGrammarClicked?.invoke() }
+                            .testTag("sentence_grammar_chip_$sentenceIndex")
                     ) {
                         Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Text(
-                                text = token,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontSize = 18.sp,
-                                lineHeight = 28.sp,
-                                fontWeight = if (isTarget || isGrammar) FontWeight.Bold else FontWeight.Normal,
-                                textDecoration = if (stage == com.example.data.plan.WordStage.SEEN) androidx.compose.ui.text.style.TextDecoration.Underline else null,
-                                color = when {
-                                    isTarget -> Color(0xFF3E2723)
-                                    isGrammar -> Color(0xFFE5C158)
-                                    stage == com.example.data.plan.WordStage.LEARNING -> Color(0xFF00E5FF)
-                                    stage == com.example.data.plan.WordStage.FAMILIAR -> Color(0xFF34D399)
-                                    else -> MaterialTheme.colorScheme.onSurface
-                                }
+                            Icon(
+                                imageVector = Icons.Default.School,
+                                contentDescription = "Grammar Rule",
+                                tint = Color(0xFFF5C542),
+                                modifier = Modifier.size(13.dp)
                             )
-                            if (isGrammar) {
-                                Text(
-                                    text = "🎓",
-                                    fontSize = 11.sp
-                                )
-                            }
+                            Text(
+                                text = "Rule",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFFF5C542),
+                                fontSize = 11.sp
+                            )
                         }
                     }
                 }
-            }
 
-            // Discreet lesson indicator pill
-            if (hasGrammar && (showGrammarHints || isSelected)) {
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = Color(0xFFE5C158).copy(alpha = 0.15f),
-                    border = BorderStroke(1.dp, Color(0xFFE5C158).copy(alpha = 0.45f)),
-                    modifier = Modifier
-                        .align(Alignment.CenterVertically)
-                        .clip(RoundedCornerShape(6.dp))
-                        .clickable { onGrammarClicked?.invoke() }
-                        .testTag("sentence_grammar_chip_$sentenceIndex")
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                // Translate icon button
+                if (sentence.ar.isNotBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .clickable(onClick = onToggleArabic)
+                            .testTag("sentence_arabic_toggle_$sentenceIndex"),
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.School,
-                            contentDescription = "Grammar Rule",
-                            tint = Color(0xFFE5C158),
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Text(
-                            text = "Rule",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFE5C158),
-                            fontSize = 11.sp
+                            imageVector = Icons.Default.Translate,
+                            contentDescription = "Toggle translation",
+                            tint = if (isArabicVisible) Color(0xFFF5C542) else Color(0xFF8E8E99),
+                            modifier = Modifier.size(18.dp)
                         )
                     }
-                }
-                Spacer(Modifier.width(2.dp))
-            }
-
-            // Arabic toggle button for this sentence (High contrast)
-            if (sentence.ar.isNotBlank()) {
-                IconButton(
-                    onClick = onToggleArabic,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Translate,
-                        contentDescription = "Toggle translation",
-                        tint = if (isArabicVisible) Color(0xFFE5C158) else Color(0xFFD1D5DB),
-                        modifier = Modifier.size(16.dp)
-                    )
                 }
             }
         }
 
-        // Arabic Translation line
+        Spacer(Modifier.height(10.dp))
+
+        // 2. Full-Width Paragraph Text (FlowRow spans entire width!)
+        val parsedTokens = remember(sentence.en, targetWords, grammarKeywords, showGrammarHints, isSelected, wordStageMap) {
+            sentence.en.split(READING_WHITESPACE_REGEX)
+                .filter { it.isNotBlank() }
+                .map { token ->
+                    val cleanWord = token.replace(READING_TOKEN_CLEAN_REGEX, "")
+                    val lowerClean = cleanWord.lowercase()
+                    val isTarget = cleanWord.isNotBlank() && targetWords.contains(lowerClean)
+                    val isGrammar = hasGrammar && (showGrammarHints || isSelected) &&
+                            lowerClean.isNotBlank() && grammarKeywords.contains(lowerClean)
+                    val stage = if (!isTarget && !isGrammar && lowerClean.isNotBlank()) {
+                        wordStageMap[lowerClean]
+                    } else null
+                    ReadingTokenItem(token, cleanWord, isTarget, isGrammar, stage)
+                }
+        }
+
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            for ((token, cleanWord, isTarget, isGrammar, stage) in parsedTokens) {
+                val lowerClean = cleanWord.lowercase()
+                val isArticle = lowerClean in setOf("a", "an", "the")
+
+                when {
+                    // Gold Words: Soft translucent gold background (#24F5C542), light gold text (#FDE08D), rounded 6dp, subtle gold border
+                    isTarget -> {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0x24F5C542))
+                                .border(
+                                    BorderStroke(1.dp, Color(0xFFF5C542).copy(alpha = 0.55f)),
+                                    RoundedCornerShape(6.dp)
+                                )
+                                .clickable {
+                                    if (cleanWord.isNotBlank()) onWordClicked(cleanWord)
+                                }
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = token,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = 18.sp,
+                                    lineHeight = 30.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = Color(0xFFFDE08D)
+                            )
+                        }
+                    }
+
+                    // Grammar Words (e.g. was): Dark inner background (#1C1C21), dashed gold border, gold text (#F5C542), NO graduation cap icon inside
+                    isGrammar -> {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFF1C1C21))
+                                .drawBehind {
+                                    val strokeWidth = 1.dp.toPx()
+                                    val radius = 6.dp.toPx()
+                                    drawRoundRect(
+                                        color = Color(0xFFF5C542),
+                                        style = Stroke(
+                                            width = strokeWidth,
+                                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
+                                        ),
+                                        cornerRadius = CornerRadius(radius, radius)
+                                    )
+                                }
+                                .clickable {
+                                    onGrammarClicked?.invoke()
+                                }
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = token,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = 18.sp,
+                                    lineHeight = 30.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = Color(0xFFF5C542)
+                            )
+                        }
+                    }
+
+                    // Articles (a, an, the) when Hints are enabled: subtle dotted bottom underline
+                    isArticle && showGrammarHints -> {
+                        Box(
+                            modifier = Modifier
+                                .drawBehind {
+                                    val strokeWidth = 2.dp.toPx()
+                                    val y = size.height - 1.dp.toPx()
+                                    drawLine(
+                                        color = Color(0xFF8E8E99),
+                                        start = Offset(0f, y),
+                                        end = Offset(size.width, y),
+                                        strokeWidth = strokeWidth,
+                                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(3f, 3f), 0f)
+                                    )
+                                }
+                                .clickable {
+                                    if (cleanWord.isNotBlank()) onWordClicked(cleanWord)
+                                }
+                                .padding(horizontal = 2.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = token,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = 18.sp,
+                                    lineHeight = 30.sp,
+                                    fontWeight = FontWeight.Normal
+                                ),
+                                color = Color(0xFFF4F4F6)
+                            )
+                        }
+                    }
+
+                    // Word Stages (LEARNING, FAMILIAR, etc.)
+                    stage != null -> {
+                        val stageColor = when (stage) {
+                            com.example.data.plan.WordStage.LEARNING -> Color(0xFF00E5FF)
+                            com.example.data.plan.WordStage.FAMILIAR -> Color(0xFF34D399)
+                            com.example.data.plan.WordStage.SEEN -> Color(0xFF8E8E99)
+                            else -> Color(0xFF8E8E99)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(stageColor.copy(alpha = 0.12f))
+                                .border(
+                                    BorderStroke(1.dp, stageColor.copy(alpha = 0.35f)),
+                                    RoundedCornerShape(4.dp)
+                                )
+                                .clickable {
+                                    if (cleanWord.isNotBlank()) onWordClicked(cleanWord)
+                                }
+                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = token,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = 18.sp,
+                                    lineHeight = 30.sp,
+                                    fontWeight = FontWeight.Normal
+                                ),
+                                color = stageColor
+                            )
+                        }
+                    }
+
+                    // Regular words
+                    else -> {
+                        Box(
+                            modifier = Modifier
+                                .clickable {
+                                    if (cleanWord.isNotBlank()) onWordClicked(cleanWord)
+                                }
+                                .padding(horizontal = 1.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = token,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = 18.sp,
+                                    lineHeight = 30.sp,
+                                    fontWeight = FontWeight.Normal
+                                ),
+                                color = Color(0xFFF4F4F6)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Arabic Translation Line (Below text)
         AnimatedVisibility(
             visible = isArabicVisible && sentence.ar.isNotBlank(),
             enter = fadeIn(),
             exit = fadeOut()
         ) {
-            BidiText(
-                text = sentence.ar,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFFE5C158),
+            Surface(
+                color = Color(0xFF1C1C21).copy(alpha = 0.7f),
+                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 36.dp, top = 4.dp, bottom = 4.dp)
-            )
+                    .padding(top = 8.dp)
+            ) {
+                BidiText(
+                    text = sentence.ar,
+                    style = ArabicTypography.bodyMedium.copy(
+                        fontSize = 15.sp,
+                        lineHeight = 22.sp
+                    ),
+                    color = Color(0xFFD1D5DB),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+            }
         }
     }
 }
@@ -3098,37 +3421,39 @@ fun ReadingQuestionCard(
             .testTag("reading_question_$index"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.outlinedCardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = Color(0xFF141417)
         ),
         border = BorderStroke(
             1.dp,
             if (isAnswered) {
                 if (isCorrect) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
-            } else MaterialTheme.colorScheme.outlineVariant
+            } else Color(0xFF27272E)
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Prompt
             Row(verticalAlignment = Alignment.Top) {
                 Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
+                    color = Color(0x24F5C542),
+                    border = BorderStroke(1.dp, Color(0xFFF5C542).copy(alpha = 0.5f)),
                     shape = CircleShape,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(26.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
                             text = "${index + 1}",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            color = Color(0xFFF5C542)
                         )
                     }
                 }
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(12.dp))
                 Text(
                     text = question.prompt,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFFF4F4F6)
                 )
             }
 
@@ -3142,29 +3467,29 @@ fun ReadingQuestionCard(
 
                     val (containerColor, contentColor, borderColor) = when {
                         !isAnswered -> Triple(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                            MaterialTheme.colorScheme.onSurface,
-                            MaterialTheme.colorScheme.outlineVariant
+                            Color(0xFF1C1C21),
+                            Color(0xFFF4F4F6),
+                            Color(0xFF27272E)
                         )
                         isSelected && isRightAnswer -> Triple(
-                            Color(0xFFE8F5E9),
-                            Color(0xFF1B5E20),
+                            Color(0xFF1B5E20).copy(alpha = 0.25f),
+                            Color(0xFF81C784),
                             Color(0xFF2E7D32)
                         )
                         isSelected && !isRightAnswer -> Triple(
-                            Color(0xFFFFEBEE),
-                            Color(0xFFB71C1C),
+                            Color(0xFFB71C1C).copy(alpha = 0.25f),
+                            Color(0xFFE57373),
                             Color(0xFFD32F2F)
                         )
                         isRightAnswer -> Triple(
-                            Color(0xFFE8F5E9),
-                            Color(0xFF1B5E20),
+                            Color(0xFF1B5E20).copy(alpha = 0.25f),
+                            Color(0xFF81C784),
                             Color(0xFF2E7D32)
                         )
                         else -> Triple(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                            Color.Transparent
+                            Color(0xFF1C1C21).copy(alpha = 0.4f),
+                            Color(0xFF8E8E99).copy(alpha = 0.6f),
+                            Color(0xFF27272E).copy(alpha = 0.4f)
                         )
                     }
 
@@ -3175,20 +3500,20 @@ fun ReadingQuestionCard(
                                 onSelectOption(optIndex)
                             }
                             .testTag("q_${index}_opt_${optIndex}"),
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(12.dp),
                         color = containerColor,
                         border = BorderStroke(1.dp, borderColor)
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = "${('A'.code + optIndex).toChar()}.",
                                 fontWeight = FontWeight.Bold,
-                                color = contentColor,
+                                color = if (isSelected || (isAnswered && isRightAnswer)) contentColor else Color(0xFF8E8E99),
                                 modifier = Modifier.width(24.dp)
                             )
                             Text(
@@ -4037,34 +4362,37 @@ fun ReadingRecommendedShelf(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = levelBg,
-                    border = BorderStroke(1.dp, levelColor.copy(alpha = 0.5f))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = userLevel.uppercase(),
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = levelColor,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
-                Column {
-                    Text(
-                        text = "Recommended for Your Level ($userLevel)",
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        text = "Recommended for You",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = Color(0xFFF3F4F6)
                     )
-                    Text(
-                        text = "نصوص قراءة موصى بها لمستواك ($levelAr)",
-                        style = ArabicTypography.labelSmall,
-                        color = Color(0xFF9CA3AF)
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color(0xFF38BDF8).copy(alpha = 0.12f),
+                        border = BorderStroke(1.dp, Color(0xFF38BDF8).copy(alpha = 0.35f))
+                    ) {
+                        Text(
+                            text = userLevel.uppercase(),
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp),
+                            color = Color(0xFF38BDF8),
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
+                Text(
+                    text = "نصوص قراءة موصى بها لمستواك ($levelAr)",
+                    style = ArabicTypography.labelSmall,
+                    color = Color(0xFF9CA3AF)
+                )
             }
 
             Surface(
@@ -4152,7 +4480,7 @@ fun ReadingRecommendedCard(
                     color = if (isDone) EmeraldAccent.copy(alpha = 0.15f) else Color(0xFF222430)
                 ) {
                     Text(
-                        text = if (isDone) "✓ Completed" else "Read",
+                        text = if (isDone) "✓ Completed" else "Read →",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 11.sp
@@ -4163,23 +4491,35 @@ fun ReadingRecommendedCard(
                 }
             }
 
+            // English Title: 2 full lines
             Text(
                 text = text.titleEn,
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 15.sp),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 20.sp),
                 color = Color(0xFFF3F4F6),
-                maxLines = 1,
+                maxLines = 2,
+                minLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
 
+            // Arabic Title: Right-aligned (RTL) in GoldAccent
             if (text.titleAr.isNotBlank()) {
                 Text(
                     text = text.titleAr,
-                    style = ArabicTypography.bodySmall,
+                    style = ArabicTypography.bodySmall.copy(fontWeight = FontWeight.Medium),
                     color = GoldAccent,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
+
+            // Subtle divider above footer
+            HorizontalDivider(
+                modifier = Modifier.padding(top = 2.dp),
+                thickness = 1.dp,
+                color = Color.White.copy(alpha = 0.06f)
+            )
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -4189,7 +4529,7 @@ fun ReadingRecommendedCard(
                 val totalWords = remember(text.sentencesJson) {
                     try {
                         val list = readingJson.decodeFromString<List<ReadingSentenceItem>>(text.sentencesJson)
-                        list.sumOf { it.en.split("\\s+".toRegex()).size }.coerceAtLeast(15)
+                        list.sumOf { it.en.split(READING_WHITESPACE_REGEX).size }.coerceAtLeast(15)
                     } catch (e: Exception) {
                         (text.sentencesJson.length / 6).coerceAtLeast(15)
                     }
@@ -4198,14 +4538,16 @@ fun ReadingRecommendedCard(
                 Text(
                     text = "~$durationMin min • $totalWords words",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF9CA3AF)
+                    color = Color(0xFF9CA3AF),
+                    maxLines = 1,
+                    softWrap = false
                 )
 
                 if (text.topic.isNotBlank()) {
                     Text(
-                        text = text.topic,
-                        style = MaterialTheme.typography.labelSmall.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
-                        color = Color(0xFF6B7280),
+                        text = "• ${text.topic}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF9CA3AF),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

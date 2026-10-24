@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Twin Diamond Nuqat (Dots of Arabic Letter Qaf - ق) -->
+    <!-- Left Dot -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M47.5,23.8L51.5,27.8L47.5,31.8L43.5,27.8Z" />
+
+    <!-- Right Dot -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M58.5,23.8L62.5,27.8L58.5,31.8L54.5,27.8Z" />
+
+    <!-- Unified Shared Ribbon Loop (Body of Latin Q & Arabic ق) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M53.0,34.0C64.0,34.0 73.0,42.0 73.0,51.5C73.0,61.0 64.0,68.5 53.0,68.5C41.5,68.5 33.0,61.0 33.0,51.5C33.0,42.0 41.5,34.0 53.0,34.0ZM52.5,42.5C45.0,42.5 39.5,46.5 39.5,51.5C39.5,56.5 45.0,60.5 52.5,60.5C60.0,60.5 65.5,56.5 65.5,51.5C65.5,46.5 60.0,42.5 52.5,42.5Z" />
+
+    <!-- Dynamic Latin Q Diagonal Tail -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M51.0,58.5C56.5,61.0 63.5,65.5 70.0,71.5C73.5,74.8 77.0,77.2 78.5,76.5C79.5,75.5 77.8,72.8 75.0,69.5C69.5,63.5 64.0,59.0 57.5,56.5C54.5,55.5 52.0,56.5 51.0,58.5Z" />
+</vector>

@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
@@ -54,9 +56,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -91,6 +95,7 @@ fun WordBooksTopAppBar(
     arabicTitle: String? = null,
     canNavigateBack: Boolean = false,
     onNavigateBack: (() -> Unit)? = null,
+    subtitleContent: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     Surface(
@@ -165,7 +170,9 @@ fun WordBooksTopAppBar(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        if (!subtitle.isNullOrBlank()) {
+                        if (subtitleContent != null) {
+                            subtitleContent()
+                        } else if (!subtitle.isNullOrBlank()) {
                             Text(
                                 text = subtitle,
                                 style = MaterialTheme.typography.labelSmall.copy(
@@ -230,6 +237,7 @@ fun WordBooksBottomNavigation(
                                 AppRoute.Sentences,
                                 AppRoute.Plan,
                                 AppRoute.CorrectionNotebook,
+                                AppRoute.Settings,
                                 AppRoute.Labs
                             )
                     }
@@ -327,6 +335,7 @@ fun WordBooksNavigationRail(
                         AppRoute.Sentences,
                         AppRoute.Plan,
                         AppRoute.CorrectionNotebook,
+                        AppRoute.Settings,
                         AppRoute.Labs
                     )
             }
@@ -956,8 +965,10 @@ fun SearchField(
     modifier: Modifier = Modifier,
     placeholder: String = "Search words, meanings, or topics...",
     onClear: (() -> Unit)? = null,
+    onSearch: (() -> Unit)? = null,
     testTag: String? = null
 ) {
+    val focusManager = LocalFocusManager.current
     val fieldModifier = modifier
         .fillMaxWidth()
         .heightIn(min = 48.dp)
@@ -968,6 +979,13 @@ fun SearchField(
         onValueChange = onQueryChange,
         modifier = fieldModifier,
         singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(
+            onSearch = {
+                focusManager.clearFocus()
+                onSearch?.invoke()
+            }
+        ),
         placeholder = {
             Text(
                 text = placeholder,

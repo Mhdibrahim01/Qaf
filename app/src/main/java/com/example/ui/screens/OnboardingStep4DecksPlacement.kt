@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BorderDark
+import com.example.ui.theme.CoralAccent
 import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.GoldAccent
 import com.example.ui.theme.GoldAccentDim
@@ -553,6 +554,20 @@ fun OnboardingDecksAndPlacementStep(
 
             Spacer(modifier = Modifier.height(6.dp))
         }
+        if (selectedDecks.isEmpty()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Please select at least one wordbook to proceed / يُرجى اختيار قائمة واحدة على الأقل للمتابعة",
+                style = MaterialTheme.typography.bodySmall,
+                color = CoralAccent,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
 
         // Sticky Primary CTA Footer
         OnboardingStickyFooter(

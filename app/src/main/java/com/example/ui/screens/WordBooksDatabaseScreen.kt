@@ -57,6 +57,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Storage
@@ -169,11 +170,16 @@ import com.example.ui.theme.SquircleTileShape
 import java.text.NumberFormat
 import java.util.Locale
 
+private val HEX_COLOR_CACHE = java.util.concurrent.ConcurrentHashMap<String, Color>()
+
 private fun parseHexColor(hex: String, defaultColor: Color): Color {
-    return try {
-        Color(android.graphics.Color.parseColor(hex))
-    } catch (_: Exception) {
-        defaultColor
+    if (hex.isBlank()) return defaultColor
+    return HEX_COLOR_CACHE.computeIfAbsent(hex) {
+        try {
+            Color(android.graphics.Color.parseColor(it))
+        } catch (_: Exception) {
+            defaultColor
+        }
     }
 }
 
@@ -689,7 +695,7 @@ private fun DecksLibraryGrid(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = "${formatNumber(totalEntriesCount)} SAVED WORDS",
+                        text = "VOCABULARY LIBRARY",
                         style = EyebrowStyle
                     )
                     Text(
@@ -853,9 +859,6 @@ fun NumberedBookCard(
     modifier: Modifier = Modifier
 ) {
     val isSavedBook = deck.id == DataImportRepository.SAVED_WORDS_DECK_ID
-    val progressPercent = if (deck.rowCount > 0) {
-        ((deck.masteredCount.toFloat() / deck.rowCount.toFloat()) * 100).toInt()
-    } else 0
     val actionText = if (deck.masteredCount > 0 || deck.id == "oxford5000" || isSavedBook) {
         "Browse Words"
     } else {
@@ -872,134 +875,175 @@ fun NumberedBookCard(
         color = SurfaceDark,
         border = BorderStroke(1.dp, BorderDark)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.Top
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             val formattedIndex = remember(index) { String.format(Locale.US, "%02d", index + 1) }
-            Text(
-                text = formattedIndex,
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF4F4F57),
-                    fontSize = 12.sp
-                ),
-                modifier = Modifier.padding(top = 2.dp)
-            )
 
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+            // 1. Top Header: Left (Badge 01 + Name), Right (Gold Pill Badge with word count)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = deck.name,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
-                        fontSize = 15.sp
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f, fill = false)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(7.dp),
+                        color = Color.White.copy(alpha = 0.04f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f))
+                    ) {
+                        Text(
+                            text = formattedIndex,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF9CA3AF),
+                                fontSize = 11.sp
+                            ),
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                        )
+                    }
 
-                if (deck.nameAr.isNotBlank()) {
-                    val isolatedNameAr = remember(deck.nameAr) { isolateLatin(deck.nameAr) }
-                    ArabicText(
-                        text = isolatedNameAr,
-                        style = ArabicTypography.labelMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextSecondary,
-                            fontSize = 12.sp
+                    Text(
+                        text = deck.name,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary,
+                            fontSize = 16.sp
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                val metaText = remember(deck.rowCount, deck.category, deck.name, progressPercent) {
-                    buildString {
-                        append("${formatNumber(deck.rowCount)} words")
-                        if (deck.category.isNotBlank() && deck.category != deck.name) {
-                            append(" • ${deck.category}")
-                        }
-                        if (progressPercent > 0) {
-                            append(" • $progressPercent% complete")
-                        }
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = GoldAccentDim,
+                    border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.35f))
+                ) {
+                    Text(
+                        text = "${formatNumber(deck.rowCount)} words",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = GoldAccent,
+                            fontSize = 11.sp
+                        ),
+                        modifier = Modifier
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                            .testTag("deck_count_${deck.id}")
+                    )
+                }
+            }
+
+            // 2. Middle: Arabic description (RTL Right-aligned) + English category subtitle (Left-aligned)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                if (deck.nameAr.isNotBlank()) {
+                    val isolatedNameAr = remember(deck.nameAr) { isolateLatin(deck.nameAr) }
+                    ArabicText(
+                        text = isolatedNameAr,
+                        style = ArabicTypography.bodyMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFE5E7EB),
+                            fontSize = 14.sp
+                        ),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                val englishSub = if (deck.category.isNotBlank() && deck.category != deck.name) {
+                    deck.category
+                } else if (isSavedBook) {
+                    "Personal Favorites & Bookmarks"
+                } else {
+                    ""
+                }
+                if (englishSub.isNotBlank()) {
+                    Text(
+                        text = englishSub,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        ),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Start,
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            // 3. Subtle divider above footer buttons
+            HorizontalDivider(
+                thickness = 1.dp,
+                color = Color.White.copy(alpha = 0.05f)
+            )
+
+            // 4. Footer buttons
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    onClick = onClick,
+                    shape = RoundedCornerShape(9.dp),
+                    color = GoldAccentDim,
+                    border = BorderStroke(1.dp, GoldAccentBorder),
+                    modifier = Modifier.sizeIn(minWidth = 76.dp, minHeight = 40.dp)
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = actionText,
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = GoldAccent,
+                                fontSize = 12.sp
+                            )
+                        )
                     }
                 }
 
-                Text(
-                    text = metaText,
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = TextMuted,
-                        fontSize = 11.sp
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.testTag("deck_count_${deck.id}")
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                if (onStudyCards != null) {
                     Surface(
-                        onClick = onClick,
+                        onClick = onStudyCards,
                         shape = RoundedCornerShape(9.dp),
-                        color = GoldAccentDim,
-                        border = BorderStroke(1.dp, GoldAccentBorder),
-                        modifier = Modifier.sizeIn(minWidth = 76.dp, minHeight = 40.dp)
+                        color = SurfaceElevatedDark,
+                        border = BorderStroke(1.dp, BorderDark),
+                        modifier = Modifier
+                            .sizeIn(minWidth = 76.dp, minHeight = 40.dp)
+                            .testTag("deck_study_cards_${deck.id}")
                     ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                         ) {
+                            Icon(
+                                imageVector = Icons.Filled.Folder,
+                                contentDescription = null,
+                                tint = GoldAccent,
+                                modifier = Modifier.size(15.dp)
+                            )
                             Text(
-                                text = actionText,
+                                text = "Study Cards",
                                 style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = GoldAccent,
-                                    fontSize = 11.sp
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = TextPrimary,
+                                    fontSize = 12.sp
                                 )
                             )
-                        }
-                    }
-
-                    if (onStudyCards != null) {
-                        Surface(
-                            onClick = onStudyCards,
-                            shape = RoundedCornerShape(9.dp),
-                            color = SurfaceElevatedDark,
-                            border = BorderStroke(1.dp, BorderDark),
-                            modifier = Modifier
-                                .sizeIn(minWidth = 76.dp, minHeight = 40.dp)
-                                .testTag("deck_study_cards_${deck.id}")
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Style,
-                                    contentDescription = null,
-                                    tint = GoldAccent,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Text(
-                                    text = "Study Cards",
-                                    style = MaterialTheme.typography.labelMedium.copy(
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = TextPrimary,
-                                        fontSize = 11.sp
-                                    )
-                                )
-                            }
                         }
                     }
                 }
@@ -1663,22 +1707,16 @@ private fun PagedDeckWordListScreen(
                             Button(
                                 onClick = {
                                     coroutineScope.launch {
-                                        var foundIdx: Int? = null
-                                        for (i in 0 until pagedEntries.itemCount) {
-                                            val item = pagedEntries.peek(i)
-                                            if (item?.text.equals(checkpointWord, ignoreCase = true)) {
-                                                foundIdx = i
-                                                break
+                                        val totalCount = pagedEntries.itemCount
+                                        if (totalCount > 0) {
+                                            val candidateIdx = currentStudyState?.lastCardIndex?.takeIf { it in 0 until totalCount }
+                                            val targetIdx = if (candidateIdx != null && pagedEntries.peek(candidateIdx)?.text.equals(checkpointWord, ignoreCase = true)) {
+                                                candidateIdx
+                                            } else {
+                                                candidateIdx ?: 0
                                             }
-                                        }
-                                        val targetIdx = foundIdx ?: currentStudyState?.lastCardIndex?.takeIf { it in 0 until (deck?.rowCount ?: totalEntriesCount) }
-                                        if (targetIdx != null) {
-                                            val totalCount = pagedEntries.itemCount
-                                            if (totalCount > 0) {
-                                                val clampedIdx = targetIdx.coerceIn(0, totalCount - 1)
-                                                pagedEntries[clampedIdx]
-                                                listState.scrollToItem((clampedIdx + headerItemsCount).coerceAtLeast(0))
-                                            }
+                                            pagedEntries[targetIdx]
+                                            listState.scrollToItem((targetIdx + headerItemsCount).coerceAtLeast(0))
                                         }
                                     }
                                 },
