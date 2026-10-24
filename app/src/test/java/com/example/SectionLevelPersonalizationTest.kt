@@ -84,7 +84,7 @@ class SectionLevelPersonalizationTest {
         }
 
         composeTestRule.onNodeWithTag("grammar_recommended_shelf").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Recommended for Your Level (B2)").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Recommended for You").assertIsDisplayed()
         composeTestRule.onNodeWithText("Inversion for Emphasis").assertIsDisplayed()
 
         composeTestRule.onNodeWithTag("grammar_recommended_card_g_b2_1").performClick()
