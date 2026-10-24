@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BorderDark
+import com.example.ui.theme.CoralAccent
 import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.GoldAccent
 import com.example.ui.theme.GoldAccentBorder
@@ -582,6 +583,19 @@ fun OnboardingDecksAndPlacementStep(
             }
         }
 
+        if (selectedDecks.isEmpty()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Please select at least one wordbook to proceed / يُرجى اختيار قائمة واحدة على الأقل للمتابعة",
+                style = MaterialTheme.typography.bodySmall,
+                color = CoralAccent,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            )
+        }
+
         Spacer(modifier = Modifier.height(10.dp))
 
         // Primary CTA Button
@@ -589,10 +603,13 @@ fun OnboardingDecksAndPlacementStep(
             onClick = {
                 onContinueStep4(selectedDecks, startAtUserLevel)
             },
+            enabled = selectedDecks.isNotEmpty(),
             shape = SquircleCardShape,
             colors = ButtonDefaults.buttonColors(
                 containerColor = GoldAccent,
-                contentColor = OnGoldDark
+                contentColor = OnGoldDark,
+                disabledContainerColor = SurfaceElevatedDark,
+                disabledContentColor = TextMuted
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -605,19 +622,19 @@ fun OnboardingDecksAndPlacementStep(
                 modifier = Modifier.padding(vertical = 2.dp)
             ) {
                 Text(
-                    text = "Continue (${selectedDecks.size} decks)",
+                    text = if (selectedDecks.isEmpty()) "Select at least 1 wordbook" else "Continue (${selectedDecks.size} decks)",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.ExtraBold
                     ),
-                    color = OnGoldDark
+                    color = if (selectedDecks.isEmpty()) TextMuted else OnGoldDark
                 )
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                     Text(
-                        text = "المتابعة بالقوائم المحددة",
+                        text = if (selectedDecks.isEmpty()) "اختر قائمة واحدة على الأقل" else "المتابعة بالقوائم المحددة",
                         style = ArabicTypography.labelMedium.copy(
                             fontWeight = FontWeight.Bold
                         ),
-                        color = OnGoldDark.copy(alpha = 0.85f)
+                        color = if (selectedDecks.isEmpty()) TextMuted else OnGoldDark.copy(alpha = 0.85f)
                     )
                 }
             }

@@ -550,6 +550,9 @@ fun WordBooksAppShell(
                         onSwitchToBooks = {
                             navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
                         },
+                        onNavigateHome = {
+                            navController.navigate(AppRoute.Home) { launchSingleTop = true }
+                        },
                         onIndexChanged = wordBooksViewModel::onFlashcardIndexChanged,
                         onFlipCard = {
                             wordBooksViewModel.flipCurrentFlashcard()

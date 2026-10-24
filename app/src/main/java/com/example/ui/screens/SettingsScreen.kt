@@ -146,6 +146,7 @@ fun SettingsScreen(
     var backupStatusMessage by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
     var versionTapCount by remember { mutableIntStateOf(0) }
     var developerCountdownBanner by remember { mutableStateOf<String?>(null) }
+    var showRedoSetupConfirmDialog by remember { mutableStateOf(false) }
 
     val exportBackupLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
@@ -208,6 +209,53 @@ fun SettingsScreen(
                 }
             },
             containerColor = SurfaceDark
+        )
+    }
+
+    if (showRedoSetupConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showRedoSetupConfirmDialog = false },
+            containerColor = SurfaceDark,
+            shape = RoundedCornerShape(16.dp),
+            title = {
+                Text(
+                    text = "Redo Onboarding Setup? / إعادة ضبط الخطة",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = TextPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = "This will return you to the onboarding wizard to re-select your target wordbooks, daily study pace, and schedule. Your existing word progress will NOT be erased.\n\nهل ترغب بالعودة لإعدادات التهيئة لاختيار القوائم والهدف اليومي وجدولك مجدداً؟ لن يتم مسح تقدم كلماتك السابقة.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showRedoSetupConfirmDialog = false
+                        onRedoOnboardingSetup()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = GoldAccent,
+                        contentColor = BackgroundDark
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.testTag("btn_confirm_redo_onboarding")
+                ) {
+                    Text("Redo Setup / متابعة", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showRedoSetupConfirmDialog = false },
+                    modifier = Modifier.testTag("btn_cancel_redo_onboarding")
+                ) {
+                    Text("Cancel / إلغاء", color = TextMuted)
+                }
+            }
         )
     }
 
@@ -554,7 +602,7 @@ fun SettingsScreen(
                 HorizontalDivider(color = BorderSubtle)
 
                 OutlinedButton(
-                    onClick = onRedoOnboardingSetup,
+                    onClick = { showRedoSetupConfirmDialog = true },
                     shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(1.dp, BorderDark),
                     modifier = Modifier
