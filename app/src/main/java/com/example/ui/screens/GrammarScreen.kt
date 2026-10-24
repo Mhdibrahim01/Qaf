@@ -1958,12 +1958,14 @@ fun StructuredGrammarExplanation(
         border = BorderStroke(1.dp, BorderDark)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Clean English Header (Duplicate Level Badge removed)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -2162,44 +2164,46 @@ fun StructuredGrammarExplanation(
                             ),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.Top,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                // High-Contrast Circular Number Badge (26dp)
-                                Surface(
-                                    shape = CircleShape,
-                                    color = if (isCommonMistake) BiDiRedPillBg else BiDiGoldPillBg,
-                                    border = BorderStroke(
-                                        1.dp,
-                                        if (isCommonMistake) BiDiRedPillBorder else BiDiGoldPillBorder
-                                    ),
-                                    modifier = Modifier.size(26.dp)
+                            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.Top,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text(
-                                            text = numLabel,
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                fontSize = 13.sp,
-                                                fontFamily = InterFontFamily
-                                            ),
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isCommonMistake) BiDiRedPillText else GoldAccent
-                                        )
+                                    // High-Contrast Circular Number Badge (26dp)
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = if (isCommonMistake) BiDiRedPillBg else BiDiGoldPillBg,
+                                        border = BorderStroke(
+                                            1.dp,
+                                            if (isCommonMistake) BiDiRedPillBorder else BiDiGoldPillBorder
+                                        ),
+                                        modifier = Modifier.size(26.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(
+                                                text = numLabel,
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    fontSize = 13.sp,
+                                                    fontFamily = InterFontFamily
+                                                ),
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isCommonMistake) BiDiRedPillText else GoldAccent
+                                            )
+                                        }
                                     }
-                                }
 
-                                // Parsed Body with Auto-Extracted Example Box & Inline English Pills
-                                BiDiParsedText(
-                                    text = bodyText,
-                                    style = ArabicTypography.bodyMedium,
-                                    color = TextPrimary,
-                                    isMistakeTheme = isCommonMistake,
-                                    modifier = Modifier.weight(1f)
-                                )
+                                    // Parsed Body with Auto-Extracted Example Box & Inline English Pills
+                                    BiDiParsedText(
+                                        text = bodyText,
+                                        style = ArabicTypography.bodyMedium,
+                                        color = TextPrimary,
+                                        isMistakeTheme = isCommonMistake,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
                             }
                         }
                     }

@@ -2,7 +2,6 @@ package com.example.ui.components
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -42,7 +41,6 @@ class BiDiTextFormatterTest {
     fun testContrastiveExclusionsRemainInline() {
         val input = "نسيان وضع (a) أو (an) قبل الاسم المفرد، والصواب قول (There is a car) وليس (There is car)."
         val parsed = extractTrailingExample(input)
-        // Should NOT extract 'There is car' because it is preceded by 'وليس'
         assertNull("Contrast phrase must not be extracted into separate example box", parsed.extractedExample)
         assertEquals(input.trimEnd('.'), parsed.mainText.trimEnd('.'))
     }
@@ -56,20 +54,35 @@ class BiDiTextFormatterTest {
     }
 
     @Test
-    fun testInlineEnglishPillsWrapping() {
+    fun testInlineEnglishPillsWrappingWithNbsp() {
         val arabicWithEnglish = "نستخدم تعبيري (There is) و (There are) للحديث عن المفرد والجمع."
         val annotated = buildBiDiPillAnnotatedString(arabicWithEnglish)
 
-        // Verifies English terms were wrapped in LRI and PDI isolates
         val text = annotated.text
-        assertTrue("Contains isolated There is", text.contains("${LRI}${LRM}There is${LRM}${PDI}"))
-        assertTrue("Contains isolated There are", text.contains("${LRI}${LRM}There are${LRM}${PDI}"))
+        assertTrue("Contains isolated There is with NBSP", text.contains("${LRI}${LRM}There${NBSP}is${LRM}${PDI}"))
+        assertTrue("Contains isolated There are with NBSP", text.contains("${LRI}${LRM}There${NBSP}are${LRM}${PDI}"))
+    }
 
-        // Verifies annotations exist for pill background drawing
-        val pillAnnotations = annotated.getStringAnnotations("EN_PILL", 0, annotated.length)
-        assertEquals(2, pillAnnotations.size)
-        assertEquals("There is", pillAnnotations[0].item)
-        assertEquals("There are", pillAnnotations[1].item)
+    @Test
+    fun testSlashAndCommaSeparatedEnglishUnifiedToken() {
+        val slashInput = "1) A / An (أدوات التنكير): نستخدمها للحديث عن شيء غير محدد."
+        val annotatedSlash = buildBiDiPillAnnotatedString(slashInput)
+        assertTrue("A / An is unified into a single isolate token", annotatedSlash.text.contains("${LRI}${LRM}A${NBSP}/${NBSP}An${LRM}${PDI}"))
+
+        val commaInput = "- نستخدم 'an' قبل الكلمات التي تبدأ بصوت متحرك (a, e, i, o, u)."
+        val annotatedComma = buildBiDiPillAnnotatedString(commaInput)
+        assertTrue("a, e, i, o, u is unified with NBSP", annotatedComma.text.contains("${LRI}${LRM}a,${NBSP}e,${NBSP}i,${NBSP}o,${NBSP}u${LRM}${PDI}"))
+    }
+
+    @Test
+    fun testTrailingSentenceDotExcludedFromEnglishIsolate() {
+        val input = "لذا نستخدم 'an hour'."
+        val annotated = buildBiDiPillAnnotatedString(input)
+        val text = annotated.text
+
+        // The period must be AFTER PDI, not inside the isolate!
+        assertTrue("Period is after PDI", text.contains("${PDI}."))
+        assertFalse("Period is not inside isolate", text.contains(".${LRM}${PDI}"))
     }
 
     @Test
@@ -81,12 +94,6 @@ class BiDiTextFormatterTest {
         assertTrue("not is wrapped in isolate", text.contains("${LRI}${LRM}not${LRM}${PDI}"))
         assertTrue("is is wrapped in isolate", text.contains("${LRI}${LRM}is${LRM}${PDI}"))
         assertTrue("are is wrapped in isolate", text.contains("${LRI}${LRM}are${LRM}${PDI}"))
-
-        val pillAnnotations = annotated.getStringAnnotations("EN_PILL", 0, annotated.length)
-        val pillTerms = pillAnnotations.map { it.item }
-        assertTrue(pillTerms.contains("not"))
-        assertTrue(pillTerms.contains("is"))
-        assertTrue(pillTerms.contains("are"))
     }
 
     @Test
@@ -94,7 +101,5 @@ class BiDiTextFormatterTest {
         val pureArabic = "تستخدم الأسماء المعدودة للتعبير عن الأشياء التي يمكن عدها."
         val annotated = buildBiDiPillAnnotatedString(pureArabic)
         assertEquals(pureArabic, annotated.text)
-        val pillAnnotations = annotated.getStringAnnotations("EN_PILL", 0, annotated.length)
-        assertTrue(pillAnnotations.isEmpty())
     }
 }

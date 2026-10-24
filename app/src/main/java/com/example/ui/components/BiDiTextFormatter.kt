@@ -4,33 +4,25 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
@@ -38,20 +30,26 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.GoldAccent
 import com.example.ui.theme.InterFontFamily
 import com.example.ui.theme.TextPrimary
 
 // Single Source of Truth Theme Tokens for Universal BiDi Formatter
-val BiDiGoldPillBg = Color(0x24F5C542)          // rgba(245, 197, 66, 0.14)
-val BiDiGoldPillBorder = Color(0x59F5C542)      // rgba(245, 197, 66, 0.35)
-val BiDiGoldPillText = Color(0xFFFDE08D)        // Light gold text
-val BiDiRedPillBg = Color(0x1FF87171)           // rgba(248, 113, 113, 0.12)
-val BiDiRedPillBorder = Color(0x4DF87171)       // rgba(248, 113, 113, 0.30)
-val BiDiRedPillText = Color(0xFFF87171)         // Subtle red text
-val BiDiExampleBoxBg = Color(0x59000000)        // rgba(0, 0, 0, 0.35)
+val BiDiGoldInlineText = Color(0xFFF5C542)       // Bright gold text
+val BiDiGoldInlineBg = Color(0x1FF5C542)         // 12% subtle soft gold tint
+val BiDiGoldPillBorder = Color(0x59F5C542)       // 35% gold border
+val BiDiGoldPillBg = Color(0x24F5C542)           // 14% gold pill background
+
+val BiDiRedInlineText = Color(0xFFFCA5A5)        // Bright coral/red text
+val BiDiRedInlineBg = Color(0x1CFCA5A5)          // 11% subtle soft red tint
+val BiDiRedPillBorder = Color(0x4DF87171)        // 30% red border
+val BiDiRedPillBg = Color(0x1FF87171)            // 12% red pill background
+val BiDiRedPillText = Color(0xFFF87171)
+
+val BiDiExampleBoxBg = Color(0x59000000)         // rgba(0, 0, 0, 0.35)
+
+private const val TRAILING_PUNCT = ".,،؛؟:!?"
 
 /**
  * Data holder representing a parsed grammar explanation line.
@@ -120,18 +118,20 @@ fun extractTrailingExample(rawLine: String): BiDiParsedLine {
 
 /**
  * Regex matching English words/phrases inside Arabic explanations:
- * 1) Parenthesized English: (There is) or (a book, a car)
- * 2) Quoted English: 'a' or "There is" or ‘is’ or “are”
- * 3) Bare Latin terms/phrases: There is, not, is, are, I, can
+ * 1) Parenthesized English: (There is) or (a, e, i, o, u)
+ * 2) Quoted English: 'a', 'an hour', "There is", ‘is’, “are”
+ * 3) Bare Latin terms/phrases connected with slashes or commas: A / An, a, e, i, o, u, I have a pen, not, is, are
  */
 private val INLINE_EN_REGEX = Regex(
-    """(?:\(([A-Za-z0-9][A-Za-z0-9\s,'\"!?+\-/=]*)\)|['"‘“]([A-Za-z0-9][A-Za-z0-9\s,'\"!?+\-/=]*)['"’”]|(?<![A-Za-z0-9_])([A-Za-z][A-Za-z0-9'/-]*(?:\s+[A-Za-z][A-Za-z0-9'/-]*)*)(?![A-Za-z0-9_]))"""
+    """(?:\(([A-Za-z0-9][A-Za-z0-9\s,'\"!?+\-/=]*)\)|['"‘“]([A-Za-z0-9][A-Za-z0-9\s,'\"!?+\-/=]*)['"’”]|(?<![A-Za-z0-9_])([A-Za-z][A-Za-z0-9\'/]*(?:[\s,/+=-]+[A-Za-z0-9][A-Za-z0-9\'/]*)*)(?![A-Za-z0-9_]))"""
 )
 
 /**
- * Builds an [AnnotatedString] that isolates inline English words/phrases into styled pills
- * with BiDi Unicode isolates (U+2066 ... U+2069) and strong LTR marks (U+200E) to eliminate
- * RTL punctuation and word-order flipping.
+ * Builds an [AnnotatedString] that styles inline English words/phrases using pure typography:
+ * - Unifies slash/comma-separated English terms (e.g. `A / An`, `a, e, i, o, u`) as single LTR tokens.
+ * - Replaces regular spaces with non-breaking spaces (\u00A0) inside short phrases so they never break across lines.
+ * - Excludes trailing sentence dots (.) so closing periods stay part of the RTL Arabic text.
+ * - Applies clean [SpanStyle] with bright gold/coral text without tall clashing boxes.
  */
 fun buildBiDiPillAnnotatedString(
     text: String,
@@ -141,8 +141,8 @@ fun buildBiDiPillAnnotatedString(
         return buildAnnotatedString { append(text) }
     }
 
-    val textColor = if (isMistake) BiDiRedPillText else BiDiGoldPillText
-    val bgColor = if (isMistake) BiDiRedPillBg else BiDiGoldPillBg
+    val textColor = if (isMistake) BiDiRedInlineText else BiDiGoldInlineText
+    val bgColor = if (isMistake) BiDiRedInlineBg else BiDiGoldInlineBg
 
     return buildAnnotatedString {
         var lastIndex = 0
@@ -162,21 +162,34 @@ fun buildBiDiPillAnnotatedString(
             }.trim()
 
             if (rawTerm.isNotEmpty() && hasLatinCharacters(rawTerm)) {
-                val startSpan = length
-
-                withStyle(
-                    SpanStyle(
-                        color = textColor,
-                        background = bgColor,
-                        fontWeight = FontWeight.SemiBold,
-                        fontFamily = InterFontFamily
-                    )
-                ) {
-                    // Wrap English segment in Unicode BiDi LTR Isolates
-                    append("$LRI$LRM$rawTerm$LRM$PDI")
+                // Strip trailing punctuation from the English token so periods stay in Arabic sentence
+                var cleanTerm = rawTerm
+                var trailingPunct = ""
+                while (cleanTerm.isNotEmpty() && cleanTerm.last() in TRAILING_PUNCT) {
+                    trailingPunct = cleanTerm.last() + trailingPunct
+                    cleanTerm = cleanTerm.dropLast(1).trimEnd()
                 }
-                val endSpan = length
-                addStringAnnotation(tag = "EN_PILL", annotation = rawTerm, start = startSpan, end = endSpan)
+
+                if (cleanTerm.isNotEmpty()) {
+                    // Replace spaces inside English phrase with non-breaking spaces (NBSP)
+                    // so phrases like 'I have a pen' or 'a, e, i, o, u' never split across lines
+                    val nonBreakingTerm = cleanTerm.replace(' ', NBSP)
+
+                    withStyle(
+                        SpanStyle(
+                            color = textColor,
+                            background = bgColor,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.SansSerif
+                        )
+                    ) {
+                        append("$LRI$LRM$nonBreakingTerm$LRM$PDI")
+                    }
+                }
+
+                if (trailingPunct.isNotEmpty()) {
+                    append(trailingPunct)
+                }
             } else {
                 append(match.value)
             }
@@ -193,9 +206,8 @@ fun buildBiDiPillAnnotatedString(
 /**
  * Universal Composable for Arabic Grammar Explanations:
  * 1. Enforces [LayoutDirection.Rtl] on the container.
- * 2. Auto-wraps inline English words, parenthesized phrases, and quoted characters in BiDi-isolated pills.
- * 3. Draws subtle rounded background pills via [Modifier.drawBehind] for high visual polish.
- * 4. Auto-extracts trailing examples into a dedicated [LayoutDirection.Ltr] box with a 3dp solid gold border.
+ * 2. Formats inline English words, parenthesized phrases, and quoted characters cleanly without tall boxes.
+ * 3. Auto-extracts trailing examples into a dedicated [LayoutDirection.Ltr] box with a 3dp solid gold border.
  */
 @Composable
 fun BiDiParsedText(
@@ -214,9 +226,6 @@ fun BiDiParsedText(
         buildBiDiPillAnnotatedString(parsed.mainText, isMistake = isMistakeTheme)
     }
 
-    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
-    val pillBgColor = if (isMistakeTheme) BiDiRedPillBg else BiDiGoldPillBg
-    val pillBorderColor = if (isMistakeTheme) BiDiRedPillBorder else BiDiGoldPillBorder
     val resolvedLineHeight = if (lineHeight != TextUnit.Unspecified) lineHeight else style.lineHeight * 1.35f
 
     Column(
@@ -227,61 +236,14 @@ fun BiDiParsedText(
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
             Text(
                 text = annotated,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .drawBehind {
-                        textLayoutResult?.let { layout ->
-                            val annotations = annotated.getStringAnnotations("EN_PILL", 0, annotated.length)
-                            for (ann in annotations) {
-                                val s = ann.start
-                                val e = ann.end
-                                if (s >= e) continue
-                                val startLine = layout.getLineForOffset(s)
-                                val endLine = layout.getLineForOffset(e - 1)
-
-                                for (line in startLine..endLine) {
-                                    val lineStart = maxOf(s, layout.getLineStart(line))
-                                    val lineEnd = minOf(e, layout.getLineEnd(line, visibleEnd = true))
-                                    if (lineStart >= lineEnd) continue
-
-                                    val x1 = layout.getHorizontalPosition(lineStart, usePrimaryDirection = true)
-                                    val x2 = layout.getHorizontalPosition(lineEnd, usePrimaryDirection = true)
-                                    val left = minOf(x1, x2) - 4.dp.toPx()
-                                    val right = maxOf(x1, x2) + 4.dp.toPx()
-                                    val top = layout.getLineTop(line) + 2.dp.toPx()
-                                    val bottom = layout.getLineBottom(line) - 2.dp.toPx()
-
-                                    if (right > left && bottom > top) {
-                                        val rectSize = Size(right - left, bottom - top)
-                                        val rectTopLeft = Offset(left, top)
-                                        val cornerRadius = CornerRadius(6.dp.toPx(), 6.dp.toPx())
-
-                                        drawRoundRect(
-                                            color = pillBgColor,
-                                            topLeft = rectTopLeft,
-                                            size = rectSize,
-                                            cornerRadius = cornerRadius
-                                        )
-                                        drawRoundRect(
-                                            color = pillBorderColor,
-                                            topLeft = rectTopLeft,
-                                            size = rectSize,
-                                            cornerRadius = cornerRadius,
-                                            style = Stroke(width = 1.dp.toPx())
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    },
+                modifier = Modifier.fillMaxWidth(),
                 style = style.copy(
                     textDirection = TextDirection.Rtl,
                     textAlign = TextAlign.Right
                 ),
                 color = color,
                 lineHeight = resolvedLineHeight,
-                maxLines = maxLines,
-                onTextLayout = { textLayoutResult = it }
+                maxLines = maxLines
             )
         }
 
@@ -296,7 +258,7 @@ fun BiDiParsedText(
                         .drawBehind {
                             val strokeWidth = 3.dp.toPx()
                             drawLine(
-                                color = if (isMistakeTheme) BiDiRedPillText else GoldAccent,
+                                color = if (isMistakeTheme) BiDiRedInlineText else GoldAccent,
                                 start = Offset(strokeWidth / 2f, 0f),
                                 end = Offset(strokeWidth / 2f, size.height),
                                 strokeWidth = strokeWidth
