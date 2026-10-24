@@ -380,7 +380,8 @@ fun OnboardingDecksAndPlacementStep(
                                         text = "التركيز على مفردات المستوى $selectedLevel وتخطي الأساسيات السهلة.",
                                         style = ArabicTypography.labelSmall,
                                         color = TextMuted,
-                                        modifier = Modifier.fillMaxWidth()
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textAlign = TextAlign.Right
                                     )
                                 }
                             }
@@ -444,7 +445,8 @@ fun OnboardingDecksAndPlacementStep(
                                         text = "مراجعة شاملة متدرجة من الكلمات التأسيسية الأولى.",
                                         style = ArabicTypography.labelSmall,
                                         color = TextMuted,
-                                        modifier = Modifier.fillMaxWidth()
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textAlign = TextAlign.Right
                                     )
                                 }
                             }
@@ -711,7 +713,8 @@ private fun DeckItemCard(
                             text = deck.arabicTitle,
                             style = ArabicTypography.labelSmall,
                             color = if (isChecked) TextPrimary else TextSecondary,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Right
                         )
                     }
 

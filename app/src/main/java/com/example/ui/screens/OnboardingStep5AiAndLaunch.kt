@@ -299,7 +299,8 @@ fun OnboardingAiAndLaunchStep(
                                         text = "يعمل التطبيق بالكامل بدون إنترنت مع ٢١,٦٢٤ كلمة وقواعد جاهزة محلياً. يمكنك تفعيل أو إيقاف الذكاء الاصطناعي لاحقاً من الإعدادات.",
                                         style = ArabicTypography.labelSmall,
                                         color = TextMuted,
-                                        modifier = Modifier.fillMaxWidth()
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textAlign = TextAlign.Right
                                     )
                                 }
                             }

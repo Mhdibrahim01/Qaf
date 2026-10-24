@@ -741,7 +741,7 @@ private fun OnboardingLevelStep(
                                 modifier = Modifier.size(20.dp)
                             )
                         }
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Not sure? Take a quick placement quiz",
                                 style = MaterialTheme.typography.titleSmall.copy(
@@ -753,7 +753,9 @@ private fun OnboardingLevelStep(
                                 Text(
                                     text = "لست متأكداً؟ خذ اختبار تحديد مستوى من ١٠ أسئلة",
                                     style = ArabicTypography.labelSmall,
-                                    color = TextSecondary
+                                    color = TextSecondary,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Right
                                 )
                             }
                         }
@@ -889,7 +891,9 @@ private fun LevelOptionCard(
                         Text(
                             text = option.descriptionAr,
                             style = ArabicTypography.labelSmall,
-                            color = TextMuted
+                            color = TextMuted,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Right
                         )
                     }
                 }

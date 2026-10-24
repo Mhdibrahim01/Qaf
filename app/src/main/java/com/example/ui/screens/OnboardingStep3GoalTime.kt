@@ -463,7 +463,9 @@ fun OnboardingGoalAndTimeStep(
                             Text(
                                 text = OnboardingStep3Defaults.restDayDescriptionAr(activeStudyDays),
                                 style = ArabicTypography.labelSmall,
-                                color = TextSecondary
+                                color = TextSecondary,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Right
                             )
                         }
                     }
@@ -588,7 +590,8 @@ fun OnboardingGoalAndTimeStep(
                                 text = "الوضع الهادئ (بدون صوت أو ميكروفون — مثالي للمواصلات والأماكن العامة)",
                                 style = ArabicTypography.labelSmall,
                                 color = TextMuted,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Right
                             )
                         }
                     }
@@ -659,7 +662,8 @@ fun OnboardingGoalAndTimeStep(
                             text = "خطة متكاملة من ٥ أركان: ${activeMinutesOption.newWordsPerDay} كلمات جديدة، مراجعة البطاقات، درس قواعد، نص قراءة، واختبار يومي.",
                             style = ArabicTypography.labelSmall,
                             color = TextSecondary,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Right
                         )
                     }
                 }
@@ -812,7 +816,8 @@ private fun GoalOptionCard(
                             text = option.subtitleAr,
                             style = ArabicTypography.labelSmall,
                             color = TextMuted,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Right
                         )
                     }
                 }
@@ -888,7 +893,8 @@ private fun MinutesOptionCard(
                     text = "${option.newWordsPerDay} كلمات يومياً",
                     style = ArabicTypography.labelSmall,
                     color = TextMuted,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Right
                 )
             }
         }
