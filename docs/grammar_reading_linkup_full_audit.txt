@@ -1,0 +1,1308 @@
+================================================================================
+FULL LINGUISTIC AUDIT: GRAMMAR LESSON <-> READING SENTENCES LINKUP
+================================================================================
+
+--------------------------------------------------------------------------------
+LESSON: [g001] A1 - Verb to be : To be: am, is, are
+Arabic Title: الفعل to be: am, is, are
+Tagged Sentences Count: 3
+>>> STATUS: [LINKED]
+    [r001 S#0] EN: Salma wakes up early every morning at six o'clock.
+           AR: تستيقظ سلمى مبكرًا كل صباح في الساعة السادسة.
+    [r001 S#1] EN: She goes to the kitchen and makes hot coffee.
+           AR: تذهب إلى المطبخ وتعد قهوة ساخنة.
+    [r001 S#5] EN: She is ready to start a new day with a smile.
+           AR: هي مستعدة لبدء يوم جديد بابتسامة.
+
+--------------------------------------------------------------------------------
+LESSON: [g002] A1 - Pronouns : Subject pronouns and possessive adjectives
+Arabic Title: ضمائر الفاعل وصفات الملكية
+Tagged Sentences Count: 2
+>>> STATUS: [LINKED]
+    [r002 S#0] EN: Today is my first computer class at the local center.
+           AR: اليوم هو درسي الأول في الحاسوب في المركز المحلي.
+    [r002 S#2] EN: I learn how to write a short email message.
+           AR: أتعلم كيف أكتب رسالة بريد إلكتروني قصيرة.
+
+--------------------------------------------------------------------------------
+LESSON: [g003] A1 - Nouns and articles : Articles: a, an, the
+Arabic Title: أدوات التعريف والتنكير: a, an, the
+Tagged Sentences Count: 2
+>>> STATUS: [LINKED]
+    [r003 S#0] EN: Karim starts his new job at a clean modern office.
+           AR: يبدأ كريم وظيفته الجديدة في مكتب حديث ونظيف.
+    [r003 S#2] EN: The manager welcomes him and introduces the friendly team.
+           AR: يرحب به المدير ويعرفه على الفريق الودود.
+
+--------------------------------------------------------------------------------
+LESSON: [g004] A1 - Nouns and articles : Plural nouns
+Arabic Title: صيغة الجمع للأسماء
+Tagged Sentences Count: 2
+>>> STATUS: [LINKED]
+    [r004 S#0] EN: Doctor Nadia always says that simple exercise is important.
+           AR: تقول الدكتورة نادية دائمًا إن التمرين البسيط مهم.
+    [r004 S#2] EN: I walk in the neighborhood with my neighbor after work.
+           AR: أمشي في الحي مع جاري بعد العمل.
+
+--------------------------------------------------------------------------------
+LESSON: [g005] A1 - Pronouns : This, that, these, those
+Arabic Title: أسماء الإشارة: this, that, these, those
+Tagged Sentences Count: 2
+>>> STATUS: [LINKED]
+    [r005 S#0] EN: Our family loves nature and green spaces around the house.
+           AR: تحب عائلتنا الطبيعة والمساحات الخضراء حول المنزل.
+    [r005 S#2] EN: Today, my father is planting a young lemon tree.
+           AR: اليوم، يزرع والدي شجرة ليمون صغيرة.
+
+--------------------------------------------------------------------------------
+LESSON: [g006] A1 - Nouns and articles : There is and there are
+Arabic Title: there is و there are
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r006 S#0] EN: On Saturday, we travel by train to the coastal city.
+           AR: يوم السبت، نسافر بالقطار إلى المدينة الساحلية.
+    [r006 S#2] EN: The station is busy, but our train arrives on time.
+           AR: المحطة مزدحمة، لكن قطارنا يصل في الوقت المحدد.
+    [r092 S#3] EN: It has three bedrooms, a large living room, and a bright kitchen.
+           AR: تحتوي على ثلاث غرف نوم، وغرفة معيشة كبيرة، ومطبخ مشرق.
+    [r092 S#6] EN: There is a small supermarket and a bakery right across the street.
+           AR: يوجد سوبر ماركت صغير ومخبز في الجهة المقابلة من الشارع مباشرة.
+
+--------------------------------------------------------------------------------
+LESSON: [g007] A1 - Tenses : Present simple
+Arabic Title: المضارع البسيط
+Tagged Sentences Count: 22
+>>> STATUS: [LINKED]
+    [r007 S#0] EN: Tariq wants to speak and read English with confidence.
+           AR: يريد طارق أن يتحدث ويقرأ الإنجليزية بثقة.
+    [r007 S#2] EN: When he sees a new word, he checks his offline dictionary.
+           AR: عندما يرى كلمة جديدة، يتحقق من قاموسه دون اتصال.
+    [r091 S#0] EN: Friday is my favorite day of the week because I do not work.
+           AR: الجمعة هو يومي المفضل في الأسبوع لأنني لا أعمل.
+    [r091 S#2] EN: My mother prepares a big breakfast for the whole family.
+           AR: تُعد والدتي إفطارًا كبيرًا للعائلة بأكملها.
+    [r091 S#3] EN: We eat warm bread, cheese, and eggs together in the kitchen.
+           AR: نأكل الخبز الدافئ والجبن والبيض معًا في المطبخ.
+    [r091 S#4] EN: After breakfast, I take a short walk to the local market.
+           AR: بعد الإفطار، أذهب في نزهة قصيرة سيرًا على الأقدام إلى السوق المحلي.
+    [r091 S#6] EN: I buy fresh tomatoes, apples, and some milk for the house.
+           AR: أشتري طماطم طازجة وتفاحًا وبعض الحليب للمنزل.
+    [r091 S#7] EN: The seller knows me well and always gives me a good price.
+           AR: البائع يعرفني جيدًا ويعطيني دائمًا سعرًا جيدًا.
+    [r091 S#8] EN: In the afternoon, my friends come to my house to watch a football match.
+           AR: في فترة ما بعد الظهر، يأتي أصدقائي إلى منزلي لمشاهدة مباراة كرة قدم.
+    [r091 S#9] EN: Spending time with family and friends makes me very happy.
+           AR: قضاء الوقت مع العائلة والأصدقاء يجعلني سعيدًا جدًا.
+    [r092 S#2] EN: The new apartment is on the third floor of a modern building.
+           AR: الشقة الجديدة تقع في الطابق الثالث من مبنى حديث.
+    [r092 S#4] EN: My bedroom has a big window with a view of green trees.
+           AR: غرفة نومي بها نافذة كبيرة تطل على أشجار خضراء.
+    [r092 S#7] EN: Our new neighbors are very polite and friendly people.
+           AR: جيراننا الجدد أشخاص مهذبون وودودون للغاية.
+    [r092 S#9] EN: We feel very comfortable and safe in our new neighborhood.
+           AR: نشعر براحة وأمان كبيرين في حينا الجديد.
+    [r093 S#0] EN: Every Tuesday evening, I cook dinner at home with my brother.
+           AR: في مساء كل ثلاثاء، أطبخ العشاء في المنزل مع أخي.
+    [r093 S#1] EN: We do not like ordering fast food because homemade food is healthier.
+           AR: نحن لا نحب طلب الوجبات السريعة لأن الطعام المنزلي صحي أكثر.
+    [r093 S#3] EN: First, my brother washes the potatoes and boils them in hot water.
+           AR: أولاً، يغسل أخي البطاطس ويسلقها في ماء ساخن.
+    [r093 S#5] EN: Then, I put a little butter in a hot pan and cook the chicken.
+           AR: ثم أضع القليل من الزبدة في مقلاة ساخنة وأطهو الدجاج.
+    [r093 S#6] EN: The kitchen smells wonderful after ten minutes.
+           AR: تصبح رائحة المطبخ رائعة بعد عشر دقائق.
+    [r093 S#7] EN: My brother mixes the warm potatoes with milk and yellow cheddar cheese.
+           AR: يمزج أخي البطاطس الدافئة مع الحليب وجبن الشيدر الأصفر.
+    [r093 S#8] EN: We set the table and drink cold lemon juice with our meal.
+           AR: نجهز الطاولة ونشرب عصير الليمون البارد مع وجبتنا.
+    [r093 S#9] EN: Washing the dishes after dinner is boring, so we do it together.
+           AR: غسل الأطباق بعد العشاء ممل، لذلك نقوم به معًا.
+
+--------------------------------------------------------------------------------
+LESSON: [g008] A1 - Tenses : Present continuous
+Arabic Title: المضارع المستمر
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r008 S#0] EN: There is a public library in the center of our town.
+           AR: توجد مكتبة عامة في وسط مدينتنا.
+    [r008 S#2] EN: Many students come here to study and read history books.
+           AR: يأتي العديد من الطلاب إلى هنا للدراسة وقراءة كتب التاريخ.
+    [r093 S#2] EN: Today, we are making grilled chicken with mashed potatoes.
+           AR: اليوم، نحن نصنع دجاجًا مشويًا مع البطاطس المهروسة.
+    [r093 S#4] EN: While the potatoes are cooking, I season the chicken with salt and black pepper.
+           AR: بينما تُطهى البطاطس، أتبل الدجاج بالملح والفلفل الأسود.
+
+--------------------------------------------------------------------------------
+LESSON: [g009] A1 - Modal verbs : Can and can't
+Arabic Title: القدرة والاستطاعة
+Tagged Sentences Count: 0
+>>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+
+--------------------------------------------------------------------------------
+LESSON: [g010] A1 - Questions : Question words
+Arabic Title: أدوات الاستفهام
+Tagged Sentences Count: 0
+>>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+
+--------------------------------------------------------------------------------
+LESSON: [g011] A1 - Prepositions : Prepositions of place and time: in, on, at
+Arabic Title: حروف الجر للمكان والزمان: in, on, at
+Tagged Sentences Count: 2
+>>> STATUS: [LINKED]
+    [r091 S#1] EN: I usually wake up at eight o'clock and make a cup of hot tea.
+           AR: أستيقظ عادةً في الساعة الثامنة وأصنع كوبًا من الشاي الساخن.
+    [r091 S#5] EN: The market is always crowded on Friday mornings.
+           AR: السوق مزدحم دائمًا في صباح أيام الجمعة.
+
+--------------------------------------------------------------------------------
+LESSON: [g012] A1 - Nouns and articles : Countable and uncountable nouns: some and any
+Arabic Title: المعدود وغير المعدود: some و any
+Tagged Sentences Count: 0
+>>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+
+--------------------------------------------------------------------------------
+LESSON: [g013] A1 - Verb forms : The imperative
+Arabic Title: فعل الأمر
+Tagged Sentences Count: 0
+>>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+
+--------------------------------------------------------------------------------
+LESSON: [g014] A1 - Tenses : Past simple of to be: was and were
+Arabic Title: الماضي من to be: was و were
+Tagged Sentences Count: 1
+>>> STATUS: [LINKED]
+    [r092 S#1] EN: Our old house was too small, and the street was very noisy.
+           AR: كان منزلنا القديم صغيرًا جدًا، وكان الشارع صاخبًا للغاية.
+
+--------------------------------------------------------------------------------
+LESSON: [g015] A2 - Tenses : Past simple: regular and irregular verbs
+Arabic Title: الماضي البسيط: الأفعال المنتظمة وغير المنتظمة
+Tagged Sentences Count: 24
+>>> STATUS: [LINKED]
+    [r092 S#0] EN: Last month, my family moved to a new apartment in a quiet street.
+           AR: في الشهر الماضي، انتقلت عائلتي إلى شقة جديدة في شارع هادئ.
+    [r092 S#5] EN: I put my desk near the window because I like natural light.
+           AR: وضعت مكتبي بالقرب من النافذة لأنني أحب الضوء الطبيعي.
+    [r092 S#8] EN: Yesterday, the neighbor next door brought us a plate of sweet cake.
+           AR: بالأمس، أحضر لنا الجار المجاور طبقًا من الكعك الحلو.
+    [r094 S#0] EN: Last Saturday, Karim planned to visit his uncle in Alexandria.
+           AR: يوم السبت الماضي، خطط كريم لزيارة عمه في الإسكندرية.
+    [r094 S#1] EN: He bought a train ticket online the night before the trip.
+           AR: اشترى تذكرة قطار عبر الإنترنت في الليلة السابقة للرحلة.
+    [r094 S#2] EN: The train was scheduled to leave the station at seven in the morning.
+           AR: كان من المقرر أن يغادر القطار المحطة في الساعة السابعة صباحًا.
+    [r094 S#3] EN: Unfortunately, Karim forgot to set his alarm clock before going to sleep.
+           AR: لسوء الحظ، نسي كريم ضبط منبهه قبل الذهاب إلى النوم.
+    [r094 S#4] EN: When he woke up, it was already six-thirty.
+           AR: عندما استيقظ، كانت الساعة قد وصلت إلى السادسة والنصف بالفعل.
+    [r094 S#5] EN: He got dressed quickly, grabbed his bag, and took a taxi to the station.
+           AR: ارتدى ملابسه بسرعة، وأمسك بحقيبته، واستقل سيارة أجرة إلى المحطة.
+    [r094 S#6] EN: However, the morning traffic was heavy, and the taxi moved slowly.
+           AR: ومع ذلك، كانت حركة المرور الصباحية مزدحمة، وتحركت سيارة الأجرة ببطء.
+    [r094 S#7] EN: Karim arrived at the platform five minutes after the train left.
+           AR: وصل كريم إلى الرصيف بعد خمس دقائق من مغادرة القطار.
+    [r094 S#8] EN: He went to the ticket office and exchanged his ticket for the next train.
+           AR: ذهب إلى مكتب التذاكر واستبدل تذكرته بالقطار التالي.
+    [r094 S#9] EN: While waiting for an hour, he drank coffee and read a short book.
+           AR: أثناء انتظاره لمدة ساعة، شرب القهوة وقرأ كتابًا قصيرًا.
+    [r095 S#4] EN: Last week, the game was very exciting and fast from the beginning.
+           AR: في الأسبوع الماضي، كانت اللعبة مثيرة وسريعة للغاية منذ البداية.
+    [r095 S#5] EN: Our goalkeeper made several great saves during the first half.
+           AR: قام حارس مرمانا بعدة تصديات رائعة خلال الشوط الأول.
+    [r095 S#6] EN: Ten minutes before the end, I passed the ball to my friend Tariq, and he scored the winning goal.
+           AR: قبل النهاية بعشر دقائق، مررت الكرة لصديقي طارق، وسجل هو هدف الفوز.
+    [r096 S#0] EN: Two days ago, Salma dropped her smartphone on the hard kitchen floor.
+           AR: قبل يومين، أسقطت سلمى هاتفها الذكي على أرضية المطبخ الصلبة.
+    [r096 S#1] EN: When she picked it up, she saw a large crack across the screen.
+           AR: عندما التقطته، رأت شرخًا كبيرًا يمتد عبر الشاشة.
+    [r096 S#2] EN: The phone turned on, but the touch screen did not work at all.
+           AR: اشتغل الهاتف، لكن شاشة اللمس لم تعمل على الإطلاق.
+    [r096 S#4] EN: In the afternoon, she took it to a repair shop in the city center.
+           AR: في فترة ما بعد الظهر، أخذته إلى محل صيانة في وسط المدينة.
+    [r096 S#5] EN: The technician examined the phone carefully for a few minutes.
+           AR: فحص الفني الهاتف بعناية لبضع دقائق.
+    [r096 S#6] EN: He told her that the internal parts were fine, and it only needed a new screen.
+           AR: أخبرها أن الأجزاء الداخلية سليمة، وأنه يحتاج فقط إلى شاشة جديدة.
+    [r096 S#8] EN: Salma waited in a nearby café for one hour until the repair was finished.
+           AR: انتظرت سلمى في مقهى قريب لمدة ساعة واحدة حتى انتهى الإصلاح.
+    [r096 S#9] EN: Before leaving the shop, she bought a strong protective case to prevent future damage.
+           AR: قبل مغادرة المحل، اشترت جراب حماية قويًا لمنع التلف في المستقبل.
+
+--------------------------------------------------------------------------------
+LESSON: [g016] A2 - Tenses : Past continuous
+Arabic Title: الماضي المستمر
+Tagged Sentences Count: 3
+>>> STATUS: [LINKED]
+    [r009 S#0] EN: Omar works as a junior software developer at a technology company.
+           AR: يعمل عمر كمطور برمجيات مبتدئ في شركة تقنية.
+    [r009 S#1] EN: Yesterday evening, the team tested a new update for their mobile application.
+           AR: مساء أمس، اختبر الفريق تحديثًا جديدًا لتطبيق الهاتف الخاص بهم.
+    [r009 S#4] EN: Omar carefully checked the code and found the exact problem in ten minutes.
+           AR: فحص عمر الكود بعناية ووجد المشكلة بالضبط في عشر دقائق.
+
+--------------------------------------------------------------------------------
+LESSON: [g017] A2 - Tenses : Present perfect (introduction)
+Arabic Title: المضارع التام (مقدمة)
+Tagged Sentences Count: 2
+>>> STATUS: [LINKED]
+    [r010 S#0] EN: Next Tuesday, Lina has an important job interview with an international company.
+           AR: يوم الثلاثاء القادم، لدى لينا مقابلة عمل مهمة مع شركة دولية.
+    [r010 S#2] EN: She also practiced explaining her technical skills in clear English sentences.
+           AR: كما تدربت على شرح مهاراتها التقنية بجمل إنجليزية واضحة.
+
+--------------------------------------------------------------------------------
+LESSON: [g018] A2 - Adjectives and adverbs : Comparatives and superlatives
+Arabic Title: صيغتا المقارنة والتفضيل
+Tagged Sentences Count: 3
+>>> STATUS: [LINKED]
+    [r011 S#0] EN: Every Friday afternoon, our whole family gathers at my grandmother's house.
+           AR: بعد ظهر كل يوم جمعة، تجتمع عائلتنا بأكملها في منزل جدتي.
+    [r011 S#2] EN: My grandmother prepares a delicious meal using a traditional family recipe.
+           AR: تحضر جدتي وجبة لذيذة باستخدام وصفة عائلية تقليدية.
+    [r096 S#7] EN: Replacing the screen cost much less than buying a brand-new phone.
+           AR: تكلفة استبدال الشاشة كانت أقل بكثير من شراء هاتف جديد تمامًا.
+
+--------------------------------------------------------------------------------
+LESSON: [g019] A2 - Tenses : Future: will and be going to
+Arabic Title: المستقبل: will و be going to
+Tagged Sentences Count: 2
+>>> STATUS: [LINKED]
+    [r012 S#0] EN: Many students stay up late when they study for important exams.
+           AR: يسهر العديد من الطلاب لوقت متأخر عندما يدرسون للامتحانات المهمة.
+    [r012 S#2] EN: While you sleep, your brain organizes the words and rules you learned during the day.
+           AR: أثناء نومك، ينظم دماغك الكلمات والقواعد التي تعلمتها خلال اليوم.
+
+--------------------------------------------------------------------------------
+LESSON: [g020] A2 - Tenses : Present continuous for future plans
+Arabic Title: المضارع المستمر للخطط المستقبلية
+Tagged Sentences Count: 2
+>>> STATUS: [LINKED]
+    [r013 S#0] EN: Sunny desert regions receive bright sunlight for most of the year.
+           AR: تتلقى المناطق الصحراوية المشمسة ضوء شمس ساطعًا معظم أيام السنة.
+    [r013 S#2] EN: Solar energy does not pollute the air or harm the natural environment.
+           AR: الطاقة الشمسية لا تلوث الهواء ولا تضر بالبيئة الطبيعية.
+
+--------------------------------------------------------------------------------
+LESSON: [g021] A2 - Modal verbs : Have to, don't have to and must
+Arabic Title: have to و don't have to و must
+Tagged Sentences Count: 3
+>>> STATUS: [LINKED]
+    [r014 S#0] EN: Traveling through a large international airport for the first time can feel overwhelming.
+           AR: قد يبدو السفر عبر مطار دولي كبير لأول مرة أمرًا مربكًا.
+    [r014 S#2] EN: First, you show your passport and ticket at the check-in desk to drop off your luggage.
+           AR: أولًا، تبرز جواز سفرك وتذكرتك عند مكتب التسجيل لتسليم أمتعتك.
+    [r098 S#9] EN: Therefore, patients must only take antibiotics when prescribed by a qualified physician.
+           AR: لذلك، يجب على المرضى تناول المضادات الحيوية فقط عندما يصفها طبيب مؤهل.
+
+--------------------------------------------------------------------------------
+LESSON: [g022] A2 - Modal verbs : Should and shouldn't
+Arabic Title: النصيحة: should و shouldn't
+Tagged Sentences Count: 2
+>>> STATUS: [LINKED]
+    [r015 S#0] EN: Many language learners feel shy when they make a mistake in English.
+           AR: يشعر العديد من متعلمي اللغة بالخجل عندما يرتكبون خطأً في الإنجليزية.
+    [r015 S#2] EN: Whenever Youssef misses a grammar rule, he saves the sentence in his correction notebook.
+           AR: كلما أخطأ يوسف في قاعدة نحوية، يحفظ الجملة في دفتر التصحيح الخاص به.
+
+--------------------------------------------------------------------------------
+LESSON: [g023] A2 - Adjectives and adverbs : Adverbs of frequency
+Arabic Title: ظروف التكرار
+Tagged Sentences Count: 6
+>>> STATUS: [LINKED]
+    [r016 S#0] EN: Over a thousand years ago, Baghdad had one of the greatest libraries in history.
+           AR: قبل أكثر من ألف عام، كان في بغداد واحدة من أعظم المكتبات في التاريخ.
+    [r016 S#2] EN: They translated important scientific books from Greek, Persian, and Sanskrit into Arabic.
+           AR: ترجموا كتبًا علمية مهمة من اليونانية والفارسية والسنسكريتية إلى العربية.
+    [r095 S#3] EN: Before the match starts, we always warm up for ten minutes to avoid injuries.
+           AR: قبل أن تبدأ المباراة، نقوم دائمًا بالإحماء لمدة عشر دقائق لتجنب الإصابات.
+    [r095 S#7] EN: Even when my team loses, we never get angry at each other.
+           AR: حتى عندما يخسر فريقي، لا نغضب أبدًا من بعضنا البعض.
+    [r095 S#8] EN: After the match, we usually sit together and drink cold water.
+           AR: بعد المباراة، نجلس عادةً معًا ونشرب الماء البارد.
+    [r095 S#9] EN: This weekly habit helps us forget work stress and keeps us fit.
+           AR: تساعدنا هذه العادة الأسبوعية على نسيان ضغوط العمل وتحافظ على لياقتنا.
+
+--------------------------------------------------------------------------------
+LESSON: [g024] A2 - Adjectives and adverbs : Adverbs of manner
+Arabic Title: ظروف الحال
+Tagged Sentences Count: 0
+>>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+
+--------------------------------------------------------------------------------
+LESSON: [g025] A2 - Nouns and articles : Much, many, a lot of, a few, a little
+Arabic Title: much و many و a lot of و a few و a little
+Tagged Sentences Count: 0
+>>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+
+--------------------------------------------------------------------------------
+LESSON: [g026] A2 - Pronouns : Object pronouns and possessive pronouns
+Arabic Title: ضمائر المفعول وضمائر الملكية
+Tagged Sentences Count: 0
+>>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+
+--------------------------------------------------------------------------------
+LESSON: [g027] A2 - Verb patterns : Verbs followed by -ing or to + infinitive (like, want, enjoy)
+Arabic Title: أفعال بعدها -ing أو to + مصدر
+Tagged Sentences Count: 0
+>>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+
+--------------------------------------------------------------------------------
+LESSON: [g028] A2 - Conditionals : First conditional
+Arabic Title: الشرط الأول
+Tagged Sentences Count: 0
+>>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+
+--------------------------------------------------------------------------------
+LESSON: [g029] A2 - Adjectives and adverbs : Too and enough
+Arabic Title: too و enough
+Tagged Sentences Count: 0
+>>> STATUS: [ORPHAN] - 0 sentences in reading_texts.json linked to this lesson!
+
+--------------------------------------------------------------------------------
+LESSON: [g030] B1 - Tenses : Present perfect with for and since
+Arabic Title: المضارع التام مع for و since
+Tagged Sentences Count: 6
+>>> STATUS: [LINKED]
+    [r030 S#1] EN: However, it has looked dirty for several months.
+           AR: ومع ذلك، فقد بدت متسخة لعدة أشهر.
+    [r030 S#3] EN: I have volunteered to clean the area since last Monday.
+           AR: لقد تطوعت لتنظيف المنطقة منذ يوم الاثنين الماضي.
+    [r030 S#4] EN: My friends have helped me with this project for two weeks.
+           AR: لقد ساعدني أصدقائي في هذا المشروع لمدة أسبوعين.
+    [r030 S#6] EN: The local government has not supported our work since the beginning.
+           AR: لم تدعم الحكومة المحلية عملنا منذ البداية.
+    [r097 S#8] EN: Since we launched this tool, our team has saved more than ten hours every week.
+           AR: منذ أن أطلقنا هذه الأداة، وفر فريقنا أكثر من عشر ساعات كل أسبوع.
+    [r098 S#1] EN: Since their discovery, they have saved millions of lives around the world.
+           AR: منذ اكتشافها، أنقذت ملايين الأرواح حول العالم.
+
+--------------------------------------------------------------------------------
+LESSON: [g031] B1 - Tenses : Present perfect vs past simple
+Arabic Title: المضارع التام مقابل الماضي البسيط
+Tagged Sentences Count: 8
+>>> STATUS: [LINKED]
+    [r031 S#1] EN: She has traveled to many countries to learn new recipes.
+           AR: لقد سافرت إلى العديد من البلدان لتتعلم وصفات جديدة.
+    [r031 S#2] EN: Last year, she visited a small village in Italy to study pasta making.
+           AR: في العام الماضي، زارت قرية صغيرة في إيطاليا لتدرس صنع المعكرونة.
+    [r031 S#4] EN: Layla has already cooked this Italian dish for her family many times.
+           AR: لقد طبخت ليلى هذا الطبق الإيطالي لعائلتها عدة مرات بالفعل.
+    [r031 S#6] EN: She wrote about her experience in a food blog last Sunday.
+           AR: كتبت عن تجربتها في مدونة طعام يوم الأحد الماضي.
+    [r031 S#7] EN: Many people have read her article and left positive comments.
+           AR: قرأ الكثير من الناس مقالتها وتركوا تعليقات إيجابية.
+    [r097 S#2] EN: Last month, our software team decided to build an automated data pipeline.
+           AR: في الشهر الماضي، قرر فريق البرمجيات لدينا بناء خط أنابيب بيانات آلي.
+    [r097 S#3] EN: We wrote a Python script that collects daily sales reports from multiple sources.
+           AR: كتبنا نصًا برمجيًا بلغة بايثون يجمع تقارير المبيعات اليومية من مصادر متعددة.
+    [r097 S#6] EN: We scheduled the system to run every night at two o'clock in the morning.
+           AR: قمنا بجدولة النظام ليعمل كل ليلة في الساعة الثانية صباحًا.
+
+--------------------------------------------------------------------------------
+LESSON: [g032] B1 - Tenses : Present perfect continuous
+Arabic Title: المضارع التام المستمر
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r032 S#1] EN: They have been talking on the phone every evening for the past week.
+           AR: لقد كانتا تتحدثان عبر الهاتف كل مساء طوال الأسبوع الماضي.
+    [r032 S#3] EN: Sarah has been helping her decorate the house since early this morning.
+           AR: لقد كانت سارة تساعدها في تزيين المنزل منذ الصباح الباكر.
+    [r032 S#5] EN: Layla's brother has been practicing his guitar to play a song for their mother.
+           AR: كان شقيق ليلى يتدرب على عزف الغيتار ليؤدي أغنية لوالدتهما.
+    [r032 S#7] EN: Sarah has been feeling very happy because she loves supporting her friends.
+           AR: لقد كانت سارة تشعر بسعادة غامرة لأنها تحب دعم أصدقائها.
+
+--------------------------------------------------------------------------------
+LESSON: [g033] B1 - Tenses : Past perfect
+Arabic Title: الماضي التام
+Tagged Sentences Count: 5
+>>> STATUS: [LINKED]
+    [r033 S#1] EN: She noticed that her assistant had cleaned the desk before she arrived.
+           AR: لاحظت أن مساعدها كان قد نظف المكتب قبل وصولها.
+    [r033 S#2] EN: Sarah was looking for the notes she had written during the weekend.
+           AR: كانت سارة تبحث عن الملاحظات التي كانت قد كتبتها خلال عطلة نهاية الأسبوع.
+    [r033 S#3] EN: She felt worried because she had lost the key to her safe.
+           AR: شعرت بالقلق لأنها كانت قد فقدت مفتاح خزنتها.
+    [r033 S#6] EN: Finally, she remembered that she had left the key in her office drawer.
+           AR: أخيرًا، تذكرت أنها كانت قد تركت المفتاح في درج مكتبها.
+    [r033 S#9] EN: She was happy that she had finished the project on time.
+           AR: كانت سعيدة لأنها كانت قد أنهت المشروع في الوقت المحدد.
+
+--------------------------------------------------------------------------------
+LESSON: [g034] B1 - Tenses : Used to and would for past habits
+Arabic Title: used to و would للعادات في الماضي
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r034 S#1] EN: I used to walk to the local market every Saturday morning to find cheap deals.
+           AR: اعتدتُ المشي إلى السوق المحلي كل صباح يوم سبت للعثور على صفقات رخيصة.
+    [r034 S#2] EN: Sometimes, I would spend hours looking for the best price on vegetables.
+           AR: في بعض الأحيان، كنت أقضي ساعات في البحث عن أفضل سعر للخضروات.
+    [r034 S#4] EN: I used to buy only the things that I truly needed for my house.
+           AR: اعتدتُ شراء الأشياء التي أحتاجها حقاً لمنزلي فقط.
+    [r034 S#5] EN: Whenever I saw a sale, I would ask myself if the item was worth the money.
+           AR: كلما رأيت تخفيضات، كنت أسأل نفسي ما إذا كان الغرض يستحق المال.
+
+--------------------------------------------------------------------------------
+LESSON: [g035] B1 - Conditionals : Second conditional
+Arabic Title: الشرط الثاني
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r035 S#2] EN: If Sami had more free time, he would join a professional tennis club.
+           AR: لو كان لدى سامي المزيد من وقت الفراغ، لانضم إلى نادٍ محترف للتنس.
+    [r035 S#4] EN: If he practiced every single day, he would improve his skills much faster.
+           AR: لو تدرب كل يوم، لتحسنت مهاراته بشكل أسرع بكثير.
+    [r035 S#6] EN: If he were a professional player, he would travel around the world for tournaments.
+           AR: لو كان لاعباً محترفاً، لسافر حول العالم من أجل البطولات.
+    [r035 S#8] EN: If I were in his position, I would try to balance both sports and studies.
+           AR: لو كنت مكانه، لحاولت الموازنة بين الرياضة والدراسة.
+
+--------------------------------------------------------------------------------
+LESSON: [g036] B1 - Conditionals : Zero conditional and time clauses (when, as soon as, unless)
+Arabic Title: الشرط الصفري وجمل الزمن
+Tagged Sentences Count: 10
+>>> STATUS: [LINKED]
+    [r036 S#1] EN: If you arrive late to the office, you lose valuable time for your tasks.
+           AR: إذا وصلت متأخرًا إلى المكتب، فإنك تضيع وقتًا ثمينًا لمهامك.
+    [r036 S#2] EN: Many employees feel stressed when they have too much work to do.
+           AR: يشعر العديد من الموظفين بالتوتر عندما يكون لديهم الكثير من العمل للقيام به.
+    [r036 S#4] EN: Unless you plan your day carefully, you might forget important meetings.
+           AR: ما لم تخطط ليومك بعناية، فقد تنسى اجتماعات مهمة.
+    [r036 S#6] EN: As soon as you finish a project, you should review your work for mistakes.
+           AR: بمجرد أن تنتهي من مشروع ما، يجب عليك مراجعة عملك بحثًا عن الأخطاء.
+    [r036 S#8] EN: If you help your colleagues, they often support you in return.
+           AR: إذا ساعدت زملاءك، فإنهم غالبًا ما يدعمونك في المقابل.
+    [r097 S#7] EN: If the script encounters an unexpected error, it sends an instant alert to the engineers.
+           AR: إذا واجه الكود خطأ غير متوقع، فإنه يرسل تنبيهًا فوريًا للمهندسين.
+    [r098 S#4] EN: When patients misuse antibiotics, bacteria adapt and develop resistance over time.
+           AR: عندما يسيء المرضى استخدام المضادات الحيوية، تتكيف البكتيريا وتطور مقاومة بمرور الوقت.
+    [r098 S#5] EN: Another common mistake is stopping the treatment as soon as the patient feels better.
+           AR: خطأ شائع آخر هو إيقاف العلاج بمجرد أن يشعر المريض بتحسن.
+    [r099 S#0] EN: As software applications grow, the volume of data stored in relational databases increases rapidly.
+           AR: مع نمو تطبيقات البرمجيات، يزداد حجم البيانات المخزنة في قواعد البيانات العلائقية بسرعة.
+    [r099 S#1] EN: When a table contains millions of rows, retrieving specific records can become noticeably slow.
+           AR: عندما يحتوي الجدول على ملايين الصفوف، يمكن أن يصبح استرجاع سجلات معينة بطيئًا بشكل ملحوظ.
+
+--------------------------------------------------------------------------------
+LESSON: [g037] B1 - Passive and reported speech : Passive voice: present and past simple
+Arabic Title: المبني للمجهول: المضارع والماضي البسيط
+Tagged Sentences Count: 7
+>>> STATUS: [LINKED]
+    [r037 S#0] EN: Last summer, a beautiful ancient city was visited by thousands of tourists.
+           AR: في الصيف الماضي، تمت زيارة مدينة قديمة جميلة من قبل آلاف السياح.
+    [r037 S#2] EN: Many souvenirs are sold in the local market every day.
+           AR: تُباع العديد من الهدايا التذكارية في السوق المحلي كل يوم.
+    [r037 S#4] EN: The main museum was built by a famous architect many years ago.
+           AR: بُني المتحف الرئيسي من قبل مهندس معماري مشهور منذ سنوات عديدة.
+    [r037 S#6] EN: Delicious traditional food is served in small restaurants nearby.
+           AR: يتم تقديم طعام تقليدي لذيذ في المطاعم الصغيرة القريبة.
+    [r037 S#8] EN: The trip is usually remembered as a wonderful experience by all travelers.
+           AR: عادة ما يتم تذكر الرحلة كتجربة رائعة من قبل جميع المسافرين.
+    [r097 S#5] EN: Then, the clean data is automatically uploaded to the central SQL database.
+           AR: بعد ذلك، يتم رفع البيانات النظيفة تلقائيًا إلى قاعدة بيانات SQL المركزية.
+    [r098 S#6] EN: If the full course of medicine is not completed, the strongest bacteria survive and multiply.
+           AR: إذا لم تكتمل دورة الدواء الكاملة، فإن البكتيريا الأقوى تنجو وتتكاثر.
+
+--------------------------------------------------------------------------------
+LESSON: [g038] B1 - Passive and reported speech : Reported speech: statements
+Arabic Title: الكلام المنقول: الجمل الخبرية
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r038 S#1] EN: The manager announced that employees had to leave their phones in their lockers.
+           AR: أعلن المدير أن على الموظفين ترك هواتفهم في خزائنهم.
+    [r038 S#3] EN: Sarah said that she needed her phone to check her children's school updates.
+           AR: قالت سارة إنها تحتاج إلى هاتفها للتحقق من تحديثات مدرسة أطفالها.
+    [r038 S#4] EN: The IT department explained that the new rule would help everyone focus better.
+           AR: أوضح قسم تكنولوجيا المعلومات أن القاعدة الجديدة ستساعد الجميع على التركيز بشكل أفضل.
+    [r038 S#6] EN: Ahmed mentioned that he had finished his work faster without his phone.
+           AR: ذكر أحمد أنه أنهى عمله بشكل أسرع بدون هاتفه.
+
+--------------------------------------------------------------------------------
+LESSON: [g039] B1 - Clauses : Defining relative clauses: who, which, that
+Arabic Title: جمل الصلة المحددة: who, which, that
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r039 S#0] EN: Staying healthy is important for everyone who wants to live a long life.
+           AR: البقاء بصحة جيدة أمر مهم لكل شخص يرغب في عيش حياة طويلة.
+    [r039 S#2] EN: You should eat food that contains many vitamins and minerals.
+           AR: يجب أن تتناول الطعام الذي يحتوي على الكثير من الفيتامينات والمعادن.
+    [r039 S#4] EN: Water is the drink which helps your body stay hydrated.
+           AR: الماء هو المشروب الذي يساعد جسمك على البقاء رطبًا.
+    [r039 S#6] EN: Exercise is an activity that makes your heart stronger.
+           AR: الرياضة هي نشاط يجعل قلبك أقوى.
+
+--------------------------------------------------------------------------------
+LESSON: [g040] B1 - Modal verbs : Modals of probability: might, may, could, must, can't
+Arabic Title: أفعال الاحتمال: might, may, could, must, can't
+Tagged Sentences Count: 3
+>>> STATUS: [LINKED]
+    [r040 S#2] EN: It might contain something very valuable, or it could be just old books.
+           AR: قد يحتوي على شيء ثمين جدًا، أو ربما يكون مجرد كتب قديمة.
+    [r040 S#4] EN: The owner must be nearby, or they may have forgotten it in a hurry.
+           AR: لا بد أن المالك قريب، أو ربما نسيه على عجل.
+    [r040 S#6] EN: It can't be a dangerous object because it looks quite ordinary.
+           AR: لا يمكن أن يكون غرضًا خطيرًا لأنه يبدو عاديًا تمامًا.
+
+--------------------------------------------------------------------------------
+LESSON: [g041] B1 - Questions : Question tags
+Arabic Title: الأسئلة الذيلية
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r041 S#2] EN: The library is very quiet today, isn't it?
+           AR: المكتبة هادئة جدًا اليوم، أليس كذلك؟
+    [r041 S#4] EN: You haven't finished your notes yet, have you?
+           AR: لم تنهِ ملاحظاتك بعد، أليس كذلك؟
+    [r041 S#6] EN: Mark didn't bring his textbook, did he?
+           AR: مارك لم يحضر كتابه المدرسي، أليس كذلك؟
+    [r041 S#8] EN: They will study together for the final exam, won't they?
+           AR: سيدرسان معًا من أجل الاختبار النهائي، أليس كذلك؟
+
+--------------------------------------------------------------------------------
+LESSON: [g042] B1 - Prepositions and phrasal verbs : Phrasal verbs: separable and inseparable
+Arabic Title: الأفعال المركبة: القابلة وغير القابلة للفصل
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r042 S#1] EN: Last Saturday, my friends and I decided to clean it up.
+           AR: في يوم السبت الماضي، قررت أنا وأصدقائي تنظيفها.
+    [r042 S#3] EN: I told my friends to pick up the litter carefully.
+           AR: طلبت من أصدقائي التقاط القمامة بعناية.
+    [r042 S#5] EN: It is important to look after our green spaces for future generations.
+           AR: من المهم الاعتناء بمساحاتنا الخضراء من أجل الأجيال القادمة.
+    [r042 S#6] EN: Later, we had to give back the borrowed tools to the community center.
+           AR: لاحقًا، كان علينا إعادة الأدوات المستعارة إلى المركز المجتمعي.
+
+--------------------------------------------------------------------------------
+LESSON: [g043] B1 - Adjectives and adverbs : So and such
+Arabic Title: so و such
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r043 S#1] EN: The chef prepared a special curry that was so spicy that I could not finish it.
+           AR: أعد الطاهي كاري خاصًا كان حارًا جدًا لدرجة أنني لم أستطع إنهاءه.
+    [r043 S#3] EN: It was such a delicious meal that I decided to ask for the recipe.
+           AR: كانت وجبة لذيذة جدًا لدرجة أنني قررت طلب الوصفة.
+    [r043 S#5] EN: The service was so slow that we waited for nearly an hour.
+           AR: كانت الخدمة بطيئة جدًا لدرجة أننا انتظرنا قرابة الساعة.
+    [r043 S#7] EN: They had such friendly staff that I felt like I was at home.
+           AR: كان لديهم موظفون ودودون للغاية لدرجة أنني شعرت وكأنني في منزلي.
+
+--------------------------------------------------------------------------------
+LESSON: [g044] B1 - Verb patterns : Gerund or infinitive: common verb patterns
+Arabic Title: المصدر أو -ing: أنماط الأفعال الشائعة
+Tagged Sentences Count: 5
+>>> STATUS: [LINKED]
+    [r044 S#0] EN: Last Saturday, my best friend Sarah decided to visit me at my family home.
+           AR: في السبت الماضي، قررت صديقتي المفضلة سارة زيارتي في منزل عائلتي.
+    [r044 S#2] EN: In the afternoon, we enjoyed walking in the garden with my younger brother.
+           AR: في فترة بعد الظهر، استمتعنا بالمشي في الحديقة مع أخي الأصغر.
+    [r044 S#4] EN: Later, Sarah suggested cooking a traditional meal for my parents.
+           AR: لاحقاً، اقترحت سارة طهي وجبة تقليدية لوالديّ.
+    [r044 S#5] EN: We went to the kitchen and started preparing the ingredients together.
+           AR: ذهبنا إلى المطبخ وبدأنا في تحضير المكونات معاً.
+    [r044 S#8] EN: I hope to see Sarah again very soon.
+           AR: آمل أن أرى سارة مرة أخرى قريباً جداً.
+
+--------------------------------------------------------------------------------
+LESSON: [g045] B1 - Nouns and articles : Quantifiers: both, either, neither, all, none
+Arabic Title: أدوات الكمية: both, either, neither, all, none
+Tagged Sentences Count: 5
+>>> STATUS: [LINKED]
+    [r045 S#1] EN: Both probes were equipped with advanced cameras to take clear pictures.
+           AR: كلا المسبارين كانا مجهزين بكاميرات متطورة لالتقاط صور واضحة.
+    [r045 S#3] EN: Either the first probe or the second one would land on the surface.
+           AR: إما المسبار الأول أو الثاني سيهبط على السطح.
+    [r045 S#4] EN: However, neither probe could send a signal back to Earth immediately.
+           AR: ومع ذلك، لم يستطع أي من المسبارين إرسال إشارة إلى الأرض فوراً.
+    [r045 S#6] EN: All the data finally arrived after the probes moved into position.
+           AR: وصلت كل البيانات أخيراً بعد أن تحرك المسباران إلى موقعهما.
+    [r045 S#8] EN: None of the previous missions had reached this area before.
+           AR: لم تصل أي من المهمات السابقة إلى هذه المنطقة من قبل.
+
+--------------------------------------------------------------------------------
+LESSON: [g046] B1 - Tenses : Future continuous and future time clauses
+Arabic Title: المستقبل المستمر وجمل الزمن المستقبلية
+Tagged Sentences Count: 5
+>>> STATUS: [LINKED]
+    [r046 S#1] EN: At ten o'clock, I will be shopping for new clothes with my friends.
+           AR: في الساعة العاشرة، سأكون أتسوق لشراء ملابس جديدة مع أصدقائي.
+    [r046 S#2] EN: I need to save enough money before the weekend comes.
+           AR: أحتاج إلى توفير ما يكفي من المال قبل أن يأتي عطلة نهاية الأسبوع.
+    [r046 S#4] EN: As soon as the doors open, he will be running to the electronics store.
+           AR: بمجرد أن تفتح الأبواب، سيكون يركض نحو متجر الإلكترونيات.
+    [r046 S#6] EN: After we finish our shopping, we will be eating lunch at the food court.
+           AR: بعد أن ننتهي من التسوق، سنكون نتناول الغداء في ساحة الطعام.
+    [r046 S#7] EN: When the sale ends, we will check our bank accounts to see how much we spent.
+           AR: عندما تنتهي التخفيضات، سنتحقق من حساباتنا البنكية لنرى كم أنفقنا.
+
+--------------------------------------------------------------------------------
+LESSON: [g047] B1 - Questions : Indirect questions
+Arabic Title: الأسئلة غير المباشرة
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r047 S#2] EN: Could you tell me what time the swimming classes start?
+           AR: هل يمكنك إخباري متى تبدأ دروس السباحة؟
+    [r047 S#5] EN: I wonder if you could explain how much the monthly membership costs.
+           AR: أتساءل إن كان بإمكانك توضيح كم تبلغ تكلفة العضوية الشهرية.
+    [r047 S#7] EN: Do you happen to know where I can buy the necessary equipment?
+           AR: هل تصادف أنك تعرف من أين يمكنني شراء المعدات اللازمة؟
+    [r047 S#9] EN: I would like to know if there are any beginner groups available.
+           AR: أود أن أعرف إن كانت هناك أي مجموعات للمبتدئين متاحة.
+
+--------------------------------------------------------------------------------
+LESSON: [g048] B1 - Pronouns : Reflexive pronouns
+Arabic Title: الضمائر الانعكاسية
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r048 S#1] EN: She often finds herself working late to finish important reports.
+           AR: غالبًا ما تجد نفسها تعمل لوقت متأخر لإنهاء تقارير مهمة.
+    [r048 S#2] EN: At first, she tried to do everything by herself to show her skills.
+           AR: في البداية، حاولت القيام بكل شيء بنفسها لتُظهر مهاراتها.
+    [r048 S#5] EN: Now, she encourages her team members to express themselves during meetings.
+           AR: الآن، هي تشجع أعضاء فريقها على التعبير عن أنفسهم خلال الاجتماعات.
+    [r048 S#7] EN: Sarah also learned to reward herself after completing a difficult project.
+           AR: تعلمت سارة أيضًا أن تكافئ نفسها بعد إكمال مشروع صعب.
+
+--------------------------------------------------------------------------------
+LESSON: [g049] B1 - Nouns and articles : The zero article
+Arabic Title: حالات عدم استخدام أداة التعريف
+Tagged Sentences Count: 5
+>>> STATUS: [LINKED]
+    [r049 S#1] EN: I love London because it has many interesting museums and parks.
+           AR: أنا أحب لندن لأنها تحتوي على العديد من المتاحف والحدائق الممتعة.
+    [r049 S#3] EN: I usually enjoy eating food from different countries during my travels.
+           AR: أستمتع عادةً بتناول الطعام من مختلف البلدان أثناء رحلاتي.
+    [r049 S#5] EN: I spent most of my time walking around and looking at architecture.
+           AR: قضيت معظم وقتي في التجول والنظر إلى الهندسة المعمارية.
+    [r049 S#6] EN: On the third day, I visited a famous library to read books.
+           AR: في اليوم الثالث، زرت مكتبة مشهورة لقراءة الكتب.
+    [r049 S#8] EN: Travel helps us understand people and cultures better.
+           AR: يساعدنا السفر على فهم الناس والثقافات بشكل أفضل.
+
+--------------------------------------------------------------------------------
+LESSON: [g050] B1 - Prepositions and phrasal verbs : Dependent prepositions after verbs and adjectives
+Arabic Title: حروف الجر بعد الأفعال والصفات
+Tagged Sentences Count: 5
+>>> STATUS: [LINKED]
+    [r050 S#1] EN: He is very excited about the new voice-controlled lighting system.
+           AR: إنه متحمس جدًا لنظام الإضاءة الجديد الذي يتم التحكم فيه بالصوت.
+    [r050 S#2] EN: At first, he worried about the complex installation process.
+           AR: في البداية، شعر بالقلق بشأن عملية التثبيت المعقدة.
+    [r050 S#4] EN: Now, he can rely on his smartphone to manage his home security.
+           AR: الآن، يمكنه الاعتماد على هاتفه الذكي لإدارة أمن منزله.
+    [r050 S#5] EN: His friends are interested in buying similar devices for themselves.
+           AR: أصدقاؤه مهتمون بشراء أجهزة مماثلة لأنفسهم.
+    [r050 S#8] EN: He is proud of his modern home and enjoys showing it off.
+           AR: إنه فخور بمنزله الحديث ويستمتع باستعراضه.
+
+--------------------------------------------------------------------------------
+LESSON: [g051] B1 - Linking and discourse : Linking words: although, however, because, so
+Arabic Title: أدوات الربط: although, however, because, so
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r051 S#0] EN: Sarah decided to change her lifestyle because she felt tired all the time.
+           AR: قررت سارة تغيير نمط حياتها لأنها كانت تشعر بالتعب طوال الوقت.
+    [r051 S#2] EN: Although she was very busy with her work, she made time for exercise.
+           AR: على الرغم من أنها كانت مشغولة جدًا بعملها، إلا أنها خصصت وقتًا لممارسة الرياضة.
+    [r051 S#4] EN: Healthy food is expensive, so she started cooking her own meals at home.
+           AR: الطعام الصحي مكلف، لذا بدأت بطهي وجباتها الخاصة في المنزل.
+    [r051 S#6] EN: However, she feels much stronger and happier now.
+           AR: ومع ذلك، فهي تشعر بأنها أقوى وأكثر سعادة الآن.
+
+--------------------------------------------------------------------------------
+LESSON: [g052] B1 - Adjectives and adverbs : As ... as and the more ... the more
+Arabic Title: as ... as و the more ... the more
+Tagged Sentences Count: 5
+>>> STATUS: [LINKED]
+    [r052 S#1] EN: The more time you spend in the city, the more you understand its fast pace.
+           AR: كلما قضيت وقتًا أطول في المدينة، زاد فهمك لإيقاعها السريع.
+    [r052 S#2] EN: Public transport is often as efficient as driving your own car.
+           AR: غالبًا ما تكون وسائل النقل العام فعالة بقدر قيادة سيارتك الخاصة.
+    [r052 S#3] EN: Some people find the city center as noisy as a busy airport.
+           AR: يجد بعض الناس وسط المدينة صاخبًا بقدر مطار مزدحم.
+    [r052 S#5] EN: The more buildings you see, the more you appreciate the small public parks.
+           AR: كلما رأيت مباني أكثر، زاد تقديرك للحدائق العامة الصغيرة.
+    [r052 S#6] EN: Life in the city is not as quiet as life in a small village.
+           AR: الحياة في المدينة ليست هادئة بقدر الحياة في قرية صغيرة.
+
+--------------------------------------------------------------------------------
+LESSON: [g053] B1 - Passive and reported speech : Reported questions and commands
+Arabic Title: الأسئلة والأوامر المنقولة
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r053 S#1] EN: He asked us why we were using our phones during the lessons.
+           AR: سألنا لماذا نستخدم هواتفنا أثناء الدروس.
+    [r053 S#3] EN: The teacher told us to put our phones in our bags immediately.
+           AR: أخبرنا المعلم أن نضع هواتفنا في حقائبنا فورًا.
+    [r053 S#4] EN: Some students asked if they could use their tablets for research.
+           AR: سأل بعض الطلاب عما إذا كان بإمكانهم استخدام أجهزتهم اللوحية للبحث.
+    [r053 S#6] EN: He ordered the students to finish their homework before the next class.
+           AR: أمر الطلاب بإنهاء واجباتهم المدرسية قبل الحصة القادمة.
+
+--------------------------------------------------------------------------------
+LESSON: [g054] B2 - Conditionals : Third conditional
+Arabic Title: الشرط الثالث
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r054 S#3] EN: If Omar had set his alarm, he would have caught that train.
+           AR: لو ضبط عمر المنبّه لاستقل ذلك القطار.
+    [r054 S#5] EN: The manager told him that she would have waited if he had called her.
+           AR: قالت له المديرة إنها كانت ستنتظره لو اتصل بها.
+    [r054 S#6] EN: Omar realised that he wouldn't have lost the chance if he had been better prepared.
+           AR: أدرك عمر أنه لم يكن ليخسر الفرصة لو كان أكثر استعدادًا.
+    [r054 S#7] EN: If he had known how important that day was, he would have prepared everything the night before.
+           AR: لو كان يعلم مدى أهمية ذلك اليوم لجهّز كل شيء في الليلة السابقة.
+
+--------------------------------------------------------------------------------
+LESSON: [g055] B2 - Conditionals : Mixed conditionals
+Arabic Title: الشرط المختلط
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r055 S#2] EN: If she had studied the local techniques more carefully, she would be able to cook the perfect dish now.
+           AR: لو أنها درست التقنيات المحلية بعناية أكبر، لكانت قادرة على طهي الطبق المثالي الآن.
+    [r055 S#4] EN: If she had taken notes, she would know exactly which secret spice to add to the sauce.
+           AR: لو أنها دوّنت الملاحظات، لعرفت بالضبط أي توابل سرية يجب إضافتها إلى الصلصة.
+    [r055 S#6] EN: If she hadn't lost her notebook, she wouldn't be struggling with this recipe today.
+           AR: لو أنها لم تفقد دفتر ملاحظاتها، لما كانت تعاني مع هذه الوصفة اليوم.
+    [r055 S#8] EN: If she had been more organized, she would have a collection of classic recipes by now.
+           AR: لو أنها كانت أكثر تنظيمًا، لكان لديها مجموعة من الوصفات الكلاسيكية بحلول الآن.
+
+--------------------------------------------------------------------------------
+LESSON: [g056] B2 - Conditionals : Wish and if only
+Arabic Title: wish و if only
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r056 S#2] EN: I wish Sarah were here to celebrate our graduation together.
+           AR: أتمنى لو كانت سارة هنا لنحتفل بتخرجنا معاً.
+    [r056 S#4] EN: If only we lived in the same city, we could see each other every day.
+           AR: لو أننا نعيش في نفس المدينة فقط، لاستطعنا رؤية بعضنا كل يوم.
+    [r056 S#6] EN: I wish I hadn't missed her birthday party last month due to my exams.
+           AR: أتمنى لو أنني لم أفوت حفلة عيد ميلادها الشهر الماضي بسبب امتحاناتي.
+    [r056 S#7] EN: If only she had told me earlier that she was visiting next summer, I would have planned my holiday.
+           AR: لو أنها أخبرتني في وقت أبكر بأنها ستزورنا الصيف المقبل، لكنت رتبت إجازتي.
+
+--------------------------------------------------------------------------------
+LESSON: [g057] B2 - Passive and reported speech : Passive voice: all tenses and modals
+Arabic Title: المبني للمجهول في كل الأزمنة
+Tagged Sentences Count: 7
+>>> STATUS: [LINKED]
+    [r057 S#0] EN: In 1928, a significant medical breakthrough was made by Alexander Fleming.
+           AR: في عام 1928، تم تحقيق طفرة طبية هامة من قبل ألكسندر فليمنج.
+    [r057 S#2] EN: When he examined his petri dishes, he noticed that some bacteria had been killed by a strange mold.
+           AR: عندما فحص أطباقه المخبرية، لاحظ أن بعض البكتيريا قد قُتلت بواسطة عفن غريب.
+    [r057 S#4] EN: This substance was later named penicillin by the scientist.
+           AR: سُميت هذه المادة لاحقًا بالبنسلين من قبل العالم.
+    [r057 S#5] EN: Before this discovery, many minor infections could not be treated effectively.
+           AR: قبل هذا الاكتشاف، لم يكن من الممكن علاج العديد من العدوى البسيطة بفعالية.
+    [r057 S#7] EN: Today, millions of lives are saved every year thanks to antibiotics.
+           AR: اليوم، يتم إنقاذ ملايين الأرواح كل عام بفضل المضادات الحيوية.
+    [r057 S#8] EN: Scientists believe that new treatments must be developed to face modern health challenges.
+           AR: يعتقد العلماء أنه يجب تطوير علاجات جديدة لمواجهة التحديات الصحية الحديثة.
+    [r099 S#6] EN: Every time a new row is inserted or updated, all associated indexes must be recalculated as well.
+           AR: في كل مرة يتم فيها إدراج صف جديد أو تحديثه، يجب إعادة حساب جميع الفهارس المرتبطة به أيضًا.
+
+--------------------------------------------------------------------------------
+LESSON: [g058] B2 - Passive and reported speech : Reporting verbs
+Arabic Title: أفعال النقل
+Tagged Sentences Count: 5
+>>> STATUS: [LINKED]
+    [r058 S#1] EN: The shop assistant insisted that the bag was made of genuine Italian leather.
+           AR: أصر مساعد المتجر على أن الحقيبة مصنوعة من جلد إيطالي أصلي.
+    [r058 S#4] EN: She returned to the store and demanded that the manager provide a full refund.
+           AR: عادت إلى المتجر وطالبت المدير بأن يوفر لها استردادًا كاملًا للمال.
+    [r058 S#5] EN: The manager denied that the store had sold her a fake product.
+           AR: أنكر المدير أن المتجر قد باع لها منتجًا مزيفًا.
+    [r058 S#7] EN: Eventually, she suggested that they check the serial number together.
+           AR: في النهاية، اقترحت أن يتحققا من الرقم التسلسلي معًا.
+    [r058 S#8] EN: When the number proved to be invalid, the manager finally admitted that a mistake had occurred.
+           AR: عندما تبين أن الرقم غير صالح، اعترف المدير أخيرًا بأن خطأً قد حدث.
+
+--------------------------------------------------------------------------------
+LESSON: [g059] B2 - Clauses : Non-defining relative clauses
+Arabic Title: جمل الصلة غير المحددة
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r059 S#0] EN: The annual tennis tournament, which attracts players from all over the country, took place last weekend.
+           AR: أقيمت بطولة التنس السنوية، التي تجذب اللاعبين من جميع أنحاء البلاد، في عطلة نهاية الأسبوع الماضي.
+    [r059 S#2] EN: My brother, who has been training for six months, finally won the gold medal.
+           AR: أخي، الذي يتدرب منذ ستة أشهر، فاز أخيرًا بالميدالية الذهبية.
+    [r059 S#4] EN: The tennis court, which was renovated just last month, looked beautiful.
+           AR: ملعب التنس، الذي تم تجديده الشهر الماضي فقط، بدا جميلًا.
+    [r059 S#6] EN: His coach, who is a former professional player, was very proud of his performance.
+           AR: مدربه، الذي هو لاعب محترف سابق، كان فخورًا جدًا بأدائه.
+
+--------------------------------------------------------------------------------
+LESSON: [g060] B2 - Tenses : Future perfect and future perfect continuous
+Arabic Title: المستقبل التام والمستقبل التام المستمر
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r060 S#1] EN: By the end of this month, she will have completed ten years at her company.
+           AR: بحلول نهاية هذا الشهر، ستكون قد أتمت عشر سنوات في شركتها.
+    [r060 S#3] EN: Next year, she will have been leading the international department for five years.
+           AR: في العام المقبل، ستكون قد أمضت خمس سنوات في قيادة القسم الدولي.
+    [r060 S#5] EN: By the time she retires, she will have mentored dozens of young professionals.
+           AR: بحلول الوقت الذي تتقاعد فيه، ستكون قد درّبت عشرات المهنيين الشباب.
+    [r060 S#7] EN: By next summer, she will have been working on the new sustainability project for over two years.
+           AR: بحلول الصيف المقبل، ستكون قد عملت على مشروع الاستدامة الجديد لأكثر من عامين.
+
+--------------------------------------------------------------------------------
+LESSON: [g061] B2 - Modal verbs : Past modals: should have, could have, must have
+Arabic Title: أفعال الاحتمال في الماضي
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r061 S#2] EN: She must have left it at the connecting airport in Dubai during her layover.
+           AR: لا بد أنها تركتها في مطار الترانزيت في دبي أثناء توقفها هناك.
+    [r061 S#4] EN: She could have checked the baggage tag more carefully before boarding the second flight.
+           AR: كان بإمكانها التحقق من بطاقة الأمتعة بعناية أكبر قبل صعود الرحلة الثانية.
+    [r061 S#6] EN: Sarah realized she should have kept her laptop and passport in her carry-on bag.
+           AR: أدركت سارة أنه كان ينبغي عليها الاحتفاظ بحاسوبها المحمول وجواز سفرها في حقيبة اليد.
+    [r061 S#7] EN: She should have listened to her friend's advice about packing essentials in a small bag.
+           AR: كان ينبغي عليها الاستماع إلى نصيحة صديقتها بشأن وضع الضروريات في حقيبة صغيرة.
+
+--------------------------------------------------------------------------------
+LESSON: [g062] B2 - Tenses : Past perfect continuous
+Arabic Title: الماضي التام المستمر
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r062 S#1] EN: She had been working on the new security update for over six hours before the system crashed.
+           AR: كانت تعمل على تحديث الأمان الجديد لأكثر من ست ساعات قبل أن يتعطل النظام.
+    [r062 S#3] EN: She had been trying to fix the database errors all afternoon, but the problem persisted.
+           AR: كانت تحاول إصلاح أخطاء قاعدة البيانات طوال فترة بعد الظهر، لكن المشكلة استمرت.
+    [r062 S#5] EN: Before the crash, she had been hoping to launch the product by the end of the week.
+           AR: قبل العطل، كانت تأمل في إطلاق المنتج بحلول نهاية الأسبوع.
+    [r062 S#7] EN: She had been coding continuously since morning, so her eyes were very tired.
+           AR: كانت تبرمج باستمرار منذ الصباح، لذا كانت عيناها متعبتين جدًا.
+
+--------------------------------------------------------------------------------
+LESSON: [g063] B2 - Verb patterns : Verbs that change meaning: stop, remember, try, forget
+Arabic Title: أفعال يتغير معناها: stop, remember, try, forget
+Tagged Sentences Count: 8
+>>> STATUS: [LINKED]
+    [r063 S#1] EN: She stopped to eat a healthy snack when she felt hungry during her long run.
+           AR: توقفت لتناول وجبة خفيفة صحية عندما شعرت بالجوع أثناء ركضها الطويل.
+    [r063 S#2] EN: Later, she stopped eating junk food entirely to reach her fitness goals.
+           AR: لاحقًا، توقفت عن تناول الوجبات السريعة تمامًا لتصل إلى أهداف لياقتها البدنية.
+    [r063 S#3] EN: She had to remember to drink plenty of water throughout the day.
+           AR: كان عليها أن تتذكر شرب الكثير من الماء طوال اليوم.
+    [r063 S#4] EN: She also remembered locking the gym door after her late-night workout.
+           AR: كما أنها تذكرت إغلاق باب النادي الرياضي بعد تمرينها في وقت متأخر.
+    [r063 S#5] EN: Sometimes, she tried to lift heavier weights to build more muscle mass.
+           AR: في بعض الأحيان، حاولت رفع أوزان أثقل لبناء المزيد من الكتلة العضلية.
+    [r063 S#6] EN: She tried doing yoga, but she found it too difficult for her current flexibility.
+           AR: جربت ممارسة اليوغا، لكنها وجدتها صعبة للغاية بالنسبة لمرونتها الحالية.
+    [r063 S#7] EN: She once forgot to bring her towel, so she had to use a spare one.
+           AR: نسيت ذات مرة إحضار منشفتها، لذا اضطرت لاستخدام واحدة إضافية.
+    [r063 S#8] EN: She will never forget meeting her personal trainer for the first time.
+           AR: لن تنسى أبدًا لقاء مدربها الشخصي للمرة الأولى.
+
+--------------------------------------------------------------------------------
+LESSON: [g064] B2 - Clauses : Participle clauses
+Arabic Title: جمل اسم الفاعل والمفعول
+Tagged Sentences Count: 6
+>>> STATUS: [LINKED]
+    [r064 S#0] EN: Living in the heart of the city, Sarah enjoys the constant energy of the streets.
+           AR: باعتبارها تعيش في قلب المدينة، تستمتع سارة بالطاقة المستمرة في الشوارع.
+    [r064 S#2] EN: Exhausted by the noise of the traffic, she often seeks quiet in the public park.
+           AR: بسبب شعورها بالإرهاق من ضجيج حركة المرور، غالبًا ما تبحث عن الهدوء في الحديقة العامة.
+    [r064 S#3] EN: The park is a green oasis surrounded by busy roads and concrete buildings.
+           AR: الحديقة هي واحة خضراء محاطة بطرق مزدحمة ومبانٍ خرسانية.
+    [r064 S#5] EN: Having finished her coffee, Sarah watches the commuters rushing to their offices.
+           AR: بعد أن انتهت من قهوتها، تراقب سارة الموظفين وهم يسرعون إلى مكاتبهم.
+    [r064 S#7] EN: Bright neon lights illuminate the sidewalks, guiding pedestrians home.
+           AR: تضيء أضواء النيون الساطعة الأرصفة، لترشد المشاة إلى منازلهم.
+    [r099 S#4] EN: By creating an index on frequently searched columns, engineers can reduce query execution time dramatically.
+           AR: من خلال إنشاء فهرس على الأعمدة التي يتم البحث فيها بكثرة، يمكن للمهندسين تقليل وقت تنفيذ الاستعلام بشكل كبير.
+
+--------------------------------------------------------------------------------
+LESSON: [g065] B2 - Linking and discourse : Linking words: contrast, purpose and result
+Arabic Title: أدوات الربط: التضاد والغرض والنتيجة
+Tagged Sentences Count: 6
+>>> STATUS: [LINKED]
+    [r065 S#1] EN: Sarah decided to create a strict study schedule so that she could finish her thesis on time.
+           AR: قررت سارة وضع جدول دراسي صارم لكي تتمكن من إنهاء أطروحتها في الوقت المحدد.
+    [r065 S#3] EN: Her hard work paid off, as a result, she achieved the highest grade in her class.
+           AR: أتى عملها الجاد ثماره، ونتيجة لذلك، حققت أعلى درجة في فصلها.
+    [r065 S#4] EN: Some of her peers preferred to relax, whereas Sarah remained focused on her goals.
+           AR: فضل بعض زملائها الاسترخاء، في حين ظلت سارة تركز على أهدافها.
+    [r065 S#7] EN: In contrast to her previous years, she felt much more confident this time.
+           AR: على العكس من سنواتها السابقة، شعرت بثقة أكبر بكثير هذه المرة.
+    [r099 S#5] EN: However, adding too many indexes to a single table introduces a significant performance trade-off.
+           AR: ومع ذلك، فإن إضافة الكثير من الفهارس إلى جدول واحد يؤدي إلى مقايضة كبيرة في الأداء.
+    [r099 S#7] EN: Consequently, write-heavy applications might experience slower insertion speeds if they are over-indexed.
+           AR: وبالتالي، قد تواجه التطبيقات التي تعتمد بكثرة على الكتابة سرعات إدراج أبطأ إذا تمت فهرستها بشكل مفرط.
+
+--------------------------------------------------------------------------------
+LESSON: [g066] B2 - Passive and reported speech : Causative: have and get something done
+Arabic Title: السببية: have/get something done
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r066 S#1] EN: Last week, the mayor had his office building retrofitted with solar panels to save energy.
+           AR: في الأسبوع الماضي، قام العمدة بتركيب ألواح شمسية في مبنى مكتبه لتوفير الطاقة.
+    [r066 S#3] EN: Yesterday, a local family got their old roof insulated to reduce their heating costs.
+           AR: بالأمس، قامت عائلة محلية بعزل سقف منزلهم القديم لتقليل تكاليف التدفئة.
+    [r066 S#5] EN: Next month, the community center will have its garden redesigned to include native plants.
+           AR: في الشهر المقبل، سيقوم المركز المجتمعي بإعادة تصميم حديقته لتشمل نباتات محلية.
+    [r066 S#7] EN: Finally, the local school got its windows replaced with double-glazed glass to improve efficiency.
+           AR: أخيرًا، قامت المدرسة المحلية باستبدال نوافذها بزجاج مزدوج لتحسين الكفاءة.
+
+--------------------------------------------------------------------------------
+LESSON: [g067] B2 - Conditionals : Conditionals with unless, as long as, provided that, in case
+Arabic Title: الشرط مع unless و as long as و provided that و in case
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r067 S#1] EN: My grandmother always said she would share her secret spice blend, provided that I promised to keep it within the family.
+           AR: لطالما قالت جدتي إنها ستشاركني خلطة توابلها السرية، بشرط أن أعدها بالحفاظ عليها داخل العائلة.
+    [r067 S#3] EN: You can experiment with new ingredients as long as you respect the original cooking method.
+           AR: يمكنك تجربة مكونات جديدة طالما أنك تحترم طريقة الطهي الأصلية.
+    [r067 S#5] EN: I always carry a small notebook with me in case I find a new spice at the local market.
+           AR: أحمل دفتراً صغيراً معي دائماً تحسباً لأن أجد توابل جديدة في السوق المحلي.
+    [r067 S#7] EN: Unless you use fresh herbs, the final flavor will not be as authentic as it should be.
+           AR: ما لم تستخدم أعشاباً طازجة، لن تكون النكهة النهائية أصلية كما ينبغي.
+
+--------------------------------------------------------------------------------
+LESSON: [g068] B2 - Adjectives and adverbs : Advanced comparison structures
+Arabic Title: تراكيب المقارنة المتقدمة
+Tagged Sentences Count: 6
+>>> STATUS: [LINKED]
+    [r068 S#0] EN: Family gatherings are often more chaotic than they are relaxing.
+           AR: غالبًا ما تكون التجمعات العائلية أكثر فوضى مما هي مريحة.
+    [r068 S#3] EN: As we get older, our friendship has become much more meaningful than it was in our childhood.
+           AR: مع تقدمنا في العمر، أصبحت صداقتنا أكثر أهمية بكثير مما كانت عليه في طفولتنا.
+    [r068 S#4] EN: Sarah is by far the most supportive person I have ever known.
+           AR: سارة هي الشخص الأكثر دعمًا الذي عرفته على الإطلاق.
+    [r068 S#6] EN: The more time we spend talking, the closer our bond becomes.
+           AR: كلما قضينا وقتًا أطول في الحديث، أصبحت علاقتنا أقوى.
+    [r068 S#8] EN: However, having a friend like her makes life significantly less difficult.
+           AR: ومع ذلك، فإن وجود صديقة مثلها يجعل الحياة أقل صعوبة بشكل ملحوظ.
+    [r099 S#3] EN: A database index works similarly to an index at the back of a printed book.
+           AR: يعمل فهرس قاعدة البيانات بطريقة مشابهة للفهرس الموجود في نهاية الكتاب المطبوع.
+
+--------------------------------------------------------------------------------
+LESSON: [g069] B2 - Prepositions and phrasal verbs : Common phrasal verbs at B2
+Arabic Title: الأفعال المركبة الشائعة في المستوى B2
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r069 S#1] EN: He had to carry out many difficult tests before he saw any real progress.
+           AR: كان عليه إجراء العديد من الاختبارات الصعبة قبل أن يرى أي تقدم حقيقي.
+    [r069 S#2] EN: His team often felt tired, but they refused to give up on their research.
+           AR: شعر فريقه بالتعب غالبًا، لكنهم رفضوا التخلي عن أبحاثهم.
+    [r069 S#4] EN: He decided to look into the data to understand why the energy levels spiked.
+           AR: قرر فحص البيانات ليفهم سبب ارتفاع مستويات الطاقة.
+    [r069 S#6] EN: He knew he had to figure out the cause before publishing his findings.
+           AR: عرف أنه يجب عليه معرفة السبب قبل نشر نتائجه.
+
+--------------------------------------------------------------------------------
+LESSON: [g070] B2 - Verb patterns : Would rather, had better and prefer
+Arabic Title: would rather و had better و prefer
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r070 S#2] EN: I would rather buy a high-quality phone that lasts for years than a cheap one that breaks quickly.
+           AR: أفضل شراء هاتف عالي الجودة يدوم لسنوات على شراء هاتف رخيص يتعطل بسرعة.
+    [r070 S#4] EN: You had better check the online reviews before making such a big purchase.
+           AR: من الأفضل لكِ التحقق من المراجعات عبر الإنترنت قبل القيام بمثل هذا الشراء الكبير.
+    [r070 S#6] EN: I prefer shopping during the sales season when prices are significantly lower.
+           AR: أنا أفضل التسوق خلال موسم التخفيضات عندما تكون الأسعار أقل بكثير.
+    [r070 S#8] EN: I would rather wait a few days for shipping than pay double the price here.
+           AR: أفضل الانتظار لبضعة أيام من أجل الشحن على دفع ضعف السعر هنا.
+
+--------------------------------------------------------------------------------
+LESSON: [g071] B2 - Verb patterns : It's time and other subjunctive-like structures
+Arabic Title: it's time وتراكيب مشابهة
+Tagged Sentences Count: 5
+>>> STATUS: [LINKED]
+    [r071 S#1] EN: It is time she focused entirely on her physical recovery to avoid injuries.
+           AR: حان الوقت لكي تركز تماماً على تعافيها البدني لتجنب الإصابات.
+    [r071 S#2] EN: Her coach suggested that she spend more time stretching before her matches.
+           AR: اقترح مدربها أن تقضي وقتاً أطول في تمارين الإطالة قبل مبارياتها.
+    [r071 S#4] EN: It is high time she improved her diet to maintain her energy levels.
+           AR: لقد حان الوقت لكي تحسّن نظامها الغذائي للحفاظ على مستويات طاقتها.
+    [r071 S#6] EN: I would rather she practiced her serve more often during the afternoon session.
+           AR: أفضل أن تتدرب على إرسالها بشكل متكرر أكثر خلال جلسة بعد الظهر.
+    [r071 S#8] EN: It is about time we supported her journey toward becoming a professional player.
+           AR: لقد حان الوقت لكي ندعم رحلتها نحو أن تصبح لاعبة محترفة.
+
+--------------------------------------------------------------------------------
+LESSON: [g072] B2 - Nouns and articles : Determiners: each, every, all, whole
+Arabic Title: المحددات: each, every, all, whole
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r072 S#0] EN: At the end of the year, the company conducts performance reviews for all employees.
+           AR: في نهاية العام، تُجري الشركة مراجعات أداء لجميع الموظفين.
+    [r072 S#1] EN: Each department head prepares a detailed report on the productivity of their team members.
+           AR: يُعد كل رئيس قسم تقريرًا مفصلاً عن إنتاجية أعضاء فريقه.
+    [r072 S#3] EN: Every staff member is expected to reflect on their achievements throughout the past twelve months.
+           AR: يُتوقع من كل موظف أن يفكر في إنجازاته طوال الاثني عشر شهرًا الماضية.
+    [r072 S#4] EN: Sarah spent the whole morning organizing her files and updating her project logs.
+           AR: قضت سارة الصباح بأكمله في تنظيم ملفاتها وتحديث سجلات مشاريعها.
+
+--------------------------------------------------------------------------------
+LESSON: [g073] B2 - Nouns and articles : Word formation: prefixes, suffixes and compound nouns
+Arabic Title: تكوين الكلمات: البادئات واللواحق
+Tagged Sentences Count: 5
+>>> STATUS: [LINKED]
+    [r073 S#1] EN: She was an inexperienced traveler, so she felt a bit nervous about the long journey.
+           AR: كانت مسافرة قليلة الخبرة، لذا شعرت ببعض التوتر بشأن الرحلة الطويلة.
+    [r073 S#3] EN: Upon arrival, she realized that her hotel booking was incorrect.
+           AR: عند الوصول، أدركت أن حجز فندقها كان غير صحيح.
+    [r073 S#4] EN: She had to walk to the reception desk to solve the misunderstanding with the staff.
+           AR: اضطرت للمشي إلى مكتب الاستقبال لحل سوء التفاهم مع الموظفين.
+    [r073 S#5] EN: The hotel manager apologized and offered her a complimentary breakfast for the inconvenience.
+           AR: اعتذر مدير الفندق وقدم لها وجبة إفطار مجانية تعويضاً عن الإزعاج.
+    [r073 S#9] EN: She is already planning her next overseas adventure for the coming year.
+           AR: إنها تخطط بالفعل لمغامرتها الخارجية القادمة في العام المقبل.
+
+--------------------------------------------------------------------------------
+LESSON: [g074] B2 - Adjectives and adverbs : Gradable and non-gradable adjectives, adjective order
+Arabic Title: الصفات المتدرجة وغير المتدرجة وترتيب الصفات
+Tagged Sentences Count: 5
+>>> STATUS: [LINKED]
+    [r074 S#0] EN: Our company recently moved into an incredibly modern office building downtown.
+           AR: انتقلت شركتنا مؤخرًا إلى مبنى مكاتب حديث للغاية في وسط المدينة.
+    [r074 S#1] EN: The workspace is filled with expensive, sleek, black ergonomic chairs.
+           AR: مساحة العمل مليئة بكراسي مريحة سوداء أنيقة وباهظة الثمن.
+    [r074 S#2] EN: Every desk has a powerful, small, silver laptop for employees to use.
+           AR: يحتوي كل مكتب على حاسوب محمول فضي صغير وقوي ليستخدمه الموظفون.
+    [r074 S#3] EN: The lighting system is absolutely perfect, ensuring that no one suffers from eye strain.
+           AR: نظام الإضاءة مثالي تمامًا، مما يضمن ألا يعاني أحد من إجهاد العين.
+    [r074 S#4] EN: We use a unique software platform to manage our daily tasks efficiently.
+           AR: نستخدم منصة برمجية فريدة لإدارة مهامنا اليومية بكفاءة.
+
+--------------------------------------------------------------------------------
+LESSON: [g075] B2 - Verb patterns : Used to, be used to and get used to
+Arabic Title: used to و be used to و get used to
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r075 S#1] EN: She used to eat fast food for dinner every single night.
+           AR: اعتادت أن تأكل الوجبات السريعة على العشاء كل ليلة.
+    [r075 S#4] EN: However, she is now used to running five kilometers before starting work.
+           AR: ومع ذلك، فهي الآن معتادة على الجري لمسافة خمسة كيلومترات قبل بدء العمل.
+    [r075 S#6] EN: Eventually, she got used to the taste of plain water and feels much more energetic.
+           AR: في النهاية، اعتادت على طعم الماء العادي وأصبحت تشعر بطاقة أكبر بكثير.
+    [r075 S#7] EN: She also used to spend her weekends sitting on the sofa watching television.
+           AR: كانت أيضاً تقضي عطلات نهاية الأسبوع جالسة على الأريكة تشاهد التلفاز.
+
+--------------------------------------------------------------------------------
+LESSON: [g076] B2 - Tenses : Narrative tenses in storytelling
+Arabic Title: الأزمنة السردية في رواية القصص
+Tagged Sentences Count: 5
+>>> STATUS: [LINKED]
+    [r076 S#1] EN: I had been living in the city for five years, but I had never bumped into anyone I knew before.
+           AR: كنت أعيش في المدينة منذ خمس سنوات، لكنني لم أصادف أي شخص أعرفه من قبل.
+    [r076 S#3] EN: He explained that he had been working at a nearby office all morning.
+           AR: أوضح لي أنه كان يعمل في مكتب قريب طوال الصباح.
+    [r076 S#4] EN: We decided to grab a coffee at a cafe that I had walked past many times but never entered.
+           AR: قررنا تناول القهوة في مقهى كنت قد مررت بجانبه مرات عديدة لكنني لم أدخله أبدًا.
+    [r076 S#5] EN: The cafe was crowded because a local festival had just started in the square.
+           AR: كان المقهى مزدحمًا لأن مهرجانًا محليًا كان قد بدأ للتو في الساحة.
+    [r076 S#6] EN: We talked for hours about how much the city had changed recently.
+           AR: تحدثنا لساعات حول مدى تغير المدينة مؤخرًا.
+
+--------------------------------------------------------------------------------
+LESSON: [g077] C1 - Emphasis and style : Inversion after negative adverbials
+Arabic Title: القلب بعد الظروف المنفية
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r077 S#1] EN: Rarely has a scholar been so dedicated to transforming traditional classroom dynamics.
+           AR: نادراً ما كان هناك باحث متفانٍ جداً في تغيير ديناميكيات الفصول الدراسية التقليدية.
+    [r077 S#3] EN: Not only did he advocate for interactive technology, but he also pushed for critical thinking modules.
+           AR: لم يكتفِ بالدعوة إلى التكنولوجيا التفاعلية فحسب، بل دفع أيضاً نحو وحدات التفكير النقدي.
+    [r077 S#5] EN: Little did they know that his methods would soon lead to record-breaking graduation rates.
+           AR: لم يدركوا حينها أن أساليبه ستؤدي قريباً إلى معدلات تخرج قياسية.
+    [r077 S#7] EN: Under no circumstances should we underestimate the power of innovative pedagogy.
+           AR: تحت أي ظرف من الظروف لا ينبغي لنا التقليل من قوة طرق التدريس المبتكرة.
+
+--------------------------------------------------------------------------------
+LESSON: [g078] C1 - Emphasis and style : Cleft sentences
+Arabic Title: الجمل المشقوقة
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r078 S#1] EN: It is our collective negligence that has accelerated the melting of polar ice caps.
+           AR: إن إهمالنا الجماعي هو الذي سرّع من ذوبان القمم الجليدية القطبية.
+    [r078 S#3] EN: What we must do is transition rapidly toward renewable energy sources like wind and solar power.
+           AR: ما يجب علينا فعله هو التحول بسرعة نحو مصادر الطاقة المتجددة مثل طاقة الرياح والطاقة الشمسية.
+    [r078 S#5] EN: It is through international cooperation that we can hope to mitigate these environmental disasters.
+           AR: من خلال التعاون الدولي يمكننا أن نأمل في تخفيف حدة هذه الكوارث البيئية.
+    [r078 S#7] EN: It was the youth movement that finally forced world leaders to prioritize sustainability.
+           AR: كانت الحركة الشبابية هي التي أجبرت قادة العالم أخيراً على إعطاء الأولوية للاستدامة.
+
+--------------------------------------------------------------------------------
+LESSON: [g079] C1 - Passive and reported speech : Advanced and impersonal passive
+Arabic Title: المبني للمجهول المتقدم وغير الشخصي
+Tagged Sentences Count: 6
+>>> STATUS: [LINKED]
+    [r079 S#1] EN: It is widely believed that the exchange of spices shaped global trade routes.
+           AR: يُعتقد على نطاق واسع أن تبادل التوابل قد شكّل طرق التجارة العالمية.
+    [r079 S#2] EN: Ancient cooking methods were passed down through generations by word of mouth.
+           AR: كانت طرق الطهي القديمة تُنقل عبر الأجيال شفهياً.
+    [r079 S#4] EN: It is claimed that the secret to authentic flavor lies in the quality of local ingredients.
+           AR: يُزعم أن سر النكهة الأصيلة يكمن في جودة المكونات المحلية.
+    [r079 S#5] EN: Cultural identity is frequently expressed through the preparation of festive meals.
+           AR: غالباً ما يتم التعبير عن الهوية الثقافية من خلال تحضير وجبات الاحتفالات.
+    [r079 S#7] EN: As globalization accelerates, traditional dishes are being adapted to suit modern dietary preferences.
+           AR: مع تسارع العولمة، يتم تكييف الأطباق التقليدية لتناسب التفضيلات الغذائية الحديثة.
+    [r100 S#4] EN: This real-time physiological data is encrypted and transmitted directly to hospital servers via cloud networks.
+           AR: يتم تشفير هذه البيانات الفسيولوجية الفورية وإرسالها مباشرة إلى خوادم المستشفى عبر الشبكات السحابية.
+
+--------------------------------------------------------------------------------
+LESSON: [g080] C1 - Verb patterns : The subjunctive: suggest that he go, it is vital that
+Arabic Title: صيغة الأمر الافتراضية بعد suggest و demand
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r080 S#1] EN: It is essential that everyone approach the gathering with an open heart and a forgiving spirit.
+           AR: من الضروري أن يقترب الجميع من التجمع بقلب مفتوح وروح متسامحة.
+    [r080 S#3] EN: She suggested that each member bring a meaningful gift that represents their personal growth.
+           AR: اقترحت أن يحضر كل فرد هدية ذات مغزى تمثل نموهم الشخصي.
+    [r080 S#5] EN: However, it is vital that they put their past grievances aside for the sake of the family unit.
+           AR: ومع ذلك، من الحيوي أن يضعوا مظالمهم الماضية جانبًا من أجل وحدة العائلة.
+    [r080 S#7] EN: Layla insisted that he attend the dinner, despite his long-standing disagreement with their cousin.
+           AR: أصرت ليلى على أن يحضر العشاء، على الرغم من خلافه طويل الأمد مع ابن عمهما.
+
+--------------------------------------------------------------------------------
+LESSON: [g081] C1 - Emphasis and style : Ellipsis and substitution
+Arabic Title: الحذف والاستبدال
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r081 S#0] EN: Dr. Aris claimed that the new quantum processor would revolutionise computing, and most colleagues agreed it would.
+           AR: ادعى الدكتور أريس أن المعالج الكمي الجديد سيُحدث ثورة في الحوسبة، ووافق معظم الزملاء على أنه سيفعل ذلك.
+    [r081 S#2] EN: Some physicists doubted the results, while others did not.
+           AR: شكك بعض الفيزيائيين في النتائج، بينما لم يفعل الآخرون ذلك.
+    [r081 S#4] EN: If the experiment succeeds, we will publish the findings; if not, we must repeat the trials.
+           AR: إذا نجحت التجربة فسننشر النتائج، وإن لم تنجح فيجب علينا تكرار التجارب.
+    [r081 S#6] EN: Dr. Aris wanted to present his paper at the summit, and he eventually did.
+           AR: أراد الدكتور أريس تقديم ورقته البحثية في القمة، وقد فعل ذلك في النهاية.
+
+--------------------------------------------------------------------------------
+LESSON: [g082] C1 - Clauses : Advanced participle and absolute clauses
+Arabic Title: جمل اسم الفاعل المتقدمة والمطلقة
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r082 S#1] EN: Obsessed with the latest trends, many people spend their savings on items they rarely use.
+           AR: بسبب هوسهم بأحدث الصيحات، ينفق الكثير من الناس مدخراتهم على سلع نادرًا ما يستخدمونها.
+    [r082 S#3] EN: His credit card being maxed out, Ahmed had to leave the designer watch behind.
+           AR: نظرًا لأن بطاقته الائتمانية قد بلغت حدها الأقصى، اضطر أحمد لترك ساعة المصمم خلفه.
+    [r082 S#5] EN: The sale having ended yesterday, the prices returned to their original, unaffordable levels.
+           AR: ولأن التخفيضات قد انتهت بالأمس، عادت الأسعار إلى مستوياتها الأصلية التي لا يمكن تحمل تكلفتها.
+    [r082 S#7] EN: Money being a finite resource, it is crucial to manage it with careful planning.
+           AR: بما أن المال مورد محدود، فمن الضروري إدارته بتخطيط دقيق.
+
+--------------------------------------------------------------------------------
+LESSON: [g083] C1 - Emphasis and style : Hedging and cautious language
+Arabic Title: التحفظ في الأسلوب
+Tagged Sentences Count: 5
+>>> STATUS: [LINKED]
+    [r083 S#1] EN: It would seem that high-tech equipment might be providing an unfair advantage to certain athletes.
+           AR: يبدو أن المعدات عالية التقنية قد توفر ميزة غير عادلة لبعض الرياضيين.
+    [r083 S#3] EN: However, it is possible that the reliance on such tools could potentially undermine the spirit of pure competition.
+           AR: ومع ذلك، فمن المحتمل أن الاعتماد على مثل هذه الأدوات قد يقوض روح المنافسة النقية.
+    [r083 S#5] EN: One could argue that the essence of sport lies in the physical struggle rather than the gear used.
+           AR: يمكن للمرء أن يجادل بأن جوهر الرياضة يكمن في الكفاح البدني بدلاً من المعدات المستخدمة.
+    [r083 S#6] EN: Critics suggest that the current rules may be somewhat outdated given the rapid pace of innovation.
+           AR: يشير النقاد إلى أن القواعد الحالية قد تكون قديمة بعض الشيء بالنظر إلى وتيرة الابتكار السريعة.
+    [r083 S#9] EN: Future discussions will likely focus on defining the boundary between assistance and enhancement.
+           AR: من المرجح أن تركز المناقشات المستقبلية على تحديد الحدود الفاصلة بين المساعدة والتعزيز.
+
+--------------------------------------------------------------------------------
+LESSON: [g084] C1 - Emphasis and style : Nominalisation and formal writing
+Arabic Title: التسمية والكتابة الرسمية
+Tagged Sentences Count: 7
+>>> STATUS: [LINKED]
+    [r084 S#1] EN: The implementation of new efficiency protocols is expected to streamline our daily operations.
+           AR: من المتوقع أن يؤدي تنفيذ بروتوكولات الكفاءة الجديدة إلى تبسيط عملياتنا اليومية.
+    [r084 S#3] EN: The reduction of departmental budgets has necessitated a shift in our strategic priorities.
+           AR: استلزم خفض ميزانيات الأقسام تحولًا في أولوياتنا الاستراتيجية.
+    [r084 S#5] EN: The acceleration of digital transformation remains our primary objective for the coming year.
+           AR: لا يزال تسريع التحول الرقمي هو هدفنا الأساسي للعام المقبل.
+    [r084 S#7] EN: The improvement of communication channels will be essential to maintain team morale.
+           AR: سيكون تحسين قنوات الاتصال أمرًا ضروريًا للحفاظ على الروح المعنوية للفريق.
+    [r084 S#9] EN: The completion of the restructuring phase is scheduled for next December.
+           AR: من المقرر الانتهاء من مرحلة إعادة الهيكلة في ديسمبر المقبل.
+    [r100 S#0] EN: The integration of wearable biosensors into healthcare has fundamentally transformed chronic disease management.
+           AR: أدى دمج المستشعرات الحيوية القابلة للارتداء في الرعاية الصحية إلى إحداث تحول جذري في إدارة الأمراض المزمنة.
+    [r100 S#6] EN: Early intervention not only prevents severe medical emergencies, but it also significantly reduces hospital readmission rates.
+           AR: لا يقتصر التدخل المبكر على منع حالات الطوارئ الطبية الحرجة فحسب، بل يقلل أيضًا بشكل كبير من معدلات إعادة دخول المستشفى.
+
+--------------------------------------------------------------------------------
+LESSON: [g085] C1 - Modal verbs : Advanced modal meanings: needn't have, shall, dare
+Arabic Title: معانٍ متقدمة للأفعال الناقصة
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r085 S#1] EN: He needn't have brought such heavy winter gear, as the weather forecast had promised clear skies.
+           AR: لم يكن هناك داعٍ لأن يحضر معه معدات شتوية ثقيلة كهذه، فقد وعدت نشرة الأحوال الجوية بسماء صافية.
+    [r085 S#3] EN: Shall I turn back now or press on toward the summit?
+           AR: هل أعود أدراجي الآن أم أواصل التقدم نحو القمة؟
+    [r085 S#5] EN: Few travelers dare to challenge these slopes during an unpredictable seasonal transition.
+           AR: قلة من المسافرين يجرؤون على تحدي هذه المنحدرات خلال فترة انتقالية موسمية غير متوقعة.
+    [r085 S#7] EN: He shall reach the destination by sunset, provided the storm remains at bay.
+           AR: سيصل إلى وجهته بحلول غروب الشمس، بشرط أن تبقى العاصفة بعيدة.
+
+--------------------------------------------------------------------------------
+LESSON: [g086] C1 - Tenses : Future in the past: was going to, was about to
+Arabic Title: المستقبل في الماضي
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r086 S#1] EN: He was about to announce the global launch date when the system suddenly crashed.
+           AR: كان على وشك الإعلان عن تاريخ الإطلاق العالمي عندما تعطل النظام فجأة.
+    [r086 S#3] EN: He was going to demonstrate the new AI features, but the hardware failed to respond.
+           AR: كان ينوي عرض ميزات الذكاء الاصطناعي الجديدة، لكن الأجهزة لم تستجب.
+    [r086 S#5] EN: The CEO was about to cancel the entire project, fearing a catastrophic loss of reputation.
+           AR: كان المدير التنفيذي على وشك إلغاء المشروع بأكمله، خشية حدوث خسارة كارثية في السمعة.
+    [r086 S#6] EN: She was going to reveal the partnership with a major tech giant, but the timing felt wrong now.
+           AR: كانت ستكشف عن الشراكة مع عملاق تقني كبير، لكن التوقيت بدا خاطئاً الآن.
+
+--------------------------------------------------------------------------------
+LESSON: [g087] C1 - Emphasis and style : Fronting and emphasis structures
+Arabic Title: تقديم العناصر والتأكيد
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r087 S#1] EN: Rarely do we see such dedication to sleep hygiene as we see in professional marathon runners.
+           AR: نادراً ما نرى مثل هذا التفاني في العناية بنظافة النوم كما نراه لدى عدائي الماراثون المحترفين.
+    [r087 S#3] EN: Not only do they monitor their caloric intake, but they also track their heart rate variability daily.
+           AR: لا يقتصر الأمر على مراقبتهم للسعرات الحرارية التي يتناولونها فحسب، بل يتتبعون أيضًا تباين معدل ضربات القلب يوميًا.
+    [r087 S#5] EN: Little did the athletes know that a simple change in hydration timing could improve their endurance.
+           AR: لم تكن تدرك تلك الرياضيون أن تغييرًا بسيطًا في توقيت شرب الماء يمكن أن يحسن قدرتهم على التحمل.
+    [r087 S#7] EN: What these athletes prioritize above all else is consistency in their daily routines.
+           AR: ما يضعه هؤلاء الرياضيون في مقدمة أولوياتهم قبل أي شيء آخر هو الاستمرارية في روتينهم اليومي.
+
+--------------------------------------------------------------------------------
+LESSON: [g088] C1 - Nouns and articles : Complex noun phrases and apposition
+Arabic Title: العبارات الاسمية المركبة والبدل
+Tagged Sentences Count: 5
+>>> STATUS: [LINKED]
+    [r088 S#0] EN: London, a sprawling urban landscape of historical significance, is undergoing a profound transformation.
+           AR: لندن، ذلك المشهد الحضري الممتد ذو الأهمية التاريخية، تمر بتحول عميق.
+    [r088 S#2] EN: The Shard, a towering architectural marvel of steel and glass, stands as a testament to this new age.
+           AR: برج شارد، تلك الأعجوبة المعمارية الشاهقة المصنوعة من الفولاذ والزجاج، يقف كشاهد على هذا العصر الجديد.
+    [r088 S#4] EN: The city’s heartbeat, the relentless rhythm of commerce and culture, never truly fades.
+           AR: نبض المدينة، ذلك الإيقاع المتواصل للتجارة والثقافة، لا يخبو أبدًا.
+    [r088 S#5] EN: Public parks, the green lungs of the concrete jungle, offer a brief respite for exhausted citizens.
+           AR: الحدائق العامة، وهي الرئة الخضراء لهذه الغابة الخرسانية، توفر استراحة قصيرة للمواطنين المنهكين.
+    [r088 S#7] EN: Urban planners face the daunting challenge of balancing innovation with heritage preservation.
+           AR: يواجه مخططو المدن التحدي الهائل المتمثل في الموازنة بين الابتكار والحفاظ على التراث.
+
+--------------------------------------------------------------------------------
+LESSON: [g089] C1 - Linking and discourse : Discourse markers: anyway, mind you, as a matter of fact
+Arabic Title: أدوات الخطاب
+Tagged Sentences Count: 4
+>>> STATUS: [LINKED]
+    [r089 S#2] EN: As a matter of fact, data shows that collaborative papers receive significantly higher citation rates.
+           AR: في الواقع، تُظهر البيانات أن الأوراق البحثية التعاونية تحصل على معدلات اقتباس أعلى بكثير.
+    [r089 S#4] EN: Mind you, the administrative burden of coordinating these global teams can be overwhelming.
+           AR: مع العلم أن العبء الإداري لتنسيق هذه الفرق العالمية قد يكون مرهقًا للغاية.
+    [r089 S#6] EN: Anyway, the core mission of higher education remains the pursuit of knowledge regardless of the methodology.
+           AR: على أية حال، تظل المهمة الأساسية للتعليم العالي هي السعي وراء المعرفة بغض النظر عن المنهجية.
+    [r089 S#8] EN: As a matter of fact, those who master collaborative tools early often secure better research grants.
+           AR: في الواقع، أولئك الذين يتقنون أدوات التعاون في وقت مبكر غالبًا ما يحصلون على منح بحثية أفضل.
+
+--------------------------------------------------------------------------------
+LESSON: [g090] C1 - Linking and discourse : Advanced linking: whereas, albeit, notwithstanding
+Arabic Title: أدوات ربط متقدمة
+Tagged Sentences Count: 5
+>>> STATUS: [LINKED]
+    [r090 S#1] EN: The city council prioritizes solar energy, whereas rural regions still rely heavily on coal.
+           AR: تعطي بلدية المدينة الأولوية للطاقة الشمسية، في حين لا تزال المناطق الريفية تعتمد بشكل كبير على الفحم.
+    [r090 S#2] EN: Many citizens support these environmental policies, albeit with concerns about the rising utility costs.
+           AR: يدعم العديد من المواطنين هذه السياسات البيئية، وإن كان ذلك مع وجود مخاوف بشأن ارتفاع تكاليف المرافق.
+    [r090 S#4] EN: Notwithstanding the initial financial burden, the long-term ecological benefits are undeniable.
+           AR: على الرغم من العبء المالي الأولي، فإن الفوائد البيئية طويلة الأجل لا يمكن إنكارها.
+    [r090 S#6] EN: Some critics argue that current efforts are insufficient, whereas others believe they are overly ambitious.
+           AR: يجادل بعض النقاد بأن الجهود الحالية غير كافية، بينما يعتقد آخرون أنها طموحة للغاية.
+    [r100 S#7] EN: Despite these clinical benefits, ensuring strict compliance with data privacy regulations remains a complex challenge.
+           AR: على الرغم من هذه الفوائد السريرية، يظل ضمان الامتثال الصارم للوائح خصوصية البيانات تحديًا معقدًا.
+
