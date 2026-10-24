@@ -128,13 +128,13 @@ object OnboardingStep4Defaults {
         ),
         OnboardingDeckInfo(
             id = "ielts_core",
-            title = "IELTS Core",
-            arabicTitle = "مفردات الآيلتس الأساسية",
-            entryCount = 3575,
-            levelBadge = "B1–C1",
+            title = "IELTS Vocabulary",
+            arabicTitle = "مفردات الآيلتس الشاملة",
+            entryCount = 9386,
+            levelBadge = "B1–C2",
             category = "career",
-            descriptionEn = "Targeted vocabulary for IELTS Academic & General tests",
-            descriptionAr = "مفردات مركزة لاختبار الآيلتس الأكاديمي والعام"
+            descriptionEn = "Targeted vocabulary for IELTS Academic & General tests (9,386 words)",
+            descriptionAr = "مفردات مركزة وشاملة لاختبار الآيلتس الأكاديمي والعام"
         ),
         OnboardingDeckInfo(
             id = "it_industry",

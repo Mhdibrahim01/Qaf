@@ -1,7 +1,11 @@
 package com.example.data.audio
 
 import android.content.Context
+import android.content.Intent
+import android.media.AudioManager
+import android.os.Bundle
 import android.os.Handler
+import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
@@ -124,6 +128,36 @@ class AudioPlayerManager(context: Context) {
 
     private val appContext = context.applicationContext
 
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    private val ttsStreamParams: Bundle by lazy {
+        Bundle().apply {
+            putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_MUSIC)
+        }
+    }
+
+    /**
+     * Returns true if Google Speech Services is installed and enabled on this device.
+     */
+    fun isGoogleTtsAvailable(): Boolean {
+        return try {
+            val intent = Intent(TextToSpeech.Engine.INTENT_ACTION_TTS_SERVICE).apply {
+                setPackage(GOOGLE_TTS_PACKAGE)
+            }
+            val list = appContext.packageManager.queryIntentServices(intent, 0)
+            list.isNotEmpty()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    init {
+        // Pre-warm TTS asynchronously so the very first voice tap is instant
+        mainHandler.post {
+            ensureTtsInitialized()
+        }
+    }
+
     private val _currentlyPlayingWord = MutableStateFlow<String?>(null)
     val currentlyPlayingWord: StateFlow<String?> = _currentlyPlayingWord.asStateFlow()
 
@@ -187,35 +221,49 @@ class AudioPlayerManager(context: Context) {
         try {
             val bestInstalledVoice = findBestVoiceForLocale(locale)
             if (bestInstalledVoice != null) {
-                engine.language = locale
                 engine.voice = bestInstalledVoice
-            } else {
-                val fallbackLocaleVoice = try {
-                    engine.voices?.firstOrNull { v ->
-                        v.locale != null &&
-                            v.locale.language.equals(locale.language, ignoreCase = true) &&
-                            (if (isUkLocale(locale)) isUkLocale(v.locale) else v.locale.country.equals(locale.country, ignoreCase = true))
-                    }
-                } catch (_: Exception) {
-                    null
-                }
-                engine.language = locale
-                if (fallbackLocaleVoice != null) {
-                    engine.voice = fallbackLocaleVoice
-                }
             }
             engine.setPitch(NATURAL_PITCH)
         } catch (_: Exception) {
             try {
-                engine.language = locale
                 engine.setPitch(NATURAL_PITCH)
             } catch (_: Exception) {}
         }
     }
 
+    /**
+     * Attempts to configure the TTS engine for [requestedLocale], cascading through
+     * fallback English dialects (e.g. US, UK, generic English, device default) if the
+     * specific accent data is not installed on the user's phone.
+     */
+    private fun setupLanguageWithFallback(requestedLocale: Locale): Boolean {
+        val engine = tts ?: return false
+        val candidates = listOf(
+            requestedLocale,
+            if (isUkLocale(requestedLocale)) Locale.US else Locale.UK,
+            Locale.US,
+            Locale.ENGLISH,
+            Locale.getDefault()
+        ).distinct()
+
+        for (candidate in candidates) {
+            try {
+                val result = engine.setLanguage(candidate)
+                if (result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED) {
+                    applyBestVoiceAndLocale(candidate)
+                    return true
+                }
+            } catch (_: Exception) {}
+        }
+        return false
+    }
+
     private fun ensureTtsInitialized(useGoogleEngine: Boolean = true) {
         if (tts != null || isTtsInitializing) return
         isTtsInitializing = true
+
+        val shouldUseGoogle = useGoogleEngine && isGoogleTtsAvailable()
+
         try {
             val initListener = TextToSpeech.OnInitListener { status ->
                 isTtsInitializing = false
@@ -229,12 +277,8 @@ class AudioPlayerManager(context: Context) {
                     } catch (_: Exception) {}
 
                     val targetLocale = pendingLocale
-                    val result = tts?.setLanguage(targetLocale)
-                    isTtsReady = result != TextToSpeech.LANG_MISSING_DATA &&
-                        result != TextToSpeech.LANG_NOT_SUPPORTED
-                    if (isTtsReady) {
-                        applyBestVoiceAndLocale(targetLocale)
-                    }
+                    isTtsReady = setupLanguageWithFallback(targetLocale)
+
                     val rateToUse = pendingSpeechRate ?: defaultSpeechRate
                     tts?.setSpeechRate(rateToUse)
                     tts?.setPitch(NATURAL_PITCH)
@@ -250,7 +294,13 @@ class AudioPlayerManager(context: Context) {
                             _currentlyPlayingWord.value = null
                             _isPlayingSlow.value = false
                         }
+
+                        override fun onError(utteranceId: String?, errorCode: Int) {
+                            _currentlyPlayingWord.value = null
+                            _isPlayingSlow.value = false
+                        }
                     })
+
                     val pending = pendingTtsText
                     pendingTtsText = null
                     pendingSpeechRate = null
@@ -260,43 +310,63 @@ class AudioPlayerManager(context: Context) {
                         tts?.speak(
                             pending,
                             TextToSpeech.QUEUE_FLUSH,
-                            null,
+                            ttsStreamParams,
                             "utt_${pending.hashCode()}_${targetLocale.country}_${System.nanoTime()}"
                         )
                     } else if (!isTtsReady) {
+                        try {
+                            tts?.shutdown()
+                        } catch (_: Exception) {}
+                        tts = null
                         _currentlyPlayingWord.value = null
                         _isPlayingSlow.value = false
                     }
-                } else if (useGoogleEngine) {
-                    // Graceful fallback to system default TTS engine if Google Speech Services is unavailable
-                    try {
-                        tts?.shutdown()
-                    } catch (_: Exception) {}
-                    tts = null
-                    ensureTtsInitialized(useGoogleEngine = false)
+                } else if (shouldUseGoogle) {
+                    // Gracefully fallback to system default TTS engine scheduled asynchronously
+                    // to prevent constructor re-entrancy / overwriting
+                    mainHandler.post {
+                        try {
+                            tts?.shutdown()
+                        } catch (_: Exception) {}
+                        tts = null
+                        ensureTtsInitialized(useGoogleEngine = false)
+                    }
                 } else {
                     pendingTtsText = null
                     pendingSpeechRate = null
                     _currentlyPlayingWord.value = null
                     _isPlayingSlow.value = false
+                    try {
+                        tts?.shutdown()
+                    } catch (_: Exception) {}
+                    tts = null
                 }
             }
 
-            tts = if (useGoogleEngine) {
+            tts = if (shouldUseGoogle) {
                 TextToSpeech(appContext, initListener, GOOGLE_TTS_PACKAGE)
             } else {
                 TextToSpeech(appContext, initListener)
             }
         } catch (_: Exception) {
             isTtsInitializing = false
-            if (useGoogleEngine) {
-                tts = null
-                ensureTtsInitialized(useGoogleEngine = false)
+            if (shouldUseGoogle) {
+                mainHandler.post {
+                    try {
+                        tts?.shutdown()
+                    } catch (_: Exception) {}
+                    tts = null
+                    ensureTtsInitialized(useGoogleEngine = false)
+                }
             } else {
                 pendingTtsText = null
                 pendingSpeechRate = null
                 _currentlyPlayingWord.value = null
                 _isPlayingSlow.value = false
+                try {
+                    tts?.shutdown()
+                } catch (_: Exception) {}
+                tts = null
             }
         }
     }
@@ -485,12 +555,23 @@ class AudioPlayerManager(context: Context) {
         if (isTtsReady && tts != null) {
             applyBestVoiceAndLocale(locale)
             tts?.setSpeechRate(rate)
-            tts?.speak(
+            val result = tts?.speak(
                 text,
                 TextToSpeech.QUEUE_FLUSH,
-                null,
+                ttsStreamParams,
                 "utt_${text.hashCode()}_${locale.country}_${System.nanoTime()}"
             )
+            if (result != TextToSpeech.SUCCESS) {
+                isTtsReady = false
+                try {
+                    tts?.shutdown()
+                } catch (_: Exception) {}
+                tts = null
+                pendingTtsText = text
+                pendingSpeechRate = rate
+                pendingLocale = locale
+                ensureTtsInitialized()
+            }
         } else {
             pendingTtsText = text
             pendingSpeechRate = rate

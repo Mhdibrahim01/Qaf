@@ -212,7 +212,7 @@ class LearnerModelRepository(
             "it_industry" to "IT & Tech Industry",
             "business_english" to "Business English",
             "medical_healthcare" to "Medical & Healthcare",
-            "ielts_core" to "IELTS Academic Core",
+            "ielts_core" to "IELTS Vocabulary",
             "pte_academic" to "PTE Academic",
             "cefr_c1" to "Advanced C1 Mastery",
             "essential_idioms" to "Essential Idioms"

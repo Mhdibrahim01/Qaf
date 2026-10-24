@@ -491,7 +491,7 @@ fun LabsDataCheckScreen(
 
                         // Specialized generated decks (100001+ to 700001+)
                         val specializedDecksMeta = listOf(
-                            "ielts_core" to "ielts_core (IDs 100001+ • target 3,575)",
+                            "ielts_core" to "ielts_core (IDs 100001+ • target 9,386)",
                             "it_industry" to "it_industry (IDs 200001+ • target 1,622)",
                             "cefr_c1" to "cefr_c1 (IDs 300001+ • target 1,853)",
                             "pte_academic" to "pte_academic (IDs 400001+ • target 2,651)",
