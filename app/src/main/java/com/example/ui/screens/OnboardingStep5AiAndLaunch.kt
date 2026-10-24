@@ -21,13 +21,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.OfflinePin
 import androidx.compose.material.icons.filled.RocketLaunch
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -45,12 +40,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
@@ -59,7 +56,6 @@ import com.example.ui.theme.GoldAccent
 import com.example.ui.theme.GoldAccentBorder
 import com.example.ui.theme.GoldAccentDim
 import com.example.ui.theme.OnGoldDark
-import com.example.ui.theme.SquircleCardShape
 import com.example.ui.theme.SquirclePlanCardShape
 import com.example.ui.theme.SurfaceDark
 import com.example.ui.theme.SurfaceElevatedDark
@@ -88,6 +84,7 @@ fun OnboardingAiAndLaunchStep(
         when (selectedGoal.trim().lowercase()) {
             "ielts" -> "IELTS & Academic"
             "it_career" -> "IT & Tech Career"
+            "medical" -> "Medical & Healthcare"
             else -> "General Fluency"
         }
     }
@@ -96,6 +93,7 @@ fun OnboardingAiAndLaunchStep(
         when (selectedGoal.trim().lowercase()) {
             "ielts" -> "إعداد الآيلتس الأكاديمي"
             "it_career" -> "المصطلحات التقنية والبرمجية"
+            "medical" -> "الطب والرعاية الصحية"
             else -> "طلاقة عامة وتواصل يومي"
         }
     }
@@ -112,7 +110,6 @@ fun OnboardingAiAndLaunchStep(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(vertical = 6.dp)
             .testTag("onboarding_step_5_ai_launch"),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
@@ -123,9 +120,9 @@ fun OnboardingAiAndLaunchStep(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Back button to Step 4 + Header
+            // Back button to Step 4
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -134,50 +131,35 @@ fun OnboardingAiAndLaunchStep(
                 TextButton(
                     onClick = onStep5Back,
                     modifier = Modifier
-                        .heightIn(min = 48.dp)
+                        .heightIn(min = 40.dp)
                         .testTag("btn_onboarding_step5_back")
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back to deck selection",
                         tint = TextSecondary,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                     Text(
                         text = "Decks",
-                        style = MaterialTheme.typography.labelLarge,
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
                         color = TextSecondary,
                         modifier = Modifier.padding(start = 6.dp)
                     )
                 }
             }
 
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Text(
-                    text = "AI Features & Plan Launch",
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.ExtraBold
-                    ),
-                    color = TextPrimary,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.testTag("onboarding_step5_header_en")
-                )
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    Text(
-                        text = "ميزات الذكاء الاصطناعي وإطلاق الخطة",
-                        style = ArabicTypography.titleMedium,
-                        color = TextSecondary,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.testTag("onboarding_step5_header_ar")
-                    )
-                }
-            }
+            OnboardingHeroHeader(
+                titleEn = "AI Features & Plan Launch",
+                titleAr = "ميزات الذكاء الاصطناعي وإطلاق الخطة",
+                titleEnTestTag = "onboarding_step5_header_en",
+                titleArTestTag = "onboarding_step5_header_ar"
+            )
 
-            // Section 1: AI Features Toggle (Default OFF for privacy & offline capability)
+            // Card 1: AI Features Toggle (Default OFF for privacy & offline capability)
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -190,7 +172,7 @@ fun OnboardingAiAndLaunchStep(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -198,15 +180,20 @@ fun OnboardingAiAndLaunchStep(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.weight(1f)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(38.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(if (allowAi) GoldAccent else SurfaceElevatedDark),
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (allowAi) GoldAccent else GoldAccentDim)
+                                    .border(
+                                        width = 1.dp,
+                                        color = if (allowAi) GoldAccent else GoldAccentBorder,
+                                        shape = RoundedCornerShape(12.dp)
+                                    ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
@@ -216,16 +203,22 @@ fun OnboardingAiAndLaunchStep(
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
-                            Column {
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(
                                     text = "Enable Gemini AI Features",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold
+                                    ),
                                     color = if (allowAi) GoldAccent else TextPrimary
                                 )
                                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                                     Text(
                                         text = "تفعيل ميزات الذكاء الاصطناعي",
-                                        style = ArabicTypography.labelMedium,
+                                        style = ArabicTypography.labelMedium.copy(
+                                            fontSize = 12.5.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        ),
                                         color = TextSecondary
                                     )
                                 }
@@ -251,12 +244,18 @@ fun OnboardingAiAndLaunchStep(
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
                             text = "Optional on-demand AI capabilities:",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontSize = 12.5.sp,
+                                fontWeight = FontWeight.Bold
+                            ),
                             color = TextPrimary
                         )
                         Text(
                             text = "• Deep Arabic explanations with root nuances & collocations\n• AI sentence writing feedback and grammar corrections\n• Interactive reading tutor for reading comprehension texts",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 12.5.sp,
+                                lineHeight = 18.sp
+                            ),
                             color = TextSecondary
                         )
                     }
@@ -266,50 +265,61 @@ fun OnboardingAiAndLaunchStep(
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("onboarding_step5_offline_note"),
-                        shape = RoundedCornerShape(10.dp),
-                        color = SurfaceElevatedDark,
-                        border = BorderStroke(1.dp, BorderDark)
+                        shape = RoundedCornerShape(12.dp),
+                        color = EmeraldAccent.copy(alpha = 0.08f),
+                        border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.25f))
                     ) {
-                        Row(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(5.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Filled.Security,
-                                contentDescription = "Privacy note",
-                                tint = EmeraldAccent,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Security,
+                                    contentDescription = "Privacy note",
+                                    tint = EmeraldAccent,
+                                    modifier = Modifier.size(16.dp)
+                                )
                                 Text(
                                     text = "100% Offline by default. Works without AI.",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontSize = 12.5.sp,
+                                        fontWeight = FontWeight.Bold
+                                    ),
                                     color = EmeraldAccent
                                 )
+                            }
+                            Text(
+                                text = "All 21,624 bundled dictionary words, grammar lessons, and audio are stored locally. You can toggle AI on or off anytime in Settings.",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontSize = 12.sp,
+                                    lineHeight = 17.sp
+                                ),
+                                color = Color(0xFFD1D5DB)
+                            )
+                            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                                 Text(
-                                    text = "All 21,624 bundled dictionary words, grammar lessons, and audio are stored locally. You can toggle AI on or off anytime in Settings.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = TextMuted
+                                    text = "يعمل التطبيق بالكامل بدون إنترنت مع ٢١,٦٢٤ كلمة وقواعد جاهزة محلياً. يمكنك تفعيل أو إيقاف الذكاء الاصطناعي لاحقاً من الإعدادات.",
+                                    style = ArabicTypography.labelSmall.copy(
+                                        fontSize = 11.5.sp,
+                                        lineHeight = 17.sp
+                                    ),
+                                    color = TextSecondary,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Right
                                 )
-                                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                                    Text(
-                                        text = "يعمل التطبيق بالكامل بدون إنترنت مع ٢١,٦٢٤ كلمة وقواعد جاهزة محلياً. يمكنك تفعيل أو إيقاف الذكاء الاصطناعي لاحقاً من الإعدادات.",
-                                        style = ArabicTypography.labelSmall,
-                                        color = TextMuted,
-                                        modifier = Modifier.fillMaxWidth(),
-                                        textAlign = TextAlign.Right
-                                    )
-                                }
                             }
                         }
                     }
                 }
             }
 
-            // Section 2: Completed Plan Summary Card
+            // Card 2: Completed Plan Summary Card
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -322,7 +332,7 @@ fun OnboardingAiAndLaunchStep(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -337,11 +347,14 @@ fun OnboardingAiAndLaunchStep(
                                 imageVector = Icons.Filled.RocketLaunch,
                                 contentDescription = "Ready to launch",
                                 tint = GoldAccent,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                             Text(
                                 text = "Your Personalized Study Plan",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.ExtraBold
+                                ),
                                 color = GoldAccent
                             )
                         }
@@ -352,113 +365,128 @@ fun OnboardingAiAndLaunchStep(
                         ) {
                             Text(
                                 text = selectedLevel,
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.ExtraBold
+                                ),
                                 color = GoldAccent,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 2.dp)
                             )
                         }
                     }
 
                     HorizontalDivider(color = BorderDark)
 
-                    // Profile Summary Grid
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        SummaryRow(
-                            label = "Goal / الهدف",
-                            value = "$goalTitleEn ($goalTitleAr)"
+                    // Clean 5-Row Bilingual Summary Table
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PlanSummaryRow(
+                            labelEn = "Goal",
+                            labelAr = "الهدف",
+                            valueEn = goalTitleEn,
+                            valueAr = goalTitleAr
                         )
-                        SummaryRow(
-                            label = "Daily Commitment / الوقت اليومي",
-                            value = "$selectedMinutesPerDay min/day • $newWordsPace words/day"
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.04f))
+                        PlanSummaryRow(
+                            labelEn = "Daily Commitment",
+                            labelAr = "الوقت اليومي",
+                            valueEn = "$selectedMinutesPerDay min/day • $newWordsPace words/day"
                         )
-                        SummaryRow(
-                            label = "Weekly Schedule / الجدول الأسبوعي",
-                            value = "$selectedStudyDaysPerWeek days/week (Friday rest day)"
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.04f))
+                        PlanSummaryRow(
+                            labelEn = "Weekly Schedule",
+                            labelAr = "الجدول الأسبوعي",
+                            valueEn = "$selectedStudyDaysPerWeek days/week",
+                            valueAr = "Friday rest day • الجمعة راحة"
                         )
-                        SummaryRow(
-                            label = "Active Decks / القوائم المختارة",
-                            value = "$selectedDecksCount focus decks"
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.04f))
+                        PlanSummaryRow(
+                            labelEn = "Active Decks",
+                            labelAr = "القوائم المختارة",
+                            valueEn = "$selectedDecksCount focus decks"
                         )
-                        SummaryRow(
-                            label = "Offline Dictionary / المعجم المدمج",
-                            value = "21,624 entries ready offline"
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Primary Launch CTA
-        Button(
-            onClick = { onCompleteStep5(allowAi) },
-            shape = SquircleCardShape,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = GoldAccent,
-                contentColor = OnGoldDark
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 56.dp)
-                .testTag("btn_onboarding_step5_start")
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.RocketLaunch,
-                    contentDescription = null,
-                    tint = OnGoldDark,
-                    modifier = Modifier.size(22.dp)
-                )
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(vertical = 2.dp)
-                ) {
-                    Text(
-                        text = "Start Learning",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.ExtraBold
-                        ),
-                        color = OnGoldDark
-                    )
-                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                        Text(
-                            text = "ابدأ رحلة التعلم",
-                            style = ArabicTypography.labelMedium.copy(
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = OnGoldDark.copy(alpha = 0.85f)
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.04f))
+                        PlanSummaryRow(
+                            labelEn = "Offline Dictionary",
+                            labelAr = "المعجم المدمج",
+                            valueEn = "21,624 entries ready offline",
+                            valueColor = EmeraldAccent
                         )
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(6.dp))
         }
+
+        // Sticky Primary Launch CTA Footer
+        OnboardingStickyFooter(
+            ctaTextEn = "Start Learning",
+            ctaTextAr = "ابدأ رحلة التعلم",
+            buttonTestTag = "btn_onboarding_step5_start",
+            leadingIcon = Icons.Filled.RocketLaunch,
+            onClick = { onCompleteStep5(allowAi) }
+        )
     }
 }
 
 @Composable
-private fun SummaryRow(
-    label: String,
-    value: String
+private fun PlanSummaryRow(
+    labelEn: String,
+    labelAr: String,
+    valueEn: String,
+    valueAr: String? = null,
+    valueColor: Color = TextPrimary
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = TextSecondary
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-            color = TextPrimary
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(
+                text = labelEn,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                ),
+                color = TextPrimary
+            )
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                Text(
+                    text = labelAr,
+                    style = ArabicTypography.labelSmall.copy(fontSize = 11.5.sp),
+                    color = TextSecondary
+                )
+            }
+        }
+
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(1.dp)
+        ) {
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Text(
+                    text = valueEn,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = valueColor,
+                    textAlign = TextAlign.End
+                )
+            }
+            if (valueAr != null) {
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                    Text(
+                        text = valueAr,
+                        style = ArabicTypography.labelSmall.copy(fontSize = 11.5.sp),
+                        color = TextSecondary,
+                        textAlign = TextAlign.Right
+                    )
+                }
+            }
+        }
     }
 }

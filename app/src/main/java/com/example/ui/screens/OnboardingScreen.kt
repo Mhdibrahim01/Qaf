@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -25,17 +26,20 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -51,13 +55,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -99,6 +112,274 @@ data class PlacementQuizUiState(
     val editableLevel: String = "B2",
     val correctCountByLevel: Map<String, Int> = emptyMap()
 )
+
+/**
+ * Shared Hero Header across Onboarding Steps 2–5.
+ * Properly padded below the sticky top progress bar so titles never clip.
+ */
+@Composable
+internal fun OnboardingHeroHeader(
+    titleEn: String,
+    titleAr: String,
+    titleEnTestTag: String? = null,
+    titleArTestTag: String? = null,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp, bottom = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = titleEn,
+            style = MaterialTheme.typography.headlineSmall.copy(
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold
+            ),
+            color = TextPrimary,
+            textAlign = TextAlign.Center,
+            modifier = if (titleEnTestTag != null) Modifier.testTag(titleEnTestTag) else Modifier
+        )
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+            Text(
+                text = titleAr,
+                style = ArabicTypography.titleMedium.copy(
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium
+                ),
+                color = TextSecondary,
+                textAlign = TextAlign.Center,
+                modifier = if (titleArTestTag != null) Modifier.testTag(titleArTestTag) else Modifier
+            )
+        }
+    }
+}
+
+/**
+ * Unified Section Header (Left-Grouped, BiDi Safe):
+ * Renders `1. Starting Point • نقطة انطلاق الخطة` on the left and an optional badge on the right.
+ */
+@Composable
+internal fun OnboardingSectionHeader(
+    number: String,
+    titleEn: String,
+    titleAr: String,
+    rightBadgeText: String? = null,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            Row(
+                modifier = Modifier.weight(1f, fill = false),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = number,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontSize = 14.5.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = GoldAccent
+                )
+                Text(
+                    text = titleEn,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontSize = 14.5.sp,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = GoldAccent
+                )
+                Text(
+                    text = "•",
+                    style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp),
+                    color = TextSecondary
+                )
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                    Text(
+                        text = titleAr,
+                        style = ArabicTypography.labelMedium.copy(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = TextSecondary
+                    )
+                }
+            }
+        }
+
+        if (rightBadgeText != null) {
+            Surface(
+                color = Color(0xFF1C1D24),
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(1.dp, BorderDark)
+            ) {
+                Text(
+                    text = rightBadgeText,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = TextSecondary,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Consistent 22dp Right Radio Circle indicator.
+ * Filled with gold + black checkmark when selected; outlined when unselected.
+ */
+@Composable
+internal fun OnboardingRadioCircle(
+    isSelected: Boolean,
+    testTag: String? = null,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .size(22.dp)
+            .clip(CircleShape)
+            .background(if (isSelected) GoldAccent else Color.Transparent)
+            .border(
+                width = 1.5.dp,
+                color = if (isSelected) GoldAccent else BorderDark,
+                shape = CircleShape
+            )
+            .then(if (testTag != null) Modifier.testTag(testTag) else Modifier),
+        contentAlignment = Alignment.Center
+    ) {
+        if (isSelected) {
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = "Selected",
+                tint = Color.Black,
+                modifier = Modifier.size(14.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Consistent 22dp Rounded Square Checkbox indicator for multi-select deck cards.
+ */
+@Composable
+internal fun OnboardingCheckboxSquare(
+    isChecked: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .padding(top = 2.dp)
+            .size(22.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(if (isChecked) GoldAccent else SurfaceElevatedDark)
+            .border(
+                width = 1.5.dp,
+                color = if (isChecked) GoldAccent else BorderDark,
+                shape = RoundedCornerShape(6.dp)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (isChecked) {
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = "Checked",
+                tint = Color.Black,
+                modifier = Modifier.size(14.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Sticky Bottom CTA Footer with top dark gradient fade.
+ */
+@Composable
+internal fun OnboardingStickyFooter(
+    ctaTextEn: String,
+    ctaTextAr: String,
+    onClick: () -> Unit,
+    buttonTestTag: String,
+    leadingIcon: ImageVector? = null,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        BackgroundDark.copy(alpha = 0.92f),
+                        BackgroundDark
+                    )
+                )
+            )
+            .padding(top = 12.dp, bottom = 6.dp)
+    ) {
+        Button(
+            onClick = onClick,
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = GoldAccent,
+                contentColor = OnGoldDark
+            ),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 56.dp)
+                .testTag(buttonTestTag)
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (leadingIcon != null) {
+                        Icon(
+                            imageVector = leadingIcon,
+                            contentDescription = null,
+                            tint = OnGoldDark,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Text(
+                        text = ctaTextEn,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = OnGoldDark
+                    )
+                }
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                    Text(
+                        text = ctaTextAr,
+                        style = ArabicTypography.labelMedium.copy(
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = OnGoldDark.copy(alpha = 0.85f)
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable
 fun OnboardingScreen(
@@ -143,14 +424,16 @@ fun OnboardingScreen(
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.statusBars)
                 .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Top bar: Step indicator + Skip button on every screen
+            // Sticky Top Bar: Step indicator + single-line "Skip • تخطي" button with bottom clearance
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .widthIn(max = 560.dp),
+                    .widthIn(max = 560.dp)
+                    .background(BackgroundDark)
+                    .padding(top = 12.dp, bottom = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -164,46 +447,61 @@ fun OnboardingScreen(
                         val isDone = step < currentStep
                         Box(
                             modifier = Modifier
-                                .height(6.dp)
-                                .widthIn(min = if (isActive) 24.dp else 10.dp)
-                                .clip(RoundedCornerShape(999.dp))
+                                .height(8.dp)
+                                .width(if (isActive) 24.dp else 8.dp)
+                                .clip(if (isActive) RoundedCornerShape(4.dp) else CircleShape)
                                 .background(
                                     when {
                                         isActive -> GoldAccent
-                                        isDone -> GoldAccent.copy(alpha = 0.45f)
-                                        else -> SurfaceElevatedDark
+                                        isDone -> Color(0xFF7C682B)
+                                        else -> Color(0xFF2C2D35)
                                     }
                                 )
                         )
                     }
                     Text(
                         text = "$currentStep / 5",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextMuted,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = TextSecondary,
                         modifier = Modifier.padding(start = 6.dp)
                     )
                 }
 
                 TextButton(
                     onClick = onSkipOnboarding,
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                     modifier = Modifier
-                        .heightIn(min = 48.dp)
+                        .heightIn(min = 40.dp)
                         .testTag("btn_onboarding_skip")
                 ) {
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = "Skip",
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                fontWeight = FontWeight.SemiBold
-                            ),
-                            color = TextSecondary
-                        )
-                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
                             Text(
-                                text = "تخطي",
-                                style = ArabicTypography.labelSmall,
-                                color = TextMuted
+                                text = "Skip",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                color = TextSecondary
                             )
+                            Text(
+                                text = "•",
+                                style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp),
+                                color = TextSecondary
+                            )
+                            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                Text(
+                                    text = "تخطي",
+                                    style = ArabicTypography.labelSmall.copy(fontSize = 13.sp),
+                                    color = TextSecondary
+                                )
+                            }
                         }
                     }
                 }
@@ -217,7 +515,7 @@ fun OnboardingScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .widthIn(max = 560.dp)
-                    .padding(top = 6.dp)
+                    .padding(bottom = 6.dp)
             )
 
             // Main step content
@@ -226,7 +524,7 @@ fun OnboardingScreen(
                     .weight(1f)
                     .fillMaxWidth()
                     .widthIn(max = 560.dp),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.TopCenter
             ) {
                 when (currentStep) {
                     1 -> OnboardingWelcomeStep(
@@ -453,95 +751,103 @@ private fun OnboardingWelcomeStep(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(vertical = 8.dp)
             .testTag("onboarding_step_1_welcome"),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Scrollable Hero Card with Qaf (ق) Crest Logo Asset + Bilingual Tagline
+        // Vertically centered Welcome Hero Card
         Box(
             modifier = Modifier
                 .weight(1f, fill = true)
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = 16.dp),
             contentAlignment = Alignment.Center
         ) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = SquirclePlanCardShape,
+                shape = RoundedCornerShape(24.dp),
                 color = SurfaceDark,
                 border = BorderStroke(1.dp, GoldAccentBorder)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 22.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                        .padding(horizontal = 20.dp, vertical = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Qaf (ق) Emblem Container using existing launcher foreground vector + gold crest styling
+                    // 76dp Qaf (ق) Emblem Container with subtle gold glow
                     Box(
                         modifier = Modifier
-                            .size(88.dp)
-                            .clip(RoundedCornerShape(24.dp))
+                            .size(76.dp)
+                            .clip(RoundedCornerShape(20.dp))
                             .background(
-                                Brush.linearGradient(
+                                Brush.radialGradient(
                                     colors = listOf(
-                                        GoldAccentDim,
-                                        SurfaceElevatedDark
+                                        GoldAccent.copy(alpha = 0.18f),
+                                        GoldAccent.copy(alpha = 0.06f)
                                     )
                                 )
                             )
-                            .border(1.5.dp, GoldAccentBorder, RoundedCornerShape(24.dp))
+                            .border(1.dp, GoldAccentBorder, RoundedCornerShape(20.dp))
                             .testTag("onboarding_qaf_logo"),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_launcher_foreground),
                             contentDescription = "Qaf Logo ق",
-                            tint = androidx.compose.ui.graphics.Color.Unspecified,
-                            modifier = Modifier.size(80.dp)
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(68.dp)
                         )
                     }
 
-                    // Brand Title
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Brand Pill
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                         Text(
-                            text = "Qaf • ق",
+                            text = "Qaf • \u2067ق\u2069",
                             style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 0.6.sp
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
                             ),
                             color = GoldAccent
                         )
-                        Text(
-                            text = "Learn English, in your language",
-                            style = MaterialTheme.typography.headlineSmall.copy(
-                                fontWeight = FontWeight.ExtraBold
-                            ),
-                            color = TextPrimary,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.testTag("onboarding_welcome_tagline_en")
-                        )
-                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                            Text(
-                                text = "تعلّم الإنجليزية بلغتك",
-                                style = ArabicTypography.titleMedium.copy(
-                                    fontWeight = FontWeight.Medium
-                                ),
-                                color = TextSecondary,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.testTag("onboarding_welcome_tagline_ar")
-                            )
-                        }
                     }
 
-                    // Concise offline-first value highlights
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = "Learn English, in your language",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = TextPrimary,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.testTag("onboarding_welcome_tagline_en")
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                        Text(
+                            text = "تعلّم الإنجليزية بلغتك",
+                            style = ArabicTypography.titleMedium.copy(
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = TextSecondary,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.testTag("onboarding_welcome_tagline_ar")
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(22.dp))
+
+                    // Inner Welcome Features Box
                     Surface(
-                        shape = SquircleCardShape,
+                        shape = RoundedCornerShape(16.dp),
                         color = SurfaceElevatedDark,
                         border = BorderStroke(1.dp, BorderDark),
                         modifier = Modifier.fillMaxWidth()
@@ -549,22 +855,52 @@ private fun OnboardingWelcomeStep(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                                .padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
+                            // 3 clean feature pills
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                WelcomeFeaturePill("Oxford 5000 & OPAL")
+                                WelcomeFeaturePill("Graded Grammar & Reading")
+                            }
+                            WelcomeFeaturePill("100% Offline • No Account")
+
                             Text(
-                                text = "Oxford vocabulary, graded grammar & reading — 100% offline, no account required.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = TextSecondary,
+                                text = buildAnnotatedString {
+                                    append("Oxford vocabulary, graded grammar & reading — ")
+                                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = TextPrimary)) {
+                                        append("100% offline")
+                                    }
+                                    append(", no account required.")
+                                },
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontSize = 13.5.sp,
+                                    lineHeight = 21.sp
+                                ),
+                                color = TextPrimary,
                                 textAlign = TextAlign.Center
                             )
+
+                            HorizontalDivider(
+                                color = Color.White.copy(alpha = 0.06f),
+                                thickness = 1.dp
+                            )
+
                             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                                 Text(
                                     text = "مفردات أكسفورد، القواعد والقراءة المتدرجة — يعمل بالكامل دون إنترنت ودون حساب.",
-                                    style = ArabicTypography.bodySmall,
-                                    color = TextMuted,
-                                    textAlign = TextAlign.Center
+                                    style = ArabicTypography.bodySmall.copy(
+                                        fontSize = 12.5.sp,
+                                        lineHeight = 20.sp
+                                    ),
+                                    color = TextSecondary,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             }
                         }
@@ -573,44 +909,32 @@ private fun OnboardingWelcomeStep(
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Primary CTA Button: "Get started" (+ Arabic line underneath), pinned at bottom
-        Button(
+        // Sticky Bottom CTA Button
+        OnboardingStickyFooter(
+            ctaTextEn = "Get started",
+            ctaTextAr = "ابدأ الآن",
             onClick = onGetStarted,
-            shape = SquircleCardShape,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = GoldAccent,
-                contentColor = OnGoldDark
+            buttonTestTag = "btn_onboarding_get_started"
+        )
+    }
+}
+
+@Composable
+private fun WelcomeFeaturePill(text: String) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = SurfaceDark,
+        border = BorderStroke(1.dp, BorderDark)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold
             ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 56.dp)
-                .testTag("btn_onboarding_get_started")
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(vertical = 4.dp)
-            ) {
-                Text(
-                    text = "Get started",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.ExtraBold
-                    ),
-                    color = OnGoldDark
-                )
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    Text(
-                        text = "ابدأ الآن",
-                        style = ArabicTypography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = OnGoldDark.copy(alpha = 0.85f)
-                    )
-                }
-            }
-        }
+            color = GoldAccent,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+        )
     }
 }
 
@@ -652,7 +976,6 @@ private fun OnboardingLevelStep(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(vertical = 8.dp)
             .testTag("onboarding_step_2_level"),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
@@ -661,36 +984,17 @@ private fun OnboardingLevelStep(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Header
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Text(
-                    text = "Choose your English level",
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.ExtraBold
-                    ),
-                    color = TextPrimary,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.testTag("onboarding_level_header_en")
-                )
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    Text(
-                        text = "اختر مستواك في اللغة الإنجليزية",
-                        style = ArabicTypography.titleMedium,
-                        color = TextSecondary,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
+            // Hero Header
+            OnboardingHeroHeader(
+                titleEn = "Choose your English level",
+                titleAr = "اختر مستواك في اللغة الإنجليزية",
+                titleEnTestTag = "onboarding_level_header_en"
+            )
 
             // 5 CEFR Level Cards (A1, A2, B1, B2, C1) with B2 preselected by default
             OnboardingPlacementQuiz.LEVEL_OPTIONS.forEach { option ->
@@ -702,106 +1006,95 @@ private fun OnboardingLevelStep(
                 )
             }
 
-            // "Not sure" card -> opens 10-question local placement quiz
-            Surface(
+            // "Not sure" card -> dashed gold border + right chevron icon
+            val dashedBorderColor = GoldAccentBorder
+            Box(
                 modifier = Modifier
+                    .padding(top = 2.dp)
                     .fillMaxWidth()
-                    .heightIn(min = 56.dp)
-                    .clip(SquircleCardShape)
+                    .heightIn(min = 58.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                GoldAccent.copy(alpha = 0.12f),
+                                SurfaceElevatedDark.copy(alpha = 0.9f)
+                            )
+                        )
+                    )
+                    .drawBehind {
+                        drawRoundRect(
+                            color = dashedBorderColor,
+                            style = Stroke(
+                                width = 1.2.dp.toPx(),
+                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f), 0f)
+                            ),
+                            cornerRadius = CornerRadius(16.dp.toPx(), 16.dp.toPx())
+                        )
+                    }
                     .clickable(role = Role.Button, onClick = onStartPlacementQuiz)
-                    .testTag("btn_onboarding_not_sure"),
-                shape = SquircleCardShape,
-                color = SurfaceElevatedDark,
-                border = BorderStroke(1.dp, GoldAccentBorder)
+                    .padding(horizontal = 14.dp, vertical = 13.dp)
+                    .testTag("btn_onboarding_not_sure")
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(SurfaceElevatedDark)
+                            .border(1.dp, BorderDark, RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(GoldAccentDim)
-                                .border(1.dp, GoldAccentBorder, RoundedCornerShape(10.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Quiz,
-                                contentDescription = "Not sure placement quiz",
-                                tint = GoldAccent,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
+                        Icon(
+                            imageVector = Icons.Filled.Quiz,
+                            contentDescription = "Not sure placement quiz",
+                            tint = GoldAccent,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = "Not sure? Take a quick placement quiz",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = GoldAccent
+                        )
+                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                             Text(
-                                text = "Not sure? Take a quick placement quiz",
-                                style = MaterialTheme.typography.titleSmall.copy(
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                color = GoldAccent
+                                text = "لست متأكداً؟ خذ اختبار تحديد مستوى من ١٠ أسئلة",
+                                style = ArabicTypography.labelSmall.copy(fontSize = 12.sp),
+                                color = Color(0xFFD1D5DB),
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Start
                             )
-                            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                                Text(
-                                    text = "لست متأكداً؟ خذ اختبار تحديد مستوى من ١٠ أسئلة",
-                                    style = ArabicTypography.labelSmall,
-                                    color = TextSecondary,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    textAlign = TextAlign.Right
-                                )
-                            }
                         }
                     }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Primary CTA Button: Continue with selected level
-        Button(
-            onClick = { onContinueWithLevel(selectedLevel) },
-            shape = SquircleCardShape,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = GoldAccent,
-                contentColor = OnGoldDark
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 56.dp)
-                .testTag("btn_onboarding_step2_continue")
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(vertical = 2.dp)
-            ) {
-                Text(
-                    text = "Continue with $selectedLevel",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.ExtraBold
-                    ),
-                    color = OnGoldDark
-                )
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    Text(
-                        text = "المتابعة بمستوى $selectedLevel",
-                        style = ArabicTypography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = OnGoldDark.copy(alpha = 0.85f)
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = GoldAccent,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
         }
+
+        // Sticky Bottom CTA Button: Continue with selected level
+        OnboardingStickyFooter(
+            ctaTextEn = "Continue with $selectedLevel",
+            ctaTextAr = "المتابعة بمستوى $selectedLevel",
+            onClick = { onContinueWithLevel(selectedLevel) },
+            buttonTestTag = "btn_onboarding_step2_continue"
+        )
     }
 }
 
@@ -814,102 +1107,101 @@ private fun LevelOptionCard(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 58.dp)
-            .clip(SquircleCardShape)
+            .heightIn(min = 62.dp)
+            .clip(RoundedCornerShape(16.dp))
             .clickable(role = Role.RadioButton, onClick = onClick)
             .testTag("onboarding_level_card_${option.level}"),
-        shape = SquircleCardShape,
+        shape = RoundedCornerShape(16.dp),
         color = if (isSelected) GoldAccentDim else SurfaceDark,
         border = BorderStroke(
-            width = if (isSelected) 1.5.dp else 1.dp,
+            width = 1.5.dp,
             color = if (isSelected) GoldAccent else BorderDark
         )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .padding(horizontal = 14.dp, vertical = 13.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+            // 44dp Level badge
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (isSelected) GoldAccent else SurfaceElevatedDark)
+                    .border(
+                        width = 1.dp,
+                        color = if (isSelected) GoldAccent else BorderDark,
+                        shape = RoundedCornerShape(12.dp)
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                // Level badge
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (isSelected) GoldAccent else SurfaceElevatedDark)
-                        .border(
-                            width = 1.dp,
-                            color = if (isSelected) GoldAccent else BorderDark,
-                            shape = RoundedCornerShape(10.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = option.level,
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontWeight = FontWeight.ExtraBold
-                        ),
-                        color = if (isSelected) OnGoldDark else TextPrimary
-                    )
-                }
+                Text(
+                    text = option.level,
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = if (isSelected) Color.Black else TextPrimary
+                )
+            }
 
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
+            // Center Content Column (BiDi-Safe Title Row: English • Arabic)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = option.titleEn,
                             style = MaterialTheme.typography.titleSmall.copy(
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold
                             ),
                             color = if (isSelected) GoldAccent else TextPrimary
                         )
+                        Text(
+                            text = "•",
+                            style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp),
+                            color = TextSecondary
+                        )
                         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                             Text(
-                                text = "• ${option.titleAr}",
-                                style = ArabicTypography.labelSmall,
-                                color = TextSecondary
+                                text = option.titleAr,
+                                style = ArabicTypography.labelSmall.copy(
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = if (isSelected) Color(0xFFFDE08D) else TextSecondary
                             )
                         }
                     }
+                }
+                Text(
+                    text = option.descriptionEn,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp),
+                    color = TextSecondary
+                )
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                     Text(
-                        text = option.descriptionEn,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
+                        text = option.descriptionAr,
+                        style = ArabicTypography.labelSmall.copy(fontSize = 12.sp),
+                        color = TextMuted
                     )
-                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                        Text(
-                            text = option.descriptionAr,
-                            style = ArabicTypography.labelSmall,
-                            color = TextMuted,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Right
-                        )
-                    }
                 }
             }
 
-            if (isSelected) {
-                Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = "Selected level ${option.level}",
-                    tint = GoldAccent,
-                    modifier = Modifier
-                        .padding(start = 8.dp)
-                        .size(22.dp)
-                        .testTag("onboarding_level_selected_${option.level}")
-                )
-            }
+            // Consistent Right 22dp Radio Circle on all 5 level cards
+            OnboardingRadioCircle(
+                isSelected = isSelected,
+                testTag = if (isSelected) "onboarding_level_selected_${option.level}" else null
+            )
         }
     }
 }
@@ -974,7 +1266,6 @@ private fun OnboardingPlacementQuizView(
 
         when {
             quizState.isWaitingForImport -> {
-                // Waiting for dictionary / grammar import (zero invented fallback questions)
                 val hasError = !importState.error.isNullOrBlank()
                 Surface(
                     modifier = Modifier
@@ -1085,7 +1376,6 @@ private fun OnboardingPlacementQuizView(
             }
 
             quizState.isQuizFinished -> {
-                // Placement Quiz Result screen: rough estimate + editable level + Retake
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -1136,7 +1426,7 @@ private fun OnboardingPlacementQuizView(
                             )
                             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                                 Text(
-                                    text = "المستوى المقترح: ${quizState.suggestedLevel}",
+                                    text = "المستوى المقترح: \u2066${quizState.suggestedLevel}\u2069",
                                     style = ArabicTypography.titleMedium,
                                     color = GoldAccent,
                                     textAlign = TextAlign.Center
@@ -1170,7 +1460,6 @@ private fun OnboardingPlacementQuizView(
                                 }
                             }
 
-                            // Editable level selector chips
                             Text(
                                 text = "Selected level to save:",
                                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
@@ -1214,7 +1503,6 @@ private fun OnboardingPlacementQuizView(
                         }
                     }
 
-                    // Retake button
                     OutlinedButton(
                         onClick = onRetakeQuiz,
                         shape = SquircleCardShape,
@@ -1232,45 +1520,19 @@ private fun OnboardingPlacementQuizView(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Retake quiz • إعادة الاختبار",
+                            text = "Retake quiz • \u2067إعادة الاختبار\u2069",
                             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                             color = GoldAccent
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Button(
+                OnboardingStickyFooter(
+                    ctaTextEn = "Continue with ${quizState.editableLevel}",
+                    ctaTextAr = "المتابعة بمستوى ${quizState.editableLevel}",
                     onClick = { onConfirmSuggestedLevel(quizState.editableLevel) },
-                    shape = SquircleCardShape,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = GoldAccent,
-                        contentColor = OnGoldDark
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 56.dp)
-                        .testTag("btn_onboarding_quiz_confirm_level")
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "Continue with ${quizState.editableLevel}",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                            color = OnGoldDark
-                        )
-                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                            Text(
-                                text = "المتابعة بمستوى ${quizState.editableLevel}",
-                                style = ArabicTypography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                color = OnGoldDark.copy(alpha = 0.85f)
-                            )
-                        }
-                    }
-                }
+                    buttonTestTag = "btn_onboarding_quiz_confirm_level"
+                )
             }
 
             else -> {
@@ -1287,7 +1549,6 @@ private fun OnboardingPlacementQuizView(
                             .testTag("onboarding_placement_quiz_card"),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // Question progress + level badge
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -1323,7 +1584,6 @@ private fun OnboardingPlacementQuizView(
                             trackColor = SurfaceElevatedDark
                         )
 
-                        // Question Prompt Card
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = SquircleCardShape,
@@ -1377,7 +1637,6 @@ private fun OnboardingPlacementQuizView(
                             }
                         }
 
-                        // 4 Real Options
                         question.options.forEachIndexed { idx, optionText ->
                             Surface(
                                 modifier = Modifier
@@ -1424,7 +1683,6 @@ private fun OnboardingPlacementQuizView(
                             }
                         }
 
-                        // Mandatory "I don't know" option on every question
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
