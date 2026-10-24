@@ -169,11 +169,16 @@ import com.example.ui.theme.SquircleTileShape
 import java.text.NumberFormat
 import java.util.Locale
 
+private val HEX_COLOR_CACHE = java.util.concurrent.ConcurrentHashMap<String, Color>()
+
 private fun parseHexColor(hex: String, defaultColor: Color): Color {
-    return try {
-        Color(android.graphics.Color.parseColor(hex))
-    } catch (_: Exception) {
-        defaultColor
+    if (hex.isBlank()) return defaultColor
+    return HEX_COLOR_CACHE.computeIfAbsent(hex) {
+        try {
+            Color(android.graphics.Color.parseColor(it))
+        } catch (_: Exception) {
+            defaultColor
+        }
     }
 }
 
@@ -1654,22 +1659,16 @@ private fun PagedDeckWordListScreen(
                             Button(
                                 onClick = {
                                     coroutineScope.launch {
-                                        var foundIdx: Int? = null
-                                        for (i in 0 until pagedEntries.itemCount) {
-                                            val item = pagedEntries.peek(i)
-                                            if (item?.text.equals(checkpointWord, ignoreCase = true)) {
-                                                foundIdx = i
-                                                break
+                                        val totalCount = pagedEntries.itemCount
+                                        if (totalCount > 0) {
+                                            val candidateIdx = currentStudyState?.lastCardIndex?.takeIf { it in 0 until totalCount }
+                                            val targetIdx = if (candidateIdx != null && pagedEntries.peek(candidateIdx)?.text.equals(checkpointWord, ignoreCase = true)) {
+                                                candidateIdx
+                                            } else {
+                                                candidateIdx ?: 0
                                             }
-                                        }
-                                        val targetIdx = foundIdx ?: currentStudyState?.lastCardIndex?.takeIf { it in 0 until (deck?.rowCount ?: totalEntriesCount) }
-                                        if (targetIdx != null) {
-                                            val totalCount = pagedEntries.itemCount
-                                            if (totalCount > 0) {
-                                                val clampedIdx = targetIdx.coerceIn(0, totalCount - 1)
-                                                pagedEntries[clampedIdx]
-                                                listState.scrollToItem((clampedIdx + headerItemsCount).coerceAtLeast(0))
-                                            }
+                                            pagedEntries[targetIdx]
+                                            listState.scrollToItem((targetIdx + headerItemsCount).coerceAtLeast(0))
                                         }
                                     }
                                 },

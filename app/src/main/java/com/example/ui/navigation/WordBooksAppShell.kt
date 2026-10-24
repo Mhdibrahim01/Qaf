@@ -126,72 +126,15 @@ fun WordBooksAppShell(
     val decks by wordBooksViewModel.decks.collectAsStateWithLifecycle()
     val importState by wordBooksViewModel.importState.collectAsStateWithLifecycle()
     val totalEntriesCount by wordBooksViewModel.totalEntriesCount.collectAsStateWithLifecycle()
-    val emptyArabicCount by wordBooksViewModel.emptyArabicCount.collectAsStateWithLifecycle()
     val selectedDeckId by wordBooksViewModel.selectedDeckId.collectAsStateWithLifecycle()
-    val filterState by wordBooksViewModel.filterState.collectAsStateWithLifecycle()
-    val progressMap by wordBooksViewModel.progressMap.collectAsStateWithLifecycle()
-    val currentlyPlayingWord by wordBooksViewModel.currentlyPlayingWord.collectAsStateWithLifecycle()
-    val detailedCard by wordBooksViewModel.detailedCard.collectAsStateWithLifecycle()
-    val favoriteCount by wordBooksViewModel.favoriteCount.collectAsStateWithLifecycle()
-    val masteredCount by wordBooksViewModel.masteredCount.collectAsStateWithLifecycle()
-    val reviewDueTodayCount by wordBooksViewModel.reviewDueTodayCount.collectAsStateWithLifecycle()
-    val studiedTodayCount by wordBooksViewModel.studiedTodayCount.collectAsStateWithLifecycle()
-    val deckStudyStates by wordBooksViewModel.deckStudyStates.collectAsStateWithLifecycle()
     val flashcardDeckId by wordBooksViewModel.flashcardDeckId.collectAsStateWithLifecycle()
-    val flashcardCards by wordBooksViewModel.flashcardCards.collectAsStateWithLifecycle()
-    val flashcardIndex by wordBooksViewModel.flashcardIndex.collectAsStateWithLifecycle()
-    val isFlashcardsLoading by wordBooksViewModel.isFlashcardsLoading.collectAsStateWithLifecycle()
-    val isCurrentCardFlipped by wordBooksViewModel.isCurrentCardFlipped.collectAsStateWithLifecycle()
-    val flashcardDirection by wordBooksViewModel.flashcardDirection.collectAsStateWithLifecycle()
-    val flashcardAutoShowAnswer by wordBooksViewModel.flashcardAutoShowAnswer.collectAsStateWithLifecycle()
-    val savedSentences by wordBooksViewModel.savedSentences.collectAsStateWithLifecycle()
-    val savedSentenceKeys by wordBooksViewModel.savedSentenceKeys.collectAsStateWithLifecycle()
-    val dictionarySampleExamples by wordBooksViewModel.dictionarySampleExamples.collectAsStateWithLifecycle()
-    val sentenceSortOrder by wordBooksViewModel.sentenceSortOrder.collectAsStateWithLifecycle()
-    val showSentenceTranslation by wordBooksViewModel.showSentenceTranslation.collectAsStateWithLifecycle()
-    val ttsSpeechRate by wordBooksViewModel.ttsSpeechRate.collectAsStateWithLifecycle()
-    val preferredAccentUk by wordBooksViewModel.preferredAccentUk.collectAsStateWithLifecycle()
-    val autoPlayPronunciation by wordBooksViewModel.autoPlayPronunciation.collectAsStateWithLifecycle()
     val isDeveloperModeEnabled by wordBooksViewModel.isDeveloperModeEnabled.collectAsStateWithLifecycle()
-    val dictationIgnorePunctuation by wordBooksViewModel.dictationIgnorePunctuation.collectAsStateWithLifecycle()
-    val autoPlayPracticeAudio by wordBooksViewModel.autoPlayPracticeAudio.collectAsStateWithLifecycle()
-    val explainingSentenceIds by wordBooksViewModel.explainingSentenceIds.collectAsStateWithLifecycle()
-    val deckArabicStats by wordBooksViewModel.deckArabicStats.collectAsStateWithLifecycle()
-    val aiStatus by wordBooksViewModel.aiStatus.collectAsStateWithLifecycle()
     val batchTranslateState by wordBooksViewModel.batchTranslateState.collectAsStateWithLifecycle()
-    val isBatchTranslateOpen by wordBooksViewModel.isBatchTranslateOpen.collectAsStateWithLifecycle()
-    val grammarLessons by wordBooksViewModel.grammarLessons.collectAsStateWithLifecycle()
-    val grammarProgressList by wordBooksViewModel.grammarProgressList.collectAsStateWithLifecycle()
     val selectedGrammarLesson by wordBooksViewModel.selectedGrammarLesson.collectAsStateWithLifecycle()
-    val grammarLessonChatHistory by wordBooksViewModel.grammarLessonChatHistory.collectAsStateWithLifecycle()
-    val grammarSentenceCheckHistory by wordBooksViewModel.grammarSentenceCheckHistory.collectAsStateWithLifecycle()
-    val readingTexts by wordBooksViewModel.readingTexts.collectAsStateWithLifecycle()
-    val readingProgressList by wordBooksViewModel.readingProgressList.collectAsStateWithLifecycle()
     val selectedReadingText by wordBooksViewModel.selectedReadingText.collectAsStateWithLifecycle()
-    val readingTextChatHistory by wordBooksViewModel.readingTextChatHistory.collectAsStateWithLifecycle()
-    val readingOpenQuestionHistory by wordBooksViewModel.readingOpenQuestionHistory.collectAsStateWithLifecycle()
-    val correctionEntries by wordBooksViewModel.correctionEntries.collectAsStateWithLifecycle()
     val studyPlanProfile by wordBooksViewModel.studyPlanProfile.collectAsStateWithLifecycle()
-    val currentStudyPlan by wordBooksViewModel.currentStudyPlan.collectAsStateWithLifecycle()
-    val todayChecklist by wordBooksViewModel.todayChecklist.collectAsStateWithLifecycle()
-    val studyStreak by wordBooksViewModel.studyStreak.collectAsStateWithLifecycle()
-    val quizHistory by wordBooksViewModel.quizHistory.collectAsStateWithLifecycle()
-    val weakAreas by wordBooksViewModel.weakAreas.collectAsStateWithLifecycle()
-    val practiceAccuracySummary by wordBooksViewModel.practiceAccuracySummary.collectAsStateWithLifecycle()
-    val waitingLaterTodayCount by wordBooksViewModel.waitingLaterTodayCount.collectAsStateWithLifecycle()
-    val nextWaitingDueTimestamp by wordBooksViewModel.nextWaitingDueTimestamp.collectAsStateWithLifecycle()
-    val monthlyChecklists by wordBooksViewModel.monthlyChecklists.collectAsStateWithLifecycle()
-    val recentAttempts by wordBooksViewModel.recentAttempts.collectAsStateWithLifecycle()
-    val totalAttemptsCount by wordBooksViewModel.totalAttemptsCount.collectAsStateWithLifecycle()
-    val currentAiWordDetail by wordBooksViewModel.currentAiWordDetail.collectAsStateWithLifecycle()
-    val isAiDetailLoading by wordBooksViewModel.isAiDetailLoading.collectAsStateWithLifecycle()
-    val aiDetailError by wordBooksViewModel.aiDetailError.collectAsStateWithLifecycle()
     val onboardingState by wordBooksViewModel.onboardingState.collectAsStateWithLifecycle()
     val placementQuizState by wordBooksViewModel.placementQuizState.collectAsStateWithLifecycle()
-    val kickoffWords by wordBooksViewModel.kickoffWords.collectAsStateWithLifecycle()
-    val isKickoffDismissed by wordBooksViewModel.isKickoffDismissed.collectAsStateWithLifecycle()
-    val levelProgressSummary by wordBooksViewModel.levelProgressSummary.collectAsStateWithLifecycle()
-    val learnerModelSnapshot by wordBooksViewModel.learnerModelSnapshot.collectAsStateWithLifecycle()
     val userLevel = studyPlanProfile?.level?.ifBlank { "B2" } ?: "B2"
     val activeQuizSession by wordBooksViewModel.activeQuizSession.collectAsStateWithLifecycle()
     val isQuizLoading by wordBooksViewModel.isQuizLoading.collectAsStateWithLifecycle()
@@ -202,7 +145,6 @@ fun WordBooksAppShell(
     val customApiKey = remember(apiKeyTrigger) { wordBooksViewModel.getCustomApiKey() }
     val currentEngineMode = remember(apiKeyTrigger) { wordBooksViewModel.getEngineMode() }
     val isApiKeyConfigured = remember(apiKeyTrigger) { wordBooksViewModel.isApiKeyConfigured() }
-    val pagedEntries = wordBooksViewModel.pagedEntries.collectAsLazyPagingItems()
 
     val resolvedOnboarding = onboardingState
     if (resolvedOnboarding != null && !resolvedOnboarding.onboardingCompleted) {
@@ -413,6 +355,14 @@ fun WordBooksAppShell(
                 exitTransition = { fadeOut() }
             ) {
                 composable<AppRoute.Home> {
+                    val reviewDueTodayCount by wordBooksViewModel.reviewDueTodayCount.collectAsStateWithLifecycle()
+                    val studiedTodayCount by wordBooksViewModel.studiedTodayCount.collectAsStateWithLifecycle()
+                    val masteredCount by wordBooksViewModel.masteredCount.collectAsStateWithLifecycle()
+                    val deckStudyStates by wordBooksViewModel.deckStudyStates.collectAsStateWithLifecycle()
+                    val todayChecklist by wordBooksViewModel.todayChecklist.collectAsStateWithLifecycle()
+                    val monthlyChecklists by wordBooksViewModel.monthlyChecklists.collectAsStateWithLifecycle()
+                    val studyStreak by wordBooksViewModel.studyStreak.collectAsStateWithLifecycle()
+                    val learnerModelSnapshot by wordBooksViewModel.learnerModelSnapshot.collectAsStateWithLifecycle()
                     HomeScreen(
                         decks = decks,
                         importState = importState,
@@ -458,6 +408,21 @@ fun WordBooksAppShell(
                     )
                 }
                 composable<AppRoute.WordBooks> {
+                    val filterState by wordBooksViewModel.filterState.collectAsStateWithLifecycle()
+                    val pagedEntries = wordBooksViewModel.pagedEntries.collectAsLazyPagingItems()
+                    val progressMap by wordBooksViewModel.progressMap.collectAsStateWithLifecycle()
+                    val currentlyPlayingWord by wordBooksViewModel.currentlyPlayingWord.collectAsStateWithLifecycle()
+                    val detailedCard by wordBooksViewModel.detailedCard.collectAsStateWithLifecycle()
+                    val favoriteCount by wordBooksViewModel.favoriteCount.collectAsStateWithLifecycle()
+                    val masteredCount by wordBooksViewModel.masteredCount.collectAsStateWithLifecycle()
+                    val reviewDueTodayCount by wordBooksViewModel.reviewDueTodayCount.collectAsStateWithLifecycle()
+                    val aiStatus by wordBooksViewModel.aiStatus.collectAsStateWithLifecycle()
+                    val savedSentenceKeys by wordBooksViewModel.savedSentenceKeys.collectAsStateWithLifecycle()
+                    val currentAiWordDetail by wordBooksViewModel.currentAiWordDetail.collectAsStateWithLifecycle()
+                    val isAiDetailLoading by wordBooksViewModel.isAiDetailLoading.collectAsStateWithLifecycle()
+                    val aiDetailError by wordBooksViewModel.aiDetailError.collectAsStateWithLifecycle()
+                    val deckStudyStates by wordBooksViewModel.deckStudyStates.collectAsStateWithLifecycle()
+                    val levelProgressSummary by wordBooksViewModel.levelProgressSummary.collectAsStateWithLifecycle()
                     WordBooksDatabaseScreen(
                         decks = decks,
                         importState = importState,
@@ -524,6 +489,24 @@ fun WordBooksAppShell(
                     )
                 }
                 composable<AppRoute.Flashcards> {
+                    val flashcardCards by wordBooksViewModel.flashcardCards.collectAsStateWithLifecycle()
+                    val flashcardIndex by wordBooksViewModel.flashcardIndex.collectAsStateWithLifecycle()
+                    val isFlashcardsLoading by wordBooksViewModel.isFlashcardsLoading.collectAsStateWithLifecycle()
+                    val progressMap by wordBooksViewModel.progressMap.collectAsStateWithLifecycle()
+                    val reviewDueTodayCount by wordBooksViewModel.reviewDueTodayCount.collectAsStateWithLifecycle()
+                    val studiedTodayCount by wordBooksViewModel.studiedTodayCount.collectAsStateWithLifecycle()
+                    val currentlyPlayingWord by wordBooksViewModel.currentlyPlayingWord.collectAsStateWithLifecycle()
+                    val detailedCard by wordBooksViewModel.detailedCard.collectAsStateWithLifecycle()
+                    val aiStatus by wordBooksViewModel.aiStatus.collectAsStateWithLifecycle()
+                    val savedSentenceKeys by wordBooksViewModel.savedSentenceKeys.collectAsStateWithLifecycle()
+                    val currentAiWordDetail by wordBooksViewModel.currentAiWordDetail.collectAsStateWithLifecycle()
+                    val isAiDetailLoading by wordBooksViewModel.isAiDetailLoading.collectAsStateWithLifecycle()
+                    val aiDetailError by wordBooksViewModel.aiDetailError.collectAsStateWithLifecycle()
+                    val isCurrentCardFlipped by wordBooksViewModel.isCurrentCardFlipped.collectAsStateWithLifecycle()
+                    val flashcardDirection by wordBooksViewModel.flashcardDirection.collectAsStateWithLifecycle()
+                    val flashcardAutoShowAnswer by wordBooksViewModel.flashcardAutoShowAnswer.collectAsStateWithLifecycle()
+                    val waitingLaterTodayCount by wordBooksViewModel.waitingLaterTodayCount.collectAsStateWithLifecycle()
+                    val nextWaitingDueTimestamp by wordBooksViewModel.nextWaitingDueTimestamp.collectAsStateWithLifecycle()
                     FlashcardsScreen(
                         decks = decks,
                         activeDeckId = flashcardDeckId,
@@ -588,6 +571,17 @@ fun WordBooksAppShell(
                     )
                 }
                 composable<AppRoute.Sentences> {
+                    val savedSentences by wordBooksViewModel.savedSentences.collectAsStateWithLifecycle()
+                    val savedSentenceKeys by wordBooksViewModel.savedSentenceKeys.collectAsStateWithLifecycle()
+                    val dictionarySampleExamples by wordBooksViewModel.dictionarySampleExamples.collectAsStateWithLifecycle()
+                    val sentenceSortOrder by wordBooksViewModel.sentenceSortOrder.collectAsStateWithLifecycle()
+                    val showSentenceTranslation by wordBooksViewModel.showSentenceTranslation.collectAsStateWithLifecycle()
+                    val ttsSpeechRate by wordBooksViewModel.ttsSpeechRate.collectAsStateWithLifecycle()
+                    val dictationIgnorePunctuation by wordBooksViewModel.dictationIgnorePunctuation.collectAsStateWithLifecycle()
+                    val autoPlayPracticeAudio by wordBooksViewModel.autoPlayPracticeAudio.collectAsStateWithLifecycle()
+                    val currentlyPlayingWord by wordBooksViewModel.currentlyPlayingWord.collectAsStateWithLifecycle()
+                    val explainingSentenceIds by wordBooksViewModel.explainingSentenceIds.collectAsStateWithLifecycle()
+                    val aiStatus by wordBooksViewModel.aiStatus.collectAsStateWithLifecycle()
                     SentencesScreen(
                         savedSentences = savedSentences,
                         savedSentenceKeys = savedSentenceKeys,
@@ -621,6 +615,11 @@ fun WordBooksAppShell(
                     )
                 }
                 composable<AppRoute.Grammar> {
+                    val grammarLessons by wordBooksViewModel.grammarLessons.collectAsStateWithLifecycle()
+                    val grammarProgressList by wordBooksViewModel.grammarProgressList.collectAsStateWithLifecycle()
+                    val grammarLessonChatHistory by wordBooksViewModel.grammarLessonChatHistory.collectAsStateWithLifecycle()
+                    val grammarSentenceCheckHistory by wordBooksViewModel.grammarSentenceCheckHistory.collectAsStateWithLifecycle()
+                    val readingTexts by wordBooksViewModel.readingTexts.collectAsStateWithLifecycle()
                     GrammarScreen(
                         lessons = grammarLessons,
                         progressList = grammarProgressList,
@@ -654,6 +653,13 @@ fun WordBooksAppShell(
                     )
                 }
                 composable<AppRoute.Reading> {
+                    val readingTexts by wordBooksViewModel.readingTexts.collectAsStateWithLifecycle()
+                    val readingProgressList by wordBooksViewModel.readingProgressList.collectAsStateWithLifecycle()
+                    val readingTextChatHistory by wordBooksViewModel.readingTextChatHistory.collectAsStateWithLifecycle()
+                    val readingOpenQuestionHistory by wordBooksViewModel.readingOpenQuestionHistory.collectAsStateWithLifecycle()
+                    val grammarLessons by wordBooksViewModel.grammarLessons.collectAsStateWithLifecycle()
+                    val ttsSpeechRate by wordBooksViewModel.ttsSpeechRate.collectAsStateWithLifecycle()
+                    val learnerModelSnapshot by wordBooksViewModel.learnerModelSnapshot.collectAsStateWithLifecycle()
                     ReadingScreen(
                         texts = readingTexts,
                         progressList = readingProgressList,
@@ -715,6 +721,15 @@ fun WordBooksAppShell(
                     )
                 }
                 composable<AppRoute.Labs> {
+                    val isBatchTranslateOpen by wordBooksViewModel.isBatchTranslateOpen.collectAsStateWithLifecycle()
+                    val aiStatus by wordBooksViewModel.aiStatus.collectAsStateWithLifecycle()
+                    val emptyArabicCount by wordBooksViewModel.emptyArabicCount.collectAsStateWithLifecycle()
+                    val deckArabicStats by wordBooksViewModel.deckArabicStats.collectAsStateWithLifecycle()
+                    val grammarLessons by wordBooksViewModel.grammarLessons.collectAsStateWithLifecycle()
+                    val todayChecklist by wordBooksViewModel.todayChecklist.collectAsStateWithLifecycle()
+                    val recentAttempts by wordBooksViewModel.recentAttempts.collectAsStateWithLifecycle()
+                    val totalAttemptsCount by wordBooksViewModel.totalAttemptsCount.collectAsStateWithLifecycle()
+                    val reviewDueTodayCount by wordBooksViewModel.reviewDueTodayCount.collectAsStateWithLifecycle()
                     if (isBatchTranslateOpen) {
                         BatchTranslateScreen(
                             state = batchTranslateState,
@@ -757,6 +772,9 @@ fun WordBooksAppShell(
                     }
                 }
                 composable<AppRoute.CorrectionNotebook> {
+                    val correctionEntries by wordBooksViewModel.correctionEntries.collectAsStateWithLifecycle()
+                    val grammarLessons by wordBooksViewModel.grammarLessons.collectAsStateWithLifecycle()
+                    val readingTexts by wordBooksViewModel.readingTexts.collectAsStateWithLifecycle()
                     CorrectionNotebookScreen(
                         entries = correctionEntries,
                         grammarLessons = grammarLessons,
@@ -797,6 +815,14 @@ fun WordBooksAppShell(
                     )
                 }
                 composable<AppRoute.Plan> {
+                    val currentStudyPlan by wordBooksViewModel.currentStudyPlan.collectAsStateWithLifecycle()
+                    val todayChecklist by wordBooksViewModel.todayChecklist.collectAsStateWithLifecycle()
+                    val studyStreak by wordBooksViewModel.studyStreak.collectAsStateWithLifecycle()
+                    val quizHistory by wordBooksViewModel.quizHistory.collectAsStateWithLifecycle()
+                    val weakAreas by wordBooksViewModel.weakAreas.collectAsStateWithLifecycle()
+                    val monthlyChecklists by wordBooksViewModel.monthlyChecklists.collectAsStateWithLifecycle()
+                    val practiceAccuracySummary by wordBooksViewModel.practiceAccuracySummary.collectAsStateWithLifecycle()
+                    val learnerModelSnapshot by wordBooksViewModel.learnerModelSnapshot.collectAsStateWithLifecycle()
                     PlanScreen(
                         profile = studyPlanProfile,
                         currentPlan = currentStudyPlan,
@@ -845,6 +871,11 @@ fun WordBooksAppShell(
                     )
                 }
                 composable<AppRoute.More> {
+                    val grammarLessons by wordBooksViewModel.grammarLessons.collectAsStateWithLifecycle()
+                    val readingTexts by wordBooksViewModel.readingTexts.collectAsStateWithLifecycle()
+                    val correctionEntries by wordBooksViewModel.correctionEntries.collectAsStateWithLifecycle()
+                    val savedSentences by wordBooksViewModel.savedSentences.collectAsStateWithLifecycle()
+                    val studyStreak by wordBooksViewModel.studyStreak.collectAsStateWithLifecycle()
                     MoreScreen(
                         onNavigateToGrammar = {
                             wordBooksViewModel.selectGrammarLesson(null)
@@ -892,6 +923,9 @@ fun WordBooksAppShell(
                     )
                 }
                 composable<AppRoute.Settings> {
+                    val preferredAccentUk by wordBooksViewModel.preferredAccentUk.collectAsStateWithLifecycle()
+                    val ttsSpeechRate by wordBooksViewModel.ttsSpeechRate.collectAsStateWithLifecycle()
+                    val autoPlayPronunciation by wordBooksViewModel.autoPlayPronunciation.collectAsStateWithLifecycle()
                     SettingsScreen(
                         preferredAccentUk = preferredAccentUk,
                         ttsSpeechRate = ttsSpeechRate,

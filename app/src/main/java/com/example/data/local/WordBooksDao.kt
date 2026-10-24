@@ -1532,6 +1532,18 @@ interface WordBooksDao {
     @Query("SELECT * FROM attempts ORDER BY timestamp DESC, id DESC")
     fun observeAllAttempts(): Flow<List<AttemptEntity>>
 
+    @Query("SELECT * FROM attempts ORDER BY timestamp DESC, id DESC LIMIT :limit")
+    fun observeRecentAttempts(limit: Int = 8): Flow<List<AttemptEntity>>
+
+    @Query("SELECT COUNT(*) FROM attempts")
+    fun observeTotalAttemptsCount(): Flow<Int>
+
+    @Query("SELECT deck, COUNT(*) AS rowCount, COUNT(DISTINCT LOWER(text)) AS uniqueCount FROM entries GROUP BY deck")
+    suspend fun getAggregatedEntryStatsByDeck(): List<DeckEntryStats>
+
+    @Query("SELECT deck, SUM(CASE WHEN is_mastered = 1 THEN 1 ELSE 0 END) AS masteredCount, SUM(CASE WHEN is_favorite = 1 THEN 1 ELSE 0 END) AS favoriteCount FROM word_progress GROUP BY deck")
+    suspend fun getAggregatedProgressStatsByDeck(): List<DeckProgressStats>
+
     @Query("SELECT * FROM attempts WHERE timestamp >= :startMillis AND timestamp <= :endMillis ORDER BY timestamp ASC, id ASC")
     suspend fun getAttemptsInRange(startMillis: Long, endMillis: Long): List<AttemptEntity>
 
@@ -1974,3 +1986,15 @@ interface WordBooksDao {
     )
     suspend fun getEntriesByHeadwords(headwords: List<String>): List<EntryEntity>
 }
+
+data class DeckEntryStats(
+    val deck: String,
+    val rowCount: Int,
+    val uniqueCount: Int
+)
+
+data class DeckProgressStats(
+    val deck: String,
+    val masteredCount: Int,
+    val favoriteCount: Int
+)

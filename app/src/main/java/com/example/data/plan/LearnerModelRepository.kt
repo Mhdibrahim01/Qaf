@@ -9,12 +9,14 @@ import com.example.data.local.WordBooksDao
 import com.example.data.local.WordProgressEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
 import kotlin.math.roundToInt
 
 enum class WordStage {
@@ -255,17 +257,22 @@ class LearnerModelRepository(
         }
     }
 
+    @OptIn(ExperimentalSerializationApi::class)
     fun getReadingWordLinks(): Map<String, ReadingWordLinkItem> {
         cachedReadingLinks?.let { return it }
-        val loaded = try {
-            val raw = context.assets.open("reading_word_links.json").bufferedReader().use { it.readText() }
-            val list = json.decodeFromString(ListSerializer(ReadingWordLinkItem.serializer()), raw)
-            list.associateBy { it.id }
-        } catch (_: Exception) {
-            emptyMap()
+        return synchronized(this) {
+            cachedReadingLinks?.let { return it }
+            val loaded = try {
+                context.assets.open("reading_word_links.json").buffered().use { stream ->
+                    val list = json.decodeFromStream(ListSerializer(ReadingWordLinkItem.serializer()), stream)
+                    list.associateBy { it.id }
+                }
+            } catch (_: Exception) {
+                emptyMap()
+            }
+            cachedReadingLinks = loaded
+            loaded
         }
-        cachedReadingLinks = loaded
-        return loaded
     }
 
     /**
