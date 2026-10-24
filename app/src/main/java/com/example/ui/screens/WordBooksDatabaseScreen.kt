@@ -1629,10 +1629,19 @@ private fun PagedDeckWordListScreen(
                                     val totalCount = deck?.rowCount ?: totalEntriesCount
                                     val percent = if (totalCount > 0) (lastIndex * 100 / totalCount).coerceIn(0, 100) else 0
                                     Text(
-                                        text = "\"$checkpointWord\" • Card #$lastIndex of ${formatNumber(totalCount)} ($percent%)",
+                                        text = "\"$checkpointWord\"",
                                         style = MaterialTheme.typography.bodyMedium.copy(
                                             fontWeight = FontWeight.Bold,
                                             color = TextPrimary
+                                        ),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = "Card #$lastIndex of ${formatNumber(totalCount)} ($percent%)",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            fontWeight = FontWeight.Medium,
+                                            color = TextSecondary
                                         ),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
@@ -2184,204 +2193,194 @@ fun WordBookEntryRow(
                 role = Role.Button,
                 onClick = onOpenDetail
             )
+            .padding(horizontal = 16.dp, vertical = 14.dp)
             .testTag("word_row_${entry.id}"),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        // Top Row: Speaker button, English phrase + (CEFR Badge + Phonetics sub-row), Action Icons
         Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Left: Speaker button
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                // Left: Rounded-square speaker button
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (isPlayingAudio) GoldAccentDim else SurfaceElevatedDark)
-                        .border(1.dp, if (isPlayingAudio) GoldAccentBorder else BorderDark, RoundedCornerShape(10.dp))
-                        .clickable(
-                            interactionSource = null,
-                            indication = null,
-                            role = Role.Button,
-                            onClick = onPlayAudio
-                        )
-                        .testTag("ipa_speaker_${entry.id}"),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                        contentDescription = "Play pronunciation for ${entry.text}",
-                        tint = if (isPlayingAudio) GoldAccent else TextSecondary,
-                        modifier = Modifier.size(18.dp)
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (isPlayingAudio) GoldAccentDim else SurfaceElevatedDark)
+                    .border(1.dp, if (isPlayingAudio) GoldAccentBorder else BorderDark, RoundedCornerShape(10.dp))
+                    .clickable(
+                        interactionSource = null,
+                        indication = null,
+                        role = Role.Button,
+                        onClick = onPlayAudio
                     )
-                }
+                    .testTag("ipa_speaker_${entry.id}"),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                    contentDescription = "Play pronunciation for ${entry.text}",
+                    tint = if (isPlayingAudio) GoldAccent else TextSecondary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
 
-                // Middle: Word + Level Badge, IPA • POS, Arabic Meaning
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
+            // Middle Column: English phrase + Sub-row (CEFR Badge + Phonetics)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = entry.text,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp
+                    ),
+                    color = if (isMastered) EmeraldAccent else TextPrimary
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
+                    if (entry.level.isNotBlank()) {
                         Text(
-                            text = entry.text,
-                            style = MaterialTheme.typography.titleMedium.copy(
+                            text = displayLevel,
+                            style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 17.sp
+                                fontSize = 10.sp
                             ),
-                            color = if (isMastered) EmeraldAccent else TextPrimary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            color = GoldAccent,
+                            modifier = Modifier
+                                .drawBehind {
+                                    drawRoundRect(
+                                        color = GoldAccentDim,
+                                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(6.dp.toPx())
+                                    )
+                                }
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
                         )
-
-                        if (entry.level.isNotBlank()) {
-                            Text(
-                                text = displayLevel,
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp
-                                ),
-                                color = GoldAccent,
-                                modifier = Modifier
-                                    .drawBehind {
-                                        drawRoundRect(
-                                            color = GoldAccentDim,
-                                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(6.dp.toPx())
-                                        )
-                                    }
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-
                     }
 
                     if (ipaAndPos.isNotBlank()) {
                         Text(
                             text = ipaAndPos,
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                            color = TextMuted,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(2.dp))
-
-                    if (formattedArabic.isNotBlank()) {
-                        if (!containsLatin) {
-                            Text(
-                                text = formattedArabic,
-                                style = ArabicTypography.bodyMedium.copy(
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    letterSpacing = 0.sp,
-                                    textDirection = TextDirection.Rtl,
-                                    textAlign = TextAlign.Right
-                                ),
-                                color = TextPrimary,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        } else {
-                            BidiText(
-                                text = formattedArabic,
-                                style = ArabicTypography.bodyMedium.copy(
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    letterSpacing = 0.sp
-                                ),
-                                color = TextPrimary,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                fillMaxWidth = false
-                            )
-                        }
-                    } else {
-                        Text(
-                            text = "Tap to look up",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontStyle = FontStyle.Italic,
-                                fontSize = 12.sp
-                            ),
-                            color = TextMuted,
-                            maxLines = 1
-                        )
-                    }
-                }
-
-                // Right: Checkpoint Pin Bookmark, Mastered Check & Favorite heart icon
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    if (onSetCheckpoint != null) {
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clickable(
-                                    interactionSource = null,
-                                    indication = null,
-                                    role = Role.Button,
-                                    onClick = onSetCheckpoint
-                                )
-                                .testTag("checkpoint_pin_${entry.id}"),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = if (isCheckpoint) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                                contentDescription = if (isCheckpoint) "Current Checkpoint" else "Set as Checkpoint",
-                                tint = if (isCheckpoint) GoldAccent else TextMuted,
-                                modifier = Modifier.size(19.dp)
-                            )
-                        }
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clickable(
-                                interactionSource = null,
-                                indication = null,
-                                role = Role.Button,
-                                onClick = onToggleMastered
-                            )
-                            .testTag("mastered_check_${entry.id}"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (isMastered) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
-                            contentDescription = if (isMastered) "Mastered" else "Mark as mastered",
-                            tint = if (isMastered) EmeraldAccent else TextMuted,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clickable(
-                                interactionSource = null,
-                                indication = null,
-                                role = Role.Button,
-                                onClick = onToggleFavorite
-                            )
-                            .testTag("favorite_heart_${entry.id}"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "Favorite word",
-                            tint = if (isFavorite) GoldAccent else TextMuted,
-                            modifier = Modifier.size(20.dp)
+                            color = TextMuted
                         )
                     }
                 }
             }
+
+            // Right: Bookmark, Check, Heart
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                if (onSetCheckpoint != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clickable(
+                                interactionSource = null,
+                                indication = null,
+                                role = Role.Button,
+                                onClick = onSetCheckpoint
+                            )
+                            .testTag("checkpoint_pin_${entry.id}"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isCheckpoint) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                            contentDescription = if (isCheckpoint) "Current Checkpoint" else "Set as Checkpoint",
+                            tint = if (isCheckpoint) GoldAccent else TextMuted,
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clickable(
+                            interactionSource = null,
+                            indication = null,
+                            role = Role.Button,
+                            onClick = onToggleMastered
+                        )
+                        .testTag("mastered_check_${entry.id}"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isMastered) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
+                        contentDescription = if (isMastered) "Mastered" else "Mark as mastered",
+                        tint = if (isMastered) EmeraldAccent else TextMuted,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clickable(
+                            interactionSource = null,
+                            indication = null,
+                            role = Role.Button,
+                            onClick = onToggleFavorite
+                        )
+                        .testTag("favorite_heart_${entry.id}"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = "Favorite word",
+                        tint = if (isFavorite) GoldAccent else TextMuted,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
         }
+
+        // Bottom Full-Width Row: Arabic Meaning
+        if (formattedArabic.isNotBlank()) {
+            if (!containsLatin) {
+                Text(
+                    text = formattedArabic,
+                    style = ArabicTypography.bodyMedium.copy(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.sp,
+                        textDirection = TextDirection.Rtl,
+                        textAlign = TextAlign.Right
+                    ),
+                    color = TextPrimary,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                BidiText(
+                    text = formattedArabic,
+                    style = ArabicTypography.bodyMedium.copy(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.sp
+                    ),
+                    color = TextPrimary,
+                    fillMaxWidth = true
+                )
+            }
+        } else {
+            Text(
+                text = "Tap to look up",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontStyle = FontStyle.Italic,
+                    fontSize = 12.sp
+                ),
+                color = TextMuted
+            )
+        }
+    }
 }
 
 
