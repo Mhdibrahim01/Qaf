@@ -26,8 +26,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
 import java.io.File
 import java.io.InputStream
 import java.util.Calendar
@@ -780,7 +782,8 @@ class DataImportRepository(
                 pageSize = 60,
                 prefetchDistance = 35,
                 enablePlaceholders = true,
-                initialLoadSize = 90
+                initialLoadSize = 90,
+                maxSize = 250
             ),
             pagingSourceFactory = {
                 val trimmedQuery = filter.searchQuery.trim()
@@ -1092,25 +1095,14 @@ class DataImportRepository(
     private suspend fun refreshDeckProgressCounts(deckId: String) {
         val currentDecks = dao.getDecksList()
         if (currentDecks.isEmpty()) return
-        val totalFavs = dao.getFavoriteCountForDeck("oxford5000") +
-            dao.getFavoriteCountForDeck("oxford_opal") +
-            dao.getFavoriteCountForDeck("oxford_phrases") +
-            dao.getFavoriteCountForDeck("everyday_expressions") +
-            dao.getFavoriteCountForDeck("essential_idioms") +
-            dao.getFavoriteCountForDeck("ielts_core") +
-            dao.getFavoriteCountForDeck("it_industry") +
-            dao.getFavoriteCountForDeck("cefr_c1") +
-            dao.getFavoriteCountForDeck("pte_academic") +
-            dao.getFavoriteCountForDeck("business_english") +
-            dao.getFavoriteCountForDeck("career_interview") +
-            dao.getFavoriteCountForDeck("medical_healthcare")
+        val progressMap = dao.getAggregatedProgressStatsByDeck().associateBy { it.deck }
+        val totalFavs = progressMap.values.sumOf { it.favoriteCount }
 
         val updatedDecks = currentDecks.map { deck ->
             when (deck.id) {
                 deckId -> {
-                    val mastered = dao.getMasteredCountForDeck(deckId)
-                    val fav = dao.getFavoriteCountForDeck(deckId)
-                    deck.copy(masteredCount = mastered, favoriteCount = fav)
+                    val stat = progressMap[deckId]
+                    deck.copy(masteredCount = stat?.masteredCount ?: 0, favoriteCount = stat?.favoriteCount ?: 0)
                 }
                 SAVED_WORDS_DECK_ID -> {
                     deck.copy(rowCount = totalFavs, uniqueWordCount = totalFavs, favoriteCount = totalFavs)
@@ -1426,14 +1418,16 @@ class DataImportRepository(
         else -> 6L
     }
 
+    @OptIn(ExperimentalSerializationApi::class)
     private suspend fun importJsonStreamInBatches(
         source: ResolvedJsonSource,
         oxfordHeadwordLevels: MutableMap<String, String>,
         oxfordHeadwordSortKeys: MutableMap<String, Long>,
         onBatchCommitted: (Int) -> Unit
     ): Int {
-        val rawText = source.openStream().bufferedReader(Charsets.UTF_8).use { it.readText() }
-        val rawEntries = json.decodeFromString<List<RawJsonEntry>>(rawText)
+        val rawEntries = source.openStream().buffered().use { stream ->
+            json.decodeFromStream<List<RawJsonEntry>>(stream)
+        }
 
         if (source.fileName.startsWith("oxford5000", ignoreCase = true)) {
             for (raw in rawEntries) {
@@ -1561,82 +1555,29 @@ class DataImportRepository(
     }
 
     suspend fun refreshAllDeckCounts() {
-        val oxfordCount = dao.getEntryCountForDeck("oxford5000")
-        val oxfordUnique = dao.getUniqueWordCountForDeck("oxford5000")
-        val oxfordMastered = dao.getMasteredCountForDeck("oxford5000")
-        val oxfordFav = dao.getFavoriteCountForDeck("oxford5000")
+        val entryStats = dao.getAggregatedEntryStatsByDeck().associateBy { it.deck }
+        val progressStats = dao.getAggregatedProgressStatsByDeck().associateBy { it.deck }
 
-        val opalCount = dao.getEntryCountForDeck("oxford_opal")
-        val opalUnique = dao.getUniqueWordCountForDeck("oxford_opal")
-        val opalMastered = dao.getMasteredCountForDeck("oxford_opal")
-        val opalFav = dao.getFavoriteCountForDeck("oxford_opal")
+        fun count(deckId: String) = entryStats[deckId]?.rowCount ?: 0
+        fun unique(deckId: String) = entryStats[deckId]?.uniqueCount ?: 0
+        fun mastered(deckId: String) = progressStats[deckId]?.masteredCount ?: 0
+        fun fav(deckId: String) = progressStats[deckId]?.favoriteCount ?: 0
 
-        val phrasesCount = dao.getEntryCountForDeck("oxford_phrases")
-        val phrasesUnique = dao.getUniqueWordCountForDeck("oxford_phrases")
-        val phrasesMastered = dao.getMasteredCountForDeck("oxford_phrases")
-        val phrasesFav = dao.getFavoriteCountForDeck("oxford_phrases")
-
-        val expressionsCount = dao.getEntryCountForDeck("everyday_expressions")
-        val expressionsUnique = dao.getUniqueWordCountForDeck("everyday_expressions")
-        val expressionsMastered = dao.getMasteredCountForDeck("everyday_expressions")
-        val expressionsFav = dao.getFavoriteCountForDeck("everyday_expressions")
-
-        val idiomsCount = dao.getEntryCountForDeck("essential_idioms")
-        val idiomsUnique = dao.getUniqueWordCountForDeck("essential_idioms")
-        val idiomsMastered = dao.getMasteredCountForDeck("essential_idioms")
-        val idiomsFav = dao.getFavoriteCountForDeck("essential_idioms")
-
-        val ieltsCount = dao.getEntryCountForDeck("ielts_core")
-        val ieltsUnique = dao.getUniqueWordCountForDeck("ielts_core")
-        val ieltsMastered = dao.getMasteredCountForDeck("ielts_core")
-        val ieltsFav = dao.getFavoriteCountForDeck("ielts_core")
-
-        val itCount = dao.getEntryCountForDeck("it_industry")
-        val itUnique = dao.getUniqueWordCountForDeck("it_industry")
-        val itMastered = dao.getMasteredCountForDeck("it_industry")
-        val itFav = dao.getFavoriteCountForDeck("it_industry")
-
-        val cefrC1Count = dao.getEntryCountForDeck("cefr_c1")
-        val cefrC1Unique = dao.getUniqueWordCountForDeck("cefr_c1")
-        val cefrC1Mastered = dao.getMasteredCountForDeck("cefr_c1")
-        val cefrC1Fav = dao.getFavoriteCountForDeck("cefr_c1")
-
-        val pteCount = dao.getEntryCountForDeck("pte_academic")
-        val pteUnique = dao.getUniqueWordCountForDeck("pte_academic")
-        val pteMastered = dao.getMasteredCountForDeck("pte_academic")
-        val pteFav = dao.getFavoriteCountForDeck("pte_academic")
-
-        val businessCount = dao.getEntryCountForDeck("business_english")
-        val businessUnique = dao.getUniqueWordCountForDeck("business_english")
-        val businessMastered = dao.getMasteredCountForDeck("business_english")
-        val businessFav = dao.getFavoriteCountForDeck("business_english")
-
-        val careerCount = dao.getEntryCountForDeck("career_interview")
-        val careerUnique = dao.getUniqueWordCountForDeck("career_interview")
-        val careerMastered = dao.getMasteredCountForDeck("career_interview")
-        val careerFav = dao.getFavoriteCountForDeck("career_interview")
-
-        val medicalCount = dao.getEntryCountForDeck("medical_healthcare")
-        val medicalUnique = dao.getUniqueWordCountForDeck("medical_healthcare")
-        val medicalMastered = dao.getMasteredCountForDeck("medical_healthcare")
-        val medicalFav = dao.getFavoriteCountForDeck("medical_healthcare")
-
-        val savedFavTotal = oxfordFav + opalFav + phrasesFav + expressionsFav + idiomsFav +
-            ieltsFav + itFav + cefrC1Fav + pteFav + businessFav + careerFav + medicalFav
+        val savedFavTotal = progressStats.values.sumOf { it.favoriteCount }
 
         val decks = buildDeckEntitiesWithCounts(
-            oxfordCount, oxfordUnique, oxfordMastered, oxfordFav,
-            opalCount, opalUnique, opalMastered, opalFav,
-            phrasesCount, phrasesUnique, phrasesMastered, phrasesFav,
-            expressionsCount, expressionsUnique, expressionsMastered, expressionsFav,
-            idiomsCount, idiomsUnique, idiomsMastered, idiomsFav,
-            ieltsCount, ieltsUnique, ieltsMastered, ieltsFav,
-            itCount, itUnique, itMastered, itFav,
-            cefrC1Count, cefrC1Unique, cefrC1Mastered, cefrC1Fav,
-            pteCount, pteUnique, pteMastered, pteFav,
-            businessCount, businessUnique, businessMastered, businessFav,
-            careerCount, careerUnique, careerMastered, careerFav,
-            medicalCount, medicalUnique, medicalMastered, medicalFav,
+            count("oxford5000"), unique("oxford5000"), mastered("oxford5000"), fav("oxford5000"),
+            count("oxford_opal"), unique("oxford_opal"), mastered("oxford_opal"), fav("oxford_opal"),
+            count("oxford_phrases"), unique("oxford_phrases"), mastered("oxford_phrases"), fav("oxford_phrases"),
+            count("everyday_expressions"), unique("everyday_expressions"), mastered("everyday_expressions"), fav("everyday_expressions"),
+            count("essential_idioms"), unique("essential_idioms"), mastered("essential_idioms"), fav("essential_idioms"),
+            count("ielts_core"), unique("ielts_core"), mastered("ielts_core"), fav("ielts_core"),
+            count("it_industry"), unique("it_industry"), mastered("it_industry"), fav("it_industry"),
+            count("cefr_c1"), unique("cefr_c1"), mastered("cefr_c1"), fav("cefr_c1"),
+            count("pte_academic"), unique("pte_academic"), mastered("pte_academic"), fav("pte_academic"),
+            count("business_english"), unique("business_english"), mastered("business_english"), fav("business_english"),
+            count("career_interview"), unique("career_interview"), mastered("career_interview"), fav("career_interview"),
+            count("medical_healthcare"), unique("medical_healthcare"), mastered("medical_healthcare"), fav("medical_healthcare"),
             savedFavTotal
         )
         dao.upsertDecks(decks)

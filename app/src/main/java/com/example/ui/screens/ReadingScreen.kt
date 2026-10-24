@@ -153,6 +153,11 @@ private val readingJson = Json {
 
 private val READING_WHITESPACE_REGEX = Regex("\\s+")
 private val READING_TOKEN_CLEAN_REGEX = Regex("^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$")
+private val READING_LOWER_CLEAN_REGEX = Regex("^[^a-z0-9']+|[^a-z0-9']+$")
+private val READING_PAREN_REGEX = Regex("\\(([^)]+)\\)")
+private val READING_PUNCT_PAREN_REGEX = Regex("[,:()]")
+private val READING_SENTENCE_COUNT_CACHE = java.util.concurrent.ConcurrentHashMap<String, Int>()
+private val READING_QUESTION_COUNT_CACHE = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
 private data class ReadingTokenItem(
     val token: String,
@@ -172,7 +177,7 @@ private fun extractGrammarKeywords(lesson: GrammarLessonEntity?): Set<String> {
         val afterColon = title.substringAfter(":")
         afterColon.split(',', '/', ';').forEach { raw ->
             raw.trim().split(" and ", " or ").forEach { word ->
-                val clean = word.trim().replace(Regex("^[^a-z0-9']+|[^a-z0-9']+$"), "")
+                val clean = word.trim().replace(READING_LOWER_CLEAN_REGEX, "")
                 if (clean.isNotBlank() && clean.length > 1) {
                     keywords.add(clean)
                 }
@@ -181,12 +186,12 @@ private fun extractGrammarKeywords(lesson: GrammarLessonEntity?): Set<String> {
     }
 
     // 2. Text inside parentheses: e.g. "Zero conditional and time clauses (when, as soon as, unless)"
-    val parenMatch = Regex("\\(([^)]+)\\)").find(title)
+    val parenMatch = READING_PAREN_REGEX.find(title)
     if (parenMatch != null) {
         val inside = parenMatch.groupValues[1]
         inside.split(',', '/', ';').forEach { raw ->
             raw.trim().split(" and ", " or ").forEach { word ->
-                val clean = word.trim().replace(Regex("^[^a-z0-9']+|[^a-z0-9']+$"), "")
+                val clean = word.trim().replace(READING_LOWER_CLEAN_REGEX, "")
                 if (clean.isNotBlank() && clean.length > 1) {
                     keywords.add(clean)
                 }
@@ -195,7 +200,7 @@ private fun extractGrammarKeywords(lesson: GrammarLessonEntity?): Set<String> {
     }
 
     // 3. Known connector phrases in title: "with for and since", "so and such", "too and enough", "used to and would"
-    val parts = title.replace(Regex("[,:()]"), " ").split(Regex("\\s+"))
+    val parts = title.replace(READING_PUNCT_PAREN_REGEX, " ").split(READING_WHITESPACE_REGEX)
     for (w in parts) {
         if (w in listOf(
                 "whereas", "albeit", "notwithstanding", "although", "though",
@@ -382,6 +387,27 @@ fun ReadingListScreen(
                     }
                 }
             }
+        }
+    }
+
+    val sentenceCountsById = remember(texts) {
+        texts.associate { entity ->
+            val count = READING_SENTENCE_COUNT_CACHE.computeIfAbsent(entity.sentencesJson) {
+                try {
+                    readingJson.decodeFromString<List<ReadingSentenceItem>>(it).size
+                } catch (_: Exception) { 0 }
+            }
+            entity.id to count
+        }
+    }
+    val questionCountsById = remember(texts) {
+        texts.associate { entity ->
+            val count = READING_QUESTION_COUNT_CACHE.computeIfAbsent(entity.questionsJson) {
+                try {
+                    readingJson.decodeFromString<List<ReadingQuestionItem>>(it).size
+                } catch (_: Exception) { 0 }
+            }
+            entity.id to count
         }
     }
 
@@ -824,6 +850,8 @@ fun ReadingListScreen(
                         text = textEntity,
                         progress = prog,
                         readabilityReport = storyReadabilityById[textEntity.id],
+                        inputSentencesCount = sentenceCountsById[textEntity.id],
+                        inputQuestionsCount = questionCountsById[textEntity.id],
                         onClick = { onSelectText(textEntity) }
                     )
                 }
@@ -879,17 +907,23 @@ fun ReadingTextCard(
     progress: ReadingProgressEntity?,
     onClick: () -> Unit,
     readabilityReport: com.example.data.plan.StoryReadabilityReport? = null,
+    inputSentencesCount: Int? = null,
+    inputQuestionsCount: Int? = null,
     modifier: Modifier = Modifier
 ) {
-    val sentencesCount = remember(text.sentencesJson) {
-        try {
-            readingJson.decodeFromString<List<ReadingSentenceItem>>(text.sentencesJson).size
-        } catch (_: Exception) { 0 }
+    val sentencesCount = inputSentencesCount ?: remember(text.sentencesJson) {
+        READING_SENTENCE_COUNT_CACHE.computeIfAbsent(text.sentencesJson) {
+            try {
+                readingJson.decodeFromString<List<ReadingSentenceItem>>(it).size
+            } catch (_: Exception) { 0 }
+        }
     }
-    val questionsCount = remember(text.questionsJson) {
-        try {
-            readingJson.decodeFromString<List<ReadingQuestionItem>>(text.questionsJson).size
-        } catch (_: Exception) { 0 }
+    val questionsCount = inputQuestionsCount ?: remember(text.questionsJson) {
+        READING_QUESTION_COUNT_CACHE.computeIfAbsent(text.questionsJson) {
+            try {
+                readingJson.decodeFromString<List<ReadingQuestionItem>>(it).size
+            } catch (_: Exception) { 0 }
+        }
     }
 
     val sourceBadgeText = when (text.source.lowercase()) {
@@ -1204,7 +1238,7 @@ fun ReadingDetailScreen(
                 val sentence = sentences[idx].en
                 onSpeakSentence(sentence)
                 // Estimate sentence reading duration based on word count & rate
-                val wordCount = sentence.split("\\s+".toRegex()).size
+                val wordCount = sentence.split(READING_WHITESPACE_REGEX).size
                 val estDurationMs = ((wordCount * 450L) / ttsSpeechRate.coerceAtLeast(0.5f)).toLong() + 900L
                 delay(estDurationMs)
             }
@@ -4209,7 +4243,7 @@ fun ReadingRecommendedCard(
                 val totalWords = remember(text.sentencesJson) {
                     try {
                         val list = readingJson.decodeFromString<List<ReadingSentenceItem>>(text.sentencesJson)
-                        list.sumOf { it.en.split("\\s+".toRegex()).size }.coerceAtLeast(15)
+                        list.sumOf { it.en.split(READING_WHITESPACE_REGEX).size }.coerceAtLeast(15)
                     } catch (e: Exception) {
                         (text.sentencesJson.length / 6).coerceAtLeast(15)
                     }
