@@ -10,14 +10,14 @@
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose%20%26%20Material%203-4285F4.svg?logo=jetpackcompose&logoColor=white)](#)
 [![Room Database](https://img.shields.io/badge/Database-Room%20SQLite%20(100%25%20Offline)-orange.svg)](#)
 [![Gemini AI](https://img.shields.io/badge/AI-Google%20Gemini%20API-blue.svg?logo=google&logoColor=white)](#)
-[![Latest Release](https://img.shields.io/github/v/release/Mhdibrahim01/Qaf?color=gold&label=Release%20v2.0.0)](https://github.com/Mhdibrahim01/Qaf/releases/latest)
-[![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](#)
+[![Latest Release](https://img.shields.io/github/v/release/Mhdibrahim01/Qaf?color=gold&label=Release%20v2.1.0)](https://github.com/Mhdibrahim01/Qaf/releases/latest)
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary%20%7C%20All%20Rights%20Reserved-red.svg)](LICENSE)
 
 <p align="center">
-  <b>قاف (Qaf)</b> هو تطبيق أندرويد متكامل وشامل لتعلّم وإتقان اللغة الإنجليزية للمتحدثين بالعربية، يجمع بين قوة <b>محرك التعلّم التكيفي (Adaptive V2)</b>، وخوارزميات <b>التكرار المتباعد (SuperMemo SM-2)</b>، ومكتبة ضخمة تضم <b>21,624 بطاقة استذكار</b> موزعة على 13 حقيبة تخصصية، وقاموس أوفلاين فوري يضم <b>10,317 كلمة مشروحة تفصيلياً</b>، مع نصوص قراءة متدرجة وقواعد تفاعلية مدعومة بالذكاء الاصطناعي.
+  <b>قاف (Qaf)</b> هو تطبيق أندرويد متكامل وشامل لتعلّم وإتقان اللغة الإنجليزية للمتحدثين بالعربية، يجمع بين قوة <b>محرك التعلّم التكيفي (Adaptive V2)</b>، وخوارزميات <b>التكرار المتباعد (SuperMemo SM-2)</b>، ومكتبة ضخمة تضم <b>27,435 بطاقة استذكار</b> موزعة على 13 حقيبة تخصصية، وقاموس أوفلاين فوري يضم <b>13,393 كلمة مشروحة تفصيلياً</b>، مع نصوص قراءة متدرجة وقواعد تفاعلية مدعومة بالذكاء الاصطناعي.
 </p>
 
-[📥 تحميل ملف الإصدار المباشر (Download APK v2.0.0)](https://github.com/Mhdibrahim01/Qaf/releases/latest) • [✨ مميزات الإصدار 2.0](#-أبرز-مميزات-الإصدار-20--adaptive-v2-features) • [📚 الحقائب المتوفرة](#-الحقائب-والمجموعات-المتوفرة-13-decks--21624-cards) • [🏗️ البنية المعمارية](#️-البنية-البرمجية-والمعمارية--architecture--tech-stack) • [🛠️ طريقة البناء](#-كيفية-بناء-التطبيق-وتشغيله-build--run) • [📋 سجل الإصدارات](CHANGELOG.md)
+[📥 تحميل ملف الإصدار المباشر (Download APK v2.1.0)](https://github.com/Mhdibrahim01/Qaf/releases/latest) • [✨ مميزات الإصدار 2.0](#-أبرز-مميزات-الإصدار-20--adaptive-v2-features) • [📚 الحقائب المتوفرة](#-الحقائب-والمجموعات-المتوفرة-13-decks--21624-cards) • [🏗️ البنية المعمارية](#️-البنية-البرمجية-والمعمارية--architecture--tech-stack) • [🛠️ طريقة البناء](#-كيفية-بناء-التطبيق-وتشغيله-build--run) • [📋 سجل الإصدارات](CHANGELOG.md)
 
 </div>
 
@@ -199,6 +199,15 @@ GEMINI_API_KEY="your_free_gemini_api_key_here"
 - [🗺️ خارطة الطريق والخصائص المستقبلية (ROADMAP.md)](ROADMAP.md)
 - [📑 خطة المحرك التكيفي V2 (ADAPTIVE_V2_PLAN.md)](docs/ADAPTIVE_V2_PLAN.md)
 - [🔍 تقرير تدقيق الجودة الشامل (ADAPTIVE_V2_AUDIT.md)](docs/ADAPTIVE_V2_AUDIT.md)
+
+---
+
+## ⚖️ حقوق الملكية الفكرية والترخيص | License & Copyright
+
+هذا المشروع محمي بموجب قوانين حقوق المؤلف والملكية الفكرية الدولية تحت رخصة **الملكية الخاصة (Proprietary / All Rights Reserved)**:
+- **المعاينة البرمجية**: الكود معروض علناً للاطلاع والمراجعة البرمجية وتقييم المهارات فقط (Source-Available for inspection).
+- **الحظر الصارم**: يُمنع تماماً نسخ الكود، استخدامه تجارياً، استخراج قواعد البيانات والمفردات والقصص، أو إعادة نشر وتوزيع التطبيق على أي متجر أو منصة إلكترونية.
+- للاطلاع على الشروط القانونية الكاملة، يُرجى مراجعة ملف **[LICENSE](LICENSE)**.
 
 ---
 

@@ -1,0 +1,58 @@
+PROPRIETARY AND CONFIDENTIAL SOFTWARE LICENSE
+=====================================================
+
+Copyright (c) 2026 Mahmoud Ibrahim (Mhdibrahim01). All Rights Reserved.
+Project: قاف (Qaf) - The Intelligent English Learning Platform
+
+IMPORTANT: PLEASE READ THIS LICENSE AGREEMENT CAREFULLY.
+
+This repository and its contents (including but not limited to source code, 
+compiled binaries, databases, linguistic assets, UI designs, icons, audio 
+implementations, algorithms, and documentation) are the exclusive intellectual 
+property of the Author ("Mahmoud Ibrahim" / GitHub: @Mhdibrahim01).
+
+1. SOURCE-AVAILABLE / VIEWING PERMISSION
+---------------------------------------
+Permission is granted to any person obtaining a copy of this software and 
+associated documentation files solely to VIEW and EVALUATE the source code 
+for personal, educational, or code-review purposes directly via this repository.
+
+2. STRICT PROHIBITIONS
+----------------------
+Under NO circumstances is any person or entity permitted to:
+  a. Copy, fork, reproduce, modify, merge, publish, distribute, sublicense, 
+     sell, monetize, or create derivative works from this codebase or any part thereof.
+  b. Extract, scrape, export, or repurpose any linguistic datasets, dictionaries, 
+     grammar lessons, reading stories, or AI-generated word details located within 
+     the project (including files in `app/src/main/assets/data_import/`).
+  c. Compile, rebrand, resign, or distribute APK, AAB, or executable packages of 
+     this application on any application store (such as Google Play, APKPure, 
+     F-Droid, Amazon Appstore, or third-party websites).
+  d. Claim authorship, ownership, or copyright of this code or any derivative work.
+
+3. INTELLECTUAL PROPERTY & ENFORCEMENT
+--------------------------------------
+All title, ownership rights, and intellectual property rights in and to the 
+software and datasets remain with the Author. Any unauthorized copying, 
+distribution, or commercial exploitation constitutes willful copyright infringement 
+and will be subject to immediate DMCA takedown notices, account termination, and 
+legal liability to the fullest extent permitted by international copyright laws 
+and treaties (including the Berne Convention and DMCA).
+
+4. NO WARRANTY
+--------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+
+=====================================================
+اتفاقية الترخيص وحماية الملكية الفكرية (خاصة ومحمية)
+=====================================================
+جميع الحقوق محفوظة للمطور ومؤلف التطبيق (محمود إبراهيم - Mahmoud Ibrahim / Mhdibrahim01) © 2026.
+هذا المشروع معروض ومتاح للمعاينة البرمجية والاطلاع الشخصي فقط.
+يُحظر تماماً وبموجب القوانين الدولية لحماية حقوق المؤلف:
+1. نسخ الكود أو استخدامه كلياً أو جزئياً في أي تطبيق أو مشروع آخر.
+2. الاستخدام التجاري أو تحقيق أي مكاسب مالية من المشروع بأي وسيلة.
+3. استخراج أو سرقة قواعد البيانات والمفردات والترجمات والقصص الملحقة بالمشروع.
+4. إعادة تجميع أو نشر التطبيق على متجر Google Play أو أي متجر إلكتروني آخر.
+أي انتهاك لهذه الشروط سيعرض صاحبه لإشعار انتهاك حقوق الملكية الفكرية (DMCA Takedown) فورياً والمساءلة القانونية.
