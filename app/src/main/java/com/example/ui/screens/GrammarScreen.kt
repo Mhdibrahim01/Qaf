@@ -110,6 +110,15 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.components.BidiText
+import com.example.ui.components.BiDiParsedText
+import com.example.ui.components.BiDiGoldPillBg
+import com.example.ui.components.BiDiGoldPillBorder
+import com.example.ui.components.BiDiRedPillBg
+import com.example.ui.components.BiDiRedPillBorder
+import com.example.ui.components.BiDiRedPillText
+import com.example.ui.components.BiDiExampleBoxBg
+import com.example.ui.theme.InterFontFamily
+import androidx.compose.material.icons.filled.Warning
 import com.example.ui.components.cleanGrammarArabicTitle
 import com.example.data.local.AiHistoryEntity
 import com.example.data.local.GrammarExampleItem
@@ -1180,8 +1189,9 @@ fun GrammarLessonDetailScreen(
 
                                     examples.forEachIndexed { index, ex ->
                                         Surface(
-                                            shape = RoundedCornerShape(12.dp),
+                                            shape = RoundedCornerShape(14.dp),
                                             color = SurfaceElevatedDark,
+                                            border = BorderStroke(1.dp, BorderDark),
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
                                             Row(
@@ -1194,7 +1204,7 @@ fun GrammarLessonDetailScreen(
                                                 Column(
                                                     modifier = Modifier
                                                         .weight(1f)
-                                                        .padding(end = 8.dp),
+                                                        .padding(end = 12.dp),
                                                     verticalArrangement = Arrangement.spacedBy(4.dp)
                                                 ) {
                                                     Text(
@@ -1206,24 +1216,37 @@ fun GrammarLessonDetailScreen(
                                                         color = TextPrimary,
                                                         fontWeight = FontWeight.SemiBold
                                                     )
-                                                    BidiText(
-                                                        text = ex.ar,
-                                                        style = ArabicTypography.bodyMedium,
-                                                        color = TextSecondary
-                                                    )
+                                                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                                        Text(
+                                                            text = ex.ar,
+                                                            style = ArabicTypography.bodyMedium.copy(
+                                                                textDirection = TextDirection.Rtl,
+                                                                textAlign = TextAlign.Right
+                                                            ),
+                                                            color = TextSecondary,
+                                                            modifier = Modifier.fillMaxWidth()
+                                                        )
+                                                    }
                                                 }
-                                                IconButton(
-                                                    onClick = { onSpeakTts(ex.en) },
-                                                    modifier = Modifier
-                                                        .size(32.dp)
-                                                        .testTag("tts_example_button_$index")
+                                                Surface(
+                                                    shape = CircleShape,
+                                                    color = BiDiGoldPillBg,
+                                                    border = BorderStroke(1.dp, BiDiGoldPillBorder),
+                                                    modifier = Modifier.size(36.dp)
                                                 ) {
-                                                    Icon(
-                                                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                                        contentDescription = "Speak sentence",
-                                                        tint = GoldAccent,
-                                                        modifier = Modifier.size(18.dp)
-                                                    )
+                                                    IconButton(
+                                                        onClick = { onSpeakTts(ex.en) },
+                                                        modifier = Modifier
+                                                            .fillMaxSize()
+                                                            .testTag("tts_example_button_$index")
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                                            contentDescription = "Speak sentence",
+                                                            tint = GoldAccent,
+                                                            modifier = Modifier.size(18.dp)
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
@@ -1270,23 +1293,27 @@ fun GrammarLessonDetailScreen(
                                         Surface(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .clip(RoundedCornerShape(10.dp))
+                                                .clip(RoundedCornerShape(14.dp))
                                                 .clickable { onOpenReadingText(readingText) }
                                                 .testTag("read_in_context_item_${readingText.id}"),
-                                            shape = RoundedCornerShape(10.dp),
+                                            shape = RoundedCornerShape(14.dp),
                                             color = SurfaceElevatedDark,
                                             border = BorderStroke(1.dp, BorderDark)
                                         ) {
                                             Row(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .padding(12.dp),
+                                                    .padding(14.dp),
                                                 horizontalArrangement = Arrangement.SpaceBetween,
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                Column(modifier = Modifier.weight(1f)) {
+                                                Column(
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .padding(end = 12.dp)
+                                                ) {
                                                     Row(
-                                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                                                         verticalAlignment = Alignment.CenterVertically
                                                     ) {
                                                         Surface(
@@ -1309,12 +1336,18 @@ fun GrammarLessonDetailScreen(
                                                         )
                                                     }
                                                     if (readingText.titleAr.isNotBlank()) {
-                                                        Spacer(Modifier.height(2.dp))
-                                                        BidiText(
-                                                            text = readingText.titleAr,
-                                                            style = ArabicTypography.bodySmall,
-                                                            color = TextSecondary
-                                                        )
+                                                        Spacer(Modifier.height(4.dp))
+                                                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                                            Text(
+                                                                text = readingText.titleAr,
+                                                                style = ArabicTypography.bodySmall.copy(
+                                                                    textDirection = TextDirection.Rtl,
+                                                                    textAlign = TextAlign.Right
+                                                                ),
+                                                                color = TextSecondary,
+                                                                modifier = Modifier.fillMaxWidth()
+                                                            )
+                                                        }
                                                     }
                                                 }
                                                 Icon(
@@ -1925,212 +1958,251 @@ fun StructuredGrammarExplanation(
         border = BorderStroke(1.dp, BorderDark)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Clean English Header + Level Badge
+            // Clean English Header (Duplicate Level Badge removed)
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.MenuBook,
-                        contentDescription = null,
-                        tint = GoldAccent,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        text = "Rule & Formula",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = GoldAccent,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = GoldAccentDim,
-                    border = BorderStroke(1.dp, GoldAccentBorder)
-                ) {
-                    Text(
-                        text = "${lesson.level} • ${lesson.topic}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = GoldAccent,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                    contentDescription = null,
+                    tint = GoldAccent,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "Rule & Formula",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = GoldAccent,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
             lines.forEach { rawLine ->
                 val numberedMatch = numberedRegex.find(rawLine)
 
                 when {
-                    // 1. Formula Callout Box
+                    // 1. Formula Callout Box (Only render if formulaBody is not blank)
                     rawLine.startsWith("التركيب") || rawLine.startsWith("القاعدة:") || rawLine.startsWith("الصيغة:") -> {
                         val hasColon = rawLine.contains(":")
                         val headerLabel = if (hasColon) "${rawLine.substringBefore(":").trim()}:" else rawLine.trim()
                         val formulaBody = if (hasColon) rawLine.substringAfter(":").trim() else ""
 
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = GoldAccentDim,
-                            border = BorderStroke(1.dp, GoldAccent),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                        if (formulaBody.isNotBlank()) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0x14F5C542), // rgba(245, 197, 66, 0.08)
+                                border = BorderStroke(1.dp, BiDiGoldPillBorder),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    BidiText(
-                                        text = headerLabel,
-                                        style = ArabicTypography.bodyLarge,
-                                        color = GoldAccent,
-                                        fontWeight = FontWeight.Bold,
-                                        fillMaxWidth = false
-                                    )
-                                    Icon(
-                                        imageVector = Icons.Default.AutoAwesome,
-                                        contentDescription = null,
-                                        tint = GoldAccent,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                                if (formulaBody.isNotEmpty()) {
-                                    BidiText(
-                                        text = formulaBody,
-                                        style = ArabicTypography.bodyLarge,
-                                        color = GoldAccent,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
+                                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.Start)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.AutoAwesome,
+                                                contentDescription = null,
+                                                tint = GoldAccent,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Text(
+                                                text = headerLabel,
+                                                style = ArabicTypography.bodyLarge,
+                                                color = GoldAccent,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                    // Explicit LTR inner box to protect operators like + and |
+                                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = Color(0x4D000000),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text(
+                                                text = formulaBody,
+                                                style = MaterialTheme.typography.bodyMedium.copy(
+                                                    fontFamily = InterFontFamily,
+                                                    textDirection = TextDirection.Ltr,
+                                                    textAlign = TextAlign.Left
+                                                ),
+                                                color = TextPrimary,
+                                                fontWeight = FontWeight.SemiBold,
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
 
-                    // 2. Sub-section Headers (e.g. ملاحظات مهمة: / أمثلة: / أخطاء شائعة:)
-                    rawLine == "أمثلة:" || rawLine == "أخطاء شائعة:" || rawLine.startsWith("ملاحظات") || rawLine.startsWith("تنبيه") -> {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        BidiText(
-                            text = rawLine,
-                            style = ArabicTypography.titleMedium,
-                            color = GoldAccent,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                    // 2. Sub-section Headers: Notes or Common Mistakes
+                    rawLine == "أمثلة:" || rawLine.startsWith("ملاحظات") || rawLine.startsWith("تنبيه") -> {
+                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp, bottom = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.Start)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Lightbulb,
+                                    contentDescription = null,
+                                    tint = GoldAccent,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = rawLine,
+                                    style = ArabicTypography.titleMedium,
+                                    color = GoldAccent,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    rawLine == "أخطاء شائعة:" || rawLine.startsWith("أخطاء شائعة") || rawLine.startsWith("خطأ شائع:") || rawLine.startsWith("خطأ شائع لدى") -> {
+                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp, bottom = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.Start)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = BiDiRedPillText,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = rawLine,
+                                    style = ArabicTypography.titleMedium,
+                                    color = BiDiRedPillText,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
                     }
 
                     // 3. Standalone Example Lines (`مثال: ...`)
                     rawLine.startsWith("مثال:") || rawLine.startsWith("مثال :") -> {
-                        val exampleBody = rawLine.substringAfter(":").trim()
                         Surface(
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(14.dp),
                             color = SurfaceElevatedDark,
+                            border = BorderStroke(1.dp, BorderDark),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 9.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Text(
-                                    text = "مثال:",
-                                    style = ArabicTypography.labelMedium.copy(
-                                        textDirection = TextDirection.Rtl,
-                                        textAlign = TextAlign.Right
-                                    ),
-                                    color = GoldAccent,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                if (exampleBody.isNotEmpty()) {
-                                    BidiText(
-                                        text = exampleBody,
-                                        style = ArabicTypography.bodyMedium,
-                                        color = TextPrimary,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // 4. Inline Bullet Examples (- I can swim. (...))
-                    rawLine.startsWith("-") || rawLine.startsWith("•") -> {
-                        val cleanBullet = rawLine.removePrefix("-").removePrefix("•").trim()
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = SurfaceElevatedDark,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            BidiText(
-                                text = cleanBullet,
+                            BiDiParsedText(
+                                text = rawLine,
                                 style = ArabicTypography.bodyMedium,
                                 color = TextPrimary,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 9.dp)
+                                    .padding(horizontal = 14.dp, vertical = 12.dp)
                             )
                         }
                     }
 
-                    // 5. Numbered Rule / Common Mistake Cards (1), 2), 3), 4))
+                    // 4. Inline Bullet Items (- item / • item)
+                    rawLine.startsWith("-") || rawLine.startsWith("•") -> {
+                        val cleanBullet = rawLine.removePrefix("-").removePrefix("•").trim()
+                        val isCommonMistake = cleanBullet.contains("خطأ") || cleanBullet.contains("✗") ||
+                            cleanBullet.contains("الصواب") || cleanBullet.contains("والصحيح")
+
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (isCommonMistake) Color(0x0AF87171) else SurfaceElevatedDark,
+                            border = BorderStroke(
+                                1.dp,
+                                if (isCommonMistake) BiDiRedPillBorder else BorderDark
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            BiDiParsedText(
+                                text = cleanBullet,
+                                style = ArabicTypography.bodyMedium,
+                                color = TextPrimary,
+                                isMistakeTheme = isCommonMistake,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp)
+                            )
+                        }
+                    }
+
+                    // 5. Numbered Rule / Common Mistake Cards (1), 2), 3))
                     numberedMatch != null -> {
                         val numLabel = numberedMatch.groupValues[1]
                         val bodyText = numberedMatch.groupValues[2]
-                        val isCommonMistake = bodyText.contains("خطأ") || bodyText.contains("✗")
+                        val isCommonMistake = bodyText.contains("خطأ") || bodyText.contains("✗") ||
+                            bodyText.contains("الصواب") || bodyText.contains("والصحيح")
 
                         Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = SurfaceElevatedDark,
-                            border = if (isCommonMistake) BorderStroke(1.dp, CoralAccent.copy(alpha = 0.5f)) else null,
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (isCommonMistake) Color(0x0AF87171) else SurfaceElevatedDark,
+                            border = BorderStroke(
+                                1.dp,
+                                if (isCommonMistake) BiDiRedPillBorder else BorderDark
+                            ),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.Top,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                BidiText(
-                                    text = bodyText,
-                                    style = ArabicTypography.bodyMedium,
-                                    color = TextPrimary,
-                                    lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.3f,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Surface(
-                                    shape = CircleShape,
-                                    color = if (isCommonMistake) CoralAccent.copy(alpha = 0.18f) else GoldAccentDim,
-                                    border = BorderStroke(
-                                        1.dp,
-                                        if (isCommonMistake) CoralAccent else GoldAccentBorder
-                                    ),
-                                    modifier = Modifier.size(20.dp)
+                            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.Top,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text(
-                                            text = numLabel,
-                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isCommonMistake) CoralAccent else GoldAccent
-                                        )
+                                    // High-Contrast Circular Number Badge (26dp)
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = if (isCommonMistake) BiDiRedPillBg else BiDiGoldPillBg,
+                                        border = BorderStroke(
+                                            1.dp,
+                                            if (isCommonMistake) BiDiRedPillBorder else BiDiGoldPillBorder
+                                        ),
+                                        modifier = Modifier.size(26.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(
+                                                text = numLabel,
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    fontSize = 13.sp,
+                                                    fontFamily = InterFontFamily
+                                                ),
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isCommonMistake) BiDiRedPillText else GoldAccent
+                                            )
+                                        }
                                     }
+
+                                    // Parsed Body with Auto-Extracted Example Box & Inline English Pills
+                                    BiDiParsedText(
+                                        text = bodyText,
+                                        style = ArabicTypography.bodyMedium,
+                                        color = TextPrimary,
+                                        isMistakeTheme = isCommonMistake,
+                                        modifier = Modifier.weight(1f)
+                                    )
                                 }
                             }
                         }
@@ -2138,11 +2210,10 @@ fun StructuredGrammarExplanation(
 
                     // 6. Standard Concept Explanation Line
                     else -> {
-                        BidiText(
+                        BiDiParsedText(
                             text = rawLine,
                             style = ArabicTypography.bodyLarge,
                             color = TextPrimary,
-                            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.35f,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
