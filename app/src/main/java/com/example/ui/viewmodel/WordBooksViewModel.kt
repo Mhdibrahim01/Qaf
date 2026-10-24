@@ -1067,8 +1067,21 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                         card.primaryLevel.equals(filterState.levelFilter, ignoreCase = true) ||
                         card.posVariants.any { it.level.equals(filterState.levelFilter, ignoreCase = true) }
 
-                    val matchesPos = filterState.posFilter.isBlank() ||
-                        card.posVariants.any { it.pos.equals(filterState.posFilter, ignoreCase = true) }
+                    val matchesPos = if (filterState.posFilter.isBlank()) {
+                        true
+                    } else {
+                        val posTarget = filterState.posFilter.trim().lowercase()
+                        card.posVariants.any { variant ->
+                            val p = variant.pos.trim().lowercase()
+                            when (posTarget) {
+                                "noun" -> p in setOf("noun", "n.", "n")
+                                "verb" -> p in setOf("verb", "v.", "v", "phrasal verb")
+                                "adjective" -> p in setOf("adjective", "adj.", "adj")
+                                "adverb" -> p in setOf("adverb", "adv.", "adv")
+                                else -> p == posTarget
+                            }
+                        }
+                    }
 
                     val matchesStatus = when {
                         filterState.onlyFavorites -> card.isFavorite
@@ -1080,7 +1093,10 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                     val q = filterState.searchQuery.trim()
                     val matchesQuery = q.isBlank() ||
                         card.text.contains(q, ignoreCase = true) ||
-                        card.posVariants.any { it.arabicMeaning.contains(q, ignoreCase = true) }
+                        card.posVariants.any {
+                            it.arabicMeaning.contains(q, ignoreCase = true) ||
+                                it.definitionEn.contains(q, ignoreCase = true)
+                        }
 
                     matchesLevel && matchesPos && matchesStatus && matchesQuery
                 }

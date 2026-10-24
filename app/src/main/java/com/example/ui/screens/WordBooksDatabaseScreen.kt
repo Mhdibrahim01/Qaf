@@ -719,12 +719,18 @@ private fun DecksLibraryGrid(
 
             // Stats Grid (3 columns: Total words, Mastered, Favorites)
             item(key = "stats_grid", contentType = "stats_grid") {
+                val libraryTotalWords = remember(decks, totalEntriesCount) {
+                    val sum = decks
+                        .filter { it.id != DataImportRepository.SAVED_WORDS_DECK_ID }
+                        .sumOf { if (it.uniqueWordCount > 0) it.uniqueWordCount else it.rowCount }
+                    if (sum > 0) sum else totalEntriesCount
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(9.dp)
                 ) {
                     BookStatTile(
-                        value = formatNumber(totalEntriesCount),
+                        value = formatNumber(libraryTotalWords),
                         label = "Total words",
                         modifier = Modifier.weight(1f),
                         onClick = onOpenAllWords
@@ -922,13 +928,14 @@ fun NumberedBookCard(
                     )
                 }
 
+                val displayWordCount = if (deck.uniqueWordCount > 0) deck.uniqueWordCount else deck.rowCount
                 Surface(
                     shape = RoundedCornerShape(999.dp),
                     color = GoldAccentDim,
                     border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.35f))
                 ) {
                     Text(
-                        text = "${formatNumber(deck.rowCount)} words",
+                        text = "${formatNumber(displayWordCount)} words",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.Bold,
                             color = GoldAccent,
@@ -1204,7 +1211,16 @@ private fun PagedDeckWordListScreen(
                                 overflow = TextOverflow.Ellipsis
                             )
 
-                            val totalCount = if (deck != null) deck.rowCount else totalEntriesCount
+                            val totalCount = remember(deck, allDecks, totalEntriesCount) {
+                                if (deck != null) {
+                                    if (deck.uniqueWordCount > 0) deck.uniqueWordCount else deck.rowCount
+                                } else {
+                                    val sum = allDecks
+                                        .filter { it.id != DataImportRepository.SAVED_WORDS_DECK_ID }
+                                        .sumOf { if (it.uniqueWordCount > 0) it.uniqueWordCount else it.rowCount }
+                                    if (sum > 0) sum else totalEntriesCount
+                                }
+                            }
                             val studiedWords = remember(progressMap, currentDeckId, deck?.masteredCount, masteredCount) {
                                 progressMap.values.count { 
                                     (currentDeckId.isEmpty() || it.deck == currentDeckId) && (it.isMastered || it.repetitions > 0)
@@ -1681,7 +1697,16 @@ private fun PagedDeckWordListScreen(
                                         )
                                     )
                                     val lastIndex = (currentStudyState?.lastCardIndex ?: 0) + 1
-                                    val totalCount = deck?.rowCount ?: totalEntriesCount
+                                    val totalCount = remember(deck, allDecks, totalEntriesCount) {
+                                        if (deck != null) {
+                                            if (deck.uniqueWordCount > 0) deck.uniqueWordCount else deck.rowCount
+                                        } else {
+                                            val sum = allDecks
+                                                .filter { it.id != DataImportRepository.SAVED_WORDS_DECK_ID }
+                                                .sumOf { if (it.uniqueWordCount > 0) it.uniqueWordCount else it.rowCount }
+                                            if (sum > 0) sum else totalEntriesCount
+                                        }
+                                    }
                                     val percent = if (totalCount > 0) (lastIndex * 100 / totalCount).coerceIn(0, 100) else 0
                                     Text(
                                         text = "\"$checkpointWord\"",
@@ -1713,7 +1738,9 @@ private fun PagedDeckWordListScreen(
                                             val targetIdx = if (candidateIdx != null && pagedEntries.peek(candidateIdx)?.text.equals(checkpointWord, ignoreCase = true)) {
                                                 candidateIdx
                                             } else {
-                                                candidateIdx ?: 0
+                                                (0 until totalCount).firstOrNull { idx ->
+                                                    pagedEntries.peek(idx)?.text.equals(checkpointWord, ignoreCase = true)
+                                                } ?: candidateIdx ?: 0
                                             }
                                             pagedEntries[targetIdx]
                                             listState.scrollToItem((targetIdx + headerItemsCount).coerceAtLeast(0))
@@ -2199,9 +2226,16 @@ fun WordBookEntryRow(
     }
 
     val posLower = remember(entry.pos) {
-        posFullName(entry.pos).lowercase()
+        entry.pos
+            .split(",")
+            .map { posFullName(it.trim()).lowercase() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .joinToString(" / ")
     }
-    val displayLevel = remember(entry.level) { entry.level.uppercase() }
+    val displayLevel = remember(entry.level, entry.effectiveLevel) {
+        entry.level.ifBlank { entry.effectiveLevel.orEmpty() }.uppercase()
+    }
     val ipaAndPos = remember(entry.ipa, posLower) {
         when {
             entry.ipa.isNotBlank() && posLower.isNotBlank() -> "${entry.ipa}  •  $posLower"
@@ -2214,6 +2248,7 @@ fun WordBookEntryRow(
             .split(ARABIC_MEANING_SPLIT_REGEX)
             .map { it.trim() }
             .filter { it.isNotEmpty() }
+            .distinct()
             .take(3)
             .joinToString("، ")
     }
@@ -2294,7 +2329,7 @@ fun WordBookEntryRow(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    if (entry.level.isNotBlank()) {
+                    if (displayLevel.isNotBlank()) {
                         Text(
                             text = displayLevel,
                             style = MaterialTheme.typography.labelSmall.copy(

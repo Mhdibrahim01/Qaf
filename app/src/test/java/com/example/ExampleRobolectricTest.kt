@@ -34,6 +34,7 @@ import com.example.data.plan.TestTimeProvider
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
@@ -93,6 +94,30 @@ class ExampleRobolectricTest {
         assertEquals(10317, wordDetailsCount)
         assertEquals(0, emptyArabicCount)
         assertEquals(0, fakeCount)
+
+        // Verify unique word counts match across WordBooks (decks.uniqueWordCount) and Flashcards (loadFlashcardDeckCards)
+        assertEquals(4958, dao.getUniqueWordCountForDeck("oxford5000"))
+        assertEquals(1923, dao.getUniqueWordCountForDeck("oxford_opal"))
+        assertEquals(462, dao.getUniqueWordCountForDeck("essential_idioms"))
+        val allDecksInDb = dao.getDecksList()
+        val oxfordDeckEntity = allDecksInDb.first { it.id == "oxford5000" }
+        val opalDeckEntity = allDecksInDb.first { it.id == "oxford_opal" }
+        val idiomsDeckEntity = allDecksInDb.first { it.id == "essential_idioms" }
+        assertEquals(4958, oxfordDeckEntity.uniqueWordCount)
+        assertEquals(1923, opalDeckEntity.uniqueWordCount)
+        assertEquals(462, idiomsDeckEntity.uniqueWordCount)
+        assertEquals(20455, allDecksInDb.filter { it.id != DataImportRepository.SAVED_WORDS_DECK_ID }.sumOf { it.uniqueWordCount })
+
+        // Verify CEFR Level Progress count for Oxford 5000 B2 excludes blank levels and matches B2 unique words in Flashcards
+        val oxfordB2Counts = dao.observeLevelProgressCounts("oxford5000", "B2").first()
+        val (allOxfordCards, _) = repo.loadFlashcardDeckCards("oxford5000")
+        assertEquals(4958, allOxfordCards.size)
+        val b2OxfordCards = allOxfordCards.filter { card ->
+            card.primaryLevel.equals("B2", ignoreCase = true) ||
+                card.posVariants.any { it.level.equals("B2", ignoreCase = true) }
+        }
+        assertEquals(1428, oxfordB2Counts.totalCount)
+        assertEquals(b2OxfordCards.size, oxfordB2Counts.totalCount)
 
         // Verify progress (favorite & mastered) is preserved across content upserts
         val firstEntry = dao.getEntryById("1")

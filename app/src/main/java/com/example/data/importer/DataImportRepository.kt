@@ -866,10 +866,11 @@ class DataImportRepository(
         val primary = variants.first()
         val cardKey = buildCardKey(primary.deck, primary.text)
         val posSenseList = variants.map { entry ->
+            val resolvedLevel = entry.effectiveLevel?.trim()?.takeIf { it.isNotEmpty() } ?: entry.level.trim()
             PosSenseVariant(
                 entryId = entry.id,
                 pos = entry.pos.trim(),
-                level = entry.level,
+                level = resolvedLevel,
                 type = entry.type,
                 arabicMeaning = entry.arabic.trim(),
                 arabicSource = entry.arabicSource.trim(),
@@ -895,7 +896,7 @@ class DataImportRepository(
             cardKey = cardKey,
             deck = primary.deck,
             text = primary.text,
-            primaryLevel = variants.firstOrNull { it.level.isNotBlank() }?.level ?: "",
+            primaryLevel = posSenseList.firstOrNull { it.level.isNotBlank() }?.level ?: "",
             primaryType = primary.type,
             ipa = resolvedIpa,
             syllables = resolvedSyllables,
