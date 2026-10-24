@@ -673,12 +673,13 @@ private fun TodayTabContent(
                             else -> "Open"
                         }
 
+                        val btnTextColor = if (task.isCompleted) GoldAccent else androidx.compose.ui.graphics.Color(0xFF0B0D12)
                         if (task.type == "quiz") {
                             Button(
                                 onClick = onStartMiniQuiz,
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = if (task.isCompleted) SurfaceElevatedDark else GoldAccent,
-                                    contentColor = if (task.isCompleted) GoldAccent else BackgroundDark
+                                    contentColor = btnTextColor
                                 ),
                                 shape = RoundedCornerShape(10.dp),
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
@@ -686,14 +687,14 @@ private fun TodayTabContent(
                                     .heightIn(min = 36.dp)
                                     .testTag("btn_start_daily_quiz")
                             ) {
-                                Text(actionLabel, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text(actionLabel, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = btnTextColor)
                             }
                         } else if (task.linkedRoute.isNotBlank()) {
                             Button(
                                 onClick = { onOpenTask(task.linkedRoute, task.linkedId) },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = if (task.isCompleted) SurfaceElevatedDark else GoldAccent,
-                                    contentColor = if (task.isCompleted) GoldAccent else BackgroundDark
+                                    contentColor = btnTextColor
                                 ),
                                 shape = RoundedCornerShape(10.dp),
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
@@ -701,11 +702,12 @@ private fun TodayTabContent(
                                     .heightIn(min = 36.dp)
                                     .testTag("btn_open_task_${task.type}")
                             ) {
-                                Text(actionLabel, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text(actionLabel, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = btnTextColor)
                                 Spacer(Modifier.width(4.dp))
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                     contentDescription = null,
+                                    tint = btnTextColor,
                                     modifier = Modifier.size(12.dp)
                                 )
                             }

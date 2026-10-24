@@ -93,99 +93,103 @@ fun AdaptiveInsightBannerCard(
         modifier = modifier
             .fillMaxWidth()
             .testTag("adaptive_insight_banner"),
-        color = GoldAccentDim,
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, GoldAccentBorder)
+        color = Color(0xFF1A1610),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, Color(0x59F5B82E))
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.Top
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = Icons.Filled.AutoAwesome,
                         contentDescription = null,
-                        tint = GoldAccent,
-                        modifier = Modifier.size(16.dp)
+                        tint = Color(0xFFF5B82E),
+                        modifier = Modifier.size(15.dp)
                     )
                     Text(
                         text = insight.titleEn,
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
+                            fontSize = 13.5.sp
                         ),
-                        color = GoldAccent
+                        color = Color(0xFFF5B82E)
                     )
                 }
 
-                IconButton(
-                    onClick = { onDismiss(insight.id) },
-                    modifier = Modifier
-                        .size(28.dp)
-                        .testTag("btn_dismiss_insight")
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Close,
-                        contentDescription = "Dismiss insight",
-                        tint = TextMuted,
-                        modifier = Modifier.size(15.dp)
-                    )
+                BidiText(
+                    text = insight.messageAr,
+                    style = ArabicTypography.labelSmall.copy(fontSize = 12.sp),
+                    color = Color(0xFFD1D5DB),
+                    fillMaxWidth = true,
+                    textAlign = TextAlign.Right
+                )
+
+                if (insight.actionRoute == "level_up" && insight.suggestedLevel != null && onAcceptLevelUp != null) {
+                    Button(
+                        onClick = { onAcceptLevelUp(insight.suggestedLevel) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFF5B82E),
+                            contentColor = Color(0xFF0B0D12)
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier
+                            .padding(top = 4.dp)
+                            .heightIn(min = 36.dp)
+                            .testTag("btn_accept_level_up")
+                    ) {
+                        Text(
+                            text = insight.actionLabelEn ?: "Advance to ${insight.suggestedLevel}",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = Color(0xFF0B0D12)
+                        )
+                    }
+                } else if (!insight.actionRoute.isNullOrBlank() && onNavigateToRoute != null) {
+                    OutlinedButton(
+                        onClick = { onNavigateToRoute(insight.actionRoute) },
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, Color(0x59F5B82E)),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        modifier = Modifier
+                            .padding(top = 4.dp)
+                            .heightIn(min = 34.dp)
+                            .testTag("btn_insight_action")
+                    ) {
+                        Text(
+                            text = insight.actionLabelEn ?: "Open",
+                            color = Color(0xFFF5B82E),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
             }
 
-            BidiText(
-                text = insight.messageAr,
-                style = ArabicTypography.labelSmall.copy(fontSize = 11.sp),
-                color = TextSecondary,
-                fillMaxWidth = true,
-                textAlign = TextAlign.Right
-            )
-
-            if (insight.actionRoute == "level_up" && insight.suggestedLevel != null && onAcceptLevelUp != null) {
-                Button(
-                    onClick = { onAcceptLevelUp(insight.suggestedLevel) },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = GoldAccent,
-                        contentColor = BackgroundDark
-                    ),
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                    modifier = Modifier
-                        .heightIn(min = 38.dp)
-                        .testTag("btn_accept_level_up")
-                ) {
-                    Text(
-                        text = insight.actionLabelEn ?: "Advance to ${insight.suggestedLevel}",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    )
-                }
-            } else if (!insight.actionRoute.isNullOrBlank() && onNavigateToRoute != null) {
-                OutlinedButton(
-                    onClick = { onNavigateToRoute(insight.actionRoute) },
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, GoldAccentBorder),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                    modifier = Modifier
-                        .heightIn(min = 36.dp)
-                        .testTag("btn_insight_action")
-                ) {
-                    Text(
-                        text = insight.actionLabelEn ?: "Open",
-                        color = GoldAccent,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    )
-                }
+            IconButton(
+                onClick = { onDismiss(insight.id) },
+                modifier = Modifier
+                    .size(24.dp)
+                    .testTag("btn_dismiss_insight")
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = "Dismiss insight",
+                    tint = TextMuted,
+                    modifier = Modifier.size(16.dp)
+                )
             }
         }
     }
@@ -206,81 +210,96 @@ fun CefrAndLifecycleCard(
         modifier = modifier
             .fillMaxWidth()
             .testTag("cefr_readiness_card"),
-        color = SurfaceDark,
+        color = Color(0xFF13161F),
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, BorderDark)
+        border = BorderStroke(1.dp, Color(0xFF232734))
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Top Part: CEFR Mastery
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            // Top Part: CEFR Mastery Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
                         text = "CEFR ${readiness.currentLevel} → ${readiness.nextLevel} Mastery",
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                            fontSize = 15.sp
                         ),
                         color = TextPrimary
                     )
-                    Surface(
-                        color = if (readiness.isReadyForLevelUp) EmeraldAccent.copy(alpha = 0.16f) else GoldAccentDim,
-                        shape = RoundedCornerShape(8.dp),
-                        border = BorderStroke(1.dp, if (readiness.isReadyForLevelUp) EmeraldAccent else GoldAccentBorder)
-                    ) {
-                        Text(
-                            text = "${readiness.compositeReadinessPercent}%",
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 12.sp
-                            ),
-                            color = if (readiness.isReadyForLevelUp) EmeraldAccent else GoldAccent,
-                            modifier = Modifier
-                                .padding(horizontal = 10.dp, vertical = 3.dp)
-                                .testTag("cefr_readiness_percent")
-                        )
-                    }
+                    BidiText(
+                        text = "جاهزية المستوى الموحدة (٥٠٪ مفردات • ٣٠٪ قواعد • ٢٠٪ قراءة)",
+                        style = ArabicTypography.labelSmall.copy(fontSize = 12.sp),
+                        color = TextSecondary,
+                        fillMaxWidth = true,
+                        textAlign = TextAlign.Right
+                    )
                 }
 
-                BidiText(
-                    text = "جاهزية المستوى الموحدة (٥٠٪ مفردات • ٣٠٪ قواعد • ٢٠٪ قراءة)",
-                    style = ArabicTypography.labelSmall.copy(fontSize = 11.sp),
-                    color = TextSecondary,
-                    fillMaxWidth = true,
-                    textAlign = TextAlign.Right
-                )
+                Surface(
+                    color = if (readiness.isReadyForLevelUp) EmeraldAccent.copy(alpha = 0.16f) else Color(0xFF231D12),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = if (readiness.isReadyForLevelUp) EmeraldAccent else Color(0x59F5B82E)
+                    )
+                ) {
+                    Text(
+                        text = "${readiness.compositeReadinessPercent}%",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.5.sp
+                        ),
+                        color = if (readiness.isReadyForLevelUp) EmeraldAccent else Color(0xFFF5B82E),
+                        modifier = Modifier
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                            .testTag("cefr_readiness_percent")
+                    )
+                }
             }
 
-            HorizontalDivider(color = BorderSubtle, thickness = 1.dp)
+            HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 1.dp)
 
+            // 3-Column Mastery Breakdown Grid
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                ReadinessPillarMetric(
-                    label = "Vocab (50%)",
-                    percent = readiness.vocabScorePercent,
-                    detail = "${readiness.vocabFamiliarOrMatureCount}/${readiness.vocabTargetCount}",
-                    color = GoldAccent
-                )
-                ReadinessPillarMetric(
-                    label = "Grammar (30%)",
-                    percent = readiness.grammarScorePercent,
-                    detail = "${readiness.grammarPassedCount}/${readiness.grammarTotalCount}",
-                    color = VioletAccent
-                )
-                ReadinessPillarMetric(
-                    label = "Reading (20%)",
-                    percent = readiness.readingScorePercent,
-                    detail = "${readiness.readingCompletedCount}/${readiness.readingTargetCount}",
-                    color = SkyAccent
-                )
+                Box(modifier = Modifier.weight(1f)) {
+                    ReadinessPillarMetric(
+                        label = "Vocab (50%)",
+                        percent = readiness.vocabScorePercent,
+                        detail = "${readiness.vocabFamiliarOrMatureCount}/${readiness.vocabTargetCount}",
+                        color = Color(0xFFF5B82E)
+                    )
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    ReadinessPillarMetric(
+                        label = "Grammar (30%)",
+                        percent = readiness.grammarScorePercent,
+                        detail = "${readiness.grammarPassedCount}/${readiness.grammarTotalCount}",
+                        color = Color(0xFFA855F7)
+                    )
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    ReadinessPillarMetric(
+                        label = "Reading (20%)",
+                        percent = readiness.readingScorePercent,
+                        detail = "${readiness.readingCompletedCount}/${readiness.readingTargetCount}",
+                        color = Color(0xFF38BDF8)
+                    )
+                }
             }
 
             if (readiness.isReadyForLevelUp && readiness.nextLevel != null && onAcceptLevelUp != null) {
@@ -288,7 +307,7 @@ fun CefrAndLifecycleCard(
                     onClick = { onAcceptLevelUp(readiness.nextLevel) },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = EmeraldAccent,
-                        contentColor = BackgroundDark
+                        contentColor = Color(0xFF0B0D12)
                     ),
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
@@ -299,19 +318,20 @@ fun CefrAndLifecycleCard(
                     Text(
                         text = "Ready! Advance to ${readiness.nextLevel}",
                         fontWeight = FontWeight.ExtraBold,
-                        fontSize = 13.sp
+                        fontSize = 13.sp,
+                        color = Color(0xFF0B0D12)
                     )
                 }
             }
 
-            HorizontalDivider(color = BorderSubtle, thickness = 1.dp)
+            HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 1.dp)
 
-            // Bottom Part: Vocabulary Lifecycle Stages
+            // Bottom Part: Vocabulary Lifecycle Stages (2-Column x 3-Row Grid)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("word_lifecycle_funnel_card"),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -321,7 +341,7 @@ fun CefrAndLifecycleCard(
                     Text(
                         text = "Vocabulary Lifecycle Stages",
                         style = MaterialTheme.typography.titleSmall.copy(
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             fontSize = 13.sp
                         ),
                         color = TextPrimary
@@ -329,27 +349,27 @@ fun CefrAndLifecycleCard(
                     Text(
                         text = "${funnel.activeStudiedCount} active • 🏆 ${funnel.conqueredCount} conquered",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 11.5.sp
                         ),
-                        color = GoldAccent
+                        color = Color(0xFFF5B82E)
                     )
                 }
 
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
                 ) {
                     // Row 1: New & Seen
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)
                     ) {
                         FunnelStageChip(
                             labelEn = "New",
                             labelAr = "جديدة",
                             count = funnel.newCount,
-                            color = TextMuted,
+                            color = Color(0xFF6B7280),
                             testTag = "funnel_stage_new",
                             modifier = Modifier.weight(1f),
                             onClick = {
@@ -361,7 +381,7 @@ fun CefrAndLifecycleCard(
                             labelEn = "Seen",
                             labelAr = "مقروءة",
                             count = funnel.seenCount,
-                            color = SkyAccent,
+                            color = Color(0xFF38BDF8),
                             testTag = "funnel_stage_seen",
                             modifier = Modifier.weight(1f),
                             onClick = {
@@ -374,7 +394,7 @@ fun CefrAndLifecycleCard(
                     // Row 2: Learning & Familiar
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)
                     ) {
                         FunnelStageChip(
                             labelEn = "Learning",
@@ -392,7 +412,7 @@ fun CefrAndLifecycleCard(
                             labelEn = "Familiar",
                             labelAr = "مألوفة",
                             count = funnel.familiarCount,
-                            color = GoldAccent,
+                            color = Color(0xFFF5B82E),
                             testTag = "funnel_stage_familiar",
                             modifier = Modifier.weight(1f),
                             onClick = {
@@ -405,7 +425,7 @@ fun CefrAndLifecycleCard(
                     // Row 3: Mature & Conquered
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)
                     ) {
                         FunnelStageChip(
                             labelEn = "Mature",
@@ -423,7 +443,7 @@ fun CefrAndLifecycleCard(
                             labelEn = "Conquered",
                             labelAr = "",
                             count = funnel.conqueredCount,
-                            color = VioletAccent,
+                            color = Color(0xFFA855F7),
                             testTag = "funnel_stage_conquered",
                             modifier = Modifier.weight(1f),
                             onClick = {
@@ -574,12 +594,15 @@ private fun ReadinessPillarMetric(
     Column(horizontalAlignment = Alignment.Start, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = TextMuted
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+            color = TextSecondary
         )
         Text(
             text = "$percent% ($detail)",
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.5.sp
+            ),
             color = color
         )
     }
@@ -995,11 +1018,11 @@ private fun FunnelStageChip(
     onClick: (() -> Unit)? = null
 ) {
     Surface(
-        color = SurfaceElevatedDark,
-        shape = RoundedCornerShape(10.dp),
-        border = BorderStroke(1.dp, BorderDark),
+        color = Color(0xFF181C28),
+        shape = RoundedCornerShape(9.dp),
+        border = BorderStroke(1.dp, Color(0xFF232734)),
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(9.dp))
             .then(
                 if (onClick != null) {
                     Modifier.clickable(onClick = onClick)
@@ -1012,7 +1035,7 @@ private fun FunnelStageChip(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 9.dp),
+                .padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -1029,7 +1052,7 @@ private fun FunnelStageChip(
                 )
                 Text(
                     text = if (labelAr.isNotBlank()) "$labelEn ($labelAr)" else labelEn,
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
                     color = TextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -1037,7 +1060,10 @@ private fun FunnelStageChip(
             }
             Text(
                 text = "$count",
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 12.sp),
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.5.sp
+                ),
                 color = if (count > 0 && labelEn != "New") color else TextPrimary
             )
         }
