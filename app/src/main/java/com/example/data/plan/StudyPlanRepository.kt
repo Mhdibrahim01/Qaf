@@ -1029,14 +1029,43 @@ class StudyPlanRepository(
         val quizResultsToday = dao.getQuizResultsForDate(checklist.date)
         val dueCorrectionCount = dao.getDueCorrectionReviewsCount(now)
 
+        val profile = getOrCreateProfile()
+        val selectedDecks: List<String> = try {
+            json.decodeFromString<List<String>>(profile.selectedDecksJson).ifEmpty {
+                listOf("oxford5000", "oxford_opal")
+            }
+        } catch (_: Exception) {
+            listOf("oxford5000", "oxford_opal")
+        }
+        val dueNowCutoff = timeProvider.dueNowCutoff(now)
+        val dueNowCardsCount = if (selectedDecks.isNotEmpty()) {
+            dao.getDueNowCardsCountForDecks(dueNowCutoff, selectedDecks)
+        } else {
+            dao.getDueNowCardsCount(dueNowCutoff)
+        }
+        val totalFlashcardsRatedToday = reviewCardsRatedToday + newWordsLearnedToday
+
         val updatedTasks = tasks.map { task ->
             when (task.type) {
                 "flashcards" -> {
                     val normalizedTarget = if (task.targetCount <= 0) 10 else task.targetCount
-                    val isDone = task.isCompleted || (reviewCardsRatedToday >= normalizedTarget)
+                    val allDueReviewsCleared = (reviewCardsRatedToday > 0 && dueNowCardsCount == 0)
+                    val targetSatisfiedByReviews = (reviewCardsRatedToday >= normalizedTarget)
+                    val targetSatisfiedByGeneralPractice = (task.linkedRoute == "flashcards" && totalFlashcardsRatedToday >= normalizedTarget)
+                    val isDone = task.isCompleted || targetSatisfiedByReviews || allDueReviewsCleared || targetSatisfiedByGeneralPractice
+                    val effectiveTarget = if (allDueReviewsCleared && normalizedTarget > reviewCardsRatedToday) {
+                        reviewCardsRatedToday
+                    } else {
+                        normalizedTarget
+                    }
+                    val currentCompleted = if (isDone) {
+                        effectiveTarget
+                    } else {
+                        maxOf(minOf(reviewCardsRatedToday, effectiveTarget), minOf(totalFlashcardsRatedToday, effectiveTarget))
+                    }
                     task.copy(
-                        targetCount = normalizedTarget,
-                        completedCount = if (isDone) normalizedTarget else minOf(reviewCardsRatedToday, normalizedTarget),
+                        targetCount = effectiveTarget,
+                        completedCount = currentCompleted,
                         isCompleted = isDone
                     )
                 }

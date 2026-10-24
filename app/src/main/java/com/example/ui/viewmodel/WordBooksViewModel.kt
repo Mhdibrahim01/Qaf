@@ -2319,17 +2319,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 }
 
                 val combined = (dueEntries + reviewedLevelEntries).distinctBy { "${it.deck}:${it.text.trim().lowercase()}" }
-
-                val finalEntries = if (combined.size < taskCount) {
-                    val unmasteredLevelEntries = candidates.filter { entry ->
-                        val key = "${entry.deck}:${entry.text.trim().lowercase()}"
-                        val p = progressMap[key]
-                        p == null || (!p.isMastered && (p.dueTimestamp == 0L || p.dueTimestamp <= dueNowCutoff))
-                    }
-                    (combined + unmasteredLevelEntries).distinctBy { "${it.deck}:${it.text.trim().lowercase()}" }
-                } else {
-                    combined
-                }
+                val finalEntries = combined
 
                 val groupedMap = LinkedHashMap<String, MutableList<EntryEntity>>()
                 for (entry in finalEntries) {
@@ -2352,13 +2342,13 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                     selectedDecks = selectedDecks
                 )
 
-                if (cards.isNotEmpty()) {
-                    _flashcardCards.value = cards
-                    _flashcardDeckId.value = DataImportRepository.DUE_TODAY_DECK_ID
-                    _flashcardIndex.value = 0
-                    _isCurrentCardFlipped.value = false
-                } else {
-                    loadFlashcardsForDeck("oxford5000")
+                _flashcardCards.value = cards
+                _flashcardDeckId.value = DataImportRepository.DUE_TODAY_DECK_ID
+                _flashcardIndex.value = 0
+                _isCurrentCardFlipped.value = false
+
+                if (cards.isEmpty()) {
+                    refreshDailyChecklist()
                 }
             } catch (_: Exception) {
                 loadFlashcardsForDeck("oxford5000")

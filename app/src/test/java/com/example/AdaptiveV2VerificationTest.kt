@@ -10,6 +10,7 @@ import com.example.data.grammar.GrammarRepository
 import com.example.data.importer.DataImportRepository
 import com.example.data.importer.Sm2Rating
 import com.example.data.local.AttemptEntity
+import com.example.data.local.DailyChecklistEntity
 import com.example.data.local.DailyTaskItem
 import com.example.data.local.EntryEntity
 import com.example.data.local.GrammarProgressEntity
@@ -800,6 +801,85 @@ class AdaptiveV2VerificationTest {
             assertTrue("Grammar mastery % must be greater than 0", snapshot.cefrReadiness.grammarMasteryPercent > 0)
             assertTrue("Reading completed count must be at least 1", snapshot.cefrReadiness.readingCompletedCount >= 1)
             assertTrue("Reading mastery % must be greater than 0", snapshot.cefrReadiness.readingMasteryPercent > 0)
+        }
+    }
+
+    @Test
+    fun testDueFlashcardsCompletionWhenAllDueCardsReviewed() {
+        runBlocking {
+            val timeProvider = FixedTestTimeProvider()
+            val planRepo = StudyPlanRepository(context, dao, timeProvider)
+            val now = timeProvider.currentTimeMillis()
+            val startOfDay = timeProvider.startOfDayMillis(timeProvider.todayDateString())
+
+            val profile = planRepo.getOrCreateProfile().copy(
+                level = "B1",
+                goal = "general_fluency",
+                minutesPerDay = 30,
+                selectedDecksJson = Json.encodeToString(listOf("oxford5000")),
+                updatedAt = now
+            )
+            dao.upsertStudyPlanProfile(profile)
+
+            // Setup a daily checklist where task_flashcards has target = 10 (default)
+            val flashcardTask = DailyTaskItem(
+                id = "task_flashcards",
+                type = "flashcards",
+                titleEn = "Review Due Flashcards",
+                titleAr = "مراجعة البطاقات المستحقة (10 بطاقات)",
+                targetCount = 10,
+                completedCount = 0,
+                isCompleted = false,
+                linkedRoute = "flashcards",
+                linkedId = "oxford5000"
+            )
+            val checklist = DailyChecklistEntity(
+                date = timeProvider.todayDateString(),
+                tasksJson = Json.encodeToString(listOf(flashcardTask)),
+                completedCount = 0,
+                totalCount = 1,
+                isCompleted = false
+            )
+            dao.upsertDailyChecklist(checklist)
+
+            // Simulate the user reviewing 3 cards today and clearing their due queue (due_timestamp tomorrow, so dueNow = 0)
+            for (i in 1..3) {
+                val cardKey = "oxford5000:word$i"
+                val wp = WordProgressEntity(
+                    cardKey = cardKey,
+                    deck = "oxford5000",
+                    text = "word$i",
+                    repetitions = 1,
+                    intervalDays = 1,
+                    dueTimestamp = now + 86_400_000L, // Tomorrow (dueNow is 0)
+                    lastReviewedTimestamp = now,
+                    firstLearnedTimestamp = startOfDay - 86_400_000L // Learned previously
+                )
+                val attempt = AttemptEntity(
+                    activityType = "flashcard_review",
+                    itemId = cardKey,
+                    timestamp = now,
+                    isCorrect = true,
+                    sm2Rating = 3,
+                    score = 85f,
+                    deck = "oxford5000"
+                )
+                dao.upsertWordProgressWithAttempt(wp, attempt)
+            }
+
+            // Verify due count is 0
+            val dueNowCount = dao.getDueNowCardsCountForDecks(now, listOf("oxford5000"))
+            assertEquals(0, dueNowCount)
+
+            // Refresh checklist completion
+            val updated = planRepo.refreshChecklistCompletion(checklist)
+            val tasks = Json.decodeFromString<List<DailyTaskItem>>(updated.tasksJson)
+            val refreshedFlashcardTask = tasks.first { it.id == "task_flashcards" }
+
+            assertTrue("Flashcards task must be marked complete when all due reviews are finished", refreshedFlashcardTask.isCompleted)
+            assertEquals(3, refreshedFlashcardTask.completedCount)
+            assertEquals(3, refreshedFlashcardTask.targetCount)
+            assertTrue("Checklist should be marked complete", updated.isCompleted)
         }
     }
 }
