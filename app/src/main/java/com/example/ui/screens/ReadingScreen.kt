@@ -461,118 +461,178 @@ fun ReadingListScreen(
                         if (idx >= 0) topicListState.animateScrollToItem(idx)
                     }
 
-                    // Header: Stats Summary + Primary AI Action + Overflow Menu
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "${filteredTexts.size} of ${texts.size} Passages • $completedCount Completed",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFFE5C158),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = "CEFR A1–C1 • Graded Bilingual Reading",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFF9CA3AF),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+                    // 1. Progress Banner Card
+                    val totalPassages = texts.size
+                    val progressFraction = if (totalPassages > 0) (completedCount.toFloat() / totalPassages.toFloat()).coerceIn(0f, 1f) else 0f
+                    val progressPercent = (progressFraction * 100).toInt()
 
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("reading_progress_banner"),
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color(0xFF13161F),
+                        border = BorderStroke(1.dp, Color(0xFF232734))
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = Color(0xFFE5C158).copy(alpha = 0.16f),
-                                border = BorderStroke(1.dp, Color(0xFFE5C158)),
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable {
-                                        initialAddTab = 0
-                                        showAddDialog = true
-                                    }
-                                    .testTag("reading_add_fab")
+                            // Top Row: Completed • Total on Left, + AI Text + Overflow Menu on Right
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    modifier = Modifier.weight(1f)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.AutoAwesome,
-                                        contentDescription = "Create with AI",
-                                        tint = Color(0xFFE5C158),
-                                        modifier = Modifier.size(14.dp)
+                                    Text(
+                                        text = "$completedCount Completed",
+                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 15.sp),
+                                        color = Color(0xFFF5B82E)
                                     )
                                     Text(
-                                        text = "+ AI Text",
-                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                        color = Color(0xFFE5C158)
+                                        text = " • $totalPassages Passages",
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                        color = Color(0xFF9CA3AF)
+                                    )
+                                }
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = Color(0xFFF5B82E).copy(alpha = 0.14f),
+                                        border = BorderStroke(1.dp, Color(0xFFF5B82E).copy(alpha = 0.40f)),
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable {
+                                                initialAddTab = 0
+                                                showAddDialog = true
+                                            }
+                                            .testTag("reading_add_fab")
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.AutoAwesome,
+                                                contentDescription = "Create with AI",
+                                                tint = Color(0xFFF5B82E),
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Text(
+                                                text = "+ AI Text",
+                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                                color = Color(0xFFF5B82E)
+                                            )
+                                        }
+                                    }
+
+                                    Box {
+                                        IconButton(
+                                            onClick = { showOverflowMenu = true },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.MoreVert,
+                                                contentDescription = "More Options",
+                                                tint = Color(0xFF9CA3AF),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                        DropdownMenu(
+                                            expanded = showOverflowMenu,
+                                            onDismissRequest = { showOverflowMenu = false },
+                                            modifier = Modifier.background(Color(0xFF17181E))
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text("Correction Notebook", color = Color(0xFFF3F4F6)) },
+                                                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFFE5C158)) },
+                                                onClick = {
+                                                    showOverflowMenu = false
+                                                    onNavigateToNotebook()
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Paste Text", color = Color(0xFFF3F4F6)) },
+                                                leadingIcon = { Icon(Icons.Default.ContentPaste, contentDescription = null, tint = Color(0xFFE5C158)) },
+                                                onClick = {
+                                                    showOverflowMenu = false
+                                                    initialAddTab = 1
+                                                    showAddDialog = true
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Import JSON", color = Color(0xFFF3F4F6)) },
+                                                leadingIcon = { Icon(Icons.Default.UploadFile, contentDescription = null, tint = Color(0xFFE5C158)) },
+                                                onClick = {
+                                                    showOverflowMenu = false
+                                                    initialAddTab = 2
+                                                    showAddDialog = true
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Sync Assets", color = Color(0xFFF3F4F6)) },
+                                                leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null, tint = Color(0xFFE5C158)) },
+                                                onClick = {
+                                                    showOverflowMenu = false
+                                                    initialAddTab = 3
+                                                    showAddDialog = true
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Middle: Progress Bar with linear-gradient(90deg, #F5B82E, #FDE047)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(Color(0xFF1E2330))
+                            ) {
+                                if (progressFraction > 0f) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(fraction = progressFraction)
+                                            .height(6.dp)
+                                            .clip(RoundedCornerShape(3.dp))
+                                            .background(
+                                                Brush.horizontalGradient(
+                                                    colors = listOf(Color(0xFFF5B82E), Color(0xFFFDE047))
+                                                )
+                                            )
                                     )
                                 }
                             }
 
-                            Box {
-                                IconButton(
-                                    onClick = { showOverflowMenu = true },
-                                    modifier = Modifier.size(34.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.MoreVert,
-                                        contentDescription = "More Options",
-                                        tint = Color(0xFF9CA3AF),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                DropdownMenu(
-                                    expanded = showOverflowMenu,
-                                    onDismissRequest = { showOverflowMenu = false },
-                                    modifier = Modifier.background(Color(0xFF17181E))
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("Correction Notebook", color = Color(0xFFF3F4F6)) },
-                                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFFE5C158)) },
-                                        onClick = {
-                                            showOverflowMenu = false
-                                            onNavigateToNotebook()
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Paste Text", color = Color(0xFFF3F4F6)) },
-                                        leadingIcon = { Icon(Icons.Default.ContentPaste, contentDescription = null, tint = Color(0xFFE5C158)) },
-                                        onClick = {
-                                            showOverflowMenu = false
-                                            initialAddTab = 1
-                                            showAddDialog = true
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Import JSON", color = Color(0xFFF3F4F6)) },
-                                        leadingIcon = { Icon(Icons.Default.UploadFile, contentDescription = null, tint = Color(0xFFE5C158)) },
-                                        onClick = {
-                                            showOverflowMenu = false
-                                            initialAddTab = 2
-                                            showAddDialog = true
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Sync Assets", color = Color(0xFFF3F4F6)) },
-                                        leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null, tint = Color(0xFFE5C158)) },
-                                        onClick = {
-                                            showOverflowMenu = false
-                                            initialAddTab = 3
-                                            showAddDialog = true
-                                        }
-                                    )
-                                }
+                            // Bottom Row: Subtitle & Percentage
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "CEFR A1–C1 • Graded Bilingual Reading",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color(0xFF9CA3AF)
+                                )
+                                Text(
+                                    text = "$progressPercent%",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = Color(0xFF9CA3AF)
+                                )
                             }
                         }
                     }
@@ -1048,17 +1108,27 @@ fun ReadingTextCard(
                 color = Color(0xFFF3F4F6)
             )
 
-            // Title Arabic
+            // Title Arabic (preserved RTL alignment with soft gray color #9CA3AF)
             if (text.titleAr.isNotBlank()) {
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(4.dp))
                 BidiText(
                     text = text.titleAr,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF9CA3AF)
+                    style = ArabicTypography.bodyMedium,
+                    color = Color(0xFF9CA3AF),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Right,
+                    fillMaxWidth = true
                 )
             }
 
             Spacer(Modifier.height(12.dp))
+
+            // Subtle divider above footer
+            HorizontalDivider(
+                thickness = 1.dp,
+                color = Color.White.copy(alpha = 0.05f)
+            )
+
+            Spacer(Modifier.height(10.dp))
 
             // Footer info
             Row(
@@ -4058,34 +4128,37 @@ fun ReadingRecommendedShelf(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = levelBg,
-                    border = BorderStroke(1.dp, levelColor.copy(alpha = 0.5f))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = userLevel.uppercase(),
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = levelColor,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
-                Column {
-                    Text(
-                        text = "Recommended for Your Level ($userLevel)",
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        text = "Recommended for You",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = Color(0xFFF3F4F6)
                     )
-                    Text(
-                        text = "نصوص قراءة موصى بها لمستواك ($levelAr)",
-                        style = ArabicTypography.labelSmall,
-                        color = Color(0xFF9CA3AF)
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color(0xFF38BDF8).copy(alpha = 0.12f),
+                        border = BorderStroke(1.dp, Color(0xFF38BDF8).copy(alpha = 0.35f))
+                    ) {
+                        Text(
+                            text = userLevel.uppercase(),
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp),
+                            color = Color(0xFF38BDF8),
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
+                Text(
+                    text = "نصوص قراءة موصى بها لمستواك ($levelAr)",
+                    style = ArabicTypography.labelSmall,
+                    color = Color(0xFF9CA3AF)
+                )
             }
 
             Surface(
@@ -4173,7 +4246,7 @@ fun ReadingRecommendedCard(
                     color = if (isDone) EmeraldAccent.copy(alpha = 0.15f) else Color(0xFF222430)
                 ) {
                     Text(
-                        text = if (isDone) "✓ Completed" else "Read",
+                        text = if (isDone) "✓ Completed" else "Read →",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 11.sp
@@ -4184,26 +4257,39 @@ fun ReadingRecommendedCard(
                 }
             }
 
+            // English Title: 2 full lines
             Text(
                 text = text.titleEn,
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 15.sp),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 20.sp),
                 color = Color(0xFFF3F4F6),
-                maxLines = 1,
+                maxLines = 2,
+                minLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
 
+            // Arabic Title: Right-aligned (RTL) in GoldAccent
             if (text.titleAr.isNotBlank()) {
                 Text(
                     text = text.titleAr,
-                    style = ArabicTypography.bodySmall,
+                    style = ArabicTypography.bodySmall.copy(fontWeight = FontWeight.Medium),
                     color = GoldAccent,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
+            // Subtle divider above footer
+            HorizontalDivider(
+                modifier = Modifier.padding(top = 2.dp),
+                thickness = 1.dp,
+                color = Color.White.copy(alpha = 0.06f)
+            )
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val totalWords = remember(text.sentencesJson) {
@@ -4225,19 +4311,11 @@ fun ReadingRecommendedCard(
 
                 if (text.topic.isNotBlank()) {
                     Text(
-                        text = " • ",
+                        text = "• ${text.topic}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF6B7280),
+                        color = Color(0xFF9CA3AF),
                         maxLines = 1,
-                        softWrap = false
-                    )
-                    Text(
-                        text = text.topic.replaceFirstChar { it.uppercase() },
-                        style = MaterialTheme.typography.labelSmall.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
-                        color = Color(0xFF6B7280),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
