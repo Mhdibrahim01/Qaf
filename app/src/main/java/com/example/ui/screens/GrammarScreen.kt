@@ -130,14 +130,18 @@ import com.example.data.local.ReadingTextEntity
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
+import com.example.ui.theme.BorderSubtle
 import com.example.ui.theme.CoralAccent
 import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.EmeraldAccentBg
 import com.example.ui.theme.GoldAccent
 import com.example.ui.theme.GoldAccentBorder
 import com.example.ui.theme.GoldAccentDim
+import com.example.ui.theme.GoldHover
+import com.example.ui.theme.OnGoldDark
 import com.example.ui.theme.SkyAccent
 import com.example.ui.theme.SkyAccentBg
+import com.example.ui.theme.SkyAccentBorder
 import com.example.ui.theme.SurfaceDark
 import com.example.ui.theme.SurfaceElevatedDark
 import com.example.ui.theme.TextMuted
@@ -350,8 +354,8 @@ fun GrammarLessonListScreen(
                             .fillMaxWidth()
                             .testTag("grammar_progress_banner"),
                         shape = RoundedCornerShape(14.dp),
-                        color = Color(0xFF13161F),
-                        border = BorderStroke(1.dp, Color(0xFF232734))
+                        color = SurfaceDark,
+                        border = BorderStroke(1.dp, BorderDark)
                     ) {
                         Column(
                             modifier = Modifier
@@ -372,12 +376,12 @@ fun GrammarLessonListScreen(
                                     Text(
                                         text = "$completedCount Completed",
                                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 15.sp),
-                                        color = Color(0xFFF5B82E)
+                                        color = GoldAccent
                                     )
                                     Text(
                                         text = " • $totalLessons Lessons",
                                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                                        color = Color(0xFF9CA3AF)
+                                        color = TextSecondary
                                     )
                                 }
 
@@ -387,8 +391,8 @@ fun GrammarLessonListScreen(
                                 ) {
                                     Surface(
                                         shape = RoundedCornerShape(8.dp),
-                                        color = Color(0xFFF5B82E).copy(alpha = 0.14f),
-                                        border = BorderStroke(1.dp, Color(0xFFF5B82E).copy(alpha = 0.40f)),
+                                        color = GoldAccentDim,
+                                        border = BorderStroke(1.dp, GoldAccentBorder),
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(8.dp))
                                             .clickable { onOpenAddLessons(2) }
@@ -402,13 +406,13 @@ fun GrammarLessonListScreen(
                                             Icon(
                                                 imageVector = Icons.Default.AutoAwesome,
                                                 contentDescription = null,
-                                                tint = Color(0xFFF5B82E),
+                                                tint = GoldAccent,
                                                 modifier = Modifier.size(14.dp)
                                             )
                                             Text(
                                                 text = "+ AI Lesson",
                                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                                color = Color(0xFFF5B82E)
+                                                color = GoldAccent
                                             )
                                         }
                                     }
@@ -421,7 +425,7 @@ fun GrammarLessonListScreen(
                                             Icon(
                                                 imageVector = Icons.Default.MoreVert,
                                                 contentDescription = "More Options",
-                                                tint = Color(0xFF9CA3AF),
+                                                tint = TextSecondary,
                                                 modifier = Modifier.size(18.dp)
                                             )
                                         }
@@ -459,13 +463,13 @@ fun GrammarLessonListScreen(
                                 }
                             }
 
-                            // Middle: Progress Bar with linear-gradient(90deg, #F5B82E, #FDE047)
+                            // Middle: Progress Bar
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(6.dp)
                                     .clip(RoundedCornerShape(3.dp))
-                                    .background(Color(0xFF1E2330))
+                                    .background(SurfaceElevatedDark)
                             ) {
                                 if (progressFraction > 0f) {
                                     Box(
@@ -475,7 +479,7 @@ fun GrammarLessonListScreen(
                                             .clip(RoundedCornerShape(3.dp))
                                             .background(
                                                 Brush.horizontalGradient(
-                                                    colors = listOf(Color(0xFFF5B82E), Color(0xFFFDE047))
+                                                    colors = listOf(GoldAccent, GoldHover)
                                                 )
                                             )
                                     )
@@ -491,12 +495,12 @@ fun GrammarLessonListScreen(
                                 Text(
                                     text = "Bilingual Grammar Practice",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFF9CA3AF)
+                                    color = TextSecondary
                                 )
                                 Text(
                                     text = "$progressPercent%",
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                    color = Color(0xFF9CA3AF)
+                                    color = TextSecondary
                                 )
                             }
                         }
@@ -586,10 +590,10 @@ fun GrammarLessonListScreen(
                                 }
                                 Surface(
                                     shape = RoundedCornerShape(99.dp),
-                                    color = if (isSelected) Color(0xFFF5B82E) else Color(0xFF13161F),
+                                    color = if (isSelected) GoldAccent else SurfaceDark,
                                     border = BorderStroke(
                                         width = 1.dp,
-                                        color = if (isSelected) Color(0xFFF5B82E) else Color(0xFF262834)
+                                        color = if (isSelected) GoldAccent else BorderDark
                                     ),
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(99.dp))
@@ -603,7 +607,7 @@ fun GrammarLessonListScreen(
                                         text = labelText,
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) Color(0xFF0B0D12) else Color(0xFFD1D5DB),
+                                        color = if (isSelected) OnGoldDark else TextSecondary,
                                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
                                     )
                                 }
@@ -642,10 +646,10 @@ fun GrammarLessonListScreen(
                                     val displayTopic = if (topic == "ALL") "All Topics" else topic
                                     Surface(
                                         shape = RoundedCornerShape(9.dp),
-                                        color = if (isSelected) Color(0xFFF5B82E).copy(alpha = 0.14f) else Color(0xFF14151B),
+                                        color = if (isSelected) GoldAccentDim else SurfaceDark,
                                         border = BorderStroke(
                                             width = 1.dp,
-                                            color = if (isSelected) Color(0xFFF5B82E).copy(alpha = 0.45f) else Color(0xFF232530)
+                                            color = if (isSelected) GoldAccentBorder else BorderDark
                                         ),
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(9.dp))
@@ -656,7 +660,7 @@ fun GrammarLessonListScreen(
                                             text = displayTopic,
                                             style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
                                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                            color = if (isSelected) Color(0xFFF5B82E) else Color(0xFF9CA3AF),
+                                            color = if (isSelected) GoldAccent else TextSecondary,
                                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                                         )
                                     }
@@ -857,8 +861,8 @@ fun LessonCard(
             .clickable(onClick = onClick)
             .testTag("lesson_card_${lesson.id}"),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF13161F)),
-        border = BorderStroke(1.dp, if (isCompleted) EmeraldAccent.copy(alpha = 0.5f) else Color(0xFF232734))
+        colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+        border = BorderStroke(1.dp, if (isCompleted) EmeraldAccent.copy(alpha = 0.5f) else BorderDark)
     ) {
         Row(
             modifier = Modifier
@@ -880,13 +884,13 @@ fun LessonCard(
                 ) {
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = Color(0xFFF5B82E).copy(alpha = 0.16f),
-                        border = BorderStroke(1.dp, Color(0xFFF5B82E).copy(alpha = 0.45f))
+                        color = GoldAccentDim,
+                        border = BorderStroke(1.dp, GoldAccentBorder)
                     ) {
                         Text(
                             text = lesson.level.uppercase(),
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFFF5B82E),
+                            color = GoldAccent,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
@@ -896,7 +900,7 @@ fun LessonCard(
                         Text(
                             text = lesson.topic,
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF9CA3AF),
+                            color = TextSecondary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -922,16 +926,16 @@ fun LessonCard(
                 Text(
                     text = lesson.titleEn,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 15.5.sp),
-                    color = Color(0xFFF3F4F6)
+                    color = TextPrimary
                 )
 
-                // Row 3: Arabic Title directly underneath, start-aligned, color #9CA3AF
+                // Row 3: Arabic Title directly underneath, start-aligned
                 val cleanedTitleAr = remember(lesson.titleAr) { cleanGrammarArabicTitle(lesson.titleAr) }
                 if (cleanedTitleAr.isNotBlank()) {
                     Text(
                         text = cleanedTitleAr,
                         style = ArabicTypography.bodyMedium,
-                        color = Color(0xFF9CA3AF),
+                        color = TextSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -941,10 +945,10 @@ fun LessonCard(
             // Right side: 32x32px rounded icon box with chevron right
             Surface(
                 shape = RoundedCornerShape(9.dp),
-                color = if (isCompleted) EmeraldAccent.copy(alpha = 0.15f) else Color(0xFF1F222E),
+                color = if (isCompleted) EmeraldAccent.copy(alpha = 0.15f) else SurfaceElevatedDark,
                 border = BorderStroke(
                     1.dp,
-                    if (isCompleted) EmeraldAccent.copy(alpha = 0.4f) else Color(0xFF2B2E3B)
+                    if (isCompleted) EmeraldAccent.copy(alpha = 0.4f) else BorderDark
                 ),
                 modifier = Modifier.size(32.dp)
             ) {
@@ -952,7 +956,7 @@ fun LessonCard(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = "Open Lesson",
-                        tint = if (isCompleted) EmeraldAccent else Color(0xFF9CA3AF),
+                        tint = if (isCompleted) EmeraldAccent else TextSecondary,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -1047,7 +1051,7 @@ fun GrammarLessonDetailScreen(
     ) {
         // Unified Sub-Header: Segmented Tabs + AI Tutor Action Pill
         Surface(
-            color = Color(0xFF14151B),
+            color = SurfaceDark,
             border = BorderStroke(1.dp, BorderDark),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -3530,17 +3534,17 @@ fun GrammarRecommendedShelf(
                     Text(
                         text = "Recommended for You",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Color(0xFFF3F4F6)
+                        color = TextPrimary
                     )
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = Color(0xFF38BDF8).copy(alpha = 0.12f),
-                        border = BorderStroke(1.dp, Color(0xFF38BDF8).copy(alpha = 0.35f))
+                        color = SkyAccentBg,
+                        border = BorderStroke(1.dp, SkyAccentBorder)
                     ) {
                         Text(
                             text = userLevel.uppercase(),
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp),
-                            color = Color(0xFF38BDF8),
+                            color = SkyAccent,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -3548,19 +3552,19 @@ fun GrammarRecommendedShelf(
                 Text(
                     text = "دروس موصى بها لمستواك ($levelAr)",
                     style = ArabicTypography.labelSmall,
-                    color = Color(0xFF9CA3AF)
+                    color = TextSecondary
                 )
             }
 
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = Color(0xFF17181E),
-                border = BorderStroke(1.dp, Color(0xFF262834))
+                color = SurfaceDark,
+                border = BorderStroke(1.dp, BorderDark)
             ) {
                 Text(
                     text = "${recommendedLessons.size} lessons",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                    color = Color(0xFFF5B82E),
+                    color = GoldAccent,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                 )
             }
@@ -3605,8 +3609,8 @@ fun GrammarRecommendedCard(
             .clickable(onClick = onClick)
             .testTag("grammar_recommended_card_${lesson.id}"),
         shape = RoundedCornerShape(14.dp),
-        color = Color(0xFF13161F),
-        border = BorderStroke(1.dp, if (isDone) EmeraldAccent.copy(alpha = 0.4f) else Color(0xFF262834))
+        color = SurfaceDark,
+        border = BorderStroke(1.dp, if (isDone) EmeraldAccent.copy(alpha = 0.4f) else BorderDark)
     ) {
         Column(
             modifier = Modifier
@@ -3634,7 +3638,7 @@ fun GrammarRecommendedCard(
 
                 Surface(
                     shape = RoundedCornerShape(10.dp),
-                    color = if (isDone) EmeraldAccent.copy(alpha = 0.15f) else Color(0xFF1E2330)
+                    color = if (isDone) EmeraldAccent.copy(alpha = 0.15f) else SurfaceElevatedDark
                 ) {
                     Text(
                         text = if (isDone) "✓ Completed" else "Study →",
@@ -3642,7 +3646,7 @@ fun GrammarRecommendedCard(
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 11.sp
                         ),
-                        color = if (isDone) EmeraldAccent else Color(0xFFF5B82E),
+                        color = if (isDone) EmeraldAccent else GoldAccent,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
@@ -3652,19 +3656,19 @@ fun GrammarRecommendedCard(
             Text(
                 text = lesson.titleEn,
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 20.sp),
-                color = Color(0xFFF3F4F6),
+                color = TextPrimary,
                 maxLines = 2,
                 minLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
 
-            // Arabic Title: in gold #F5B82E
+            // Arabic Title: in gold
             val cleanAr = remember(lesson.titleAr) { cleanGrammarArabicTitle(lesson.titleAr) }
             if (cleanAr.isNotBlank()) {
                 Text(
                     text = cleanAr,
                     style = ArabicTypography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                    color = Color(0xFFF5B82E),
+                    color = GoldAccent,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -3674,7 +3678,7 @@ fun GrammarRecommendedCard(
             HorizontalDivider(
                 modifier = Modifier.padding(top = 2.dp),
                 thickness = 1.dp,
-                color = Color.White.copy(alpha = 0.06f)
+                color = BorderSubtle
             )
 
             // Category/Topic in bottom metadata
@@ -3682,7 +3686,7 @@ fun GrammarRecommendedCard(
                 Text(
                     text = "• ${lesson.topic}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF9CA3AF),
+                    color = TextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

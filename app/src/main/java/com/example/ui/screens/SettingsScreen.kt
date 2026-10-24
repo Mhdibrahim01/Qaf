@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Science
@@ -86,6 +87,7 @@ import com.example.data.local.StudyPlanProfileEntity
 import com.example.ui.components.ArabicText
 import com.example.ui.components.ProgressBadge
 import com.example.ui.components.SlowAudioTurtleButton
+import com.example.ui.theme.AppThemeMode
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
@@ -120,6 +122,8 @@ fun SettingsScreen(
     apiKeySource: String,
     isApiKeyConfigured: Boolean,
     isDeveloperModeEnabled: Boolean,
+    themeMode: AppThemeMode = AppThemeMode.DARK,
+    onSelectThemeMode: (AppThemeMode) -> Unit = {},
 
     onSelectAccentUk: (Boolean) -> Unit,
     onSelectSpeechRate: (Float) -> Unit,
@@ -296,6 +300,92 @@ fun SettingsScreen(
                 .padding(horizontal = 18.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+            // =========================================================================
+            // SECTION 0: APPEARANCE & THEME MODE (DARK / LIGHT / SYSTEM)
+            // =========================================================================
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = SurfaceDark,
+                border = BorderStroke(1.dp, BorderDark),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("settings_section_appearance")
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Palette,
+                                contentDescription = null,
+                                tint = GoldAccent,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "Theme & Color Mode",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = TextPrimary
+                            )
+                        }
+                        ArabicText(
+                            text = "المظهر والوضع اللوني",
+                            style = ArabicTypography.labelSmall,
+                            color = TextSecondary
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(IntrinsicSize.Min),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        SettingsChoicePill(
+                            labelEn = "Dark Mode",
+                            subtitleEn = "الوضع الداكن",
+                            isSelected = themeMode == AppThemeMode.DARK,
+                            accentColor = GoldAccent,
+                            onClick = { onSelectThemeMode(AppThemeMode.DARK) },
+                            testTag = "btn_theme_dark",
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
+                        SettingsChoicePill(
+                            labelEn = "Light Mode",
+                            subtitleEn = "الوضع الفاتح",
+                            isSelected = themeMode == AppThemeMode.LIGHT,
+                            accentColor = GoldAccent,
+                            onClick = { onSelectThemeMode(AppThemeMode.LIGHT) },
+                            testTag = "btn_theme_light",
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
+                        SettingsChoicePill(
+                            labelEn = "System",
+                            subtitleEn = "تلقائي",
+                            isSelected = themeMode == AppThemeMode.SYSTEM,
+                            accentColor = GoldAccent,
+                            onClick = { onSelectThemeMode(AppThemeMode.SYSTEM) },
+                            testTag = "btn_theme_system",
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
+                    }
+                }
+            }
+
             // =========================================================================
             // SECTION 1: AUDIO & PRONUNCIATION
             // =========================================================================

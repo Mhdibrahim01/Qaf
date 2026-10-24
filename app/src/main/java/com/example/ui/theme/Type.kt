@@ -119,134 +119,186 @@ object ArabicTypography {
     )
 }
 
-val Typography = Typography(
-    displaySmall = TextStyle(
+val Typography: Typography
+    get() = Typography(
+        displayLarge = TextStyle(
+            fontFamily = InterFontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 40.sp,
+            lineHeight = 48.sp,
+            letterSpacing = (-0.5).sp,
+            color = TextPrimary,
+            platformStyle = DeterministicPlatformTextStyle,
+            lineHeightStyle = DeterministicLineHeightStyle
+        ),
+        displayMedium = TextStyle(
+            fontFamily = InterFontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 36.sp,
+            lineHeight = 44.sp,
+            letterSpacing = (-0.5).sp,
+            color = TextPrimary,
+            platformStyle = DeterministicPlatformTextStyle,
+            lineHeightStyle = DeterministicLineHeightStyle
+        ),
+        displaySmall = TextStyle(
+            fontFamily = InterFontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 32.sp,
+            lineHeight = 40.sp,
+            letterSpacing = (-0.5).sp,
+            color = TextPrimary,
+            platformStyle = DeterministicPlatformTextStyle,
+            lineHeightStyle = DeterministicLineHeightStyle
+        ),
+        headlineLarge = TextStyle(
+            fontFamily = InterFontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 28.sp,
+            lineHeight = 36.sp,
+            letterSpacing = (-0.3).sp,
+            color = TextPrimary,
+            platformStyle = DeterministicPlatformTextStyle,
+            lineHeightStyle = DeterministicLineHeightStyle
+        ),
+        headlineMedium = TextStyle(
+            fontFamily = InterFontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 24.sp,
+            lineHeight = 32.sp,
+            letterSpacing = (-0.3).sp,
+            color = TextPrimary,
+            platformStyle = DeterministicPlatformTextStyle,
+            lineHeightStyle = DeterministicLineHeightStyle
+        ),
+        headlineSmall = TextStyle(
+            fontFamily = InterFontFamily,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 20.sp,
+            lineHeight = 28.sp,
+            color = TextPrimary,
+            platformStyle = DeterministicPlatformTextStyle,
+            lineHeightStyle = DeterministicLineHeightStyle
+        ),
+        titleLarge = TextStyle(
+            fontFamily = InterFontFamily,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 18.sp,
+            lineHeight = 26.sp,
+            color = TextPrimary,
+            platformStyle = DeterministicPlatformTextStyle,
+            lineHeightStyle = DeterministicLineHeightStyle
+        ),
+        titleMedium = TextStyle(
+            fontFamily = InterFontFamily,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 16.sp,
+            lineHeight = 24.sp,
+            letterSpacing = 0.1.sp,
+            color = TextPrimary,
+            platformStyle = DeterministicPlatformTextStyle,
+            lineHeightStyle = DeterministicLineHeightStyle
+        ),
+        titleSmall = TextStyle(
+            fontFamily = InterFontFamily,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            letterSpacing = 0.1.sp,
+            color = TextPrimary,
+            platformStyle = DeterministicPlatformTextStyle,
+            lineHeightStyle = DeterministicLineHeightStyle
+        ),
+        bodyLarge = TextStyle(
+            fontFamily = InterFontFamily,
+            fontWeight = FontWeight.Normal,
+            fontSize = 16.sp,
+            lineHeight = 24.sp,
+            color = TextPrimary,
+            platformStyle = DeterministicPlatformTextStyle,
+            lineHeightStyle = DeterministicLineHeightStyle
+        ),
+        bodyMedium = TextStyle(
+            fontFamily = InterFontFamily,
+            fontWeight = FontWeight.Normal,
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            color = TextSecondary,
+            platformStyle = DeterministicPlatformTextStyle,
+            lineHeightStyle = DeterministicLineHeightStyle
+        ),
+        bodySmall = TextStyle(
+            fontFamily = InterFontFamily,
+            fontWeight = FontWeight.Normal,
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+            color = TextSecondary,
+            platformStyle = DeterministicPlatformTextStyle,
+            lineHeightStyle = DeterministicLineHeightStyle
+        ),
+        labelLarge = TextStyle(
+            fontFamily = InterFontFamily,
+            fontWeight = FontWeight.Medium,
+            fontSize = 13.sp,
+            lineHeight = 18.sp,
+            letterSpacing = 0.2.sp,
+            platformStyle = DeterministicPlatformTextStyle,
+            lineHeightStyle = DeterministicLineHeightStyle
+        ),
+        labelMedium = TextStyle(
+            fontFamily = InterFontFamily,
+            fontWeight = FontWeight.Medium,
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+            letterSpacing = 0.3.sp,
+            color = TextSecondary,
+            platformStyle = DeterministicPlatformTextStyle,
+            lineHeightStyle = DeterministicLineHeightStyle
+        ),
+        labelSmall = TextStyle(
+            fontFamily = InterFontFamily,
+            fontWeight = FontWeight.Medium,
+            fontSize = 11.sp,
+            lineHeight = 14.sp,
+            letterSpacing = 0.4.sp,
+            color = TextMuted,
+            platformStyle = DeterministicPlatformTextStyle,
+            lineHeightStyle = DeterministicLineHeightStyle
+        )
+    )
+
+val EyebrowStyle: TextStyle
+    get() = TextStyle(
         fontFamily = InterFontFamily,
         fontWeight = FontWeight.Bold,
-        fontSize = 32.sp,
-        lineHeight = 40.sp,
-        letterSpacing = (-0.5).sp,
-        color = TextPrimary,
-        platformStyle = DeterministicPlatformTextStyle,
-        lineHeightStyle = DeterministicLineHeightStyle
-    ),
-    headlineMedium = TextStyle(
-        fontFamily = InterFontFamily,
-        fontWeight = FontWeight.Bold,
-        fontSize = 24.sp,
-        lineHeight = 32.sp,
-        letterSpacing = (-0.3).sp,
-        color = TextPrimary,
-        platformStyle = DeterministicPlatformTextStyle,
-        lineHeightStyle = DeterministicLineHeightStyle
-    ),
-    headlineSmall = TextStyle(
-        fontFamily = InterFontFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 20.sp,
-        lineHeight = 28.sp,
-        color = TextPrimary,
-        platformStyle = DeterministicPlatformTextStyle,
-        lineHeightStyle = DeterministicLineHeightStyle
-    ),
-    titleLarge = TextStyle(
-        fontFamily = InterFontFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 18.sp,
-        lineHeight = 26.sp,
-        color = TextPrimary,
-        platformStyle = DeterministicPlatformTextStyle,
-        lineHeightStyle = DeterministicLineHeightStyle
-    ),
-    titleMedium = TextStyle(
-        fontFamily = InterFontFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.1.sp,
-        color = TextPrimary,
-        platformStyle = DeterministicPlatformTextStyle,
-        lineHeightStyle = DeterministicLineHeightStyle
-    ),
-    bodyLarge = TextStyle(
-        fontFamily = InterFontFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        color = TextPrimary,
-        platformStyle = DeterministicPlatformTextStyle,
-        lineHeightStyle = DeterministicLineHeightStyle
-    ),
-    bodyMedium = TextStyle(
-        fontFamily = InterFontFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        color = TextSecondary,
-        platformStyle = DeterministicPlatformTextStyle,
-        lineHeightStyle = DeterministicLineHeightStyle
-    ),
-    labelLarge = TextStyle(
-        fontFamily = InterFontFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 13.sp,
-        lineHeight = 18.sp,
-        letterSpacing = 0.2.sp,
-        color = TextPrimary,
-        platformStyle = DeterministicPlatformTextStyle,
-        lineHeightStyle = DeterministicLineHeightStyle
-    ),
-    labelMedium = TextStyle(
-        fontFamily = InterFontFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.3.sp,
-        color = TextSecondary,
-        platformStyle = DeterministicPlatformTextStyle,
-        lineHeightStyle = DeterministicLineHeightStyle
-    ),
-    labelSmall = TextStyle(
-        fontFamily = InterFontFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
+        fontSize = 10.sp,
         lineHeight = 14.sp,
-        letterSpacing = 0.4.sp,
-        color = TextMuted,
+        letterSpacing = 1.3.sp,
+        color = TextSubtle,
         platformStyle = DeterministicPlatformTextStyle,
         lineHeightStyle = DeterministicLineHeightStyle
     )
-)
 
-val EyebrowStyle = TextStyle(
-    fontFamily = InterFontFamily,
-    fontWeight = FontWeight.Bold,
-    fontSize = 10.sp,
-    lineHeight = 14.sp,
-    letterSpacing = 1.3.sp,
-    color = TextSubtle,
-    platformStyle = DeterministicPlatformTextStyle,
-    lineHeightStyle = DeterministicLineHeightStyle
-)
+val StatValueGridStyle: TextStyle
+    get() = TextStyle(
+        fontFamily = InterFontFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 21.sp,
+        lineHeight = 26.sp,
+        letterSpacing = (-1).sp,
+        color = GoldAccent,
+        platformStyle = DeterministicPlatformTextStyle,
+        lineHeightStyle = DeterministicLineHeightStyle
+    )
 
-val StatValueGridStyle = TextStyle(
-    fontFamily = InterFontFamily,
-    fontWeight = FontWeight.Bold,
-    fontSize = 21.sp,
-    lineHeight = 26.sp,
-    letterSpacing = (-1).sp,
-    color = GoldAccent,
-    platformStyle = DeterministicPlatformTextStyle,
-    lineHeightStyle = DeterministicLineHeightStyle
-)
-
-val StatValueReviewStyle = TextStyle(
-    fontFamily = InterFontFamily,
-    fontWeight = FontWeight.Bold,
-    fontSize = 31.sp,
-    lineHeight = 36.sp,
-    letterSpacing = (-1).sp,
-    color = GoldAccent,
-    platformStyle = DeterministicPlatformTextStyle,
-    lineHeightStyle = DeterministicLineHeightStyle
-)
+val StatValueReviewStyle: TextStyle
+    get() = TextStyle(
+        fontFamily = InterFontFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 31.sp,
+        lineHeight = 36.sp,
+        letterSpacing = (-1).sp,
+        color = GoldAccent,
+        platformStyle = DeterministicPlatformTextStyle,
+        lineHeightStyle = DeterministicLineHeightStyle
+    )

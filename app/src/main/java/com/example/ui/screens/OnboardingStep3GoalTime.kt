@@ -554,7 +554,7 @@ fun OnboardingGoalAndTimeStep(
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold
                                 ),
-                                color = Color(0xFFD1D5DB),
+                                color = TextSecondary,
                                 modifier = Modifier.fillMaxWidth(),
                                 textAlign = TextAlign.Right
                             )
@@ -734,7 +734,7 @@ private fun GoalOptionCard(
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold
                         ),
-                        color = Color(0xFFD1D5DB)
+                        color = TextSecondary
                     )
                 }
                 Text(

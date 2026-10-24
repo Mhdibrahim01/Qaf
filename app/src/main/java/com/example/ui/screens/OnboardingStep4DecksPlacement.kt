@@ -359,7 +359,7 @@ fun OnboardingDecksAndPlacementStep(
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.SemiBold
                                     ),
-                                    color = Color(0xFFD1D5DB),
+                                    color = TextSecondary,
                                     modifier = Modifier.fillMaxWidth(),
                                     textAlign = TextAlign.Right
                                 )
@@ -438,7 +438,7 @@ fun OnboardingDecksAndPlacementStep(
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.SemiBold
                                     ),
-                                    color = Color(0xFFD1D5DB),
+                                    color = TextSecondary,
                                     modifier = Modifier.fillMaxWidth(),
                                     textAlign = TextAlign.Right
                                 )
@@ -632,8 +632,8 @@ private fun DeckItemCard(
                     // Compact Level + Count Metadata Pill
                     Surface(
                         shape = RoundedCornerShape(999.dp),
-                        color = Color.White.copy(alpha = 0.06f),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f))
+                        color = SurfaceElevatedDark,
+                        border = BorderStroke(1.dp, BorderDark)
                     ) {
                         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                             Row(
@@ -674,7 +674,7 @@ private fun DeckItemCard(
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold
                         ),
-                        color = Color(0xFFD1D5DB),
+                        color = TextSecondary,
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Right
                     )

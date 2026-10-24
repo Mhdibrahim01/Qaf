@@ -218,7 +218,7 @@ internal fun OnboardingSectionHeader(
 
         if (rightBadgeText != null) {
             Surface(
-                color = Color(0xFF1C1D24),
+                color = SurfaceElevatedDark,
                 shape = RoundedCornerShape(10.dp),
                 border = BorderStroke(1.dp, BorderDark)
             ) {
@@ -263,7 +263,7 @@ internal fun OnboardingRadioCircle(
             Icon(
                 imageVector = Icons.Filled.Check,
                 contentDescription = "Selected",
-                tint = Color.Black,
+                tint = OnGoldDark,
                 modifier = Modifier.size(14.dp)
             )
         }
@@ -295,7 +295,7 @@ internal fun OnboardingCheckboxSquare(
             Icon(
                 imageVector = Icons.Filled.Check,
                 contentDescription = "Checked",
-                tint = Color.Black,
+                tint = OnGoldDark,
                 modifier = Modifier.size(14.dp)
             )
         }
@@ -453,8 +453,8 @@ fun OnboardingScreen(
                                 .background(
                                     when {
                                         isActive -> GoldAccent
-                                        isDone -> Color(0xFF7C682B)
-                                        else -> Color(0xFF2C2D35)
+                                        isDone -> GoldAccent.copy(alpha = 0.45f)
+                                        else -> BorderDark
                                     }
                                 )
                         )
@@ -887,7 +887,7 @@ private fun OnboardingWelcomeStep(
                             )
 
                             HorizontalDivider(
-                                color = Color.White.copy(alpha = 0.06f),
+                                color = BorderDark,
                                 thickness = 1.dp
                             )
 
@@ -1072,7 +1072,7 @@ private fun OnboardingLevelStep(
                             Text(
                                 text = "لست متأكداً؟ خذ اختبار تحديد مستوى من ١٠ أسئلة",
                                 style = ArabicTypography.labelSmall.copy(fontSize = 12.sp),
-                                color = Color(0xFFD1D5DB),
+                                color = TextSecondary,
                                 modifier = Modifier.fillMaxWidth(),
                                 textAlign = TextAlign.Start
                             )
@@ -1144,7 +1144,7 @@ private fun LevelOptionCard(
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
                     ),
-                    color = if (isSelected) Color.Black else TextPrimary
+                    color = if (isSelected) OnGoldDark else TextPrimary
                 )
             }
 
@@ -1178,7 +1178,7 @@ private fun LevelOptionCard(
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold
                                 ),
-                                color = if (isSelected) Color(0xFFFDE08D) else TextSecondary
+                                color = if (isSelected) GoldAccent else TextSecondary
                             )
                         }
                     }

@@ -30,24 +30,40 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import com.example.ui.theme.AppThemeState
 import com.example.ui.theme.ArabicTypography
+import com.example.ui.theme.CoralAccent
+import com.example.ui.theme.CoralAccentBg
+import com.example.ui.theme.CoralAccentBorder
 import com.example.ui.theme.GoldAccent
+import com.example.ui.theme.GoldAccentBorder
+import com.example.ui.theme.GoldAccentDim
 import com.example.ui.theme.InterFontFamily
 import com.example.ui.theme.TextPrimary
 
-// Single Source of Truth Theme Tokens for Universal BiDi Formatter
-val BiDiGoldInlineText = Color(0xFFF5C542)       // Bright gold text
-val BiDiGoldInlineBg = Color(0x1FF5C542)         // 12% subtle soft gold tint
-val BiDiGoldPillBorder = Color(0x59F5C542)       // 35% gold border
-val BiDiGoldPillBg = Color(0x24F5C542)           // 14% gold pill background
+// Single Source of Truth Theme Tokens for Universal BiDi Formatter (Reactive to Light & Dark Mode)
+val BiDiGoldInlineText: Color
+    get() = GoldAccent
+val BiDiGoldInlineBg: Color
+    get() = GoldAccentDim
+val BiDiGoldPillBorder: Color
+    get() = GoldAccentBorder
+val BiDiGoldPillBg: Color
+    get() = GoldAccentDim
 
-val BiDiRedInlineText = Color(0xFFFCA5A5)        // Bright coral/red text
-val BiDiRedInlineBg = Color(0x1CFCA5A5)          // 11% subtle soft red tint
-val BiDiRedPillBorder = Color(0x4DF87171)        // 30% red border
-val BiDiRedPillBg = Color(0x1FF87171)            // 12% red pill background
-val BiDiRedPillText = Color(0xFFF87171)
+val BiDiRedInlineText: Color
+    get() = if (AppThemeState.isLightMode) CoralAccent else Color(0xFFFCA5A5)
+val BiDiRedInlineBg: Color
+    get() = CoralAccentBg
+val BiDiRedPillBorder: Color
+    get() = CoralAccentBorder
+val BiDiRedPillBg: Color
+    get() = CoralAccentBg
+val BiDiRedPillText: Color
+    get() = CoralAccent
 
-val BiDiExampleBoxBg = Color(0x59000000)         // rgba(0, 0, 0, 0.35)
+val BiDiExampleBoxBg: Color
+    get() = if (AppThemeState.isLightMode) Color(0x141A1915) else Color(0x59000000)
 
 private const val TRAILING_PUNCT = ".,،؛؟:!?"
 
@@ -219,8 +235,9 @@ fun BiDiParsedText(
 ) {
     if (text.isEmpty()) return
 
+    val isLight = AppThemeState.isLightMode
     val parsed = remember(text) { extractTrailingExample(text) }
-    val annotated = remember(parsed.mainText, isMistakeTheme) {
+    val annotated = remember(parsed.mainText, isMistakeTheme, isLight) {
         buildBiDiPillAnnotatedString(parsed.mainText, isMistake = isMistakeTheme)
     }
 
@@ -272,7 +289,7 @@ fun BiDiParsedText(
                             textDirection = TextDirection.Ltr,
                             textAlign = TextAlign.Left
                         ),
-                        color = Color(0xFFE5E7EB),
+                        color = TextPrimary,
                         fontWeight = FontWeight.Medium
                     )
                 }

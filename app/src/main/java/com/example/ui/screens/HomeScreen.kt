@@ -70,13 +70,25 @@ import com.example.ui.components.BidiText
 import com.example.ui.components.CefrAndLifecycleCard
 import com.example.ui.components.ConqueredWordsTrophyShelf
 import com.example.ui.theme.ArabicTypography
+import com.example.ui.theme.BackgroundDark
+import com.example.ui.theme.BorderDark
+import com.example.ui.theme.BorderMedium
+import com.example.ui.theme.BorderSubtle
 import com.example.ui.theme.CoralAccent
+import com.example.ui.theme.CoralAccentBg
+import com.example.ui.theme.CoralAccentBorder
 import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.EmeraldAccentBg
+import com.example.ui.theme.GoldAccent
+import com.example.ui.theme.GoldAccentBorder
 import com.example.ui.theme.GoldAccentDim
+import com.example.ui.theme.OnGoldDark
 import com.example.ui.theme.PillShape
 import com.example.ui.theme.SkyAccent
 import com.example.ui.theme.SkyAccentBg
+import com.example.ui.theme.SkyAccentBorder
+import com.example.ui.theme.SurfaceDark
+import com.example.ui.theme.SurfaceElevatedDark
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
@@ -97,17 +109,17 @@ private val homeTaskJson = Json {
 
 private val HOME_TASKS_CACHE = java.util.concurrent.ConcurrentHashMap<String, List<DailyTaskItem>>()
 
-// Prototype palette constants matching the target HTML/CSS specification
-private val ProtoBgMain = Color(0xFF0B0D12)
-private val ProtoBgCard = Color(0xFF13161F)
-private val ProtoBorderSubtle = Color(0xFF232734)
-private val ProtoGold = Color(0xFFF5B82E)
-private val ProtoGoldDim = Color(0x24F5B82E)
-private val ProtoGoldBorder = Color(0x59F5B82E)
-private val ProtoCyan = Color(0xFF38BDF8)
-private val ProtoCyanDim = Color(0x1F38BDF8)
-private val ProtoCyanBorder = Color(0x4D38BDF8)
-private val ProtoOnGoldDark = Color(0xFF0B0D12)
+// Reactive palette delegates matching Dark and Light mode seamlessly
+private val ProtoBgMain: Color get() = BackgroundDark
+private val ProtoBgCard: Color get() = SurfaceDark
+private val ProtoBorderSubtle: Color get() = BorderDark
+private val ProtoGold: Color get() = GoldAccent
+private val ProtoGoldDim: Color get() = GoldAccentDim
+private val ProtoGoldBorder: Color get() = GoldAccentBorder
+private val ProtoCyan: Color get() = SkyAccent
+private val ProtoCyanDim: Color get() = SkyAccentBg
+private val ProtoCyanBorder: Color get() = SkyAccentBorder
+private val ProtoOnGoldDark: Color get() = OnGoldDark
 
 /**
  * Optimized Dark Learning Dashboard for Home destination.
@@ -330,7 +342,7 @@ private fun WelcomeSection(
                 .fillMaxWidth()
                 .background(
                     Brush.linearGradient(
-                        colors = listOf(Color(0xFF161924), Color(0xFF11141C))
+                        colors = listOf(SurfaceElevatedDark, SurfaceDark)
                     )
                 )
                 .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -377,9 +389,9 @@ private fun WelcomeSection(
                 // Streak Badge Pill
                 val streakCount = if (studyStreak > 0) studyStreak else 1
                 Surface(
-                    color = Color(0x1FF43F5E),
+                    color = CoralAccentBg,
                     shape = PillShape,
-                    border = BorderStroke(1.dp, Color(0x4DF43F5E)),
+                    border = BorderStroke(1.dp, CoralAccentBorder),
                     modifier = Modifier
                         .padding(top = 2.dp)
                         .testTag("home_study_streak_badge")
@@ -401,7 +413,7 @@ private fun WelcomeSection(
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 11.5.sp
                             ),
-                            color = Color(0xFFFDA4AF)
+                            color = CoralAccent
                         )
                     }
                 }
@@ -476,7 +488,7 @@ private fun WelcomeSection(
                         else -> "General Fluency" to "طلاقة عامة"
                     }
                     Surface(
-                        color = Color.White.copy(alpha = 0.04f),
+                        color = SurfaceElevatedDark,
                         shape = PillShape,
                         border = BorderStroke(1.dp, ProtoBorderSubtle),
                         modifier = Modifier.testTag("home_goal_chip")
@@ -494,7 +506,7 @@ private fun WelcomeSection(
 
                     // 3. Pace Chip
                     Surface(
-                        color = Color.White.copy(alpha = 0.04f),
+                        color = SurfaceElevatedDark,
                         shape = PillShape,
                         border = BorderStroke(1.dp, ProtoBorderSubtle),
                         modifier = Modifier.testTag("home_pace_chip")
@@ -513,7 +525,7 @@ private fun WelcomeSection(
             }
 
             // Subtle top divider before 7-day strip
-            HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 1.dp)
+            HorizontalDivider(color = BorderSubtle, thickness = 1.dp)
 
             // Integrated 7-Day Weekly Progress Strip (M T W T F S S)
             val dayNames = listOf("M", "T", "W", "T", "F", "S", "S")
@@ -573,7 +585,7 @@ private fun WelcomeSection(
                                         isCompleted -> EmeraldAccent
                                         isToday -> ProtoGold
                                         hasPartialActivity -> ProtoGoldBorder
-                                        else -> Color(0xFF2A3040)
+                                        else -> BorderMedium
                                     },
                                     shape = CircleShape
                                 ),
@@ -697,7 +709,7 @@ private fun TodayPlanCard(
         modifier = modifier
             .fillMaxWidth()
             .testTag("home_today_plan_widget"),
-        color = Color(0xFF161514),
+        color = SurfaceDark,
         shape = RoundedCornerShape(18.dp),
         border = BorderStroke(1.dp, ProtoGoldBorder)
     ) {
@@ -721,7 +733,7 @@ private fun TodayPlanCard(
                         modifier = Modifier
                             .size(38.dp)
                             .clip(RoundedCornerShape(11.dp))
-                            .background(Color(0xFF262013))
+                            .background(ProtoGoldDim)
                             .border(1.dp, ProtoGoldBorder, RoundedCornerShape(11.dp)),
                         contentAlignment = Alignment.Center
                     ) {
@@ -770,7 +782,7 @@ private fun TodayPlanCard(
                     .height(5.dp)
                     .clip(PillShape),
                 color = ProtoGold,
-                trackColor = Color(0xFF252320)
+                trackColor = SurfaceElevatedDark
             )
 
             // Compact 3-Line Task Cards List
@@ -917,7 +929,7 @@ private fun TaskCheckRow(
                         .background(if (task.isCompleted) EmeraldAccent else Color.Transparent)
                         .border(
                             width = 1.5.dp,
-                            color = if (task.isCompleted) EmeraldAccent else Color(0xFF3F465A),
+                            color = if (task.isCompleted) EmeraldAccent else BorderMedium,
                             shape = RoundedCornerShape(6.dp)
                         )
                         .clickable { onToggleComplete() }
@@ -959,7 +971,7 @@ private fun TaskCheckRow(
 
                         if (task.estimatedMinutes > 0) {
                             Surface(
-                                color = Color.White.copy(alpha = 0.05f),
+                                color = SurfaceElevatedDark,
                                 shape = RoundedCornerShape(5.dp),
                                 modifier = Modifier.align(Alignment.CenterVertically)
                             ) {
@@ -1020,7 +1032,7 @@ private fun TaskCheckRow(
                 }
             }
 
-            // High-Contrast Gold Action Button (#F5B82E background with #0B0D12 bold dark navy/black text)
+            // High-Contrast Gold Action Button
             val actionLabel = when (task.type) {
                 "quiz" -> if (task.isCompleted) "Retake" else "Quiz"
                 "flashcards" -> if (task.isCompleted) "Review" else "Start"
@@ -1037,7 +1049,7 @@ private fun TaskCheckRow(
             Button(
                 onClick = onClick,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (task.isCompleted) Color(0xFF181C28) else ProtoGold,
+                    containerColor = if (task.isCompleted) SurfaceElevatedDark else ProtoGold,
                     contentColor = buttonTextColor
                 ),
                 shape = RoundedCornerShape(10.dp),
