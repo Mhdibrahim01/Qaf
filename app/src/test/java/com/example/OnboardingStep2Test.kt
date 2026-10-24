@@ -82,16 +82,16 @@ class OnboardingStep2Test {
     }
 
     @Test
-    fun `bundled dictionary expected row count matches all 14 JSON files (21624) and core 7 files (9862)`() {
+    fun `bundled dictionary expected row count matches all 14 JSON files (27435) and core 7 files (9862)`() {
         assertEquals(9862, DataImportRepository.CORE_EXPECTED_ROWS)
-        assertEquals(21624, DataImportRepository.TOTAL_EXPECTED_ROWS)
+        assertEquals(27435, DataImportRepository.TOTAL_EXPECTED_ROWS)
         assertEquals(14, DataImportRepository.EXPECTED_FILE_ROW_COUNTS.size)
         assertEquals(
-            21624,
+            27435,
             DataImportRepository.EXPECTED_FILE_ROW_COUNTS.values.sum()
         )
         val defaultImportState = ImportProgressState(importedRows = 14437)
-        assertEquals(21624, defaultImportState.totalExpectedRows)
+        assertEquals(27435, defaultImportState.totalExpectedRows)
         assertTrue(defaultImportState.progressFraction < 1.0f)
     }
 
@@ -270,7 +270,7 @@ class OnboardingStep2Test {
     }
 
     @Test
-    fun `step 2 UI preselects B2, displays 21624 import total, and supports placement quiz I dont know and editable rough estimate`() = runBlocking {
+    fun `step 2 UI preselects B2, displays 27435 import total, and supports placement quiz I dont know and editable rough estimate`() = runBlocking {
         // Simulate Step 1 completed -> resumes at Step 2
         onboardingRepo.setLastCompletedStep(1)
         val snapBefore = onboardingRepo.getSnapshot()
@@ -306,7 +306,7 @@ class OnboardingStep2Test {
                     importState = ImportProgressState(
                         isImporting = true,
                         importedRows = 14437,
-                        totalExpectedRows = 21624,
+                        totalExpectedRows = 27435,
                         isCompleted = false
                     ),
                     totalEntriesCount = 14437,
@@ -347,10 +347,10 @@ class OnboardingStep2Test {
         }
         composeTestRule.waitForIdle()
 
-        // 1. Verify Step 2 is displayed with B2 preselected and 14437 / 21624 in the import status bar
+        // 1. Verify Step 2 is displayed with B2 preselected and 14437 / 27435 in the import status bar
         composeTestRule.onNodeWithTag("onboarding_step_2_level").assertIsDisplayed()
         composeTestRule.onNodeWithTag("onboarding_level_card_B2").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("14437 / 21624").assertIsDisplayed()
+        composeTestRule.onNodeWithText("14437 / 27435").assertIsDisplayed()
 
         // 2. Tap "Not sure" button to launch placement quiz
         composeTestRule.onNodeWithTag("btn_onboarding_not_sure").performScrollTo().performClick()

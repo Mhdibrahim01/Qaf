@@ -569,7 +569,7 @@ class AdaptiveV2VerificationTest {
 
     @Test
     fun testDataVersion7AndDeckEffectiveLevels() {
-        assertEquals("DataImportRepository DATA_VERSION must be 7", 7, DataImportRepository.DATA_VERSION)
+        assertEquals("DataImportRepository DATA_VERSION must be 8", 8, DataImportRepository.DATA_VERSION)
     }
 
     @Test

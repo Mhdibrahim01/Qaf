@@ -278,11 +278,11 @@ class OnboardingStep3Test {
                     ),
                     importState = ImportProgressState(
                         isImporting = false,
-                        importedRows = 21624,
-                        totalExpectedRows = 21624,
+                        importedRows = 27435,
+                        totalExpectedRows = 27435,
                         isCompleted = true
                     ),
-                    totalEntriesCount = 21624,
+                    totalEntriesCount = 27435,
                     onCompleteStep1 = {},
                     onSelectGoal = { selectedGoalState = it },
                     onSelectMinutesPerDay = { selectedMinutesState = it },
