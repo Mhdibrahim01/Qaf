@@ -1190,27 +1190,35 @@ private fun ReviewDueSection(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Due Now Count Block
+                val isWaitingQueueState = !hasDueNow && hasWaitingLater
+                val displayedCount = if (isWaitingQueueState) waitingLaterTodayCount else reviewDueNowCount
+                val displayedLabel = if (isWaitingQueueState) "in queue" else "due now"
+
+                // Due Now / In Queue Count Block
                 Column(
                     modifier = Modifier.widthIn(min = 56.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = reviewDueNowCount.toString(),
+                        text = displayedCount.toString(),
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold
                         ),
-                        color = if (hasDueNow) ProtoGold else TextMuted,
+                        color = when {
+                            hasDueNow -> ProtoGold
+                            hasWaitingLater -> ProtoGold.copy(alpha = 0.88f)
+                            else -> TextMuted
+                        },
                         modifier = Modifier.testTag("home_review_due_count")
                     )
                     Text(
-                        text = "due now",
+                        text = displayedLabel,
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontSize = 11.sp
                         ),
-                        color = TextSecondary
+                        color = if (isWaitingQueueState) ProtoGold.copy(alpha = 0.75f) else TextSecondary
                     )
                 }
 
@@ -1236,12 +1244,12 @@ private fun ReviewDueSection(
 
                     val arabicStatusText = when {
                         hasDueNow && hasWaitingLater -> {
-                            val waitSuffix = if (waitingMinutes != null) " (~$waitingMinutes د)" else ""
+                            val waitSuffix = if (waitingMinutes != null) " (~$waitingMinutes\u00A0د)" else ""
                             "$reviewDueNowCount جاهزة الآن • $waitingLaterTodayCount في الانتظار ⏳$waitSuffix"
                         }
                         hasDueNow -> "جاهزة للمراجعة الفورية الآن"
                         hasWaitingLater -> {
-                            val waitSuffix = if (waitingMinutes != null) " (~$waitingMinutes د)" else ""
+                            val waitSuffix = if (waitingMinutes != null) " (~$waitingMinutes\u00A0د)" else ""
                             "كل المراجعات الفورية منجزة ✓ • $waitingLaterTodayCount في الانتظار ⏳$waitSuffix"
                         }
                         else -> "كل المراجعات مكتملة لليوم ✓"
