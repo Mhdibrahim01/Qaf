@@ -1761,18 +1761,32 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     fun openDetailedDefinition(deckId: String, wordText: String, cardIndex: Int = -1) {
         viewModelScope.launch {
             readingRepository.recordWordLookup(wordText, deckId)
-            val card = repository.getWordCardWithVariants(deckId, wordText)
+            var card = repository.getWordCardWithVariants(deckId, wordText)
+            if (card == null && deckId.isNotBlank()) {
+                // Fallback across all decks
+                card = repository.getWordCardWithVariants("", wordText)
+            }
+            if (card == null) {
+                // Fallback via readingRepository local lookup which resolves inflections & lemmas
+                val localMatches = readingRepository.lookupWordLocally(wordText)
+                val primaryMatch = localMatches.firstOrNull()
+                if (primaryMatch != null) {
+                    card = repository.getWordCardWithVariants(primaryMatch.deck, primaryMatch.text)
+                }
+            }
             _detailedCard.value = card
+            val targetDeck = card?.deck ?: deckId
+            val targetWord = card?.text ?: wordText
             if (card != null && _autoPlayPronunciation.value && studyPlanProfile.value?.quietModeEnabled != true) {
                 val url = card.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl.orEmpty()
                 playWordVoiceAudio(card.text, url, _preferredAccentUk.value)
             }
-            loadAiDefinitionForWord(wordText, forceFetch = false)
-            if (deckId.isNotBlank() && wordText.isNotBlank()) {
+            loadAiDefinitionForWord(targetWord, forceFetch = false)
+            if (targetDeck.isNotBlank() && targetWord.isNotBlank()) {
                 repository.saveDeckStudyPosition(
-                    deckId = deckId,
+                    deckId = targetDeck,
                     cardIndex = cardIndex,
-                    wordText = wordText,
+                    wordText = targetWord,
                     incrementStudied = false
                 )
             }

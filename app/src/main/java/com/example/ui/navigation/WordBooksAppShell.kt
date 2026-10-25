@@ -98,6 +98,10 @@ import com.example.ui.screens.ReadingScreen
 import com.example.ui.screens.SentencesScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.WordBooksDatabaseScreen
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import com.example.ui.screens.WordDetailedDefinitionSheet
 import com.example.ui.viewmodel.WordBooksViewModel
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
@@ -118,6 +122,7 @@ import com.example.ui.theme.TextSecondary
  * - Bottom navigation bar on phones (< 600dp width) showing all 7 sections
  * - Side NavigationRail on tablets / landscape (>= 600dp width)
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WordBooksAppShell(
     modifier: Modifier = Modifier,
@@ -761,6 +766,14 @@ fun WordBooksAppShell(
                     val grammarLessons by wordBooksViewModel.grammarLessons.collectAsStateWithLifecycle()
                     val ttsSpeechRate by wordBooksViewModel.ttsSpeechRate.collectAsStateWithLifecycle()
                     val learnerModelSnapshot by wordBooksViewModel.learnerModelSnapshot.collectAsStateWithLifecycle()
+                    val detailedCard by wordBooksViewModel.detailedCard.collectAsStateWithLifecycle()
+                    val currentlyPlayingWord by wordBooksViewModel.currentlyPlayingWord.collectAsStateWithLifecycle()
+                    val aiStatus by wordBooksViewModel.aiStatus.collectAsStateWithLifecycle()
+                    val savedSentenceKeys by wordBooksViewModel.savedSentenceKeys.collectAsStateWithLifecycle()
+                    val currentAiWordDetail by wordBooksViewModel.currentAiWordDetail.collectAsStateWithLifecycle()
+                    val isAiDetailLoading by wordBooksViewModel.isAiDetailLoading.collectAsStateWithLifecycle()
+                    val aiDetailError by wordBooksViewModel.aiDetailError.collectAsStateWithLifecycle()
+                    val batchTranslateState by wordBooksViewModel.batchTranslateState.collectAsStateWithLifecycle()
                     ReadingScreen(
                         texts = readingTexts,
                         progressList = readingProgressList,
@@ -823,6 +836,57 @@ fun WordBooksAppShell(
                         wordStageMap = learnerModelSnapshot.wordStageByHeadword,
                         onOpenDetailedDefinition = wordBooksViewModel::openDetailedDefinition
                     )
+
+                    if (detailedCard != null) {
+                        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                        ModalBottomSheet(
+                            onDismissRequest = wordBooksViewModel::dismissDetailedDefinition,
+                            sheetState = sheetState,
+                            containerColor = SurfaceDark,
+                            contentColor = TextPrimary
+                        ) {
+                            WordDetailedDefinitionSheet(
+                                card = detailedCard!!,
+                                isPlaying = currentlyPlayingWord == detailedCard!!.text,
+                                isAiTranslating = aiStatus.isRunning,
+                                savedSentenceKeys = savedSentenceKeys,
+                                aiDetail = currentAiWordDetail,
+                                isAiDetailLoading = isAiDetailLoading,
+                                aiDetailError = aiDetailError,
+                                canRequestAi = wordBooksViewModel.canMakeAiRequest(),
+                                isAllowAi = batchTranslateState.allowAi,
+                                isOnline = wordBooksViewModel.isDeviceOnline(),
+                                onDismiss = wordBooksViewModel::dismissDetailedDefinition,
+                                onRetryAiDefinition = { wordBooksViewModel.retryAiDefinition(detailedCard!!.text) },
+                                onPlayAudio = {
+                                    val url = detailedCard!!.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: ""
+                                    wordBooksViewModel.playAudio(detailedCard!!.text, url)
+                                },
+                                onPlayAudioSlow = {
+                                    val url = detailedCard!!.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: ""
+                                    wordBooksViewModel.playAudioSlow(detailedCard!!.text, url)
+                                },
+                                onPlayVoiceAudioSlow = { isGb ->
+                                    val url = if (!isGb) detailedCard!!.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: "" else ""
+                                    wordBooksViewModel.playAudioSlow(detailedCard!!.text, url, isGb)
+                                },
+                                onPlayVoiceAudio = { isGb ->
+                                    val url = if (!isGb) detailedCard!!.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: "" else ""
+                                    wordBooksViewModel.playWordVoiceAudio(detailedCard!!.text, url, isGb)
+                                },
+                                onSpeakSentenceTts = { wordBooksViewModel.speakSentenceTts(it) },
+                                onEnrichWithAi = { wordBooksViewModel.enrichCurrentWordWithAi(detailedCard!!.deck, detailedCard!!.text) },
+                                onSaveUserArabic = { entryId, userArabic ->
+                                    wordBooksViewModel.saveUserArabicForEntry(entryId, detailedCard!!.deck, detailedCard!!.text, userArabic)
+                                },
+                                onToggleSaveSentence = { en, ar ->
+                                    wordBooksViewModel.toggleSaveExampleSentence(en, ar, detailedCard!!.text)
+                                },
+                                onToggleFavorite = { wordBooksViewModel.toggleFavorite(detailedCard!!.deck, detailedCard!!.text) },
+                                onToggleMastered = { wordBooksViewModel.toggleMastered(detailedCard!!.deck, detailedCard!!.text) }
+                            )
+                        }
+                    }
                 }
                 composable<AppRoute.Labs> {
                     val isBatchTranslateOpen by wordBooksViewModel.isBatchTranslateOpen.collectAsStateWithLifecycle()
