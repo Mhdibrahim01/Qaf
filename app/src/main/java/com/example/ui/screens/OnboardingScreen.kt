@@ -820,11 +820,13 @@ private fun OnboardingWelcomeStep(
                     Text(
                         text = "Learn English, in your language",
                         style = MaterialTheme.typography.headlineSmall.copy(
-                            fontSize = 22.sp,
+                            fontSize = 20.sp,
+                            lineHeight = 26.sp,
                             fontWeight = FontWeight.Bold
                         ),
                         color = TextPrimary,
                         textAlign = TextAlign.Center,
+                        maxLines = 1,
                         modifier = Modifier.testTag("onboarding_welcome_tagline_en")
                     )
 
@@ -846,6 +848,22 @@ private fun OnboardingWelcomeStep(
                     Spacer(modifier = Modifier.height(22.dp))
 
                     // Inner Welcome Features Box
+                    val summaryPrimaryColor = if (com.example.ui.theme.AppThemeState.isLightMode) {
+                        TextPrimary
+                    } else {
+                        Color(0xFFF4F4F6)
+                    }
+                    val summaryDividerColor = if (com.example.ui.theme.AppThemeState.isLightMode) {
+                        com.example.ui.theme.BorderSubtle
+                    } else {
+                        Color.White.copy(alpha = 0.07f)
+                    }
+                    val summaryArabicColor = if (com.example.ui.theme.AppThemeState.isLightMode) {
+                        TextSecondary
+                    } else {
+                        Color(0xFF9496A1)
+                    }
+
                     Surface(
                         shape = RoundedCornerShape(16.dp),
                         color = SurfaceElevatedDark,
@@ -857,37 +875,21 @@ private fun OnboardingWelcomeStep(
                                 .fillMaxWidth()
                                 .padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            // 3 clean feature pills
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                WelcomeFeaturePill("Oxford 5000 & OPAL")
-                                WelcomeFeaturePill("Graded Grammar & Reading")
-                            }
-                            WelcomeFeaturePill("100% Offline • No Account")
-
                             Text(
-                                text = buildAnnotatedString {
-                                    append("Oxford vocabulary, graded grammar & reading — ")
-                                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = TextPrimary)) {
-                                        append("100% offline")
-                                    }
-                                    append(", no account required.")
-                                },
+                                text = "Oxford vocabulary, graded grammar & reading — 100% offline, no account required.",
                                 style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontSize = 13.5.sp,
+                                    fontSize = 14.sp,
                                     lineHeight = 21.sp
                                 ),
-                                color = TextPrimary,
-                                textAlign = TextAlign.Center
+                                color = summaryPrimaryColor,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
                             )
 
                             HorizontalDivider(
-                                color = BorderDark,
+                                color = summaryDividerColor,
                                 thickness = 1.dp
                             )
 
@@ -895,10 +897,10 @@ private fun OnboardingWelcomeStep(
                                 Text(
                                     text = "مفردات أكسفورد، القواعد والقراءة المتدرجة — يعمل بالكامل دون إنترنت ودون حساب.",
                                     style = ArabicTypography.bodySmall.copy(
-                                        fontSize = 12.5.sp,
+                                        fontSize = 13.sp,
                                         lineHeight = 20.sp
                                     ),
-                                    color = TextSecondary,
+                                    color = summaryArabicColor,
                                     textAlign = TextAlign.Center,
                                     modifier = Modifier.fillMaxWidth()
                                 )
@@ -915,25 +917,6 @@ private fun OnboardingWelcomeStep(
             ctaTextAr = "ابدأ الآن",
             onClick = onGetStarted,
             buttonTestTag = "btn_onboarding_get_started"
-        )
-    }
-}
-
-@Composable
-private fun WelcomeFeaturePill(text: String) {
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = SurfaceDark,
-        border = BorderStroke(1.dp, BorderDark)
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold
-            ),
-            color = GoldAccent,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
         )
     }
 }

@@ -2899,9 +2899,15 @@ fun AiDefinitionPanel(
                         GoldBadge(text = "$shortPos $fullName")
 
                         meaningsInPos.forEach { meaning ->
+                            val fallbackDefAr = card.posVariants.firstOrNull {
+                                posShortLabel(it.pos) == shortPos && it.definitionAr.isNotBlank()
+                            }?.definitionAr ?: card.posVariants.firstOrNull {
+                                it.definitionAr.isNotBlank()
+                            }?.definitionAr.orEmpty()
                             MeaningItemView(
                                 arabicList = meaning.arabic,
                                 definitionEn = meaning.definitionEn,
+                                definitionAr = meaning.definitionAr.ifBlank { fallbackDefAr },
                                 exampleEn = meaning.example?.en.orEmpty(),
                                 exampleAr = meaning.example?.ar.orEmpty(),
                                 cardText = card.text,
@@ -2927,6 +2933,7 @@ fun AiDefinitionPanel(
                             MeaningItemView(
                                 arabicList = if (variant.arabicMeaning.isNotBlank()) listOf(variant.arabicMeaning) else emptyList(),
                                 definitionEn = variant.definitionEn,
+                                definitionAr = variant.definitionAr,
                                 exampleEn = variant.examplesEn.firstOrNull() ?: "",
                                 exampleAr = variant.examplesAr.firstOrNull() ?: "",
                                 cardText = card.text,
@@ -3100,6 +3107,7 @@ fun AiDefinitionPanel(
 private fun MeaningItemView(
     arabicList: List<String>,
     definitionEn: String,
+    definitionAr: String = "",
     exampleEn: String,
     exampleAr: String,
     cardText: String,
@@ -3127,15 +3135,36 @@ private fun MeaningItemView(
             )
         }
 
-        // Short English definition in gray
-        if (definitionEn.isNotBlank()) {
-            Text(
-                text = definitionEn,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = 14.sp
-                ),
-                color = TextSecondary
-            )
+        // Short English definition in gray + Arabic definition right underneath
+        if (definitionEn.isNotBlank() || definitionAr.isNotBlank()) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                if (definitionEn.isNotBlank()) {
+                    Text(
+                        text = definitionEn,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 14.sp,
+                            textDirection = TextDirection.Ltr
+                        ),
+                        color = TextSecondary
+                    )
+                }
+                if (definitionAr.isNotBlank()) {
+                    BidiText(
+                        text = definitionAr,
+                        style = ArabicTypography.bodyMedium.copy(
+                            fontSize = 14.sp,
+                            lineHeight = 20.sp,
+                            letterSpacing = 0.sp
+                        ),
+                        color = TextSecondary,
+                        fillMaxWidth = true,
+                        textAlign = TextAlign.Right
+                    )
+                }
+            }
         }
 
         // One example with target word highlighted in gold, speaker icon, and Arabic translation

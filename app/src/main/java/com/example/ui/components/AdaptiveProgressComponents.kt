@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -228,11 +229,11 @@ fun CefrAndLifecycleCard(
             .fillMaxWidth()
             .testTag("cefr_readiness_card"),
         color = SurfaceDark,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(18.dp),
         border = BorderStroke(1.dp, BorderDark)
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
+            modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Top Part: CEFR Mastery Header
@@ -242,9 +243,9 @@ fun CefrAndLifecycleCard(
                 "CEFR ${readiness.currentLevel} Mastery"
             }
             val subtitleText = if (readiness.nextLevel != null) {
-                "جاهزية الانتقال للمستوى ${readiness.nextLevel}"
+                "\u2067جاهزية الانتقال للمستوى \u2066${readiness.nextLevel}\u2069\u2069"
             } else {
-                "أعلى مستوى تم تحقيقه بنجاح"
+                "\u2067أعلى مستوى تم تحقيقه بنجاح\u2069"
             }
 
             Row(
@@ -255,23 +256,27 @@ fun CefrAndLifecycleCard(
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(end = 8.dp),
+                        .padding(end = 12.dp),
+                    horizontalAlignment = Alignment.Start,
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
                         text = titleText,
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
+                            fontSize = 15.5.sp
                         ),
                         color = TextPrimary
                     )
-                    BidiText(
+                    Text(
                         text = subtitleText,
-                        style = ArabicTypography.labelSmall.copy(fontSize = 12.sp),
+                        style = ArabicTypography.labelSmall.copy(
+                            fontSize = 12.sp,
+                            textDirection = TextDirection.Rtl,
+                            textAlign = TextAlign.Left
+                        ),
                         color = TextSecondary,
-                        fillMaxWidth = true,
-                        textAlign = TextAlign.Right
+                        modifier = Modifier.align(Alignment.Start)
                     )
                 }
 
@@ -359,7 +364,7 @@ fun CefrAndLifecycleCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("word_lifecycle_funnel_card"),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -370,28 +375,32 @@ fun CefrAndLifecycleCard(
                         text = "Vocabulary Lifecycle Stages",
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 13.sp
+                            fontSize = 12.5.sp
                         ),
-                        color = TextPrimary
+                        color = TextPrimary,
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .padding(end = 8.dp)
                     )
                     Text(
                         text = "${funnel.activeStudiedCount} active • 🏆 ${funnel.conqueredCount} conquered",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 11.5.sp
+                            fontSize = 11.sp
                         ),
-                        color = GoldAccent
+                        color = GoldAccent,
+                        maxLines = 1
                     )
                 }
 
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Row 1: New & Seen
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         FunnelStageChip(
                             labelEn = "New",
@@ -422,7 +431,7 @@ fun CefrAndLifecycleCard(
                     // Row 2: Learning & Familiar
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         FunnelStageChip(
                             labelEn = "Learning",
@@ -453,7 +462,7 @@ fun CefrAndLifecycleCard(
                     // Row 3: Mature & Conquered
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         FunnelStageChip(
                             labelEn = "Mature",
@@ -469,7 +478,7 @@ fun CefrAndLifecycleCard(
                         )
                         FunnelStageChip(
                             labelEn = "Conquered",
-                            labelAr = "",
+                            labelAr = "محسومة",
                             count = funnel.conqueredCount,
                             color = Color(0xFFA855F7),
                             testTag = "funnel_stage_conquered",
@@ -832,7 +841,7 @@ fun WordLifecycleFunnelCard(
                     )
                     FunnelStageChip(
                         labelEn = "Conquered",
-                        labelAr = "",
+                        labelAr = "محسومة",
                         count = funnel.conqueredCount,
                         color = VioletAccent,
                         testTag = "funnel_stage_conquered",
@@ -1118,10 +1127,10 @@ private fun FunnelStageChip(
 ) {
     Surface(
         color = SurfaceElevatedDark,
-        shape = RoundedCornerShape(9.dp),
+        shape = RoundedCornerShape(11.dp),
         border = BorderStroke(1.dp, BorderDark),
         modifier = modifier
-            .clip(RoundedCornerShape(9.dp))
+            .clip(RoundedCornerShape(11.dp))
             .then(
                 if (onClick != null) {
                     Modifier.clickable(onClick = onClick)
@@ -1134,36 +1143,59 @@ private fun FunnelStageChip(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 6.dp),
+                .padding(horizontal = 10.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.weight(1f, fill = false)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .padding(end = 6.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(7.dp)
+                        .size(8.dp)
                         .clip(CircleShape)
                         .background(color)
                 )
-                Text(
-                    text = if (labelAr.isNotBlank()) "$labelEn ($labelAr)" else labelEn,
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
-                    color = TextSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Column(
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Text(
+                        text = labelEn,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 11.5.sp,
+                            lineHeight = 14.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (labelAr.isNotBlank()) {
+                        Text(
+                            text = labelAr,
+                            style = ArabicTypography.labelSmall.copy(
+                                fontSize = 10.5.sp,
+                                lineHeight = 13.sp,
+                                textDirection = TextDirection.Rtl
+                            ),
+                            color = TextSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
             }
             Text(
                 text = "$count",
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontWeight = FontWeight.Bold,
-                    fontSize = 11.5.sp
+                    fontSize = 12.5.sp
                 ),
-                color = if (count > 0 && labelEn != "New") color else TextPrimary
+                color = if (labelEn == "Seen" || labelEn == "Conquered" || (count > 0 && labelEn != "New")) color else TextPrimary
             )
         }
     }

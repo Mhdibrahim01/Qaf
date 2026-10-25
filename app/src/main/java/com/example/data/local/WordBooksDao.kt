@@ -31,6 +31,7 @@ interface WordBooksDao {
             level = :level,
             effective_level = :effectiveLevel,
             definition_en = CASE WHEN :definitionEn != '' THEN :definitionEn ELSE definition_en END,
+            definition_ar = CASE WHEN :definitionAr != '' THEN :definitionAr ELSE definition_ar END,
             note_en = CASE WHEN :noteEn != '' THEN :noteEn ELSE note_en END,
             examples_en = CASE WHEN :examplesEn != '' THEN :examplesEn ELSE examples_en END,
             examples_ar = CASE WHEN :examplesAr != '' THEN :examplesAr ELSE examples_ar END,
@@ -60,6 +61,7 @@ interface WordBooksDao {
         level: String,
         effectiveLevel: String?,
         definitionEn: String,
+        definitionAr: String = "",
         noteEn: String,
         examplesEn: String,
         examplesAr: String,
@@ -130,6 +132,7 @@ interface WordBooksDao {
                 level = entry.level,
                 effectiveLevel = entry.effectiveLevel,
                 definitionEn = entry.definitionEn,
+                definitionAr = entry.definitionAr,
                 noteEn = entry.noteEn,
                 examplesEn = entry.examplesEn,
                 examplesAr = entry.examplesAr,
@@ -163,6 +166,7 @@ interface WordBooksDao {
                     level = entry.level,
                     effectiveLevel = entry.effectiveLevel,
                     definitionEn = entry.definitionEn,
+                    definitionAr = entry.definitionAr,
                     noteEn = entry.noteEn,
                     examplesEn = entry.examplesEn,
                     examplesAr = entry.examplesAr,
@@ -504,6 +508,7 @@ interface WordBooksDao {
                 ''
             ) AS level,
             e.definition_en AS definition_en,
+            e.definition_ar AS definition_ar,
             e.note_en AS note_en,
             e.examples_en AS examples_en,
             e.examples_ar AS examples_ar,
@@ -608,6 +613,7 @@ interface WordBooksDao {
                 ''
             ) AS level,
             e.definition_en AS definition_en,
+            e.definition_ar AS definition_ar,
             e.note_en AS note_en,
             e.examples_en AS examples_en,
             e.examples_ar AS examples_ar,
@@ -694,6 +700,7 @@ interface WordBooksDao {
                 ''
             ) AS level,
             e.definition_en AS definition_en,
+            e.definition_ar AS definition_ar,
             e.note_en AS note_en,
             e.examples_en AS examples_en,
             e.examples_ar AS examples_ar,
@@ -780,6 +787,7 @@ interface WordBooksDao {
                 ''
             ) AS level,
             e.definition_en AS definition_en,
+            e.definition_ar AS definition_ar,
             e.note_en AS note_en,
             e.examples_en AS examples_en,
             e.examples_ar AS examples_ar,
@@ -886,6 +894,7 @@ interface WordBooksDao {
                 ''
             ) AS level,
             e.definition_en AS definition_en,
+            e.definition_ar AS definition_ar,
             e.note_en AS note_en,
             e.examples_en AS examples_en,
             e.examples_ar AS examples_ar,
@@ -993,6 +1002,7 @@ interface WordBooksDao {
                 ''
             ) AS level,
             e.definition_en AS definition_en,
+            e.definition_ar AS definition_ar,
             e.note_en AS note_en,
             e.examples_en AS examples_en,
             e.examples_ar AS examples_ar,
