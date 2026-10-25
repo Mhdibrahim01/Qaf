@@ -411,11 +411,11 @@ fun BooksModeSwitcher(
                 border = if (booksSelected) BorderStroke(1.dp, GoldAccentBorder) else null,
                 modifier = Modifier
                     .weight(1f)
-                    .heightIn(min = 40.dp)
+                    .heightIn(min = 34.dp)
                     .testTag("mode_tab_books")
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -423,13 +423,14 @@ fun BooksModeSwitcher(
                         imageVector = Icons.AutoMirrored.Filled.MenuBook,
                         contentDescription = null,
                         tint = if (booksSelected) GoldAccent else TextSecondary,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(15.dp)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Word Books",
                         style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = if (booksSelected) FontWeight.Bold else FontWeight.Medium
+                            fontSize = 13.sp,
+                            fontWeight = if (booksSelected) FontWeight.Bold else FontWeight.SemiBold
                         ),
                         color = if (booksSelected) GoldAccent else TextSecondary
                     )
@@ -445,11 +446,11 @@ fun BooksModeSwitcher(
                 border = if (cardsSelected) BorderStroke(1.dp, GoldAccentBorder) else null,
                 modifier = Modifier
                     .weight(1f)
-                    .heightIn(min = 40.dp)
+                    .heightIn(min = 34.dp)
                     .testTag("mode_tab_flashcards")
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -457,13 +458,14 @@ fun BooksModeSwitcher(
                         imageVector = Icons.Filled.Style,
                         contentDescription = null,
                         tint = if (cardsSelected) GoldAccent else TextSecondary,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(15.dp)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Flashcards",
                         style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = if (cardsSelected) FontWeight.Bold else FontWeight.Medium
+                            fontSize = 13.sp,
+                            fontWeight = if (cardsSelected) FontWeight.Bold else FontWeight.SemiBold
                         ),
                         color = if (cardsSelected) GoldAccent else TextSecondary
                     )
