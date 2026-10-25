@@ -1,6 +1,7 @@
 package com.example.ui.navigation
 
 import com.example.data.importer.DataImportRepository
+import kotlinx.serialization.json.Json
 
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -422,6 +423,7 @@ fun WordBooksAppShell(
                     val waitingLaterTodayCount by wordBooksViewModel.waitingLaterTodayCount.collectAsStateWithLifecycle()
                     val nextWaitingDueTimestamp by wordBooksViewModel.nextWaitingDueTimestamp.collectAsStateWithLifecycle()
                     val studiedTodayCount by wordBooksViewModel.studiedTodayCount.collectAsStateWithLifecycle()
+                    val newWordsLearnedTodayCount by wordBooksViewModel.newWordsLearnedTodayCount.collectAsStateWithLifecycle()
                     val masteredCount by wordBooksViewModel.masteredCount.collectAsStateWithLifecycle()
                     val deckStudyStates by wordBooksViewModel.deckStudyStates.collectAsStateWithLifecycle()
                     val todayChecklist by wordBooksViewModel.todayChecklist.collectAsStateWithLifecycle()
@@ -437,6 +439,7 @@ fun WordBooksAppShell(
                         waitingLaterTodayCount = waitingLaterTodayCount,
                         nextWaitingDueTimestamp = nextWaitingDueTimestamp,
                         studiedTodayCount = studiedTodayCount,
+                        newWordsLearnedTodayCount = newWordsLearnedTodayCount,
                         masteredCount = masteredCount,
                         deckStudyStates = deckStudyStates,
                         todayChecklist = todayChecklist,
@@ -774,6 +777,21 @@ fun WordBooksAppShell(
                     val isAiDetailLoading by wordBooksViewModel.isAiDetailLoading.collectAsStateWithLifecycle()
                     val aiDetailError by wordBooksViewModel.aiDetailError.collectAsStateWithLifecycle()
                     val batchTranslateState by wordBooksViewModel.batchTranslateState.collectAsStateWithLifecycle()
+                    val preferredTopics = remember(studyPlanProfile?.preferredTopicsJson, studyPlanProfile?.goal) {
+                        val rawList: List<String> = try {
+                            val raw = studyPlanProfile?.preferredTopicsJson.orEmpty()
+                            if (raw.isNotBlank()) {
+                                Json.decodeFromString<List<String>>(raw)
+                                    .map { com.example.data.plan.AdaptiveConfig.normalizeMacroTopic(it) }
+                                    .distinct()
+                            } else emptyList()
+                        } catch (_: Exception) {
+                            emptyList()
+                        }
+                        rawList.ifEmpty {
+                            com.example.data.plan.AdaptiveConfig.getDefaultTopicsForGoal(studyPlanProfile?.goal ?: "general_fluency")
+                        }
+                    }
                     ReadingScreen(
                         texts = readingTexts,
                         progressList = readingProgressList,
@@ -831,6 +849,7 @@ fun WordBooksAppShell(
                         onStopAudio = { wordBooksViewModel.stopAudio() },
                         ttsSpeechRate = ttsSpeechRate,
                         userLevel = userLevel,
+                        preferredTopics = preferredTopics,
                         onScheduleWordForToday = wordBooksViewModel::scheduleLookedUpWordForToday,
                         storyReadabilityById = learnerModelSnapshot.storyReadabilityById,
                         wordStageMap = learnerModelSnapshot.wordStageByHeadword,

@@ -314,4 +314,247 @@ class Phase3DailyPlanTest {
         // Wednesday has no record yet
         assertEquals(null, wed)
     }
+
+    @Test
+    fun testExtraNewWordsCountSynchronization() = runBlocking {
+        val now = timeProvider.currentTimeMillis()
+        val dateStr = "2026-11-02"
+
+        // Create initial checklist with targetCount = 10, completedCount = 0
+        val initialTask = DailyTaskItem(
+            id = "task_new_words",
+            type = "new_words",
+            titleEn = "Learn 10 New Words (B1)",
+            titleAr = "تعلم 10 مفردات جديدة (مستوى B1)",
+            subtitleEn = "Deck: Oxford 5000",
+            targetCount = 10,
+            completedCount = 0,
+            isCompleted = false,
+            linkedRoute = "word_books",
+            linkedId = "oxford5000|B1"
+        )
+        val initialChecklist = DailyChecklistEntity(
+            date = dateStr,
+            tasksJson = json.encodeToString(listOf(initialTask)),
+            completedCount = 0,
+            totalCount = 1,
+            isCompleted = false
+        )
+        db.wordBooksDao().upsertDailyChecklist(initialChecklist)
+
+        // Insert 15 words learned today
+        for (i in 1..15) {
+            db.wordBooksDao().upsertWordProgress(
+                WordProgressEntity(
+                    cardKey = "oxford5000|word_$i",
+                    deck = "oxford5000",
+                    text = "word_$i",
+                    firstLearnedTimestamp = now,
+                    lastReviewedTimestamp = now,
+                    repetitions = 1,
+                    againCount = 0
+                )
+            )
+        }
+
+        // Refresh checklist completion
+        val refreshed = planRepo.refreshChecklistCompletion(initialChecklist)
+        val tasks = json.decodeFromString<List<DailyTaskItem>>(refreshed.tasksJson)
+        val task = tasks.first { it.type == "new_words" }
+
+        assertEquals(15, task.targetCount)
+        assertEquals(15, task.completedCount)
+        assertTrue(task.isCompleted)
+        assertTrue(task.titleEn.contains("15"))
+        assertFalse(task.titleEn.contains("10"))
+        assertEquals("Learn 15 New Words (B1)", task.titleEn)
+        assertTrue(task.titleAr.contains("15"))
+        assertFalse(task.titleAr.contains("10"))
+        // Consecutive extra words increments: +5, then +5, then +10
+        // Words 16..20 (+5 extra words -> total 20)
+        for (i in 16..20) {
+            db.wordBooksDao().upsertWordProgress(
+                WordProgressEntity(
+                    cardKey = "oxford5000|word_$i",
+                    deck = "oxford5000",
+                    text = "word_$i",
+                    firstLearnedTimestamp = now,
+                    lastReviewedTimestamp = now,
+                    repetitions = 1,
+                    againCount = 0
+                )
+            )
+        }
+        val refreshed20 = planRepo.refreshChecklistCompletion(refreshed)
+        val task20 = json.decodeFromString<List<DailyTaskItem>>(refreshed20.tasksJson).first { it.type == "new_words" }
+        assertEquals(20, task20.targetCount)
+        assertEquals(20, task20.completedCount)
+        assertTrue(task20.isCompleted)
+        assertEquals("Learn 20 New Words (B1)", task20.titleEn)
+        assertEquals("تعلم 20 مفردات جديدة (مستوى B1)", task20.titleAr)
+
+        // Idempotency check: Calling refreshChecklistCompletion again with no new words yields identical state
+        val refreshed20Again = planRepo.refreshChecklistCompletion(refreshed20)
+        val task20Again = json.decodeFromString<List<DailyTaskItem>>(refreshed20Again.tasksJson).first { it.type == "new_words" }
+        assertEquals(20, task20Again.targetCount)
+        assertEquals(20, task20Again.completedCount)
+        assertEquals("Learn 20 New Words (B1)", task20Again.titleEn)
+        assertEquals("تعلم 20 مفردات جديدة (مستوى B1)", task20Again.titleAr)
+
+        // Words 21..30 (+10 extra words -> total 30)
+        for (i in 21..30) {
+            db.wordBooksDao().upsertWordProgress(
+                WordProgressEntity(
+                    cardKey = "oxford5000|word_$i",
+                    deck = "oxford5000",
+                    text = "word_$i",
+                    firstLearnedTimestamp = now,
+                    lastReviewedTimestamp = now,
+                    repetitions = 1,
+                    againCount = 0
+                )
+            )
+        }
+        val refreshed30 = planRepo.refreshChecklistCompletion(refreshed20)
+        val task30 = json.decodeFromString<List<DailyTaskItem>>(refreshed30.tasksJson).first { it.type == "new_words" }
+        assertEquals(30, task30.targetCount)
+        assertEquals(30, task30.completedCount)
+        assertTrue(task30.isCompleted)
+        assertEquals("Learn 30 New Words (B1)", task30.titleEn)
+        assertEquals("تعلم 30 مفردات جديدة (مستوى B1)", task30.titleAr)
+    }
+
+    @Test
+    fun testPartialNewWordsCompletionKeepsOriginalTarget() = runBlocking {
+        val now = timeProvider.currentTimeMillis()
+        val dateStr = "2026-11-02"
+
+        val initialTask = DailyTaskItem(
+            id = "task_new_words",
+            type = "new_words",
+            titleEn = "Learn 10 New Words (B2)",
+            titleAr = "تعلم 10 مفردات جديدة (مستوى B2)",
+            subtitleEn = "Deck: Oxford 5000",
+            targetCount = 10,
+            completedCount = 0,
+            isCompleted = false,
+            linkedRoute = "word_books",
+            linkedId = "oxford5000|B2"
+        )
+        val initialChecklist = DailyChecklistEntity(
+            date = dateStr,
+            tasksJson = json.encodeToString(listOf(initialTask)),
+            completedCount = 0,
+            totalCount = 1,
+            isCompleted = false
+        )
+        db.wordBooksDao().upsertDailyChecklist(initialChecklist)
+
+        // Learn only 4 words (less than target of 10)
+        for (i in 1..4) {
+            db.wordBooksDao().upsertWordProgress(
+                WordProgressEntity(
+                    cardKey = "oxford5000|partial_word_$i",
+                    deck = "oxford5000",
+                    text = "partial_word_$i",
+                    firstLearnedTimestamp = now,
+                    lastReviewedTimestamp = now,
+                    repetitions = 1,
+                    againCount = 0
+                )
+            )
+        }
+
+        val refreshed = planRepo.refreshChecklistCompletion(initialChecklist)
+        val task = json.decodeFromString<List<DailyTaskItem>>(refreshed.tasksJson).first { it.type == "new_words" }
+
+        assertEquals(10, task.targetCount)
+        assertEquals(4, task.completedCount)
+        assertFalse(task.isCompleted)
+        assertEquals("Learn 10 New Words (B2)", task.titleEn)
+        assertEquals("تعلم 10 مفردات جديدة (مستوى B2)", task.titleAr)
+    }
+
+    @Test
+    fun testMacroTopicNormalizationAndCompoundPhrases() {
+        // Asset topics from reading_word_links.json
+        assertEquals("work_career", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("business_career"))
+        assertEquals("technology", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("technology_science"))
+        assertEquals("science_nature", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("environment_nature"))
+        assertEquals("daily_life", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("daily_life_culture"))
+        assertEquals("travel", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("travel_global"))
+        assertEquals("health", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("health_psychology"))
+        assertEquals("education", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("education_language"))
+
+        // Compound topics from reading_texts.json
+        assertEquals("work_career", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("career and interview"))
+        assertEquals("work_career", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("work and office"))
+        assertEquals("work_career", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("work and careers"))
+        assertEquals("work_career", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("work and crafts"))
+        assertEquals("technology", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("information technology"))
+        assertEquals("health", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("health and fitness"))
+        assertEquals("health", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("sports and abilities"))
+        assertEquals("science_nature", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("science and safety"))
+        assertEquals("science_nature", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("science and discovery"))
+        assertEquals("education", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("education and language"))
+        assertEquals("education", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("education and science"))
+        assertEquals("education", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("friendship and school"))
+        assertEquals("daily_life", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("daily routine"))
+        assertEquals("daily_life", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("daily life"))
+        assertEquals("daily_life", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("daily"))
+        assertEquals("daily_life", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("life"))
+        assertEquals("science_nature", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("nature and travel"))
+        assertEquals("travel", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("cities and tourism"))
+    }
+
+    @Test
+    fun testRecommendedTextsPrioritizesPreferredTopics() {
+        val texts = listOf(
+            com.example.data.local.ReadingTextEntity(
+                id = "story_1",
+                titleEn = "A Day in Paris",
+                titleAr = "يوم في باريس",
+                level = "B1",
+                topic = "daily life",
+                sentencesJson = "[]",
+                questionsJson = "[]"
+            ),
+            com.example.data.local.ReadingTextEntity(
+                id = "story_2",
+                titleEn = "Interview Preparation",
+                titleAr = "التحضير للمقابلة",
+                level = "B1",
+                topic = "career and interview",
+                sentencesJson = "[]",
+                questionsJson = "[]"
+            ),
+            com.example.data.local.ReadingTextEntity(
+                id = "story_3",
+                titleEn = "Advanced AI",
+                titleAr = "الذكاء الاصطناعي المتقدم",
+                level = "B2",
+                topic = "technology",
+                sentencesJson = "[]",
+                questionsJson = "[]"
+            )
+        )
+
+        val userLevel = "B1"
+        // Also verify with raw asset key / compound name
+        val preferredTopics = listOf("business_career")
+
+        val levelTexts = texts.filter { it.level.equals(userLevel, ignoreCase = true) }
+        val preferredSet = preferredTopics.map { com.example.data.plan.AdaptiveConfig.normalizeMacroTopic(it) }.toSet()
+        val sortedRecommended = levelTexts.sortedWith(
+            compareByDescending<com.example.data.local.ReadingTextEntity> { text ->
+                val normalized = com.example.data.plan.AdaptiveConfig.normalizeMacroTopic(text.topic)
+                normalized in preferredSet
+            }.thenBy { it.id }
+        )
+
+        assertEquals(2, sortedRecommended.size)
+        // Career and interview should be prioritized to index 0
+        assertEquals("story_2", sortedRecommended[0].id)
+        assertEquals("story_1", sortedRecommended[1].id)
+    }
 }

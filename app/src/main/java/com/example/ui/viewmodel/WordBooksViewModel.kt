@@ -357,6 +357,12 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         initialValue = 0
     )
 
+    val newWordsLearnedTodayCount: StateFlow<Int> = repository.observeNewWordsLearnedTodayCount().stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = 0
+    )
+
     val deckStudyStates: StateFlow<List<DeckStudyStateEntity>> = repository.deckStudyStatesFlow.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),

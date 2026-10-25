@@ -74,56 +74,94 @@ object AdaptiveConfig {
             id = "daily_life",
             titleEn = "Daily Life & Culture",
             titleAr = "الحياة اليومية والثقافة",
-            rawTopics = setOf("daily_life", "culture", "food", "home", "shopping", "society", "history")
+            rawTopics = setOf("daily_life", "daily_life_culture", "culture", "food", "home", "shopping", "society", "history", "routine", "community", "family", "traditions", "living", "cooking", "lifestyle", "money", "friendship", "hobbies", "daily", "life")
         ),
         MacroTopic(
             id = "work_career",
             titleEn = "Work & Career",
             titleAr = "العمل والمهنة",
-            rawTopics = setOf("work_career", "career", "workplace", "economics", "leadership", "business")
+            rawTopics = setOf("work_career", "business_career", "career", "workplace", "economics", "leadership", "business", "work", "office", "interview", "crafts", "careers", "jobs", "employment")
         ),
         MacroTopic(
             id = "technology",
             titleEn = "Technology & AI",
             titleAr = "التكنولوجيا والذكاء الاصطناعي",
-            rawTopics = setOf("technology", "digital_life", "innovation", "computing", "ai")
+            rawTopics = setOf("technology", "technology_science", "digital_life", "innovation", "computing", "ai", "information", "software", "tech")
         ),
         MacroTopic(
             id = "travel",
             titleEn = "Travel & Places",
             titleAr = "السفر والأماكن",
-            rawTopics = setOf("travel", "transport", "cities", "tourism", "geography")
+            rawTopics = setOf("travel", "travel_global", "transport", "cities", "tourism", "geography", "city", "places", "urban")
         ),
         MacroTopic(
             id = "health",
             titleEn = "Health & Mind",
             titleAr = "الصحة والعقل",
-            rawTopics = setOf("health", "psychology", "fitness", "medicine", "wellbeing", "sport")
+            rawTopics = setOf("health", "health_psychology", "psychology", "fitness", "medicine", "wellbeing", "sport", "sports", "medical", "mind", "abilities")
         ),
         MacroTopic(
             id = "science_nature",
             titleEn = "Science & Environment",
             titleAr = "العلوم والبيئة",
-            rawTopics = setOf("science_nature", "science", "environment", "nature", "climate", "space", "biology")
+            rawTopics = setOf("science_nature", "environment_nature", "science", "environment", "nature", "climate", "space", "biology", "safety", "discovery")
         ),
         MacroTopic(
             id = "education",
             titleEn = "Education & Learning",
             titleAr = "التعليم والتعلم",
-            rawTopics = setOf("education", "language", "study", "academics", "university", "communication")
+            rawTopics = setOf("education", "education_language", "language", "study", "academics", "university", "communication", "school")
         ),
         MacroTopic(
             id = "media_arts",
             titleEn = "Media, Books & Arts",
             titleAr = "الإعلام والكتب والفنون",
-            rawTopics = setOf("media_arts", "media", "arts", "literature", "entertainment", "architecture", "philosophy")
+            rawTopics = setOf("media_arts", "media", "arts", "literature", "entertainment", "architecture", "philosophy", "design", "art", "books")
         )
+    )
+
+    private val ASSET_TOPIC_MAP: Map<String, String> = mapOf(
+        "business_career" to "work_career",
+        "technology_science" to "technology",
+        "environment_nature" to "science_nature",
+        "daily_life_culture" to "daily_life",
+        "travel_global" to "travel",
+        "health_psychology" to "health",
+        "education_language" to "education"
     )
 
     fun normalizeMacroTopic(rawTopic: String?): String {
         if (rawTopic.isNullOrBlank()) return "daily_life"
         val cleaned = rawTopic.trim().lowercase()
-        return MACRO_TOPICS.firstOrNull { cleaned == it.id || cleaned in it.rawTopics }?.id ?: "daily_life"
+
+        // 1. Direct match with asset mappings
+        ASSET_TOPIC_MAP[cleaned]?.let { return it }
+
+        // 2. Direct exact match with macro topic id or rawTopics
+        val exactMatch = MACRO_TOPICS.firstOrNull { cleaned == it.id || cleaned in it.rawTopics }
+        if (exactMatch != null) return exactMatch.id
+
+        // 3. Tokenized match for compound phrases (e.g., "career and interview", "work and office")
+        val tokens = cleaned.split(Regex("[\\s_&/,-]+|\\band\\b"))
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && it != "and" && it != "the" && it != "of" }
+
+        val nonDefaultTopics = MACRO_TOPICS.filter { it.id != "daily_life" }
+        for (token in tokens) {
+            val matched = nonDefaultTopics.firstOrNull { token == it.id || token in it.rawTopics }
+            if (matched != null) return matched.id
+        }
+
+        val dailyTopic = MACRO_TOPICS.firstOrNull { it.id == "daily_life" }
+        if (dailyTopic != null) {
+            for (token in tokens) {
+                if (token == dailyTopic.id || token in dailyTopic.rawTopics) {
+                    return dailyTopic.id
+                }
+            }
+        }
+
+        return "daily_life"
     }
 
     fun getMacroTopicLabel(topicId: String): String {
