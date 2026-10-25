@@ -1295,6 +1295,9 @@ interface WordBooksDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertWordDetails(details: List<WordDetailEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertWordDetails(details: List<WordDetailEntity>)
+
     @Query("SELECT * FROM word_details WHERE `key` = :key LIMIT 1")
     suspend fun getWordDetail(key: String): WordDetailEntity?
 

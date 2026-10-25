@@ -29,6 +29,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.decodeFromStream
 import java.io.File
 import java.io.InputStream
@@ -309,7 +311,7 @@ class DataImportRepository(
         const val BATCH_SIZE = 500
         const val CORE_EXPECTED_ROWS = 9862
         const val TOTAL_EXPECTED_ROWS = 27435
-        const val DATA_VERSION = 9
+        const val DATA_VERSION = 10
         const val SAVED_WORDS_DECK_ID = "saved_words"
         const val DUE_TODAY_DECK_ID = "due_today"
         const val DAY_MILLIS = 24L * 60L * 60L * 1000L
@@ -1305,7 +1307,7 @@ class DataImportRepository(
             val versionNeedsUpsert = dbDataVersion < DATA_VERSION
 
             if (dao.getWordDetailsCount() < 13393 || versionNeedsUpsert) {
-                seedAiWordDetailsIfNeeded()
+                seedAiWordDetailsIfNeeded(forceRepairEmpty = versionNeedsUpsert)
             }
 
             val expectedRowsForResolved = resolvedSources
@@ -1812,14 +1814,25 @@ class DataImportRepository(
         json.encodeToString(list)
     }
 
-    private suspend fun seedAiWordDetailsIfNeeded() = withContext(Dispatchers.IO) {
-        if (dao.getWordDetailsCount() >= 13393) return@withContext
+    private suspend fun seedAiWordDetailsIfNeeded(forceRepairEmpty: Boolean = false) = withContext(Dispatchers.IO) {
+        if (dao.getWordDetailsCount() >= 13393 && !forceRepairEmpty) return@withContext
         try {
             val stream = context.assets.open("data_import/ai_word_details.json")
             val rawText = stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
             val details = json.decodeFromString<List<WordDetailEntity>>(rawText)
             details.chunked(BATCH_SIZE).forEach { batch ->
                 dao.insertWordDetails(batch)
+            }
+            if (forceRepairEmpty) {
+                // Replace only rows whose stored `meanings` array is empty; never overwrite populated user/AI details.
+                val emptyKeys = dao.getAllWordDetails().filter { row ->
+                    runCatching {
+                        json.parseToJsonElement(row.json).jsonObject["meanings"]?.jsonArray?.isEmpty() ?: true
+                    }.getOrDefault(false)
+                }.mapTo(HashSet()) { it.key }
+                details.filter { it.key in emptyKeys }.chunked(BATCH_SIZE).forEach { batch ->
+                    dao.upsertWordDetails(batch)
+                }
             }
         } catch (e: Exception) {
             // Fallback / log
