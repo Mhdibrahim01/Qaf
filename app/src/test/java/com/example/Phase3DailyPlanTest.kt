@@ -314,4 +314,141 @@ class Phase3DailyPlanTest {
         // Wednesday has no record yet
         assertEquals(null, wed)
     }
+
+    @Test
+    fun testExtraNewWordsCountSynchronization() = runBlocking {
+        val now = timeProvider.currentTimeMillis()
+        val dateStr = "2026-11-02"
+
+        // Create initial checklist with targetCount = 10, completedCount = 0
+        val initialTask = DailyTaskItem(
+            id = "task_new_words",
+            type = "new_words",
+            titleEn = "Learn 10 New Words (B1)",
+            titleAr = "تعلم 10 مفردات جديدة (مستوى B1)",
+            subtitleEn = "Deck: Oxford 5000",
+            targetCount = 10,
+            completedCount = 0,
+            isCompleted = false,
+            linkedRoute = "word_books",
+            linkedId = "oxford5000|B1"
+        )
+        val initialChecklist = DailyChecklistEntity(
+            date = dateStr,
+            tasksJson = json.encodeToString(listOf(initialTask)),
+            completedCount = 0,
+            totalCount = 1,
+            isCompleted = false
+        )
+        db.wordBooksDao().upsertDailyChecklist(initialChecklist)
+
+        // Insert 15 words learned today
+        for (i in 1..15) {
+            db.wordBooksDao().upsertWordProgress(
+                WordProgressEntity(
+                    cardKey = "oxford5000|word_$i",
+                    deck = "oxford5000",
+                    text = "word_$i",
+                    firstLearnedTimestamp = now,
+                    lastReviewedTimestamp = now,
+                    repetitions = 1,
+                    againCount = 0
+                )
+            )
+        }
+
+        // Refresh checklist completion
+        val refreshed = planRepo.refreshChecklistCompletion(initialChecklist)
+        val tasks = json.decodeFromString<List<DailyTaskItem>>(refreshed.tasksJson)
+        val task = tasks.first { it.type == "new_words" }
+
+        assertEquals(15, task.targetCount)
+        assertEquals(15, task.completedCount)
+        assertTrue(task.isCompleted)
+        assertTrue(task.titleEn.contains("15"))
+        assertFalse(task.titleEn.contains("10"))
+        assertEquals("Learn 15 New Words (B1)", task.titleEn)
+        assertTrue(task.titleAr.contains("15"))
+        assertFalse(task.titleAr.contains("10"))
+        assertEquals("تعلم 15 مفردات جديدة (مستوى B1)", task.titleAr)
+    }
+
+    @Test
+    fun testMacroTopicNormalizationAndCompoundPhrases() {
+        // Asset topics from reading_word_links.json
+        assertEquals("work_career", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("business_career"))
+        assertEquals("technology", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("technology_science"))
+        assertEquals("science_nature", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("environment_nature"))
+        assertEquals("daily_life", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("daily_life_culture"))
+        assertEquals("travel", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("travel_global"))
+        assertEquals("health", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("health_psychology"))
+        assertEquals("education", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("education_language"))
+
+        // Compound topics from reading_texts.json
+        assertEquals("work_career", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("career and interview"))
+        assertEquals("work_career", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("work and office"))
+        assertEquals("work_career", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("work and careers"))
+        assertEquals("work_career", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("work and crafts"))
+        assertEquals("technology", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("information technology"))
+        assertEquals("health", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("health and fitness"))
+        assertEquals("health", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("sports and abilities"))
+        assertEquals("science_nature", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("science and safety"))
+        assertEquals("science_nature", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("science and discovery"))
+        assertEquals("education", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("education and language"))
+        assertEquals("education", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("education and science"))
+        assertEquals("education", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("friendship and school"))
+        assertEquals("daily_life", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("daily routine"))
+        assertEquals("science_nature", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("nature and travel"))
+        assertEquals("travel", com.example.data.plan.AdaptiveConfig.normalizeMacroTopic("cities and tourism"))
+    }
+
+    @Test
+    fun testRecommendedTextsPrioritizesPreferredTopics() {
+        val texts = listOf(
+            com.example.data.local.ReadingTextEntity(
+                id = "story_1",
+                titleEn = "A Day in Paris",
+                titleAr = "يوم في باريس",
+                level = "B1",
+                topic = "daily life",
+                sentencesJson = "[]",
+                questionsJson = "[]"
+            ),
+            com.example.data.local.ReadingTextEntity(
+                id = "story_2",
+                titleEn = "Interview Preparation",
+                titleAr = "التحضير للمقابلة",
+                level = "B1",
+                topic = "career and interview",
+                sentencesJson = "[]",
+                questionsJson = "[]"
+            ),
+            com.example.data.local.ReadingTextEntity(
+                id = "story_3",
+                titleEn = "Advanced AI",
+                titleAr = "الذكاء الاصطناعي المتقدم",
+                level = "B2",
+                topic = "technology",
+                sentencesJson = "[]",
+                questionsJson = "[]"
+            )
+        )
+
+        val userLevel = "B1"
+        val preferredTopics = listOf("work_career")
+
+        val levelTexts = texts.filter { it.level.equals(userLevel, ignoreCase = true) }
+        val preferredSet = preferredTopics.toSet()
+        val sortedRecommended = levelTexts.sortedWith(
+            compareByDescending<com.example.data.local.ReadingTextEntity> { text ->
+                val normalized = com.example.data.plan.AdaptiveConfig.normalizeMacroTopic(text.topic)
+                normalized in preferredSet
+            }.thenBy { it.id }
+        )
+
+        assertEquals(2, sortedRecommended.size)
+        // Career and interview should be prioritized to index 0
+        assertEquals("story_2", sortedRecommended[0].id)
+        assertEquals("story_1", sortedRecommended[1].id)
+    }
 }

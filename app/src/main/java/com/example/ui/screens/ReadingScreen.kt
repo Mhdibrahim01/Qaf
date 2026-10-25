@@ -228,6 +228,7 @@ fun ReadingScreen(
     onStopAudio: () -> Unit,
     ttsSpeechRate: Float = 0.85f,
     userLevel: String = "B2",
+    preferredTopics: List<String> = emptyList(),
     onScheduleWordForToday: suspend (String) -> Boolean = { false },
     storyReadabilityById: Map<String, com.example.data.plan.StoryReadabilityReport> = emptyMap(),
     wordStageMap: Map<String, com.example.data.plan.WordStage> = emptyMap(),
@@ -297,6 +298,7 @@ fun ReadingScreen(
             onImportJsonText = onImportJsonText,
             onNavigateToNotebook = onNavigateToNotebook,
             userLevel = userLevel,
+            preferredTopics = preferredTopics,
             storyReadabilityById = storyReadabilityById,
             modifier = modifier
         )
@@ -322,6 +324,7 @@ fun ReadingListScreen(
     onImportJsonText: suspend (String) -> Result<Int>,
     onNavigateToNotebook: () -> Unit = {},
     userLevel: String = "B2",
+    preferredTopics: List<String> = emptyList(),
     storyReadabilityById: Map<String, com.example.data.plan.StoryReadabilityReport> = emptyMap(),
     modifier: Modifier = Modifier
 ) {
@@ -333,8 +336,19 @@ fun ReadingListScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    val recommendedTexts = remember(texts, userLevel) {
-        texts.filter { it.level.equals(userLevel, ignoreCase = true) }
+    val recommendedTexts = remember(texts, userLevel, preferredTopics) {
+        val levelTexts = texts.filter { it.level.equals(userLevel, ignoreCase = true) }
+        if (preferredTopics.isEmpty()) {
+            levelTexts
+        } else {
+            val preferredSet = preferredTopics.toSet()
+            levelTexts.sortedWith(
+                compareByDescending<ReadingTextEntity> { text ->
+                    val normalized = com.example.data.plan.AdaptiveConfig.normalizeMacroTopic(text.topic)
+                    normalized in preferredSet
+                }.thenBy { it.id }
+            )
+        }
     }
 
     val filePickerLauncher = rememberLauncherForActivityResult(

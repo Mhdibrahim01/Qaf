@@ -148,6 +148,7 @@ fun HomeScreen(
     waitingLaterTodayCount: Int = 0,
     nextWaitingDueTimestamp: Long? = null,
     studiedTodayCount: Int = 0,
+    newWordsLearnedTodayCount: Int = 0,
     masteredCount: Int = 0,
     deckStudyStates: List<DeckStudyStateEntity> = emptyList(),
     todayChecklist: DailyChecklistEntity? = null,
@@ -247,7 +248,8 @@ fun HomeScreen(
                             onOpenNewWordsCompletedOptions = { count ->
                                 completedWordsCount = count
                                 showNewWordsCompletedDialog = true
-                            }
+                            },
+                            newWordsLearnedTodayCount = newWordsLearnedTodayCount
                         )
 
                         CefrAndLifecycleCard(
@@ -302,7 +304,8 @@ fun HomeScreen(
                     onOpenNewWordsCompletedOptions = { count ->
                         completedWordsCount = count
                         showNewWordsCompletedDialog = true
-                    }
+                    },
+                    newWordsLearnedTodayCount = newWordsLearnedTodayCount
                 )
 
                 CefrAndLifecycleCard(
@@ -348,7 +351,7 @@ fun HomeScreen(
 
     if (showNewWordsCompletedDialog) {
         NewWordsCompletedBottomSheet(
-            completedCount = completedWordsCount,
+            completedCount = maxOf(completedWordsCount, newWordsLearnedTodayCount),
             onDismiss = { showNewWordsCompletedDialog = false },
             onReviewTodayLearnedWords = onReviewTodayLearnedWords,
             onLearnExtraNewWords = onLearnExtraNewWords
@@ -680,6 +683,7 @@ private fun TodayPlanCard(
     onNavigateToTask: (route: String, linkedId: String?) -> Unit = { _, _ -> onOpenPlanScreen() },
     onToggleTaskCompleted: (date: String, taskId: String) -> Unit = { _, _ -> },
     onOpenNewWordsCompletedOptions: (Int) -> Unit = {},
+    newWordsLearnedTodayCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val tasks: List<DailyTaskItem> = remember(todayChecklist?.tasksJson) {
@@ -853,7 +857,7 @@ private fun TodayPlanCard(
                         isCompletedNewWords = isCompletedNewWords,
                         onClick = {
                             if (isCompletedNewWords) {
-                                onOpenNewWordsCompletedOptions(task.completedCount)
+                                onOpenNewWordsCompletedOptions(maxOf(task.completedCount, newWordsLearnedTodayCount))
                             } else {
                                 val targetRoute = when (task.type) {
                                     "flashcards" -> "flashcards"

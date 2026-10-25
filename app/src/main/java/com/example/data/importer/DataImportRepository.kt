@@ -247,6 +247,10 @@ class DataImportRepository(
         return dao.observeStudiedTodayCount(computeStartOfTodayMillis(nowMillis))
     }
 
+    fun observeNewWordsLearnedTodayCount(nowMillis: Long = System.currentTimeMillis()): Flow<Int> {
+        return dao.observeNewWordsLearnedTodayCount(computeStartOfTodayMillis(nowMillis))
+    }
+
     suspend fun getReviewDueTodayCount(
         nowMillis: Long = System.currentTimeMillis(),
         selectedDecks: List<String> = emptyList()

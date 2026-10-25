@@ -297,7 +297,7 @@ class LearnerModelRepository(
         baselineKnownHeadwords: Set<String>
     ): StoryReadabilityReport {
         val linkItem = getReadingWordLinks()[story.id]
-        val macroTopic = linkItem?.macroTopic ?: AdaptiveConfig.normalizeMacroTopic(story.topic)
+        val macroTopic = AdaptiveConfig.normalizeMacroTopic(linkItem?.macroTopic ?: story.topic)
 
         val contentTokens = if (linkItem != null && linkItem.contentTokens.isNotEmpty()) {
             linkItem.contentTokens

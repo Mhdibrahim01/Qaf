@@ -1196,10 +1196,17 @@ class StudyPlanRepository(
                 }
                 "new_words" -> {
                     val normalizedTarget = if (task.targetCount <= 0) 5 else task.targetCount
-                    val isDone = task.isCompleted || (newWordsLearnedToday >= normalizedTarget)
+                    val actualLearned = newWordsLearnedToday
+                    val effectiveTarget = maxOf(normalizedTarget, actualLearned)
+                    val isDone = task.isCompleted || (actualLearned >= normalizedTarget)
+                    val effectiveCompleted = if (isDone) effectiveTarget else minOf(actualLearned, effectiveTarget)
+                    val updatedTitleEn = task.titleEn.replaceFirst(Regex("\\d+"), effectiveTarget.toString())
+                    val updatedTitleAr = task.titleAr.replaceFirst(Regex("\\d+"), effectiveTarget.toString())
                     task.copy(
-                        targetCount = normalizedTarget,
-                        completedCount = if (isDone) normalizedTarget else minOf(newWordsLearnedToday, normalizedTarget),
+                        titleEn = updatedTitleEn,
+                        titleAr = updatedTitleAr,
+                        targetCount = effectiveTarget,
+                        completedCount = effectiveCompleted,
                         isCompleted = isDone
                     )
                 }
