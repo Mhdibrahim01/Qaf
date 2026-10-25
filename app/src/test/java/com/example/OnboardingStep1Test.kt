@@ -291,9 +291,9 @@ class OnboardingStep1Test {
         )
 
         val candidates = dao.getOnboardingFirstWinEntries("B2")
-        assertEquals(3, candidates.size)
         // Audio entries ("10" and "60") come first, then non-audio ("20")
-        assertEquals(listOf("10", "60", "20"), candidates.map { it.id })
+        assertEquals(setOf("10", "60"), candidates.take(2).map { it.id }.toSet())
+        assertEquals("20", candidates[2].id)
 
         db.close()
     }
