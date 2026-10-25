@@ -1202,12 +1202,14 @@ class StudyPlanRepository(
                     val effectiveCompleted = if (isDone) effectiveTarget else minOf(actualLearned, effectiveTarget)
                     val updatedTitleEn = task.titleEn.replaceFirst(Regex("\\d+"), effectiveTarget.toString())
                     val updatedTitleAr = task.titleAr.replaceFirst(Regex("\\d+"), effectiveTarget.toString())
+                    val effectiveTime = maxOf(task.estimatedMinutes, (effectiveTarget * 0.75f).roundToInt())
                     task.copy(
                         titleEn = updatedTitleEn,
                         titleAr = updatedTitleAr,
                         targetCount = effectiveTarget,
                         completedCount = effectiveCompleted,
-                        isCompleted = isDone
+                        isCompleted = isDone,
+                        estimatedMinutes = effectiveTime
                     )
                 }
                 "grammar" -> {

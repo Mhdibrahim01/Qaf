@@ -341,7 +341,7 @@ fun ReadingListScreen(
         if (preferredTopics.isEmpty()) {
             levelTexts
         } else {
-            val preferredSet = preferredTopics.toSet()
+            val preferredSet = preferredTopics.map { com.example.data.plan.AdaptiveConfig.normalizeMacroTopic(it) }.toSet()
             levelTexts.sortedWith(
                 compareByDescending<ReadingTextEntity> { text ->
                     val normalized = com.example.data.plan.AdaptiveConfig.normalizeMacroTopic(text.topic)

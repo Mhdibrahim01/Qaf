@@ -230,7 +230,8 @@ class ExampleRobolectricTest {
             Sm2Rating.AGAIN  // Card 9 -> due in 10m (due today)
         )
 
-        val nowMillis = System.currentTimeMillis()
+        // Anchor to 10:00 AM today so +4h reviews remain strictly within today's cutoff regardless of execution hour
+        val nowMillis = DataImportRepository.computeStartOfTodayMillis(System.currentTimeMillis()) + 10 * 3600 * 1000L
         for (i in 0 until 10) {
             val card = initialCards[i]
             val nextIndex = i + 1

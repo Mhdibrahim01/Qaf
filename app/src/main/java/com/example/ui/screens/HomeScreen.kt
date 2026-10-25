@@ -112,6 +112,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
 private val homeTaskJson = Json {
     ignoreUnknownKeys = true
@@ -701,61 +702,83 @@ private fun TodayPlanCard(
         }
     }
 
-    val displayTasks = if (tasks.isNotEmpty()) {
-        tasks
-    } else {
-        listOf(
-            DailyTaskItem(
-                id = "task_flashcards",
-                type = "flashcards",
-                titleEn = "Flashcards Review",
-                titleAr = "مراجعة البطاقات التعليمية (10 بطاقات)",
-                subtitleEn = "Oxford 5000 • Spaced Retention",
-                targetCount = 10,
-                estimatedMinutes = 2,
-                isCompleted = false
-            ),
-            DailyTaskItem(
-                id = "task_new_words",
-                type = "new_words",
-                titleEn = "Learn 10 New Words",
-                titleAr = "تعلم 10 مفردات جديدة (مستوى B2)",
-                subtitleEn = "Oxford 5000 • Personalized Pace",
-                targetCount = 10,
-                estimatedMinutes = 8,
-                isCompleted = false
-            ),
-            DailyTaskItem(
-                id = "task_grammar",
-                type = "grammar",
-                titleEn = "Grammar: Third Conditional",
-                titleAr = "قواعد: الشرط الثالث",
-                subtitleEn = "Conditionals • B2 Lesson",
-                targetCount = 1,
-                estimatedMinutes = 7,
-                isCompleted = false
-            ),
-            DailyTaskItem(
-                id = "task_reading",
-                type = "reading",
-                titleEn = "Reading: The Missed Interview",
-                titleAr = "قراءة: المقابلة الفائتة",
-                subtitleEn = "75% readable • 6 focus words",
-                targetCount = 1,
-                estimatedMinutes = 5,
-                isCompleted = false
-            ),
-            DailyTaskItem(
-                id = "task_daily_quiz",
-                type = "quiz",
-                titleEn = "Daily Mini-Quiz",
-                titleAr = "الاختبار اليومي (١٠ أسئلة)",
-                subtitleEn = "5 Vocab • 3 Grammar • 2 Reading",
-                targetCount = 10,
-                estimatedMinutes = 5,
-                isCompleted = false
+    val displayTasks = remember(tasks, newWordsLearnedTodayCount) {
+        val baseTasks = if (tasks.isNotEmpty()) {
+            tasks
+        } else {
+            listOf(
+                DailyTaskItem(
+                    id = "task_flashcards",
+                    type = "flashcards",
+                    titleEn = "Flashcards Review",
+                    titleAr = "مراجعة البطاقات التعليمية (10 بطاقات)",
+                    subtitleEn = "Oxford 5000 • Spaced Retention",
+                    targetCount = 10,
+                    estimatedMinutes = 2,
+                    isCompleted = false
+                ),
+                DailyTaskItem(
+                    id = "task_new_words",
+                    type = "new_words",
+                    titleEn = "Learn 10 New Words",
+                    titleAr = "تعلم 10 مفردات جديدة (مستوى B2)",
+                    subtitleEn = "Oxford 5000 • Personalized Pace",
+                    targetCount = 10,
+                    estimatedMinutes = 8,
+                    isCompleted = false
+                ),
+                DailyTaskItem(
+                    id = "task_grammar",
+                    type = "grammar",
+                    titleEn = "Grammar: Third Conditional",
+                    titleAr = "قواعد: الشرط الثالث",
+                    subtitleEn = "Conditionals • B2 Lesson",
+                    targetCount = 1,
+                    estimatedMinutes = 7,
+                    isCompleted = false
+                ),
+                DailyTaskItem(
+                    id = "task_reading",
+                    type = "reading",
+                    titleEn = "Reading: The Missed Interview",
+                    titleAr = "قراءة: المقابلة الفائتة",
+                    subtitleEn = "75% readable • 6 focus words",
+                    targetCount = 1,
+                    estimatedMinutes = 5,
+                    isCompleted = false
+                ),
+                DailyTaskItem(
+                    id = "task_daily_quiz",
+                    type = "quiz",
+                    titleEn = "Daily Mini-Quiz",
+                    titleAr = "الاختبار اليومي (١٠ أسئلة)",
+                    subtitleEn = "5 Vocab • 3 Grammar • 2 Reading",
+                    targetCount = 10,
+                    estimatedMinutes = 5,
+                    isCompleted = false
+                )
             )
-        )
+        }
+        if (newWordsLearnedTodayCount <= 0) {
+            baseTasks
+        } else {
+            baseTasks.map { task ->
+                if (task.type == "new_words" && newWordsLearnedTodayCount > task.completedCount) {
+                    val effTarget = maxOf(task.targetCount, newWordsLearnedTodayCount)
+                    val isDone = task.isCompleted || (newWordsLearnedTodayCount >= task.targetCount)
+                    task.copy(
+                        completedCount = newWordsLearnedTodayCount,
+                        targetCount = effTarget,
+                        isCompleted = isDone,
+                        titleEn = task.titleEn.replaceFirst(Regex("\\d+"), effTarget.toString()),
+                        titleAr = task.titleAr.replaceFirst(Regex("\\d+"), effTarget.toString()),
+                        estimatedMinutes = maxOf(task.estimatedMinutes, (effTarget * 0.75f).roundToInt())
+                    )
+                } else {
+                    task
+                }
+            }
+        }
     }
 
     val totalTasks = todayChecklist?.totalCount?.takeIf { it > 0 } ?: displayTasks.size

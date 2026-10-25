@@ -74,7 +74,7 @@ object AdaptiveConfig {
             id = "daily_life",
             titleEn = "Daily Life & Culture",
             titleAr = "الحياة اليومية والثقافة",
-            rawTopics = setOf("daily_life", "daily_life_culture", "culture", "food", "home", "shopping", "society", "history", "routine", "community", "family", "traditions", "living", "cooking", "lifestyle", "money", "friendship", "hobbies")
+            rawTopics = setOf("daily_life", "daily_life_culture", "culture", "food", "home", "shopping", "society", "history", "routine", "community", "family", "traditions", "living", "cooking", "lifestyle", "money", "friendship", "hobbies", "daily", "life")
         ),
         MacroTopic(
             id = "work_career",
