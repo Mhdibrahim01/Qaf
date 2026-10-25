@@ -406,13 +406,7 @@ class StudyPlanRepository(
             timeProvider.dayOfWeek()
         }
         val isRestDay = restDays.contains(targetDayOfWeek)
-        val selectedDecks: List<String> = try {
-            json.decodeFromString<List<String>>(profile.selectedDecksJson).ifEmpty {
-                listOf("oxford5000", "oxford_opal")
-            }
-        } catch (e: Exception) {
-            listOf("oxford5000", "oxford_opal")
-        }
+        val selectedDecks = decodeSelectedDecks(profile)
         val primaryDeck = selectedDecks.firstOrNull() ?: "oxford5000"
 
         val tasks = mutableListOf<DailyTaskItem>()
@@ -636,15 +630,7 @@ class StudyPlanRepository(
             AdaptiveConfig.getDefaultTopicsForGoal(profile.goal)
         }
 
-        val allWordProgress = dao.getAllWordProgressList()
-        val stageByHeadword = HashMap<String, WordStage>(allWordProgress.size * 2)
-        for (wp in allWordProgress) {
-            val st = LearnerModelRepository.classifyWordStage(wp)
-            val prev = stageByHeadword[wp.text.lowercase()]
-            if (prev == null || st.ordinal > prev.ordinal) {
-                stageByHeadword[wp.text.lowercase()] = st
-            }
-        }
+        val stageByHeadword = getStudiedHeadwordStageMap()
         val baselineLevels = when (profile.level.trim().uppercase(Locale.US)) {
             "A2" -> listOf("A1")
             "B1" -> listOf("A1", "A2")
@@ -717,17 +703,18 @@ class StudyPlanRepository(
 
         // Priority 3: New Words (pre-teaches 4-6 unstudied story target words when anchor story is linked, then fills from profile selection)
         val selectionResult = selectNewWordsForProfile(profile, newWordsTarget)
-        val preTeachWords = if (anchorStory != null && (explicitPreferredTopics.isNotEmpty() || profile.level.uppercase(Locale.US) in listOf("A1", "A2"))) {
-            selectStoryPreTeachEntries(anchorStory, anchorStoryReadability, selectedDecks, stageByHeadword, maxCount = minOf(4, newWordsTarget / 2))
+        val candidateWords = getTodayTargetNewWords(
+            profile = profile,
+            targetCount = newWordsTarget,
+            date = date,
+            anchorStoryOverride = anchorStory,
+            anchorStoryReadabilityOverride = anchorStoryReadability
+        )
+        val preTeachWords = if (anchorStory != null) {
+            val focusSet = anchorStoryReadability?.focusWords?.map { it.lowercase() }?.toSet()
+                ?: try { json.decodeFromString<List<String>>(anchorStory.targetWordsJson).map { it.lowercase() }.toSet() } catch (_: Exception) { emptySet() }
+            candidateWords.filter { it.text.trim().lowercase(Locale.US) in focusSet }
         } else emptyList()
-
-        val candidateWords = if (preTeachWords.isNotEmpty()) {
-            val preTeachHeadwords = preTeachWords.mapTo(HashSet()) { it.text.lowercase() }
-            val remaining = selectionResult.words.filter { it.text.lowercase() !in preTeachHeadwords }
-            (preTeachWords + remaining).take(newWordsTarget)
-        } else {
-            selectionResult.words
-        }
 
         val samplePreview = candidateWords.take(3).joinToString(", ") { it.text }
         val actualWordCount = candidateWords.size.coerceAtLeast(1)
@@ -1007,6 +994,142 @@ class StudyPlanRepository(
         return result
     }
 
+    internal fun decodeSelectedDecks(profile: StudyPlanProfileEntity): List<String> {
+        return try {
+            json.decodeFromString<List<String>>(profile.selectedDecksJson).ifEmpty {
+                listOf("oxford5000", "oxford_opal")
+            }
+        } catch (_: Exception) {
+            listOf("oxford5000", "oxford_opal")
+        }
+    }
+
+    private suspend fun getStudiedHeadwordStageMap(): Map<String, WordStage> {
+        val allWordProgress = dao.getAllWordProgressList()
+        val stageByHeadword = HashMap<String, WordStage>(allWordProgress.size * 2)
+        for (wp in allWordProgress) {
+            val st = LearnerModelRepository.classifyWordStage(wp)
+            val prev = stageByHeadword[wp.text.lowercase()]
+            if (prev == null || st.ordinal > prev.ordinal) {
+                stageByHeadword[wp.text.lowercase()] = st
+            }
+        }
+        return stageByHeadword
+    }
+
+    private suspend fun resolveAnchorStoryForDate(
+        profile: StudyPlanProfileEntity,
+        date: String = timeProvider.todayDateString()
+    ): ReadingTextEntity? {
+        val existingChecklist = dao.getDailyChecklist(date)
+        if (existingChecklist != null) {
+            val readingTaskId = try {
+                json.decodeFromString<List<DailyTaskItem>>(existingChecklist.tasksJson)
+                    .firstOrNull { it.type == "reading" }
+                    ?.linkedId
+            } catch (_: Exception) {
+                null
+            }
+            if (!readingTaskId.isNullOrBlank()) {
+                val story = dao.getReadingTextById(readingTaskId)
+                if (story != null) return story
+            }
+        }
+        return null
+    }
+
+    private suspend fun resolveStoryReadability(
+        story: ReadingTextEntity,
+        profile: StudyPlanProfileEntity,
+        stageByHeadword: Map<String, WordStage>? = null
+    ): StoryReadabilityReport? {
+        val effectiveStageMap = stageByHeadword ?: getStudiedHeadwordStageMap()
+        val baselineLevels = when (profile.level.trim().uppercase(Locale.US)) {
+            "A2" -> listOf("A1")
+            "B1" -> listOf("A1", "A2")
+            "B2" -> listOf("A1", "A2", "B1")
+            "C1" -> listOf("A1", "A2", "B1", "B2")
+            else -> emptyList()
+        }
+        val baselineKnownHeadwords = if (baselineLevels.isNotEmpty()) {
+            dao.getNewWordsForLevelsAndDecks(baselineLevels, listOf("oxford5000"), 1500)
+                .mapTo(HashSet()) { it.text.lowercase() }
+        } else emptySet()
+
+        return learnerModelRepository.computeStoryReadability(
+            story = story,
+            userLevel = profile.level,
+            progressByHeadword = effectiveStageMap,
+            baselineKnownHeadwords = baselineKnownHeadwords
+        )
+    }
+
+    /**
+     * Unified Single Source of Truth for Daily New-Word Selection.
+     * Combines up to 4 story pre-teach focus words (A1-C1) + profile-selected words,
+     * re-ranking the combined batch deterministically via (SEEN > Knuth Hash).
+     */
+    suspend fun getTodayTargetNewWords(
+        profile: StudyPlanProfileEntity,
+        targetCount: Int,
+        date: String = timeProvider.todayDateString(),
+        anchorStoryOverride: ReadingTextEntity? = null,
+        anchorStoryReadabilityOverride: StoryReadabilityReport? = null
+    ): List<EntryEntity> {
+        if (targetCount <= 0) return emptyList()
+        val selectedDecks = decodeSelectedDecks(profile)
+        val stageByHeadword = getStudiedHeadwordStageMap()
+
+        // 1. Identify today's anchor story (if scheduled)
+        val anchorStory = anchorStoryOverride ?: resolveAnchorStoryForDate(profile, date)
+        val preTeachWords = if (anchorStory != null) {
+            val readability = anchorStoryReadabilityOverride ?: resolveStoryReadability(anchorStory, profile, stageByHeadword)
+            selectStoryPreTeachEntries(
+                story = anchorStory,
+                readabilityReport = readability,
+                selectedDecks = selectedDecks,
+                stageByHeadword = stageByHeadword,
+                maxCount = minOf(4, targetCount / 2)
+            )
+        } else emptyList()
+
+        // 2. Select profile-based words
+        val selectionResult = selectNewWordsForProfile(profile, targetCount)
+
+        // 3. Merge pre-taught words with profile words
+        val merged = if (preTeachWords.isNotEmpty()) {
+            val preTeachHeadwords = preTeachWords.mapTo(HashSet()) { it.text.trim().lowercase(Locale.US) }
+            val remaining = selectionResult.words.filter { it.text.trim().lowercase(Locale.US) !in preTeachHeadwords }
+            (preTeachWords + remaining).take(targetCount)
+        } else {
+            selectionResult.words
+        }
+
+        // Re-rank final list deterministically via (SEEN > Knuth Hash)
+        val lookedUpHeadwords = dao.getAllWordProgressList()
+            .filter { it.lookupCount > 0 && it.firstLearnedTimestamp == 0L && it.lastReviewedTimestamp == 0L }
+            .mapTo(HashSet()) { it.text.trim().lowercase(Locale.US) }
+
+        return merged.sortedWith(
+            Comparator { a, b ->
+                val aLookedUp = a.text.trim().lowercase(Locale.US) in lookedUpHeadwords
+                val bLookedUp = b.text.trim().lowercase(Locale.US) in lookedUpHeadwords
+                if (aLookedUp != bLookedUp) {
+                    if (aLookedUp) -1 else 1
+                } else {
+                    val hashA = knuthHash(a)
+                    val hashB = knuthHash(b)
+                    if (hashA != hashB) {
+                        hashA.compareTo(hashB)
+                    } else {
+                        compareNumericId(a, b)
+                    }
+                }
+            }
+        )
+    }
+
+
     /**
      * Re-evaluates checklist completion idempotently directly from DB records.
      */
@@ -1025,13 +1148,7 @@ class StudyPlanRepository(
         val dueCorrectionCount = dao.getDueCorrectionReviewsCount(now)
 
         val profile = getOrCreateProfile()
-        val selectedDecks: List<String> = try {
-            json.decodeFromString<List<String>>(profile.selectedDecksJson).ifEmpty {
-                listOf("oxford5000", "oxford_opal")
-            }
-        } catch (_: Exception) {
-            listOf("oxford5000", "oxford_opal")
-        }
+        val selectedDecks = decodeSelectedDecks(profile)
         val dueNowCutoff = timeProvider.dueNowCutoff(now)
         val dueNowCardsCount = if (selectedDecks.isNotEmpty()) {
             dao.getDueNowCardsCountForDecks(dueNowCutoff, selectedDecks)
@@ -1438,13 +1555,7 @@ class StudyPlanRepository(
 
         val cleanLevel = profile.level.trim().uppercase(Locale.US).ifBlank { "B2" }
         val cleanGoal = profile.goal.trim().lowercase(Locale.US).ifBlank { "general_fluency" }
-        val selectedDecks: List<String> = try {
-            json.decodeFromString<List<String>>(profile.selectedDecksJson).ifEmpty {
-                listOf("oxford5000", "oxford_opal")
-            }
-        } catch (_: Exception) {
-            listOf("oxford5000", "oxford_opal")
-        }
+        val selectedDecks = decodeSelectedDecks(profile)
 
         val closenessLevels = levelsByCloseness(cleanLevel, profile.startAtUserLevel)
         val preferredLevel = closenessLevels.firstOrNull() ?: cleanLevel
@@ -1495,17 +1606,48 @@ class StudyPlanRepository(
         val usedIds = HashSet<String>()
         val usedHeadwords = HashSet<String>()
         val countPerDeck = mutableMapOf<String, Int>()
+        val letterCounts = mutableMapOf<Char, Int>()
+        val maxPerLetter = when {
+            targetCount <= 5 -> 1
+            targetCount <= 12 -> 2
+            else -> 3
+        }
 
         fun takeFromList(source: List<EntryEntity>, maxCount: Int): List<EntryEntity> {
             if (maxCount <= 0) return emptyList()
             val picked = ArrayList<EntryEntity>(maxCount)
+            val skipped = ArrayList<EntryEntity>()
+
+            // Pass 1: Greedily pick candidates respecting initial-letter cap
             for (item in source) {
                 if (picked.size >= maxCount) break
                 val headword = item.text.trim().lowercase(Locale.US)
-                if (item.id !in usedIds && headword !in usedHeadwords) {
+                if (item.id in usedIds || headword in usedHeadwords) continue
+
+                val initial = headword.firstOrNull { it.isLetter() } ?: 'a'
+                val count = letterCounts[initial] ?: 0
+                if (count < maxPerLetter) {
                     usedIds.add(item.id)
                     usedHeadwords.add(headword)
+                    letterCounts[initial] = count + 1
                     picked.add(item)
+                } else {
+                    skipped.add(item)
+                }
+            }
+
+            // Pass 2: Backfill from skipped candidates if small deck pool caused shortfall
+            if (picked.size < maxCount) {
+                for (item in skipped) {
+                    if (picked.size >= maxCount) break
+                    val headword = item.text.trim().lowercase(Locale.US)
+                    if (item.id !in usedIds && headword !in usedHeadwords) {
+                        usedIds.add(item.id)
+                        usedHeadwords.add(headword)
+                        val initial = headword.firstOrNull { it.isLetter() } ?: 'a'
+                        letterCounts[initial] = (letterCounts[initial] ?: 0) + 1
+                        picked.add(item)
+                    }
                 }
             }
             return picked
@@ -1632,6 +1774,26 @@ class StudyPlanRepository(
         return if (cmp != 0) cmp else a.id.compareTo(b.id)
     }
 
+    internal fun knuthHash(entry: EntryEntity): Long {
+        val numericId = entry.id.toLongOrNull()
+        return if (numericId != null) {
+            (numericId * 2654435761L) and 0xFFFFFFFFL
+        } else {
+            ((entry.id.hashCode().toLong() and 0xFFFFFFFFL) * 2654435761L) and 0xFFFFFFFFL
+        }
+    }
+
+    private fun contentRichnessRank(entry: EntryEntity): Int {
+        val hasExample = entry.examplesEn.isNotBlank() && entry.examplesEn != "[]"
+        val hasAudio = entry.audioUrl.isNotBlank()
+        return when {
+            hasExample && hasAudio -> 0
+            hasExample -> 1
+            hasAudio -> 2
+            else -> 3
+        }
+    }
+
     private fun deduplicateCandidatesForDeck(
         entries: List<EntryEntity>,
         closenessLevels: List<String>,
@@ -1658,26 +1820,38 @@ class StudyPlanRepository(
         }
         return deduped.sortedWith(
             Comparator<EntryEntity> { a, b ->
+                // Priority 1: Looked-up 'SEEN' words
                 val aLookedUp = a.text.trim().lowercase(Locale.US) in lookedUpHeadwords
                 val bLookedUp = b.text.trim().lowercase(Locale.US) in lookedUpHeadwords
                 if (aLookedUp != bLookedUp) {
                     return@Comparator if (aLookedUp) -1 else 1
                 }
+                // Priority 2: Graded before NULL-level entries; then CEFR closeness rank
                 val aIsNull = a.effectiveLevel == null
                 val bIsNull = b.effectiveLevel == null
                 if (aIsNull != bIsNull) {
-                    if (aIsNull) 1 else -1
+                    return@Comparator if (aIsNull) 1 else -1
                 } else if (!aIsNull) {
-                    val rankA = rankMap[a.effectiveLevel.uppercase(Locale.US)] ?: 99
-                    val rankB = rankMap[b.effectiveLevel?.uppercase(Locale.US)] ?: 99
+                    val rankA = rankMap[a.effectiveLevel!!.uppercase(Locale.US)] ?: 99
+                    val rankB = rankMap[b.effectiveLevel!!.uppercase(Locale.US)] ?: 99
                     if (rankA != rankB) {
-                        rankA.compareTo(rankB)
-                    } else {
-                        compareNumericId(a, b)
+                        return@Comparator rankA.compareTo(rankB)
                     }
-                } else {
-                    compareNumericId(a, b)
                 }
+                // Priority 3: Content Richness (examples + audio)
+                val richA = contentRichnessRank(a)
+                val richB = contentRichnessRank(b)
+                if (richA != richB) {
+                    return@Comparator richA.compareTo(richB)
+                }
+                // Priority 4: Safe 32-bit Knuth Hash
+                val hashA = knuthHash(a)
+                val hashB = knuthHash(b)
+                if (hashA != hashB) {
+                    return@Comparator hashA.compareTo(hashB)
+                }
+                // Fallback: compareNumericId only on hash collision
+                compareNumericId(a, b)
             }
         )
     }
@@ -1685,8 +1859,8 @@ class StudyPlanRepository(
     /**
      * Deduplicates candidate entries so there is strictly 1 entry per lowercase word:
      * prefers row whose effectiveLevel (or level) matches user's preferredLevel,
-     * then lowest numeric ID, and returns the final list sorted in ascending numeric ID order
-     * (with looked-up SEEN words prioritized first).
+     * then lowest numeric ID, and returns the final list sorted deterministically
+     * by (SEEN words first, then safe 32-bit Knuth Hash, with lowest numeric ID as collision tie-breaker).
      */
     fun deduplicateAndPickDeterministicEntry(
         entries: List<EntryEntity>,
@@ -1720,7 +1894,13 @@ class StudyPlanRepository(
                 if (aLookedUp != bLookedUp) {
                     if (aLookedUp) -1 else 1
                 } else {
-                    compareNumericId(a, b)
+                    val hashA = knuthHash(a)
+                    val hashB = knuthHash(b)
+                    if (hashA != hashB) {
+                        hashA.compareTo(hashB)
+                    } else {
+                        compareNumericId(a, b)
+                    }
                 }
             }
         )

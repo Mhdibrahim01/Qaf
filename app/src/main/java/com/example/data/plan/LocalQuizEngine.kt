@@ -131,8 +131,10 @@ class LocalQuizEngine(
         val assignedWords = mutableListOf<EntryEntity>()
         if (studyPlanRepository != null && profile != null) {
             try {
-                val selection = studyPlanRepository.selectNewWordsForProfile(profile, 10)
-                assignedWords.addAll(selection.words.filter { it.text.isNotBlank() && it.arabic.isNotBlank() })
+                val date = checklist?.date ?: timeProvider.todayDateString()
+                val targetCount = vocabTask?.targetCount ?: 10
+                val selection = studyPlanRepository.getTodayTargetNewWords(profile, targetCount, date)
+                assignedWords.addAll(selection.filter { it.text.isNotBlank() && it.arabic.isNotBlank() })
             } catch (_: Exception) {
                 // Ignore and fall back to database entries
             }
