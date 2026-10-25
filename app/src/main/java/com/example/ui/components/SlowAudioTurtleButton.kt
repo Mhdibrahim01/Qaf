@@ -47,12 +47,16 @@ fun SlowAudioTurtleButton(
     testTag: String = "slow_audio_turtle_button"
 ) {
     val containerColor = if (isPlayingSlow) GoldAccentDim else SurfaceElevatedDark
-    val borderColor = if (isPlayingSlow) GoldAccentBorder else BorderSubtle
+    val borderColor = when {
+        isPlayingSlow -> GoldAccentBorder
+        !showSpeedLabel -> Color(0xFF10B981).copy(alpha = 0.35f)
+        else -> BorderSubtle
+    }
     val labelColor = if (isPlayingSlow) GoldAccent else TextSecondary
 
     Surface(
         modifier = modifier
-            .then(if (showSpeedLabel) Modifier.height(34.dp) else Modifier.requiredSize(32.dp))
+            .then(if (showSpeedLabel) Modifier.height(34.dp) else Modifier.requiredSize(34.dp))
             .clip(CircleShape)
             .clickable(onClick = onClick)
             .semantics {
