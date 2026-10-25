@@ -76,6 +76,7 @@ import com.example.data.local.StudyPlanEntity
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.local.WeakAreasState
 import com.example.data.plan.LearnerModelSnapshot
+import com.example.data.plan.LifecycleStageWordItem
 import com.example.ui.components.AdaptiveInsightBannerCard
 import com.example.ui.components.BidiText
 import com.example.ui.components.CefrReadinessBarCard
@@ -136,6 +137,9 @@ fun PlanScreen(
     onNavigateToTaskRoute: (route: String, id: String) -> Unit,
     onOpenDictionaryWord: ((String) -> Unit)? = null,
     onStartDirectDailyQuiz: (() -> Unit)? = null,
+    onLoadStageWords: (suspend (String) -> List<LifecycleStageWordItem>)? = null,
+    onOpenDictionaryForStage: ((String) -> Unit)? = null,
+    onStartStudying: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -326,6 +330,10 @@ fun PlanScreen(
                 learnerModelSnapshot = learnerModelSnapshot,
                 onAcceptLevelUp = onAcceptLevelUp,
                 onOpenDictionaryWord = onOpenDictionaryWord,
+                onLoadStageWords = onLoadStageWords,
+                onPlayAudio = onPlayAudio,
+                onOpenDictionaryForStage = onOpenDictionaryForStage,
+                onStartStudying = onStartStudying,
                 onStartWeeklyQuiz = {
                     scope.launch {
                         val questions = onGenerateWeeklyQuiz()
@@ -1023,6 +1031,10 @@ private fun AnalyticsTabContent(
     learnerModelSnapshot: LearnerModelSnapshot = LearnerModelSnapshot(),
     onAcceptLevelUp: (String) -> Unit = {},
     onOpenDictionaryWord: ((String) -> Unit)? = null,
+    onLoadStageWords: (suspend (String) -> List<LifecycleStageWordItem>)? = null,
+    onPlayAudio: ((String) -> Unit)? = null,
+    onOpenDictionaryForStage: ((String) -> Unit)? = null,
+    onStartStudying: ((String) -> Unit)? = null,
     onStartWeeklyQuiz: () -> Unit,
     onStartWeakAreasQuiz: () -> Unit,
     onOpenTask: (route: String, id: String) -> Unit
@@ -1062,7 +1074,11 @@ private fun AnalyticsTabContent(
         // 0c. Word Lifecycle Funnel Card
         item(key = "analytics_word_funnel") {
             WordLifecycleFunnelCard(
-                funnel = learnerModelSnapshot.funnel
+                funnel = learnerModelSnapshot.funnel,
+                onLoadStageWords = onLoadStageWords,
+                onSpeakWord = { word -> onPlayAudio?.invoke(word) },
+                onOpenDictionaryForStage = onOpenDictionaryForStage,
+                onStartStudying = onStartStudying
             )
         }
 

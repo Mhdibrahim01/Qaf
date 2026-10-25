@@ -47,6 +47,9 @@ import com.example.data.local.QuizResultEntity
 import com.example.data.local.StudyPlanEntity
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.local.WeakAreasState
+import com.example.data.plan.LifecycleStageWordItem
+import com.example.data.plan.WordStage
+import com.example.data.plan.LearnerModelRepository
 import com.example.data.plan.LocalQuizEngine
 import com.example.data.plan.StudyPlanAiService
 import com.example.data.plan.StudyPlanRepository
@@ -2532,6 +2535,67 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             )
             studyPlanRepository.updateProfile(updated)
             refreshDailyChecklist()
+        }
+    }
+
+    suspend fun getWordsForLifecycleStage(stageKey: String, limit: Int = 100): List<LifecycleStageWordItem> = withContext(Dispatchers.IO) {
+        val allProgress = database.wordBooksDao().getAllWordProgressList()
+        val requestedStage = when (stageKey.lowercase()) {
+            "seen" -> WordStage.SEEN
+            "learning" -> WordStage.LEARNING
+            "familiar" -> WordStage.FAMILIAR
+            "mature" -> WordStage.MATURE
+            else -> null
+        }
+        val isConquered = stageKey.equals("conquered", ignoreCase = true)
+        val isNew = stageKey.equals("new", ignoreCase = true)
+
+        if (isNew) {
+            val userLevel = studyPlanProfile.value?.level?.ifBlank { "B1" }?.uppercase() ?: "B1"
+            val newCandidates = database.wordBooksDao().getPlacementVocabularyCandidatesForLevel(userLevel, limit = limit * 2)
+            val progressMap = allProgress.associateBy { it.cardKey }
+            val unstudied = newCandidates.filter { entry ->
+                val key = "${entry.deck}:${entry.text.trim().lowercase()}"
+                progressMap[key] == null || LearnerModelRepository.classifyWordStage(progressMap[key]) == WordStage.NEW
+            }.distinctBy { it.text.trim().lowercase() }.take(limit)
+            return@withContext unstudied.map { entry ->
+                LifecycleStageWordItem(
+                    headword = entry.text,
+                    deck = entry.deck,
+                    pos = entry.pos,
+                    arabic = entry.arabic,
+                    intervalDays = 0,
+                    repetitions = 0,
+                    stage = WordStage.NEW
+                )
+            }
+        }
+
+        val targetProgress = when {
+            isConquered -> allProgress.filter { LearnerModelRepository.isWordConquered(it) }
+                .sortedByDescending { if (it.conqueredTimestamp > 0L) it.conqueredTimestamp else it.lastReviewedTimestamp }
+            requestedStage != null -> allProgress.filter { LearnerModelRepository.classifyWordStage(it) == requestedStage }
+                .sortedByDescending { it.lastReviewedTimestamp }
+            else -> emptyList()
+        }.take(limit)
+
+        if (targetProgress.isEmpty()) return@withContext emptyList()
+
+        val headwords = targetProgress.map { it.text.trim().lowercase() }.distinct()
+        val entries = database.wordBooksDao().getEntriesByHeadwords(headwords)
+        val entryMap = entries.groupBy { "${it.deck}:${it.text.trim().lowercase()}" }
+
+        targetProgress.map { wp ->
+            val matched = entryMap[wp.cardKey]?.firstOrNull() ?: entries.firstOrNull { it.text.equals(wp.text, ignoreCase = true) }
+            LifecycleStageWordItem(
+                headword = wp.text,
+                deck = wp.deck,
+                pos = matched?.pos ?: "word",
+                arabic = matched?.arabic.orEmpty(),
+                intervalDays = wp.intervalDays,
+                repetitions = wp.repetitions,
+                stage = requestedStage ?: if (isConquered) WordStage.MATURE else WordStage.NEW
+            )
         }
     }
 

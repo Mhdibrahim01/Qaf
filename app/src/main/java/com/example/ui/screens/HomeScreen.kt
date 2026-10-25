@@ -65,6 +65,7 @@ import com.example.data.local.DeckEntity
 import com.example.data.local.DeckStudyStateEntity
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.plan.LearnerModelSnapshot
+import com.example.data.plan.LifecycleStageWordItem
 import com.example.ui.components.AdaptiveInsightBannerCard
 import com.example.ui.components.BidiText
 import com.example.ui.components.CefrAndLifecycleCard
@@ -148,6 +149,10 @@ fun HomeScreen(
     onOpenPlanScreen: () -> Unit = {},
     onNavigateToTask: (route: String, linkedId: String?) -> Unit = { _, _ -> onOpenPlanScreen() },
     onToggleTaskCompleted: (date: String, taskId: String) -> Unit = { _, _ -> },
+    onLoadStageWords: (suspend (String) -> List<LifecycleStageWordItem>)? = null,
+    onSpeakWord: ((String) -> Unit)? = null,
+    onOpenDictionaryForStage: ((String) -> Unit)? = null,
+    onStartStudying: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
@@ -225,7 +230,11 @@ fun HomeScreen(
                         CefrAndLifecycleCard(
                             readiness = learnerModelSnapshot.cefrReadiness,
                             funnel = learnerModelSnapshot.funnel,
-                            onAcceptLevelUp = onAcceptLevelUp
+                            onAcceptLevelUp = onAcceptLevelUp,
+                            onLoadStageWords = onLoadStageWords,
+                            onSpeakWord = onSpeakWord,
+                            onOpenDictionaryForStage = onOpenDictionaryForStage,
+                            onStartStudying = onStartStudying
                         )
 
                         if (learnerModelSnapshot.conqueredWords.isNotEmpty()) {
@@ -269,7 +278,11 @@ fun HomeScreen(
                 CefrAndLifecycleCard(
                     readiness = learnerModelSnapshot.cefrReadiness,
                     funnel = learnerModelSnapshot.funnel,
-                    onAcceptLevelUp = onAcceptLevelUp
+                    onAcceptLevelUp = onAcceptLevelUp,
+                    onLoadStageWords = onLoadStageWords,
+                    onSpeakWord = onSpeakWord,
+                    onOpenDictionaryForStage = onOpenDictionaryForStage,
+                    onStartStudying = onStartStudying
                 )
 
                 if (learnerModelSnapshot.conqueredWords.isNotEmpty()) {

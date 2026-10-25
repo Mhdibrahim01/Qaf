@@ -222,7 +222,7 @@ object OnboardingPlacementQuiz {
         return result
     }
 
-    private fun pickGrammarQuestionForLevel(
+    internal fun pickGrammarQuestionForLevel(
         level: String,
         lessons: List<GrammarLessonEntity>,
         random: Random
@@ -261,16 +261,16 @@ object OnboardingPlacementQuiz {
         if (candidates.isEmpty()) return null
         val chosen = candidates.random(random)
         val shuffledOptions = chosen.exercise.options.shuffled(random)
-        val arabicSubtitle = chosen.lesson.titleAr.trim().ifBlank { "اختر الإجابة الصحيحة لإكمال الجملة" }
+        val neutralPromptAr = "اختر الكلمة الصحيحة لإكمال الجملة"
 
         return PlacementQuizQuestion(
             id = "quiz_${level}_2_grammar_${chosen.lesson.id}",
             level = level,
             type = PlacementQuestionType.GRAMMAR,
             promptEn = chosen.exercise.prompt.trim(),
-            promptAr = arabicSubtitle,
-            topicLabelEn = "Grammar • ${chosen.lesson.titleEn.ifBlank { level }}",
-            topicLabelAr = "قواعد • $arabicSubtitle",
+            promptAr = neutralPromptAr,
+            topicLabelEn = "Grammar",
+            topicLabelAr = "قواعد",
             options = shuffledOptions,
             correctAnswer = chosen.exercise.answer
         )

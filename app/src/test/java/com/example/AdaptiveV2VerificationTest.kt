@@ -1,5 +1,9 @@
 package com.example
 
+import com.example.data.local.GrammarLessonEntity
+import com.example.data.onboarding.OnboardingPlacementQuiz
+import com.example.data.onboarding.PlacementQuestionType
+
 import android.content.Context
 import androidx.room.Room
 import androidx.sqlite.db.SupportSQLiteDatabase
@@ -881,5 +885,46 @@ class AdaptiveV2VerificationTest {
             assertEquals(3, refreshedFlashcardTask.targetCount)
             assertTrue("Checklist should be marked complete", updated.isCompleted)
         }
+    }
+
+    @Test
+    fun testPlacementQuizGrammarQuestionHasNoSpoilersAndNeutralPrompt() {
+        val exercisesJson = """[
+            {
+                "id": "ex1",
+                "prompt": "I don't have ___ water in my bottle.",
+                "options": ["any", "some", "many", "few"],
+                "answer": "any",
+                "explanation": "Use any in negative sentences."
+            }
+        ]"""
+        val lesson = GrammarLessonEntity(
+            id = "g001",
+            level = "A1",
+            topic = "quantifiers",
+            titleEn = "Countable and uncountable nouns: some and any",
+            titleAr = "المعدود وغير المعدود: some و any",
+            explanationAr = "شرح",
+            examplesJson = "[]",
+            exercisesJson = exercisesJson
+        )
+
+        val grammarQ = OnboardingPlacementQuiz.pickGrammarQuestionForLevel(
+            level = "A1",
+            lessons = listOf(lesson),
+            random = kotlin.random.Random(42)
+        )
+
+        assertNotNull("Grammar question must be generated", grammarQ)
+        assertEquals("Grammar", grammarQ!!.topicLabelEn)
+        assertEquals("قواعد", grammarQ.topicLabelAr)
+        assertEquals("اختر الكلمة الصحيحة لإكمال الجملة", grammarQ.promptAr)
+
+        // Verify NO spoilers in badge or prompt!
+        assertTrue(!grammarQ.topicLabelEn.contains("Countable"))
+        assertTrue(!grammarQ.topicLabelEn.contains("some"))
+        assertTrue(!grammarQ.topicLabelAr.contains("المعدود"))
+        assertTrue(!grammarQ.topicLabelAr.contains("some"))
+        assertTrue(!grammarQ.promptAr.contains("المعدود"))
     }
 }

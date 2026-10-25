@@ -55,6 +55,17 @@ data class ConqueredWordBadge(
 )
 
 @Immutable
+data class LifecycleStageWordItem(
+    val headword: String,
+    val deck: String = "oxford5000",
+    val pos: String = "word",
+    val arabic: String = "",
+    val intervalDays: Int = 0,
+    val repetitions: Int = 0,
+    val stage: WordStage = WordStage.NEW
+)
+
+@Immutable
 data class DeckCoverageSummary(
     val deckId: String,
     val titleEn: String = deckId,

@@ -1,5 +1,7 @@
 package com.example.ui.navigation
 
+import com.example.data.importer.DataImportRepository
+
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
@@ -459,7 +461,26 @@ fun WordBooksAppShell(
                                 }
                             }
                         },
-                        onToggleTaskCompleted = wordBooksViewModel::toggleTaskCompleted
+                        onToggleTaskCompleted = wordBooksViewModel::toggleTaskCompleted,
+                        onLoadStageWords = wordBooksViewModel::getWordsForLifecycleStage,
+                        onSpeakWord = { word -> wordBooksViewModel.playWordVoiceAudio(word) },
+                        onOpenDictionaryForStage = { stageKey ->
+                            val filterStatus = when (stageKey.lowercase()) {
+                                "learning", "familiar" -> "learning"
+                                "mature", "conquered" -> "mastered"
+                                else -> "all"
+                            }
+                            wordBooksViewModel.updateStatusFilter(filterStatus)
+                            navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
+                        },
+                        onStartStudying = { stageKey ->
+                            if (stageKey.equals("new", ignoreCase = true)) {
+                                wordBooksViewModel.startDailyMiniQuiz()
+                            } else {
+                                wordBooksViewModel.selectFlashcardDeck(DataImportRepository.DUE_TODAY_DECK_ID)
+                                navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
+                            }
+                        }
                     )
                 }
                 composable<AppRoute.WordBooks> {
@@ -902,6 +923,24 @@ fun WordBooksAppShell(
                         onPlayAudio = { text: String -> wordBooksViewModel.speakSentenceTts(text) },
                         onToggleTaskCompleted = wordBooksViewModel::toggleTaskCompleted,
                         onStartDirectDailyQuiz = wordBooksViewModel::startDailyMiniQuiz,
+                        onLoadStageWords = wordBooksViewModel::getWordsForLifecycleStage,
+                        onOpenDictionaryForStage = { stageKey ->
+                            val filterStatus = when (stageKey.lowercase()) {
+                                "learning", "familiar" -> "learning"
+                                "mature", "conquered" -> "mastered"
+                                else -> "all"
+                            }
+                            wordBooksViewModel.updateStatusFilter(filterStatus)
+                            navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
+                        },
+                        onStartStudying = { stageKey ->
+                            if (stageKey.equals("new", ignoreCase = true)) {
+                                wordBooksViewModel.startDailyMiniQuiz()
+                            } else {
+                                wordBooksViewModel.selectFlashcardDeck(DataImportRepository.DUE_TODAY_DECK_ID)
+                                navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
+                            }
+                        },
                         onNavigateToTaskRoute = { route: String, linkedId: String ->
                             if (route == "quiz") {
                                 wordBooksViewModel.startDailyMiniQuiz()

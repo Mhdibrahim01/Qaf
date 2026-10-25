@@ -63,6 +63,18 @@ import com.example.data.plan.CefrReadinessSummary
 import com.example.data.plan.ConqueredWordBadge
 import com.example.data.plan.DeckCoverageSummary
 import com.example.data.plan.WeeklyGrowthReport
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
+import com.example.data.plan.LifecycleStageWordItem
+
 import com.example.data.plan.WordLifecycleFunnel
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
@@ -201,10 +213,14 @@ fun CefrAndLifecycleCard(
     readiness: CefrReadinessSummary,
     funnel: WordLifecycleFunnel,
     onAcceptLevelUp: ((String) -> Unit)? = null,
+    onLoadStageWords: (suspend (String) -> List<LifecycleStageWordItem>)? = null,
+    onSpeakWord: ((String) -> Unit)? = null,
+    onOpenDictionaryForStage: ((String) -> Unit)? = null,
+    onStartStudying: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    var showInfoSheet by remember { mutableStateOf(false) }
-    var highlightedStageKey by remember { mutableStateOf<String?>(null) }
+    var showStageWordsSheet by remember { mutableStateOf(false) }
+    var selectedStageKey by remember { mutableStateOf<String?>(null) }
 
     Surface(
         modifier = modifier
@@ -219,6 +235,17 @@ fun CefrAndLifecycleCard(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Top Part: CEFR Mastery Header
+            val titleText = if (readiness.nextLevel != null) {
+                "CEFR ${readiness.currentLevel} → ${readiness.nextLevel} Mastery"
+            } else {
+                "CEFR ${readiness.currentLevel} Mastery"
+            }
+            val subtitleText = if (readiness.nextLevel != null) {
+                "جاهزية الانتقال للمستوى ${readiness.nextLevel}"
+            } else {
+                "أعلى مستوى تم تحقيقه بنجاح"
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -231,7 +258,7 @@ fun CefrAndLifecycleCard(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
-                        text = "CEFR ${readiness.currentLevel} → ${readiness.nextLevel} Mastery",
+                        text = titleText,
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp
@@ -239,7 +266,7 @@ fun CefrAndLifecycleCard(
                         color = TextPrimary
                     )
                     BidiText(
-                        text = "جاهزية المستوى الموحدة (٥٠٪ مفردات • ٣٠٪ قواعد • ٢٠٪ قراءة)",
+                        text = subtitleText,
                         style = ArabicTypography.labelSmall.copy(fontSize = 12.sp),
                         color = TextSecondary,
                         fillMaxWidth = true,
@@ -373,8 +400,8 @@ fun CefrAndLifecycleCard(
                             testTag = "funnel_stage_new",
                             modifier = Modifier.weight(1f),
                             onClick = {
-                                highlightedStageKey = "new"
-                                showInfoSheet = true
+                                selectedStageKey = "new"
+                                showStageWordsSheet = true
                             }
                         )
                         FunnelStageChip(
@@ -385,8 +412,8 @@ fun CefrAndLifecycleCard(
                             testTag = "funnel_stage_seen",
                             modifier = Modifier.weight(1f),
                             onClick = {
-                                highlightedStageKey = "seen"
-                                showInfoSheet = true
+                                selectedStageKey = "seen"
+                                showStageWordsSheet = true
                             }
                         )
                     }
@@ -404,8 +431,8 @@ fun CefrAndLifecycleCard(
                             testTag = "funnel_stage_learning",
                             modifier = Modifier.weight(1f),
                             onClick = {
-                                highlightedStageKey = "learning"
-                                showInfoSheet = true
+                                selectedStageKey = "learning"
+                                showStageWordsSheet = true
                             }
                         )
                         FunnelStageChip(
@@ -416,8 +443,8 @@ fun CefrAndLifecycleCard(
                             testTag = "funnel_stage_familiar",
                             modifier = Modifier.weight(1f),
                             onClick = {
-                                highlightedStageKey = "familiar"
-                                showInfoSheet = true
+                                selectedStageKey = "familiar"
+                                showStageWordsSheet = true
                             }
                         )
                     }
@@ -435,8 +462,8 @@ fun CefrAndLifecycleCard(
                             testTag = "funnel_stage_mature",
                             modifier = Modifier.weight(1f),
                             onClick = {
-                                highlightedStageKey = "mature"
-                                showInfoSheet = true
+                                selectedStageKey = "mature"
+                                showStageWordsSheet = true
                             }
                         )
                         FunnelStageChip(
@@ -447,8 +474,8 @@ fun CefrAndLifecycleCard(
                             testTag = "funnel_stage_conquered",
                             modifier = Modifier.weight(1f),
                             onClick = {
-                                highlightedStageKey = "conquered"
-                                showInfoSheet = true
+                                selectedStageKey = "conquered"
+                                showStageWordsSheet = true
                             }
                         )
                     }
@@ -457,18 +484,38 @@ fun CefrAndLifecycleCard(
         }
     }
 
-    if (showInfoSheet) {
+    if (showStageWordsSheet && selectedStageKey != null) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
-            onDismissRequest = { showInfoSheet = false },
+            onDismissRequest = {
+                showStageWordsSheet = false
+                selectedStageKey = null
+            },
             sheetState = sheetState,
             containerColor = SurfaceDark,
             contentColor = TextPrimary
         ) {
-            WordLifecycleStagesGuideSheetContent(
+            WordLifecycleWordsBottomSheetContent(
+                stageKey = selectedStageKey!!,
                 funnel = funnel,
-                highlightedStageKey = highlightedStageKey,
-                onDismiss = { showInfoSheet = false }
+                onLoadStageWords = onLoadStageWords,
+                onSpeakWord = onSpeakWord,
+                onOpenDictionary = {
+                    val key = selectedStageKey!!
+                    showStageWordsSheet = false
+                    selectedStageKey = null
+                    onOpenDictionaryForStage?.invoke(key)
+                },
+                onStartStudying = {
+                    val key = selectedStageKey!!
+                    showStageWordsSheet = false
+                    selectedStageKey = null
+                    onStartStudying?.invoke(key)
+                },
+                onDismiss = {
+                    showStageWordsSheet = false
+                    selectedStageKey = null
+                }
             )
         }
     }
@@ -492,13 +539,24 @@ fun CefrReadinessBarCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            val titleText = if (readiness.nextLevel != null) {
+                "CEFR ${readiness.currentLevel} → ${readiness.nextLevel} Mastery"
+            } else {
+                "CEFR ${readiness.currentLevel} Mastery"
+            }
+            val subtitleText = if (readiness.nextLevel != null) {
+                "جاهزية الانتقال للمستوى ${readiness.nextLevel}"
+            } else {
+                "أعلى مستوى تم تحقيقه بنجاح"
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "CEFR ${readiness.currentLevel} → ${readiness.nextLevel} Mastery",
+                    text = titleText,
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                     color = TextPrimary
                 )
@@ -519,7 +577,7 @@ fun CefrReadinessBarCard(
             }
 
             BidiText(
-                text = "جاهزية المستوى الموحدة (٥٠٪ مفردات • ٣٠٪ قواعد • ٢٠٪ قراءة)",
+                text = subtitleText,
                 style = ArabicTypography.labelSmall,
                 color = TextSecondary,
                 fillMaxWidth = true,
@@ -612,10 +670,15 @@ private fun ReadinessPillarMetric(
 @Composable
 fun WordLifecycleFunnelCard(
     funnel: WordLifecycleFunnel,
+    onLoadStageWords: (suspend (String) -> List<LifecycleStageWordItem>)? = null,
+    onSpeakWord: ((String) -> Unit)? = null,
+    onOpenDictionaryForStage: ((String) -> Unit)? = null,
+    onStartStudying: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    var showStageWordsSheet by remember { mutableStateOf(false) }
+    var selectedStageKey by remember { mutableStateOf<String?>(null) }
     var showInfoSheet by remember { mutableStateOf(false) }
-    var highlightedStageKey by remember { mutableStateOf<String?>(null) }
 
     Surface(
         modifier = modifier
@@ -655,7 +718,6 @@ fun WordLifecycleFunnelCard(
                                 .size(24.dp)
                                 .clip(CircleShape)
                                 .clickable {
-                                    highlightedStageKey = null
                                     showInfoSheet = true
                                 }
                                 .testTag("word_lifecycle_info_button")
@@ -671,7 +733,7 @@ fun WordLifecycleFunnelCard(
                         }
                     }
                     BidiText(
-                        text = "مراحل إتقان المفردات (اضغط على أي مرحلة لمعرفة التفاصيل)",
+                        text = "مراحل إتقان المفردات (اضغط على أي مرحلة لعرض كلماتها)",
                         style = ArabicTypography.labelSmall,
                         color = TextSecondary,
                         fillMaxWidth = false
@@ -701,8 +763,8 @@ fun WordLifecycleFunnelCard(
                         testTag = "funnel_stage_new",
                         modifier = Modifier.weight(1f),
                         onClick = {
-                            highlightedStageKey = "new"
-                            showInfoSheet = true
+                            selectedStageKey = "new"
+                            showStageWordsSheet = true
                         }
                     )
                     FunnelStageChip(
@@ -713,8 +775,8 @@ fun WordLifecycleFunnelCard(
                         testTag = "funnel_stage_seen",
                         modifier = Modifier.weight(1f),
                         onClick = {
-                            highlightedStageKey = "seen"
-                            showInfoSheet = true
+                            selectedStageKey = "seen"
+                            showStageWordsSheet = true
                         }
                     )
                 }
@@ -732,8 +794,8 @@ fun WordLifecycleFunnelCard(
                         testTag = "funnel_stage_learning",
                         modifier = Modifier.weight(1f),
                         onClick = {
-                            highlightedStageKey = "learning"
-                            showInfoSheet = true
+                            selectedStageKey = "learning"
+                            showStageWordsSheet = true
                         }
                     )
                     FunnelStageChip(
@@ -744,8 +806,8 @@ fun WordLifecycleFunnelCard(
                         testTag = "funnel_stage_familiar",
                         modifier = Modifier.weight(1f),
                         onClick = {
-                            highlightedStageKey = "familiar"
-                            showInfoSheet = true
+                            selectedStageKey = "familiar"
+                            showStageWordsSheet = true
                         }
                     )
                 }
@@ -763,8 +825,8 @@ fun WordLifecycleFunnelCard(
                         testTag = "funnel_stage_mature",
                         modifier = Modifier.weight(1f),
                         onClick = {
-                            highlightedStageKey = "mature"
-                            showInfoSheet = true
+                            selectedStageKey = "mature"
+                            showStageWordsSheet = true
                         }
                     )
                     FunnelStageChip(
@@ -775,12 +837,48 @@ fun WordLifecycleFunnelCard(
                         testTag = "funnel_stage_conquered",
                         modifier = Modifier.weight(1f),
                         onClick = {
-                            highlightedStageKey = "conquered"
-                            showInfoSheet = true
+                            selectedStageKey = "conquered"
+                            showStageWordsSheet = true
                         }
                     )
                 }
             }
+        }
+    }
+
+    if (showStageWordsSheet && selectedStageKey != null) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = {
+                showStageWordsSheet = false
+                selectedStageKey = null
+            },
+            sheetState = sheetState,
+            containerColor = SurfaceDark,
+            contentColor = TextPrimary
+        ) {
+            WordLifecycleWordsBottomSheetContent(
+                stageKey = selectedStageKey!!,
+                funnel = funnel,
+                onLoadStageWords = onLoadStageWords,
+                onSpeakWord = onSpeakWord,
+                onOpenDictionary = {
+                    val key = selectedStageKey!!
+                    showStageWordsSheet = false
+                    selectedStageKey = null
+                    onOpenDictionaryForStage?.invoke(key)
+                },
+                onStartStudying = {
+                    val key = selectedStageKey!!
+                    showStageWordsSheet = false
+                    selectedStageKey = null
+                    onStartStudying?.invoke(key)
+                },
+                onDismiss = {
+                    showStageWordsSheet = false
+                    selectedStageKey = null
+                }
+            )
         }
     }
 
@@ -794,7 +892,7 @@ fun WordLifecycleFunnelCard(
         ) {
             WordLifecycleStagesGuideSheetContent(
                 funnel = funnel,
-                highlightedStageKey = highlightedStageKey,
+                highlightedStageKey = null,
                 onDismiss = { showInfoSheet = false }
             )
         }
@@ -1355,6 +1453,500 @@ fun DeckVocabularyCoverageCard(
                             .clip(RoundedCornerShape(3.dp)),
                         color = GoldAccent,
                         trackColor = SurfaceElevatedDark
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+private data class StageMeta(
+    val key: String,
+    val titleEn: String,
+    val titleAr: String,
+    val subtitleAr: String,
+    val color: Color,
+    val emptyMessageAr: String,
+    val triggerHintAr: String
+)
+
+private fun getStageMeta(stageKey: String): StageMeta {
+    return when (stageKey.lowercase()) {
+        "new" -> StageMeta(
+            key = "new",
+            titleEn = "New Words",
+            titleAr = "كلمات جديدة",
+            subtitleAr = "كلمات في كتبك لم تبدأ بدراستها بعد",
+            color = Color(0xFF9CA3AF),
+            emptyMessageAr = "رائع! لقد بدأت بدراسة جميع الكلمات المتاحة في مستواك الحالي.",
+            triggerHintAr = "تبدأ الكلمات كـ New فور اختيار كتب المستوى أو الكتب المخصصة."
+        )
+        "seen" -> StageMeta(
+            key = "seen",
+            titleEn = "Seen Words",
+            titleAr = "كلمات مقروءة",
+            subtitleAr = "كلمات مرّت عليك بالقراءة أو قيد المراجعة الفورية",
+            color = Color(0xFF38BDF8),
+            emptyMessageAr = "لا توجد كلمات مقروءة حالياً. اضغط على أي كلمة في قصص القراءة أو راجع البطاقات لتظهر هنا.",
+            triggerHintAr = "تصبح الكلمة Seen عند الضغط عليها في القصص أو تقييمها بـ Again / Hard في أول مواجهة."
+        )
+        "learning" -> StageMeta(
+            key = "learning",
+            titleEn = "Learning Words",
+            titleAr = "قيد التعلم",
+            subtitleAr = "كلمات تذكرتها بنجاح وتخضع لفواصل مراجعة يومية (1–6 أيام)",
+            color = CoralAccent,
+            emptyMessageAr = "لا توجد كلمات قيد التعلم حالياً. عند تقييم بطاقة بـ Good (تذكرتها) ستبدأ بالظهور هنا!",
+            triggerHintAr = "تنتقل الكلمة إلى Learning عند تقييمها بـ Good وتثبيت أول تكرار تباعدي لها."
+        )
+        "familiar" -> StageMeta(
+            key = "familiar",
+            titleEn = "Familiar Words",
+            titleAr = "كلمات مألوفة",
+            subtitleAr = "كلمات في الذاكرة المتوسطة بفاصل مراجعة بين أسبوع و 3 أسابيع (7–20 يوماً)",
+            color = Color(0xFFF5B82E),
+            emptyMessageAr = "لا توجد كلمات مألوفة بعد. استمر بمراجعة البطاقات حتى تتسع فواصل التكرار إلى 7 أيام فأكثر.",
+            triggerHintAr = "تصبح الكلمة Familiar عندما يصل فاصل تكرارها إلى ما بين 7 و 20 يوماً."
+        )
+        "mature" -> StageMeta(
+            key = "mature",
+            titleEn = "Mature / Mastered",
+            titleAr = "كلمات متقنة",
+            subtitleAr = "كلمات استقرت في الذاكرة الدائمة (فاصل 21+ يوماً أو سحب Easy)",
+            color = EmeraldAccent,
+            emptyMessageAr = "لا توجد كلمات متقنة بعد. اسحب البطاقة لليمين كـ Easy أو داوم على تقييم Good لتصل للمستوى المتقن!",
+            triggerHintAr = "تصل الكلمة إلى Mature عند سحب Easy أو الوصول لفاصل تكرار 21 يوماً فأكثر."
+        )
+        "conquered" -> StageMeta(
+            key = "conquered",
+            titleEn = "Conquered Words",
+            titleAr = "تم التغلب عليها",
+            subtitleAr = "وسام خاص للكلمات الصعبة التي تعثرت بها مرتين أو أكثر ثم أتقنتها بنجاح!",
+            color = Color(0xFFA855F7),
+            emptyMessageAr = "لا توجد كلمات صعبة تم التغلب عليها بعد. عند إتقان كلمات تعثرت بها سابقاً ستنال هذا الوسام!",
+            triggerHintAr = "تمنح للكلمة التي تعثرت بها (Again) مرتين أو أكثر ثم وصلت إلى مرحلة الإتقان."
+        )
+        else -> StageMeta(
+            key = stageKey,
+            titleEn = stageKey.replaceFirstChar { it.uppercase() },
+            titleAr = stageKey,
+            subtitleAr = "مفردات مرحلة $stageKey",
+            color = GoldAccent,
+            emptyMessageAr = "لا توجد كلمات في هذه المرحلة.",
+            triggerHintAr = ""
+        )
+    }
+}
+
+@Composable
+fun WordLifecycleWordsBottomSheetContent(
+    stageKey: String,
+    funnel: WordLifecycleFunnel,
+    onLoadStageWords: (suspend (String) -> List<LifecycleStageWordItem>)?,
+    onSpeakWord: ((String) -> Unit)?,
+    onOpenDictionary: () -> Unit,
+    onStartStudying: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val meta = remember(stageKey) { getStageMeta(stageKey) }
+    var words by remember(stageKey) { mutableStateOf<List<LifecycleStageWordItem>>(emptyList()) }
+    var isLoading by remember(stageKey) { mutableStateOf(true) }
+    var searchQuery by remember { mutableStateOf("") }
+    var showHowItWorks by remember { mutableStateOf(false) }
+
+    LaunchedEffect(stageKey) {
+        isLoading = true
+        words = try {
+            onLoadStageWords?.invoke(stageKey) ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+        isLoading = false
+    }
+
+    val filteredWords = remember(words, searchQuery) {
+        if (searchQuery.isBlank()) words
+        else words.filter {
+            it.headword.contains(searchQuery.trim(), ignoreCase = true) ||
+            it.arabic.contains(searchQuery.trim())
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 680.dp)
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 24.dp)
+            .testTag("word_lifecycle_words_sheet"),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Header Row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    color = meta.color.copy(alpha = 0.16f),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, meta.color.copy(alpha = 0.4f))
+                ) {
+                    Text(
+                        text = meta.titleEn,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = meta.color,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+                Text(
+                    text = meta.titleAr,
+                    style = ArabicTypography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 15.sp),
+                    color = TextPrimary
+                )
+            }
+
+            Surface(
+                color = SurfaceElevatedDark,
+                shape = CircleShape,
+                border = BorderStroke(1.dp, BorderSubtle)
+            ) {
+                Text(
+                    text = "${words.size} كلمة",
+                    style = ArabicTypography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = GoldAccent,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                )
+            }
+        }
+
+        // Subtitle & Toggle for "How it works"
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            BidiText(
+                text = meta.subtitleAr,
+                style = ArabicTypography.bodySmall,
+                color = TextSecondary,
+                fillMaxWidth = false,
+                modifier = Modifier.weight(1f)
+            )
+
+            TextButton(
+                onClick = { showHowItWorks = !showHowItWorks },
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Info,
+                        contentDescription = "كيف تعمل المرحلة",
+                        tint = GoldAccent,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = if (showHowItWorks) "إخفاء الدليل" else "كيف تعمل؟",
+                        style = ArabicTypography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = GoldAccent
+                    )
+                }
+            }
+        }
+
+        if (showHowItWorks) {
+            Surface(
+                color = SurfaceElevatedDark,
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, meta.color.copy(alpha = 0.3f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "شرط الوصول لهذه المرحلة:",
+                        style = ArabicTypography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = meta.color
+                    )
+                    BidiText(
+                        text = meta.triggerHintAr,
+                        style = ArabicTypography.bodySmall,
+                        color = TextPrimary,
+                        fillMaxWidth = true
+                    )
+                }
+            }
+        }
+
+        // Search Bar (shown when there are words)
+        if (words.size > 5) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = {
+                    Text(
+                        text = "بحث في كلمات هذه المرحلة...",
+                        style = ArabicTypography.bodySmall,
+                        color = TextMuted
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.Search,
+                        contentDescription = "Search",
+                        tint = TextMuted,
+                        modifier = Modifier.size(18.dp)
+                    )
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear",
+                                tint = TextMuted,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(10.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = GoldAccent,
+                    unfocusedBorderColor = BorderDark,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    focusedContainerColor = SurfaceElevatedDark,
+                    unfocusedContainerColor = SurfaceDark
+                )
+            )
+        }
+
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = GoldAccent,
+                    strokeWidth = 3.dp,
+                    modifier = Modifier.size(36.dp)
+                )
+            }
+        } else if (words.isEmpty()) {
+            // Empty State
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp, horizontal = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Surface(
+                    color = meta.color.copy(alpha = 0.12f),
+                    shape = CircleShape,
+                    border = BorderStroke(1.dp, meta.color.copy(alpha = 0.35f)),
+                    modifier = Modifier.size(64.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = when (stageKey.lowercase()) {
+                                "conquered" -> Icons.Default.EmojiEvents
+                                "mature" -> Icons.Outlined.CheckCircle
+                                else -> Icons.Default.School
+                            },
+                            contentDescription = null,
+                            tint = meta.color,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
+
+                Text(
+                    text = "لا توجد كلمات في هذه المرحلة بعد",
+                    style = ArabicTypography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 15.sp),
+                    color = TextPrimary,
+                    textAlign = TextAlign.Center
+                )
+
+                BidiText(
+                    text = meta.emptyMessageAr,
+                    style = ArabicTypography.bodyMedium,
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center,
+                    fillMaxWidth = true
+                )
+
+                Button(
+                    onClick = onStartStudying,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = GoldAccent,
+                        contentColor = BackgroundDark
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth(0.8f)
+                        .height(44.dp)
+                ) {
+                    Text(
+                        text = "ابدأ المذاكرة الآن",
+                        style = ArabicTypography.labelMedium.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp),
+                        color = BackgroundDark
+                    )
+                }
+            }
+        } else {
+            // Word List
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(filteredWords, key = { "${it.deck}:${it.headword}" }) { item ->
+                    WordLifecycleWordRow(
+                        item = item,
+                        onSpeakWord = onSpeakWord
+                    )
+                }
+            }
+
+            // Bottom action: Open in Dictionary
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                OutlinedButton(
+                    onClick = onOpenDictionary,
+                    border = BorderStroke(1.dp, GoldAccentBorder),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = GoldAccent
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "عرض في القاموس الكامل",
+                        style = ArabicTypography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WordLifecycleWordRow(
+    item: LifecycleStageWordItem,
+    onSpeakWord: ((String) -> Unit)?
+) {
+    Surface(
+        color = SurfaceElevatedDark,
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, BorderSubtle),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = item.headword,
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = TextPrimary
+                    )
+                    if (item.pos.isNotBlank() && item.pos != "word") {
+                        Surface(
+                            color = BackgroundDark,
+                            shape = RoundedCornerShape(4.dp),
+                            border = BorderStroke(0.5.dp, BorderSubtle)
+                        ) {
+                            Text(
+                                text = item.pos,
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
+                                color = TextMuted,
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                            )
+                        }
+                    }
+                }
+
+                if (item.arabic.isNotBlank()) {
+                    BidiText(
+                        text = item.arabic,
+                        style = ArabicTypography.bodySmall,
+                        color = GoldAccent,
+                        fillMaxWidth = false
+                    )
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if (item.intervalDays > 0) {
+                    Surface(
+                        color = SurfaceDark,
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(0.5.dp, BorderSubtle)
+                    ) {
+                        Text(
+                            text = "${item.intervalDays}d",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = TextSecondary,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                } else if (item.repetitions > 0) {
+                    Surface(
+                        color = SurfaceDark,
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(0.5.dp, BorderSubtle)
+                    ) {
+                        Text(
+                            text = "${item.repetitions}x",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = TextSecondary,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+
+                IconButton(
+                    onClick = { onSpeakWord?.invoke(item.headword) },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                        contentDescription = "Speak ${item.headword}",
+                        tint = GoldAccent,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
