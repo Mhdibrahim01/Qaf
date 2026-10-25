@@ -61,6 +61,7 @@ import com.example.data.local.ReadingSentenceItem
 import com.example.data.local.ReadingTextEntity
 import com.example.data.sentences.SentenceSortOrder
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -90,7 +91,32 @@ data class LevelProgressSummary(
     val deckTotalMasteredCount: Int = 0
 )
 
-@OptIn(ExperimentalCoroutinesApi::class)
+enum class FlashcardSessionType {
+    REVIEW,
+    LEARN_NEW
+}
+
+@Immutable
+data class FlashcardSessionSummary(
+    val sessionType: FlashcardSessionType = FlashcardSessionType.REVIEW,
+    val deckName: String = "",
+    val totalCount: Int = 0,
+    val masteredCount: Int = 0,
+    val needsReviewCount: Int = 0,
+    val qualitySum: Int = 0,
+    val failedCards: List<GroupedWordCard> = emptyList(),
+    val initialCards: List<GroupedWordCard> = emptyList()
+) {
+    val retentionRatePercent: Int
+        get() = if (totalCount > 0) {
+            (((totalCount - needsReviewCount).coerceAtLeast(0) * 100f) / totalCount).toInt()
+        } else 100
+
+    val averageQuality: Float
+        get() = if (totalCount > 0) (qualitySum.toFloat() / totalCount) else 0f
+}
+
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class WordBooksViewModel(application: Application) : AndroidViewModel(application) {
 
     private val database = WordBooksDatabase.getInstance(application)
@@ -389,6 +415,22 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _flashcardAutoShowAnswer = MutableStateFlow(repository.getFlashcardAutoShowAnswer())
     val flashcardAutoShowAnswer: StateFlow<Boolean> = _flashcardAutoShowAnswer.asStateFlow()
+
+    private val _flashcardSessionType = MutableStateFlow(FlashcardSessionType.REVIEW)
+    val flashcardSessionType: StateFlow<FlashcardSessionType> = _flashcardSessionType.asStateFlow()
+
+    private val _isFlashcardSessionCompleted = MutableStateFlow(false)
+    val isFlashcardSessionCompleted: StateFlow<Boolean> = _isFlashcardSessionCompleted.asStateFlow()
+
+    private val _flashcardSessionSummary = MutableStateFlow(FlashcardSessionSummary())
+    val flashcardSessionSummary: StateFlow<FlashcardSessionSummary> = _flashcardSessionSummary.asStateFlow()
+
+    private val sessionRatedCardKeys = mutableSetOf<String>()
+    private val sessionFailedCards = mutableListOf<GroupedWordCard>()
+    private var sessionMasteredCount = 0
+    private var sessionNeedsReviewCount = 0
+    private var sessionQualitySum = 0
+    private var sessionInitialCards = listOf<GroupedWordCard>()
 
     // --- SENTENCES STATE ---
     private val _sentenceSortOrder = MutableStateFlow(SentenceSortOrder.NEWEST)
@@ -1114,6 +1156,22 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 val rawList = if (filteredCards.isNotEmpty()) filteredCards else allCards
                 val sortedCards = if (deckId == DataImportRepository.DUE_TODAY_DECK_ID) rawList else sortGroupedCards(rawList, filterState.sortOrder)
                 _flashcardCards.value = sortedCards
+                sessionRatedCardKeys.clear()
+                sessionFailedCards.clear()
+                sessionMasteredCount = 0
+                sessionNeedsReviewCount = 0
+                sessionQualitySum = 0
+                sessionInitialCards = sortedCards
+                _flashcardSessionType.value = FlashcardSessionType.REVIEW
+                _isFlashcardSessionCompleted.value = false
+                val activeDeckTitle = decks.value.find { it.id == deckId }?.let { if (it.nameAr.isNotBlank()) it.nameAr else it.title }
+                    ?: if (deckId == DataImportRepository.DUE_TODAY_DECK_ID) "أهم 5000 كلمة أكاديمية وعامة" else deckId
+                _flashcardSessionSummary.value = FlashcardSessionSummary(
+                    sessionType = FlashcardSessionType.REVIEW,
+                    deckName = activeDeckTitle,
+                    totalCount = sortedCards.size,
+                    initialCards = sortedCards
+                )
                 _flashcardIndex.value = 0
                 _isCurrentCardFlipped.value = false
                 cardDisplayStartTimeMillis = System.currentTimeMillis()
@@ -1194,6 +1252,22 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 val currentSortOrder = _filterState.value.sortOrder
                 val sortedCards = if (deckId == DataImportRepository.DUE_TODAY_DECK_ID) cards else sortGroupedCards(cards, currentSortOrder)
                 _flashcardCards.value = sortedCards
+                sessionRatedCardKeys.clear()
+                sessionFailedCards.clear()
+                sessionMasteredCount = 0
+                sessionNeedsReviewCount = 0
+                sessionQualitySum = 0
+                sessionInitialCards = sortedCards
+                _flashcardSessionType.value = FlashcardSessionType.REVIEW
+                _isFlashcardSessionCompleted.value = false
+                val activeDeckTitle = decks.value.find { it.id == deckId }?.let { if (it.nameAr.isNotBlank()) it.nameAr else it.title }
+                    ?: if (deckId == DataImportRepository.DUE_TODAY_DECK_ID) "أهم 5000 كلمة أكاديمية وعامة" else deckId
+                _flashcardSessionSummary.value = FlashcardSessionSummary(
+                    sessionType = FlashcardSessionType.REVIEW,
+                    deckName = activeDeckTitle,
+                    totalCount = sortedCards.size,
+                    initialCards = sortedCards
+                )
                 val restoredIndex = if (sortedCards.isEmpty()) {
                     0
                 } else {
@@ -1354,6 +1428,53 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
 
         _isCurrentCardFlipped.value = false
         _flashcardIndex.value = nextIndex
+
+        sessionRatedCardKeys.add(currentCard.cardKey)
+        val quality = when (rating) {
+            Sm2Rating.AGAIN -> 0
+            Sm2Rating.HARD -> 2
+            Sm2Rating.GOOD -> 3
+            Sm2Rating.EASY -> 5
+        }
+        sessionQualitySum += quality
+        if (rating == Sm2Rating.EASY || rating == Sm2Rating.GOOD) {
+            sessionMasteredCount++
+        } else {
+            sessionNeedsReviewCount++
+            if (!sessionFailedCards.any { it.cardKey == currentCard.cardKey }) {
+                sessionFailedCards.add(currentCard)
+            }
+        }
+
+        val totalSessionCards = if (sessionInitialCards.isNotEmpty()) sessionInitialCards.size else cards.size
+        val isDueSessionFinished = (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID && remainingCards.isEmpty())
+        val isAllRated = sessionRatedCardKeys.size >= totalSessionCards
+        val isEndOfDeck = (activeDeckId != DataImportRepository.DUE_TODAY_DECK_ID && (currentIndex >= cards.size - 1 || nextIndex <= currentIndex))
+
+        val isSessionDone = isDueSessionFinished || isAllRated || (isEndOfDeck && sessionRatedCardKeys.size >= minOf(5, totalSessionCards))
+
+        if (isSessionDone) {
+            val deckEntity = decks.value.find { it.id == activeDeckId }
+            val finalDeckName = when {
+                deckEntity != null && deckEntity.nameAr.isNotBlank() -> deckEntity.nameAr
+                deckEntity != null && deckEntity.title.isNotBlank() -> deckEntity.title
+                activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID -> "أهم 5000 كلمة أكاديمية وعامة"
+                else -> activeDeckId
+            }
+
+            _flashcardSessionSummary.value = FlashcardSessionSummary(
+                sessionType = _flashcardSessionType.value,
+                deckName = finalDeckName,
+                totalCount = maxOf(sessionRatedCardKeys.size, totalSessionCards),
+                masteredCount = sessionMasteredCount,
+                needsReviewCount = sessionNeedsReviewCount,
+                qualitySum = sessionQualitySum,
+                failedCards = sessionFailedCards.toList(),
+                initialCards = if (sessionInitialCards.isNotEmpty()) sessionInitialCards else cards
+            )
+            _isFlashcardSessionCompleted.value = true
+        }
+
         viewModelScope.launch {
             repository.applySm2Review(
                 deckId = currentCard.deck,
@@ -1383,6 +1504,33 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             )
             refreshDailyChecklist()
         }
+    }
+
+    fun restartCurrentFlashcardSession() {
+        val summary = _flashcardSessionSummary.value
+        val retryCards = if (summary.failedCards.isNotEmpty()) {
+            summary.failedCards
+        } else {
+            summary.initialCards.ifEmpty { _flashcardCards.value }
+        }
+        if (retryCards.isNotEmpty()) {
+            sessionRatedCardKeys.clear()
+            sessionFailedCards.clear()
+            sessionMasteredCount = 0
+            sessionNeedsReviewCount = 0
+            sessionQualitySum = 0
+            sessionInitialCards = retryCards
+            _flashcardCards.value = retryCards
+            _flashcardIndex.value = 0
+            _isCurrentCardFlipped.value = false
+            _isFlashcardSessionCompleted.value = false
+        }
+    }
+
+    fun dismissFlashcardSessionCompletion() {
+        _isFlashcardSessionCompleted.value = false
+        _isCurrentCardFlipped.value = false
+        refreshDailyChecklist()
     }
 
     fun toggleCurrentFlashcardMastered() {
@@ -2317,8 +2465,8 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 val reviewedLevelEntries = candidates.filter { entry ->
                     val key = "${entry.deck}:${entry.text.trim().lowercase()}"
                     val p = progressMap[key]
-                    p != null && p.lastReviewedTimestamp > 0 && !p.isMastered &&
-                        (p.dueTimestamp == 0L || p.dueTimestamp <= dueNowCutoff)
+                    p != null && (p.repetitions > 0 || p.lastReviewedTimestamp > 0) && !p.isMastered &&
+                        p.dueTimestamp > 0 && p.dueTimestamp <= dueNowCutoff
                 }
 
                 val combined = (dueEntries + reviewedLevelEntries).distinctBy { "${it.deck}:${it.text.trim().lowercase()}" }
@@ -2350,6 +2498,21 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 _flashcardIndex.value = 0
                 _isCurrentCardFlipped.value = false
 
+                sessionRatedCardKeys.clear()
+                sessionFailedCards.clear()
+                sessionMasteredCount = 0
+                sessionNeedsReviewCount = 0
+                sessionQualitySum = 0
+                sessionInitialCards = cards
+                _flashcardSessionType.value = FlashcardSessionType.REVIEW
+                _isFlashcardSessionCompleted.value = false
+                _flashcardSessionSummary.value = FlashcardSessionSummary(
+                    sessionType = FlashcardSessionType.REVIEW,
+                    deckName = "أهم 5000 كلمة أكاديمية وعامة",
+                    totalCount = cards.size,
+                    initialCards = cards
+                )
+
                 if (cards.isEmpty()) {
                     refreshDailyChecklist()
                 }
@@ -2373,7 +2536,8 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                         } catch (_: Exception) { emptyList() }
                         val newWordsTask = tasks.find { it.type == "new_words" }
                         if (newWordsTask != null && newWordsTask.targetCount > 0) {
-                            (newWordsTask.targetCount - newWordsTask.completedCount).coerceAtLeast(1)
+                            val remaining = newWordsTask.targetCount - newWordsTask.completedCount
+                            if (remaining > 0) remaining else 5
                         } else null
                     } else null
                 } ?: 10
@@ -2415,11 +2579,130 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                     _flashcardDeckId.value = selectedDecks.firstOrNull() ?: "oxford5000"
                     _flashcardIndex.value = 0
                     _isCurrentCardFlipped.value = false
+
+                    sessionRatedCardKeys.clear()
+                    sessionFailedCards.clear()
+                    sessionMasteredCount = 0
+                    sessionNeedsReviewCount = 0
+                    sessionQualitySum = 0
+                    sessionInitialCards = cards
+                    _flashcardSessionType.value = FlashcardSessionType.LEARN_NEW
+                    _isFlashcardSessionCompleted.value = false
+                    _flashcardSessionSummary.value = FlashcardSessionSummary(
+                        sessionType = FlashcardSessionType.LEARN_NEW,
+                        deckName = "مفردات جديدة",
+                        totalCount = cards.size,
+                        initialCards = cards
+                    )
                 } else {
                     loadFlashcardsForDeck("oxford5000")
                 }
             } catch (_: Exception) {
                 loadFlashcardsForDeck("oxford5000")
+            } finally {
+                _isFlashcardsLoading.value = false
+            }
+        }
+    }
+
+    fun startEarlyReviewSession() {
+        viewModelScope.launch {
+            _isFlashcardsLoading.value = true
+            try {
+                val selectedDecks = parseSelectedDecks(studyPlanProfile.value)
+                val nowMillis = System.currentTimeMillis()
+                val endOfTodayMillis = DataImportRepository.computeEndOfTodayMillis(nowMillis)
+
+                val earlyEntries = if (selectedDecks.isNotEmpty()) {
+                    database.wordBooksDao().getEarlyReviewEntriesForDecksOrdered(nowMillis, endOfTodayMillis, selectedDecks)
+                } else {
+                    database.wordBooksDao().getEarlyReviewEntriesOrdered(nowMillis, endOfTodayMillis)
+                }
+
+                val allProgress = database.wordBooksDao().getAllWordProgressList().associateBy { it.cardKey }
+                val groupedMap = LinkedHashMap<String, MutableList<EntryEntity>>()
+                for (entry in earlyEntries) {
+                    val key = "${entry.deck}:${entry.text.trim().lowercase()}"
+                    val list = groupedMap.getOrPut(key) { ArrayList(2) }
+                    list.add(entry)
+                }
+
+                val cards: List<GroupedWordCard> = groupedMap.map { (cardKey, variants) ->
+                    repository.buildGroupedCardFromEntries(variants, allProgress[cardKey])
+                }
+
+                _flashcardCards.value = cards
+                _flashcardDeckId.value = DataImportRepository.DUE_TODAY_DECK_ID
+                _flashcardIndex.value = 0
+                _isCurrentCardFlipped.value = false
+                _isFlashcardSessionCompleted.value = false
+
+                if (cards.isNotEmpty()) {
+                    sessionRatedCardKeys.clear()
+                    sessionFailedCards.clear()
+                    sessionMasteredCount = 0
+                    sessionNeedsReviewCount = 0
+                    sessionQualitySum = 0
+                    sessionInitialCards = cards
+                    _flashcardSessionType.value = FlashcardSessionType.REVIEW
+                    _flashcardSessionSummary.value = FlashcardSessionSummary(
+                        sessionType = FlashcardSessionType.REVIEW,
+                        deckName = "مراجعة مبكرة (Early Review)",
+                        totalCount = cards.size,
+                        initialCards = cards
+                    )
+                }
+            } catch (_: Exception) {
+                // Ignore
+            } finally {
+                _isFlashcardsLoading.value = false
+            }
+        }
+    }
+
+    fun startReviewTodayLearnedWordsSession() {
+        viewModelScope.launch {
+            _isFlashcardsLoading.value = true
+            try {
+                val nowMillis = System.currentTimeMillis()
+                val startOfDay = DataImportRepository.computeStartOfTodayMillis(nowMillis)
+                val entries = database.wordBooksDao().getEntriesLearnedToday(startOfDay)
+
+                val allProgress = database.wordBooksDao().getAllWordProgressList().associateBy { it.cardKey }
+                val groupedMap = LinkedHashMap<String, MutableList<EntryEntity>>()
+                for (entry in entries) {
+                    val key = "${entry.deck}:${entry.text.trim().lowercase()}"
+                    val list = groupedMap.getOrPut(key) { ArrayList(2) }
+                    list.add(entry)
+                }
+
+                val cards: List<GroupedWordCard> = groupedMap.map { (cardKey, variants) ->
+                    repository.buildGroupedCardFromEntries(variants, allProgress[cardKey])
+                }
+
+                _flashcardCards.value = cards
+                _flashcardDeckId.value = "learned_today"
+                _flashcardIndex.value = 0
+                _isCurrentCardFlipped.value = false
+                _isFlashcardSessionCompleted.value = false
+
+                if (cards.isNotEmpty()) {
+                    sessionRatedCardKeys.clear()
+                    sessionFailedCards.clear()
+                    sessionMasteredCount = 0
+                    sessionNeedsReviewCount = 0
+                    sessionQualitySum = 0
+                    sessionInitialCards = cards
+                    _flashcardSessionType.value = FlashcardSessionType.REVIEW
+                    _flashcardSessionSummary.value = FlashcardSessionSummary(
+                        sessionType = FlashcardSessionType.REVIEW,
+                        deckName = "كلمات تم تعلمها اليوم",
+                        totalCount = cards.size,
+                        initialCards = cards
+                    )
+                }
+            } catch (_: Exception) {
+                // Ignore
             } finally {
                 _isFlashcardsLoading.value = false
             }
@@ -2437,7 +2720,8 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
 
         val matchingTask = tasks.find { it.id == safeLinkedId || it.linkedId == safeLinkedId || it.type == route }
         val remainingCount = matchingTask?.let {
-            (it.targetCount - it.completedCount).coerceAtLeast(1)
+            val rem = it.targetCount - it.completedCount
+            if (rem > 0) rem else null
         }
 
         when {

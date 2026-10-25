@@ -1326,7 +1326,7 @@ interface WordBooksDao {
         SELECT e.* FROM entries e
         INNER JOIN word_progress wp
             ON (wp.entry_id = e.id OR (wp.entry_id IS NULL AND wp.deck = e.deck AND wp.text = LOWER(e.text)))
-        WHERE wp.is_mastered = 0 AND wp.due_timestamp > 0 AND wp.due_timestamp <= :endOfTodayMillis
+        WHERE wp.is_mastered = 0 AND (wp.repetitions > 0 OR wp.last_reviewed_timestamp > 0) AND wp.due_timestamp > 0 AND wp.due_timestamp <= :endOfTodayMillis
         ORDER BY wp.due_timestamp ASC, LOWER(e.text) ASC, CAST(e.id AS INTEGER) ASC
         """
     )
@@ -1337,7 +1337,7 @@ interface WordBooksDao {
         SELECT e.* FROM entries e
         INNER JOIN word_progress wp
             ON (wp.entry_id = e.id OR (wp.entry_id IS NULL AND wp.deck = e.deck AND wp.text = LOWER(e.text)))
-        WHERE wp.is_mastered = 0 AND wp.due_timestamp > 0 AND wp.due_timestamp <= :endOfTodayMillis
+        WHERE wp.is_mastered = 0 AND (wp.repetitions > 0 OR wp.last_reviewed_timestamp > 0) AND wp.due_timestamp > 0 AND wp.due_timestamp <= :endOfTodayMillis
           AND wp.deck IN (:decks)
         ORDER BY wp.due_timestamp ASC, LOWER(e.text) ASC, CAST(e.id AS INTEGER) ASC
         """
@@ -1349,7 +1349,7 @@ interface WordBooksDao {
         SELECT e.* FROM entries e
         INNER JOIN word_progress wp
             ON (wp.entry_id = e.id OR (wp.entry_id IS NULL AND wp.deck = e.deck AND wp.text = LOWER(e.text)))
-        WHERE wp.is_mastered = 0 AND wp.due_timestamp > 0 AND wp.due_timestamp <= :nowMillis
+        WHERE wp.is_mastered = 0 AND (wp.repetitions > 0 OR wp.last_reviewed_timestamp > 0) AND wp.due_timestamp > 0 AND wp.due_timestamp <= :nowMillis
         ORDER BY wp.due_timestamp ASC, LOWER(e.text) ASC, CAST(e.id AS INTEGER) ASC
         """
     )
@@ -1360,12 +1360,49 @@ interface WordBooksDao {
         SELECT e.* FROM entries e
         INNER JOIN word_progress wp
             ON (wp.entry_id = e.id OR (wp.entry_id IS NULL AND wp.deck = e.deck AND wp.text = LOWER(e.text)))
-        WHERE wp.is_mastered = 0 AND wp.due_timestamp > 0 AND wp.due_timestamp <= :nowMillis
+        WHERE wp.is_mastered = 0 AND (wp.repetitions > 0 OR wp.last_reviewed_timestamp > 0) AND wp.due_timestamp > 0 AND wp.due_timestamp <= :nowMillis
           AND wp.deck IN (:decks)
         ORDER BY wp.due_timestamp ASC, LOWER(e.text) ASC, CAST(e.id AS INTEGER) ASC
         """
     )
     suspend fun getDueNowEntriesForDecksOrdered(nowMillis: Long, decks: List<String>): List<EntryEntity>
+
+    @Query(
+        """
+        SELECT e.* FROM entries e
+        INNER JOIN word_progress wp
+            ON (wp.entry_id = e.id OR (wp.entry_id IS NULL AND wp.deck = e.deck AND wp.text = LOWER(e.text)))
+        WHERE wp.is_mastered = 0 AND (wp.repetitions > 0 OR wp.last_reviewed_timestamp > 0)
+          AND wp.due_timestamp > :nowMillis AND wp.due_timestamp <= :endOfTodayMillis
+        ORDER BY wp.due_timestamp ASC, LOWER(e.text) ASC, CAST(e.id AS INTEGER) ASC
+        """
+    )
+    suspend fun getEarlyReviewEntriesOrdered(nowMillis: Long, endOfTodayMillis: Long): List<EntryEntity>
+
+    @Query(
+        """
+        SELECT e.* FROM entries e
+        INNER JOIN word_progress wp
+            ON (wp.entry_id = e.id OR (wp.entry_id IS NULL AND wp.deck = e.deck AND wp.text = LOWER(e.text)))
+        WHERE wp.is_mastered = 0 AND (wp.repetitions > 0 OR wp.last_reviewed_timestamp > 0)
+          AND wp.due_timestamp > :nowMillis AND wp.due_timestamp <= :endOfTodayMillis
+          AND wp.deck IN (:decks)
+        ORDER BY wp.due_timestamp ASC, LOWER(e.text) ASC, CAST(e.id AS INTEGER) ASC
+        """
+    )
+    suspend fun getEarlyReviewEntriesForDecksOrdered(nowMillis: Long, endOfTodayMillis: Long, decks: List<String>): List<EntryEntity>
+
+    @Query(
+        """
+        SELECT e.* FROM entries e
+        INNER JOIN word_progress wp
+            ON (wp.entry_id = e.id OR (wp.entry_id IS NULL AND wp.deck = e.deck AND wp.text = LOWER(e.text)))
+        WHERE COALESCE(wp.first_learned_timestamp, 0) >= :startOfDayMillis
+           OR (COALESCE(wp.first_learned_timestamp, 0) = 0 AND wp.last_reviewed_timestamp >= :startOfDayMillis AND wp.repetitions = 1 AND wp.again_count = 0)
+        ORDER BY wp.last_reviewed_timestamp DESC, LOWER(e.text) ASC
+        """
+    )
+    suspend fun getEntriesLearnedToday(startOfDayMillis: Long): List<EntryEntity>
 
     @Query("SELECT * FROM word_progress")
     fun observeAllWordProgress(): Flow<List<WordProgressEntity>>
@@ -1388,40 +1425,40 @@ interface WordBooksDao {
     @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 1")
     fun observeMasteredWordCount(): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > 0 AND due_timestamp <= :endOfTodayMillis")
+    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND (repetitions > 0 OR last_reviewed_timestamp > 0) AND due_timestamp > 0 AND due_timestamp <= :endOfTodayMillis")
     fun observeReviewDueTodayCount(endOfTodayMillis: Long): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > 0 AND due_timestamp <= :endOfTodayMillis AND deck IN (:decks)")
+    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND (repetitions > 0 OR last_reviewed_timestamp > 0) AND due_timestamp > 0 AND due_timestamp <= :endOfTodayMillis AND deck IN (:decks)")
     fun observeReviewDueTodayCountForDecks(endOfTodayMillis: Long, decks: List<String>): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > 0 AND due_timestamp <= :endOfTodayMillis")
+    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND (repetitions > 0 OR last_reviewed_timestamp > 0) AND due_timestamp > 0 AND due_timestamp <= :endOfTodayMillis")
     suspend fun getReviewDueTodayCount(endOfTodayMillis: Long): Int
 
-    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > 0 AND due_timestamp <= :endOfTodayMillis AND deck IN (:decks)")
+    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND (repetitions > 0 OR last_reviewed_timestamp > 0) AND due_timestamp > 0 AND due_timestamp <= :endOfTodayMillis AND deck IN (:decks)")
     suspend fun getReviewDueTodayCountForDecks(endOfTodayMillis: Long, decks: List<String>): Int
 
-    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > 0 AND due_timestamp <= :nowMillis")
+    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND (repetitions > 0 OR last_reviewed_timestamp > 0) AND due_timestamp > 0 AND due_timestamp <= :nowMillis")
     fun observeDueNowCount(nowMillis: Long): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > 0 AND due_timestamp <= :nowMillis AND deck IN (:decks)")
+    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND (repetitions > 0 OR last_reviewed_timestamp > 0) AND due_timestamp > 0 AND due_timestamp <= :nowMillis AND deck IN (:decks)")
     fun observeDueNowCountForDecks(nowMillis: Long, decks: List<String>): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > 0 AND due_timestamp <= :nowMillis")
+    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND (repetitions > 0 OR last_reviewed_timestamp > 0) AND due_timestamp > 0 AND due_timestamp <= :nowMillis")
     suspend fun getDueNowCardsCount(nowMillis: Long): Int
 
-    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > 0 AND due_timestamp <= :nowMillis AND deck IN (:decks)")
+    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND (repetitions > 0 OR last_reviewed_timestamp > 0) AND due_timestamp > 0 AND due_timestamp <= :nowMillis AND deck IN (:decks)")
     suspend fun getDueNowCardsCountForDecks(nowMillis: Long, decks: List<String>): Int
 
-    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > :nowMillis AND due_timestamp <= :endOfTodayMillis")
+    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND (repetitions > 0 OR last_reviewed_timestamp > 0) AND due_timestamp > :nowMillis AND due_timestamp <= :endOfTodayMillis")
     suspend fun getLaterTodayCardsCount(nowMillis: Long, endOfTodayMillis: Long): Int
 
-    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > :nowMillis AND due_timestamp <= :endOfTodayMillis AND deck IN (:decks)")
+    @Query("SELECT COUNT(*) FROM word_progress WHERE is_mastered = 0 AND (repetitions > 0 OR last_reviewed_timestamp > 0) AND due_timestamp > :nowMillis AND due_timestamp <= :endOfTodayMillis AND deck IN (:decks)")
     suspend fun getLaterTodayCardsCountForDecks(nowMillis: Long, endOfTodayMillis: Long, decks: List<String>): Int
 
-    @Query("SELECT MIN(due_timestamp) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > :nowMillis AND due_timestamp <= :endOfTodayMillis")
+    @Query("SELECT MIN(due_timestamp) FROM word_progress WHERE is_mastered = 0 AND (repetitions > 0 OR last_reviewed_timestamp > 0) AND due_timestamp > :nowMillis AND due_timestamp <= :endOfTodayMillis")
     suspend fun getNextLaterTodayDueTimestamp(nowMillis: Long, endOfTodayMillis: Long): Long?
 
-    @Query("SELECT MIN(due_timestamp) FROM word_progress WHERE is_mastered = 0 AND due_timestamp > :nowMillis AND due_timestamp <= :endOfTodayMillis AND deck IN (:decks)")
+    @Query("SELECT MIN(due_timestamp) FROM word_progress WHERE is_mastered = 0 AND (repetitions > 0 OR last_reviewed_timestamp > 0) AND due_timestamp > :nowMillis AND due_timestamp <= :endOfTodayMillis AND deck IN (:decks)")
     suspend fun getNextLaterTodayDueTimestampForDecks(nowMillis: Long, endOfTodayMillis: Long, decks: List<String>): Long?
 
     @Query(
@@ -1762,20 +1799,20 @@ interface WordBooksDao {
 
     @Query("""
         SELECT COUNT(*) FROM word_progress
-        WHERE due_timestamp > 0 AND due_timestamp <= :currentTime AND is_mastered = 0
+        WHERE due_timestamp > 0 AND due_timestamp <= :currentTime AND is_mastered = 0 AND (repetitions > 0 OR last_reviewed_timestamp > 0)
     """)
     suspend fun getDueCardsCount(currentTime: Long): Int
 
     @Query("""
         SELECT COUNT(*) FROM word_progress
-        WHERE due_timestamp > 0 AND due_timestamp <= :currentTime AND is_mastered = 0
+        WHERE due_timestamp > 0 AND due_timestamp <= :currentTime AND is_mastered = 0 AND (repetitions > 0 OR last_reviewed_timestamp > 0)
           AND deck IN (:decks)
     """)
     suspend fun getDueCardsCountForDecks(currentTime: Long, decks: List<String>): Int
 
     @Query("""
         SELECT * FROM word_progress
-        WHERE due_timestamp > 0 AND due_timestamp <= :currentTime AND is_mastered = 0
+        WHERE due_timestamp > 0 AND due_timestamp <= :currentTime AND is_mastered = 0 AND (repetitions > 0 OR last_reviewed_timestamp > 0)
         ORDER BY due_timestamp ASC
         LIMIT :limit
     """)
@@ -2265,7 +2302,7 @@ interface WordBooksDao {
         SELECT e.* FROM entries e
         INNER JOIN word_progress wp
             ON (wp.entry_id = e.id OR (wp.entry_id IS NULL AND wp.deck = e.deck AND wp.text = LOWER(e.text)))
-        WHERE wp.is_mastered = 0 AND wp.due_timestamp > 0 AND wp.due_timestamp <= :endOfTodayMillis
+        WHERE wp.is_mastered = 0 AND (wp.repetitions > 0 OR wp.last_reviewed_timestamp > 0) AND wp.due_timestamp > 0 AND wp.due_timestamp <= :endOfTodayMillis
         ORDER BY
             CASE WHEN wp.interval_days = 0 THEN 0 ELSE 1 END ASC,
             CASE WHEN (wp.again_count >= 3 OR wp.last_looked_up_timestamp >= :lookupBoostCutoffMillis) THEN 0 ELSE 1 END ASC,
@@ -2287,7 +2324,7 @@ interface WordBooksDao {
         SELECT e.* FROM entries e
         INNER JOIN word_progress wp
             ON (wp.entry_id = e.id OR (wp.entry_id IS NULL AND wp.deck = e.deck AND wp.text = LOWER(e.text)))
-        WHERE wp.is_mastered = 0 AND wp.due_timestamp > 0 AND wp.due_timestamp <= :endOfTodayMillis
+        WHERE wp.is_mastered = 0 AND (wp.repetitions > 0 OR wp.last_reviewed_timestamp > 0) AND wp.due_timestamp > 0 AND wp.due_timestamp <= :endOfTodayMillis
           AND wp.deck IN (:decks)
         ORDER BY
             CASE WHEN wp.interval_days = 0 THEN 0 ELSE 1 END ASC,

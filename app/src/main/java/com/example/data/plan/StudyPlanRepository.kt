@@ -456,35 +456,30 @@ class StudyPlanRepository(
             flashcardTarget = totalDue
             backlogRemaining = 0
         } else {
-            flashcardTarget = if (isRestDay) 5 else when {
-                minutes <= 15 -> 5
-                minutes <= 30 -> 10
-                minutes <= 45 -> 15
-                else -> 20
-            }
+            flashcardTarget = 0
             backlogRemaining = 0
         }
 
-        val flashcardMinutes = maxOf(1, (flashcardTarget * 0.17f).roundToInt())
+        val flashcardMinutes = if (flashcardTarget > 0) maxOf(1, (flashcardTarget * 0.17f).roundToInt()) else 0
         val flashcardReason = if (backlogRemaining > 0) {
             "$flashcardTarget of $totalDue due reviews scheduled today to fit your ${minutes}-min goal ($backlogRemaining remaining in backlog)"
         } else if (totalDue > 0) {
             if (waitingLaterToday > 0) "$dueNow due now + $waitingLaterToday later today in $deckNames (~$flashcardMinutes min)"
             else "$dueNow due now in $deckNames (~$flashcardMinutes min)"
         } else {
-            "Daily retention practice for $deckNames (~$flashcardMinutes min)"
+            "All reviews up to date! 0 cards due today"
         }
 
         tasks.add(
             DailyTaskItem(
                 id = "task_flashcards",
                 type = "flashcards",
-                titleEn = if (isRestDay) "Flashcards (Rest Day Light Review)" else if (totalDue > 0) "Review Due Flashcards" else "Flashcards Review Practice",
-                titleAr = if (isRestDay) "مراجعة بطاقات خفيفة ليوم الراحة" else if (totalDue > 0) "مراجعة البطاقات المستحقة ($flashcardTarget بطاقة)" else "مراجعة البطاقات التعليمية ($flashcardTarget بطاقات)",
-                subtitleEn = if (backlogRemaining > 0) "$flashcardTarget of $totalDue due reviews scheduled today to fit your ${minutes}-min goal ($backlogRemaining remaining in backlog)" else if (totalDue > 0) "$flashcardTarget cards due today • $flashcardMinutes min" else "$flashcardTarget practice cards • Tap to review ${formatDeckLabel(primaryDeck)}",
+                titleEn = if (totalDue > 0) (if (isRestDay) "Flashcards (Rest Day Light Review)" else "Review Due Flashcards") else "Flashcards Review Practice",
+                titleAr = if (totalDue > 0) (if (isRestDay) "مراجعة بطاقات خفيفة ليوم الراحة" else "مراجعة البطاقات المستحقة ($flashcardTarget بطاقة)") else "مراجعة البطاقات التعليمية (0 بطاقة)",
+                subtitleEn = if (backlogRemaining > 0) "$flashcardTarget of $totalDue due reviews scheduled today to fit your ${minutes}-min goal ($backlogRemaining remaining in backlog)" else if (totalDue > 0) "$flashcardTarget cards due today • $flashcardMinutes min" else "All reviews up to date! 0 cards due today",
                 targetCount = flashcardTarget,
                 completedCount = 0,
-                isCompleted = false,
+                isCompleted = (totalDue == 0),
                 linkedRoute = "flashcards",
                 linkedId = primaryDeck,
                 explanationAr = "التكرار المتباعد يحفظ الكلمات في الذاكرة طويلة المدى.",
@@ -1048,26 +1043,39 @@ class StudyPlanRepository(
         val updatedTasks = tasks.map { task ->
             when (task.type) {
                 "flashcards" -> {
-                    val normalizedTarget = if (task.targetCount <= 0) 10 else task.targetCount
-                    val allDueReviewsCleared = (reviewCardsRatedToday > 0 && dueNowCardsCount == 0)
-                    val targetSatisfiedByReviews = (reviewCardsRatedToday >= normalizedTarget)
-                    val targetSatisfiedByGeneralPractice = (task.linkedRoute == "flashcards" && totalFlashcardsRatedToday >= normalizedTarget)
-                    val isDone = task.isCompleted || targetSatisfiedByReviews || allDueReviewsCleared || targetSatisfiedByGeneralPractice
-                    val effectiveTarget = if (allDueReviewsCleared && normalizedTarget > reviewCardsRatedToday) {
-                        reviewCardsRatedToday
+                    if (task.targetCount == 0 && reviewCardsRatedToday == 0) {
+                        task.copy(
+                            targetCount = 0,
+                            completedCount = 0,
+                            isCompleted = true,
+                            titleAr = "مراجعة البطاقات التعليمية (0 بطاقة)",
+                            subtitleEn = "All reviews up to date! 0 cards due today"
+                        )
                     } else {
-                        normalizedTarget
+                        val normalizedTarget = if (task.targetCount <= 0) {
+                            if (reviewCardsRatedToday > 0) reviewCardsRatedToday else 0
+                        } else {
+                            task.targetCount
+                        }
+                        val allDueReviewsCleared = (reviewCardsRatedToday > 0 && dueNowCardsCount == 0)
+                        val targetSatisfiedByReviews = (normalizedTarget > 0 && reviewCardsRatedToday >= normalizedTarget)
+                        val isDone = task.isCompleted || targetSatisfiedByReviews || allDueReviewsCleared
+                        val effectiveTarget = if (allDueReviewsCleared && normalizedTarget > reviewCardsRatedToday) {
+                            reviewCardsRatedToday
+                        } else {
+                            normalizedTarget
+                        }
+                        val currentCompleted = if (isDone) {
+                            effectiveTarget
+                        } else {
+                            minOf(reviewCardsRatedToday, effectiveTarget)
+                        }
+                        task.copy(
+                            targetCount = effectiveTarget,
+                            completedCount = currentCompleted,
+                            isCompleted = isDone
+                        )
                     }
-                    val currentCompleted = if (isDone) {
-                        effectiveTarget
-                    } else {
-                        maxOf(minOf(reviewCardsRatedToday, effectiveTarget), minOf(totalFlashcardsRatedToday, effectiveTarget))
-                    }
-                    task.copy(
-                        targetCount = effectiveTarget,
-                        completedCount = currentCompleted,
-                        isCompleted = isDone
-                    )
                 }
                 "new_words" -> {
                     val normalizedTarget = if (task.targetCount <= 0) 5 else task.targetCount
@@ -1159,15 +1167,19 @@ class StudyPlanRepository(
 
         val updated = tasks.map { task ->
             if (task.id == taskId) {
-                val nextCompleted = !task.isCompleted
-                val normalizedTarget = if (task.targetCount <= 0) {
-                    if (task.type == "flashcards") 10 else 1
-                } else task.targetCount
-                task.copy(
-                    targetCount = normalizedTarget,
-                    isCompleted = nextCompleted,
-                    completedCount = if (nextCompleted) normalizedTarget else 0
-                )
+                if (task.type == "flashcards" && task.targetCount == 0 && task.isCompleted) {
+                    task
+                } else {
+                    val nextCompleted = !task.isCompleted
+                    val normalizedTarget = if (task.targetCount <= 0) {
+                        if (task.type == "flashcards") 10 else 1
+                    } else task.targetCount
+                    task.copy(
+                        targetCount = normalizedTarget,
+                        isCompleted = nextCompleted,
+                        completedCount = if (nextCompleted) normalizedTarget else 0
+                    )
+                }
             } else {
                 task
             }

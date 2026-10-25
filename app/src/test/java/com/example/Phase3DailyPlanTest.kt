@@ -94,7 +94,8 @@ class Phase3DailyPlanTest {
         val newWords15 = tasks15.first { it.type == "new_words" }
         val grammar15 = tasks15.first { it.type == "grammar" }
 
-        assertEquals(5, flashcards15.targetCount)
+        assertEquals(0, flashcards15.targetCount)
+        assertTrue(flashcards15.isCompleted)
         assertEquals(5, newWords15.targetCount)
         assertEquals(4, grammar15.estimatedMinutes)
 
@@ -107,16 +108,19 @@ class Phase3DailyPlanTest {
         val grammar30 = tasks30.first { it.type == "grammar" }
         val reading30 = tasks30.firstOrNull { it.type == "reading" }
 
-        assertEquals(10, flashcards30.targetCount)
+        assertEquals(0, flashcards30.targetCount)
+        assertTrue(flashcards30.isCompleted)
         assertEquals(10, newWords30.targetCount)
         assertEquals(7, grammar30.estimatedMinutes)
         assertNotNull(reading30)
         assertEquals(5, reading30?.estimatedMinutes)
 
-        // Verify every task carries a non-empty data-backed reason and estimatedMinutes > 0
+        // Verify every task carries a non-empty data-backed reason and estimatedMinutes > 0 for active tasks
         for (task in tasks30) {
             assertTrue("Task ${task.id} must have non-empty reason", task.reason.isNotBlank())
-            assertTrue("Task ${task.id} must have estimatedMinutes > 0", task.estimatedMinutes > 0)
+            if (task.targetCount > 0) {
+                assertTrue("Task ${task.id} must have estimatedMinutes > 0", task.estimatedMinutes > 0)
+            }
         }
     }
 

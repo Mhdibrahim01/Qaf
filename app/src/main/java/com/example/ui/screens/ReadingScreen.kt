@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import android.net.Uri
+import java.util.regex.Pattern
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -46,6 +47,8 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -118,6 +121,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
@@ -224,6 +228,7 @@ fun ReadingScreen(
     onScheduleWordForToday: suspend (String) -> Boolean = { false },
     storyReadabilityById: Map<String, com.example.data.plan.StoryReadabilityReport> = emptyMap(),
     wordStageMap: Map<String, com.example.data.plan.WordStage> = emptyMap(),
+    onOpenDetailedDefinition: (deckId: String, word: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     if (selectedText != null) {
@@ -272,6 +277,7 @@ fun ReadingScreen(
             onScheduleWordForToday = onScheduleWordForToday,
             readabilityReport = storyReadabilityById[selectedText.id],
             wordStageMap = wordStageMap,
+            onOpenDetailedDefinition = onOpenDetailedDefinition,
             modifier = modifier
         )
     } else {
@@ -1176,6 +1182,7 @@ fun ReadingDetailScreen(
     onScheduleWordForToday: suspend (String) -> Boolean = { false },
     readabilityReport: com.example.data.plan.StoryReadabilityReport? = null,
     wordStageMap: Map<String, com.example.data.plan.WordStage> = emptyMap(),
+    onOpenDetailedDefinition: (deckId: String, word: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     BackHandler { onBack() }
@@ -1839,7 +1846,8 @@ fun ReadingDetailScreen(
             onExplainWordInContext = onExplainWordInContext,
             onSpeakWord = { onSpeakSentence(it) },
             onSpeakWordSlow = { onSpeakSentenceSlow(it) },
-            onScheduleWordForToday = onScheduleWordForToday
+            onScheduleWordForToday = onScheduleWordForToday,
+            onOpenDetailedDefinition = onOpenDetailedDefinition
         )
     }
 
@@ -2968,7 +2976,7 @@ fun YourTurnGrammarCard(
 // 3. WORD LOOKUP BOTTOM SHEET (Local DB lookup + Ask AI in context)
 // -------------------------------------------------------------------------------------------------
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun WordLookupBottomSheet(
     word: String,
@@ -2981,7 +2989,8 @@ fun WordLookupBottomSheet(
     onExplainWordInContext: suspend (sentenceIndex: Int, sentenceEn: String, word: String) -> Result<String>,
     onSpeakWord: (String) -> Unit,
     onSpeakWordSlow: (String) -> Unit = { onSpeakWord(it) },
-    onScheduleWordForToday: suspend (String) -> Boolean = { false }
+    onScheduleWordForToday: suspend (String) -> Boolean = { false },
+    onOpenDetailedDefinition: (deckId: String, word: String) -> Unit = { _, _ -> }
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
@@ -2989,7 +2998,6 @@ fun WordLookupBottomSheet(
     var localEntries by remember { mutableStateOf<List<EntryEntity>?>(null) }
     var isLoadingLocal by remember { mutableStateOf(true) }
     var isFavorite by remember { mutableStateOf(false) }
-    var isScheduledToday by remember { mutableStateOf(false) }
 
     // AI Context Explanation
     var aiExplanation by remember { mutableStateOf<String?>(null) }
@@ -3009,312 +3017,480 @@ fun WordLookupBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        containerColor = SurfaceDark,
         modifier = Modifier.testTag("reading_word_lookup_sheet")
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 8.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Header: Word + Audio + Favorite + Close
+            val primary = localEntries?.firstOrNull()
+            val primaryDeck = primary?.deck ?: "oxford5000"
+
+            // 1. HEADER (Inspired by Image 4)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Text(
-                        text = word,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    IconButton(
-                        onClick = { onSpeakWord(word) },
-                        modifier = Modifier.testTag("word_sheet_speak_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                            contentDescription = "Speak",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-
-                    SlowAudioTurtleButton(
-                        onClick = { onSpeakWordSlow(word) },
-                        showSpeedLabel = true,
-                        testTag = "word_sheet_speak_slow_button"
-                    )
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = {
-                            val next = !isFavorite
-                            isFavorite = next
-                            scope.launch {
-                                val deckId = localEntries?.firstOrNull()?.deck ?: "oxford5000"
-                                onSaveWordFavorite(deckId, word, next)
-                            }
-                        },
-                        modifier = Modifier.testTag("word_sheet_favorite_button")
-                    ) {
-                        Icon(
-                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "Favorite",
-                            tint = if (isFavorite) Color.Red else MaterialTheme.colorScheme.outline
-                        )
-                    }
-
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
-                    }
-                }
-            }
-
-            // IPA & POS if found
-            val primary = localEntries?.firstOrNull()
-            if (primary != null) {
+                // Left: Action icons (Close + Bookmark)
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 12.dp)
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (primary.ipa.isNotBlank()) {
+                    Surface(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clickable(onClick = onDismiss),
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF1E222B),
+                        border = BorderStroke(1.dp, Color(0xFF2E3440))
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    Surface(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clickable {
+                                val next = !isFavorite
+                                isFavorite = next
+                                scope.launch {
+                                    onSaveWordFavorite(primaryDeck, word, next)
+                                }
+                            }
+                            .testTag("word_sheet_favorite_button"),
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF1E222B),
+                        border = BorderStroke(1.dp, Color(0xFF2E3440))
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = if (isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                contentDescription = "Favorite",
+                                tint = if (isFavorite) GoldAccent else Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Right: POS + Level + Target Word + Audio/Phonetic
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        val posText = primary?.pos?.lowercase()?.trim()?.ifBlank { "word" } ?: "word"
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0xFF1E222B)
+                        ) {
+                            Text(
+                                text = ".$posText",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 11.sp
+                                ),
+                                color = Color(0xFF9E9E9E),
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp)
+                            )
+                        }
+
+                        val levelText = primary?.level?.uppercase()?.trim()?.ifBlank { "A1" } ?: "A1"
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = GoldAccentDim,
+                            border = BorderStroke(1.dp, GoldAccentBorder.copy(alpha = 0.5f))
+                        ) {
+                            Text(
+                                text = levelText,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp
+                                ),
+                                color = GoldAccent,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp)
+                            )
+                        }
+
                         Text(
-                            text = "/${primary.ipa}/",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontFamily = FontFamily.Monospace
+                            text = word,
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 24.sp
+                            ),
+                            color = Color.White
                         )
                     }
-                    if (primary.pos.isNotBlank()) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                text = primary.pos,
-                                style = MaterialTheme.typography.labelSmall,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-                    if (primary.level.isNotBlank()) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                text = primary.level.uppercase(),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-                }
-            }
 
-            // One-tap Add to Today's Practice button (Reactive Reader Loop)
-            OutlinedButton(
-                onClick = {
-                    if (!isScheduledToday) {
-                        scope.launch {
-                            val ok = onScheduleWordForToday(word)
-                            isScheduledToday = ok || true
-                        }
-                    }
-                },
-                enabled = !isScheduledToday,
-                border = BorderStroke(
-                    1.dp,
-                    if (isScheduledToday) EmeraldAccent else GoldAccent
-                ),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = if (isScheduledToday) EmeraldAccent else GoldAccent
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
-                    .testTag("btn_add_lookup_to_practice")
-            ) {
-                Icon(
-                    imageVector = if (isScheduledToday) Icons.Default.CheckCircle else Icons.Default.School,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = if (isScheduledToday) "Added to Today's Practice • تمت الإضافة لمراجعة اليوم" else "Add to Today's Practice • أضف لمراجعة اليوم",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-            // LOCAL DATABASE RESULTS
-            if (isLoadingLocal) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(modifier = Modifier.size(28.dp))
-                }
-            } else if (!localEntries.isNullOrEmpty()) {
-                val entries = localEntries!!
-                Text(
-                    text = "Local Word Books Meaning",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(Modifier.height(8.dp))
-
-                // Group entries by deck
-                entries.forEach { entry ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                        ),
-                        shape = RoundedCornerShape(10.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
+                        Surface(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .clickable { onSpeakWord(word) }
+                                .testTag("word_sheet_speak_button"),
+                            shape = RoundedCornerShape(20.dp),
+                            color = Color(0xFF2C2517),
+                            border = BorderStroke(1.dp, GoldAccentBorder.copy(alpha = 0.6f))
+                        ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                BidiText(
-                                    text = entry.arabic.ifBlank { "—" },
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.primary
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                    contentDescription = "Speak",
+                                    tint = GoldAccent,
+                                    modifier = Modifier.size(14.dp)
                                 )
                                 Text(
-                                    text = entry.deck,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.outline
-                                )
-                            }
-
-                            if (entry.definitionEn.isNotBlank()) {
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    text = entry.definitionEn,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-
-                            if (entry.examplesEn.isNotBlank()) {
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    text = "• ${entry.examplesEn}",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        textDirection = TextDirection.Ltr,
-                                        textAlign = TextAlign.Left
+                                    text = "استماع",
+                                    style = ArabicTypography.labelSmall.copy(
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium
                                     ),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = GoldAccent
                                 )
                             }
                         }
+
+                        if (primary?.ipa?.isNotBlank() == true) {
+                            Text(
+                                text = "/${primary.ipa}/",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontSize = 12.5.sp,
+                                    fontFamily = FontFamily.Monospace
+                                ),
+                                color = Color(0xFF9E9E9E)
+                            )
+                        }
                     }
                 }
-            } else {
-                // NOT FOUND IN LOCAL BOOKS CARD
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                    ),
-                    shape = RoundedCornerShape(12.dp)
+            }
+
+            // 2. PRIMARY MEANING CARD (Deduplicated Arabic translation chips)
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                color = Color(0xFF161922),
+                border = BorderStroke(1.dp, GoldAccentBorder.copy(alpha = 0.5f))
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    BidiText(
+                        text = "المعنى العربي (معجم محلي فوري):",
+                        style = ArabicTypography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.sp
+                        ),
+                        color = GoldAccent,
+                        fillMaxWidth = true,
+                        textAlign = TextAlign.Right
+                    )
+
+                    val arabicChips = remember(localEntries) {
+                        localEntries.orEmpty()
+                            .flatMap { entry ->
+                                entry.arabic
+                                    .split(',', '،', ';', '؛', '\n', '/')
+                                    .map { it.trim().removePrefix("-").removePrefix("•").trim() }
+                                    .filter { it.isNotBlank() }
+                            }
+                            .distinct()
+                    }
+
+                    if (isLoadingLocal) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                color = GoldAccent,
+                                strokeWidth = 2.dp
+                            )
+                        }
+                    } else if (arabicChips.isNotEmpty()) {
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            arabicChips.forEach { chipText ->
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = Color(0xFF2C2517),
+                                    border = BorderStroke(1.dp, GoldAccentBorder.copy(alpha = 0.6f))
+                                ) {
+                                    Text(
+                                        text = chipText,
+                                        style = ArabicTypography.bodyMedium.copy(
+                                            fontWeight = FontWeight.Medium,
+                                            fontSize = 14.sp
+                                        ),
+                                        color = GoldAccent,
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        Text(
+                            text = "هذه الكلمة غير موجودة في المعجم المحلي.",
+                            style = ArabicTypography.bodySmall.copy(fontSize = 12.5.sp),
+                            color = TextMuted
+                        )
+                    }
+                }
+            }
+
+            // 3. DEFINITION BLOCK
+            val definitionText = remember(localEntries) {
+                localEntries?.map { it.definitionEn.trim() }?.firstOrNull { it.isNotBlank() } ?: ""
+            }
+            if (definitionText.isNotBlank()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFF161922),
+                    border = BorderStroke(1.dp, Color(0xFF232834))
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.HelpOutline,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(32.dp)
-                        )
-                        Spacer(Modifier.height(6.dp))
                         Text(
-                            text = "Not in my word books",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                            text = "DEFINITION:",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                letterSpacing = 1.sp
+                            ),
+                            color = Color(0xFF8A909D)
                         )
                         Text(
-                            text = "هذه الكلمة غير موجودة في كتب الكلمات المحلية.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = definitionText,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontSize = 13.5.sp,
+                                lineHeight = 20.sp
+                            ),
+                            color = TextSecondary
                         )
                     }
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
-
-            // ASK AI (Meaning in this sentence context)
-            Text(
-                text = "Meaning in this Sentence (Context)",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "\"$sentenceEn\"",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(vertical = 4.dp)
-            )
-
-            if (aiExplanation != null) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-                    ),
-                    shape = RoundedCornerShape(12.dp)
+            // 4. CONTEXT IN STORY BLOCK (Sentence with target word highlighted)
+            if (sentenceEn.isNotBlank()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFF161922),
+                    border = BorderStroke(1.dp, Color(0xFF232834))
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        BidiText(
-                            text = aiExplanation!!,
-                            style = MaterialTheme.typography.bodyMedium
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "CONTEXT IN STORY:",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                letterSpacing = 1.sp
+                            ),
+                            color = Color(0xFF8A909D)
+                        )
+
+                        val highlightedSentence = remember(sentenceEn, word) {
+                            buildAnnotatedString {
+                                append("\"")
+                                try {
+                                    val pattern = Pattern.compile("(?i)\\b" + Pattern.quote(word) + "\\b")
+                                    val matcher = pattern.matcher(sentenceEn)
+                                    var lastIndex = 0
+                                    var matched = false
+                                    while (matcher.find()) {
+                                        matched = true
+                                        append(sentenceEn.substring(lastIndex, matcher.start()))
+                                        withStyle(
+                                            SpanStyle(
+                                                color = GoldAccent,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        ) {
+                                            append(sentenceEn.substring(matcher.start(), matcher.end()))
+                                        }
+                                        lastIndex = matcher.end()
+                                    }
+                                    if (matched) {
+                                        append(sentenceEn.substring(lastIndex))
+                                    } else {
+                                        append(sentenceEn)
+                                    }
+                                } catch (_: Exception) {
+                                    append(sentenceEn)
+                                }
+                                append("\"")
+                            }
+                        }
+
+                        Text(
+                            text = highlightedSentence,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontStyle = FontStyle.Italic,
+                                fontSize = 13.5.sp,
+                                lineHeight = 20.sp
+                            ),
+                            color = TextSecondary
                         )
                     }
                 }
-            } else {
-                if (isLoadingAi) {
+            }
+
+            // 5. INLINE AI EXPLANATION BLOCK (if loading or result available)
+            if (isLoadingAi) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFF161922),
+                    border = BorderStroke(1.dp, Color(0xFF8B5CF6).copy(alpha = 0.4f))
+                ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
+                        modifier = Modifier.padding(16.dp),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Consulting Gemini AI...", style = MaterialTheme.typography.bodyMedium)
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = GoldAccent,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = "جاري استشارة الذكاء الاصطناعي لفهم السياق...",
+                            style = ArabicTypography.bodySmall.copy(fontSize = 13.sp),
+                            color = GoldAccent
+                        )
                     }
-                } else {
-                    Button(
-                        onClick = {
+                }
+            } else if (aiExplanation != null) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFF1A1C29),
+                    border = BorderStroke(1.dp, Color(0xFF8B5CF6).copy(alpha = 0.5f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = Color(0xFFA78BFA),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "شرح السياق بالذكاء الاصطناعي:",
+                                style = ArabicTypography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.5.sp
+                                ),
+                                color = Color(0xFFA78BFA)
+                            )
+                        }
+                        BidiText(
+                            text = aiExplanation!!,
+                            style = ArabicTypography.bodyMedium.copy(
+                                fontSize = 13.5.sp,
+                                lineHeight = 21.sp
+                            ),
+                            color = Color.White
+                        )
+                    }
+                }
+            } else if (aiError != null) {
+                Text(
+                    text = aiError!!,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            // 6. FOOTER ACTION BUTTONS (Image 4)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Secondary CTA: الملف الشامل (Dictionary Profile)
+                Button(
+                    onClick = {
+                        onOpenDetailedDefinition(primaryDeck, word)
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF1E222B),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .testTag("btn_word_lookup_full_profile")
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = "الملف الشامل (Dictionary Profile)",
+                            style = ArabicTypography.titleMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.5.sp,
+                                color = Color.White
+                            )
+                        )
+                    }
+                }
+
+                // Primary CTA: شرح السياق بالذكاء الاصطناعي ✨
+                Button(
+                    onClick = {
+                        if (!isLoadingAi) {
                             isLoadingAi = true
                             aiError = null
                             scope.launch {
@@ -3326,29 +3502,39 @@ fun WordLookupBottomSheet(
                                     aiError = res.exceptionOrNull()?.message ?: "AI failed"
                                 }
                             }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp)
-                            .testTag("word_ask_ai_context_button")
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFE67E22),
+                        contentColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .testTag("btn_word_lookup_ai_context")
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Ask AI for Meaning in Context")
-                    }
-
-                    aiError?.let { err ->
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = Color.Black,
+                            modifier = Modifier.size(18.dp)
+                        )
                         Text(
-                            text = err,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(top = 4.dp)
+                            text = "شرح السياق بالذكاء الاصطناعي",
+                            style = ArabicTypography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Color.Black
+                            )
                         )
                     }
                 }
             }
-
-            Spacer(Modifier.height(24.dp))
         }
     }
 }

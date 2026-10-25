@@ -27,20 +27,30 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -134,6 +144,9 @@ fun HomeScreen(
     importState: ImportProgressState = ImportProgressState(),
     totalEntriesCount: Int = 0,
     reviewDueTodayCount: Int = 0,
+    reviewDueNowCount: Int = 0,
+    waitingLaterTodayCount: Int = 0,
+    nextWaitingDueTimestamp: Long? = null,
     studiedTodayCount: Int = 0,
     masteredCount: Int = 0,
     deckStudyStates: List<DeckStudyStateEntity> = emptyList(),
@@ -153,11 +166,17 @@ fun HomeScreen(
     onSpeakWord: ((String) -> Unit)? = null,
     onOpenDictionaryForStage: ((String) -> Unit)? = null,
     onStartStudying: ((String) -> Unit)? = null,
+    onStartEarlyReview: () -> Unit = {},
+    onReviewTodayLearnedWords: () -> Unit = {},
+    onLearnExtraNewWords: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
     val scrollState = rememberScrollState()
+
+    var showNewWordsCompletedDialog by remember { mutableStateOf(false) }
+    var completedWordsCount by remember { mutableIntStateOf(0) }
 
     val studyStateByDeck = remember(deckStudyStates) { deckStudyStates.associateBy { it.deckId } }
     val mostRecentStudyState = remember(deckStudyStates) {
@@ -224,7 +243,11 @@ fun HomeScreen(
                             todayChecklist = todayChecklist,
                             onOpenPlanScreen = onOpenPlanScreen,
                             onNavigateToTask = onNavigateToTask,
-                            onToggleTaskCompleted = onToggleTaskCompleted
+                            onToggleTaskCompleted = onToggleTaskCompleted,
+                            onOpenNewWordsCompletedOptions = { count ->
+                                completedWordsCount = count
+                                showNewWordsCompletedDialog = true
+                            }
                         )
 
                         CefrAndLifecycleCard(
@@ -249,9 +272,12 @@ fun HomeScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         ReviewDueSection(
-                            reviewDueTodayCount = reviewDueTodayCount,
+                            reviewDueNowCount = reviewDueNowCount,
+                            waitingLaterTodayCount = waitingLaterTodayCount,
+                            nextWaitingDueTimestamp = nextWaitingDueTimestamp,
                             continueDeckId = continueDeckId,
-                            onOpenFlashcardsForDeck = onOpenFlashcardsForDeck
+                            onOpenFlashcardsForDeck = onOpenFlashcardsForDeck,
+                            onStartEarlyReview = onStartEarlyReview
                         )
 
                         ContinueLearningSection(
@@ -272,7 +298,11 @@ fun HomeScreen(
                     todayChecklist = todayChecklist,
                     onOpenPlanScreen = onOpenPlanScreen,
                     onNavigateToTask = onNavigateToTask,
-                    onToggleTaskCompleted = onToggleTaskCompleted
+                    onToggleTaskCompleted = onToggleTaskCompleted,
+                    onOpenNewWordsCompletedOptions = { count ->
+                        completedWordsCount = count
+                        showNewWordsCompletedDialog = true
+                    }
                 )
 
                 CefrAndLifecycleCard(
@@ -292,9 +322,12 @@ fun HomeScreen(
                 }
 
                 ReviewDueSection(
-                    reviewDueTodayCount = reviewDueTodayCount,
+                    reviewDueNowCount = reviewDueNowCount,
+                    waitingLaterTodayCount = waitingLaterTodayCount,
+                    nextWaitingDueTimestamp = nextWaitingDueTimestamp,
                     continueDeckId = continueDeckId,
-                    onOpenFlashcardsForDeck = onOpenFlashcardsForDeck
+                    onOpenFlashcardsForDeck = onOpenFlashcardsForDeck,
+                    onStartEarlyReview = onStartEarlyReview
                 )
 
                 ContinueLearningSection(
@@ -311,6 +344,15 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(WordBooksSpacing.large))
         }
+    }
+
+    if (showNewWordsCompletedDialog) {
+        NewWordsCompletedBottomSheet(
+            completedCount = completedWordsCount,
+            onDismiss = { showNewWordsCompletedDialog = false },
+            onReviewTodayLearnedWords = onReviewTodayLearnedWords,
+            onLearnExtraNewWords = onLearnExtraNewWords
+        )
     }
 }
 
@@ -637,6 +679,7 @@ private fun TodayPlanCard(
     onOpenPlanScreen: () -> Unit,
     onNavigateToTask: (route: String, linkedId: String?) -> Unit = { _, _ -> onOpenPlanScreen() },
     onToggleTaskCompleted: (date: String, taskId: String) -> Unit = { _, _ -> },
+    onOpenNewWordsCompletedOptions: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val tasks: List<DailyTaskItem> = remember(todayChecklist?.tasksJson) {
@@ -804,18 +847,24 @@ private fun TodayPlanCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 displayTasks.forEach { task ->
+                    val isCompletedNewWords = task.type == "new_words" && (task.isCompleted || (task.targetCount > 0 && task.completedCount >= task.targetCount))
                     TaskCheckRow(
                         task = task,
+                        isCompletedNewWords = isCompletedNewWords,
                         onClick = {
-                            val targetRoute = when (task.type) {
-                                "flashcards" -> "flashcards"
-                                "new_words" -> "new_words"
-                                "reading" -> "reading"
-                                "grammar" -> "grammar"
-                                "quiz" -> "quiz"
-                                else -> "plan"
+                            if (isCompletedNewWords) {
+                                onOpenNewWordsCompletedOptions(task.completedCount)
+                            } else {
+                                val targetRoute = when (task.type) {
+                                    "flashcards" -> "flashcards"
+                                    "new_words" -> "new_words"
+                                    "reading" -> "reading"
+                                    "grammar" -> "grammar"
+                                    "quiz" -> "quiz"
+                                    else -> "plan"
+                                }
+                                onNavigateToTask(targetRoute, task.linkedId.ifBlank { task.id })
                             }
-                            onNavigateToTask(targetRoute, task.linkedId.ifBlank { task.id })
                         },
                         onToggleComplete = {
                             onToggleTaskCompleted(todayDateStr, task.id)
@@ -903,21 +952,24 @@ private fun formatCompactTaskMeta(task: DailyTaskItem): String {
 @Composable
 private fun TaskCheckRow(
     task: DailyTaskItem,
+    isCompletedNewWords: Boolean = false,
     onClick: () -> Unit,
     onToggleComplete: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val isZeroDueFlashcards = (task.type == "flashcards" && task.targetCount == 0 && task.isCompleted)
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
+            .clickable(enabled = !isZeroDueFlashcards, onClick = onClick)
             .testTag("home_task_item_${task.type}"),
         color = ProtoBgCard,
         shape = RoundedCornerShape(14.dp),
         border = BorderStroke(
             width = 1.dp,
-            color = if (task.isCompleted) EmeraldAccent.copy(alpha = 0.55f) else ProtoBorderSubtle
+            color = if (task.isCompleted || isCompletedNewWords) EmeraldAccent.copy(alpha = 0.55f) else ProtoBorderSubtle
         )
     ) {
         Row(
@@ -1046,24 +1098,34 @@ private fun TaskCheckRow(
             }
 
             // High-Contrast Gold Action Button
-            val actionLabel = when (task.type) {
-                "quiz" -> if (task.isCompleted) "Retake" else "Quiz"
-                "flashcards" -> if (task.isCompleted) "Review" else "Start"
-                "new_words" -> if (task.isCompleted) "Words" else "Learn"
-                "grammar" -> if (task.isCompleted) "Lesson" else "Study"
-                "reading" -> if (task.isCompleted) "Story" else "Read"
-                "sentences" -> "Practice"
-                "correction_reviews" -> "Review"
+            val actionLabel = when {
+                isZeroDueFlashcards -> "مكتملة ✓"
+                isCompletedNewWords -> "مكتملة ✓"
+                task.type == "quiz" -> if (task.isCompleted) "Retake" else "Quiz"
+                task.type == "flashcards" -> if (task.isCompleted) "Review" else "Start"
+                task.type == "new_words" -> if (task.isCompleted) "Words" else "Learn"
+                task.type == "grammar" -> if (task.isCompleted) "Lesson" else "Study"
+                task.type == "reading" -> if (task.isCompleted) "Story" else "Read"
+                task.type == "sentences" -> "Practice"
+                task.type == "correction_reviews" -> "Review"
                 else -> "Open"
             }
 
-            val buttonTextColor = if (task.isCompleted) ProtoGold else ProtoOnGoldDark
+            val buttonTextColor = when {
+                isZeroDueFlashcards -> TextMuted
+                isCompletedNewWords -> ProtoGold
+                task.isCompleted -> ProtoGold
+                else -> ProtoOnGoldDark
+            }
 
             Button(
                 onClick = onClick,
+                enabled = !isZeroDueFlashcards,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (task.isCompleted) SurfaceElevatedDark else ProtoGold,
-                    contentColor = buttonTextColor
+                    containerColor = if (task.isCompleted || isCompletedNewWords) SurfaceElevatedDark else ProtoGold,
+                    contentColor = buttonTextColor,
+                    disabledContainerColor = SurfaceElevatedDark.copy(alpha = 0.5f),
+                    disabledContentColor = TextMuted
                 ),
                 shape = RoundedCornerShape(10.dp),
                 contentPadding = PaddingValues(horizontal = 13.dp, vertical = 8.dp),
@@ -1072,7 +1134,7 @@ private fun TaskCheckRow(
                     .testTag("btn_home_task_action_${task.type}")
             ) {
                 Text(
-                    text = "$actionLabel →",
+                    text = if (isZeroDueFlashcards || isCompletedNewWords) actionLabel else "$actionLabel →",
                     style = MaterialTheme.typography.labelLarge.copy(
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.5.sp,
@@ -1091,18 +1153,33 @@ private fun TaskCheckRow(
  */
 @Composable
 private fun ReviewDueSection(
-    reviewDueTodayCount: Int,
+    reviewDueNowCount: Int,
+    waitingLaterTodayCount: Int = 0,
+    nextWaitingDueTimestamp: Long? = null,
     continueDeckId: String,
     onOpenFlashcardsForDeck: (String) -> Unit,
+    onStartEarlyReview: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val hasDueNow = reviewDueNowCount > 0
+    val hasWaitingLater = waitingLaterTodayCount > 0
+
+    val waitingMinutes = remember(nextWaitingDueTimestamp) {
+        if (nextWaitingDueTimestamp != null) {
+            val diffMs = nextWaitingDueTimestamp - System.currentTimeMillis()
+            if (diffMs > 0) ((diffMs + 59_999) / 60_000).toInt().coerceAtLeast(1) else 1
+        } else {
+            null
+        }
+    }
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .testTag("home_review_due_card"),
         color = ProtoBgCard,
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, if (reviewDueTodayCount > 0) ProtoGoldBorder else ProtoBorderSubtle)
+        border = BorderStroke(1.dp, if (hasDueNow) ProtoGoldBorder else ProtoBorderSubtle)
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
@@ -1113,23 +1190,23 @@ private fun ReviewDueSection(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Due Today Count Block
+                // Due Now Count Block
                 Column(
                     modifier = Modifier.widthIn(min = 56.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = reviewDueTodayCount.toString(),
+                        text = reviewDueNowCount.toString(),
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold
                         ),
-                        color = ProtoGold,
+                        color = if (hasDueNow) ProtoGold else TextMuted,
                         modifier = Modifier.testTag("home_review_due_count")
                     )
                     Text(
-                        text = "due today",
+                        text = "due now",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontSize = 11.sp
                         ),
@@ -1156,48 +1233,120 @@ private fun ReviewDueSection(
                         ),
                         color = TextPrimary
                     )
+
+                    val arabicStatusText = when {
+                        hasDueNow && hasWaitingLater -> {
+                            val waitSuffix = if (waitingMinutes != null) " (~$waitingMinutes د)" else ""
+                            "$reviewDueNowCount جاهزة الآن • $waitingLaterTodayCount في الانتظار ⏳$waitSuffix"
+                        }
+                        hasDueNow -> "جاهزة للمراجعة الفورية الآن"
+                        hasWaitingLater -> {
+                            val waitSuffix = if (waitingMinutes != null) " (~$waitingMinutes د)" else ""
+                            "كل المراجعات الفورية منجزة ✓ • $waitingLaterTodayCount في الانتظار ⏳$waitSuffix"
+                        }
+                        else -> "كل المراجعات مكتملة لليوم ✓"
+                    }
+
                     BidiText(
-                        text = "حافظ على قوة ذاكرتك واكتمال مراجعاتك",
+                        text = arabicStatusText,
                         style = ArabicTypography.labelSmall.copy(
                             fontSize = 12.sp
                         ),
-                        color = TextSecondary,
+                        color = if (hasDueNow || hasWaitingLater) TextSecondary else EmeraldAccent,
                         fillMaxWidth = true,
                         textAlign = TextAlign.Right
                     )
                 }
             }
 
-            // Full-Width High-Contrast Gold Button (#F5B82E bg, #0B0D12 bold text)
-            Button(
-                onClick = {
-                    if (reviewDueTodayCount > 0) {
-                        onOpenFlashcardsForDeck(DataImportRepository.DUE_TODAY_DECK_ID)
-                    } else {
-                        onOpenFlashcardsForDeck(continueDeckId)
+            // Full-Width High-Contrast Action Button
+            when {
+                hasDueNow -> {
+                    Button(
+                        onClick = {
+                            onOpenFlashcardsForDeck(DataImportRepository.DUE_TODAY_DECK_ID)
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = ProtoGold,
+                            contentColor = ProtoOnGoldDark
+                        ),
+                        shape = RoundedCornerShape(11.dp),
+                        contentPadding = PaddingValues(vertical = 11.dp, horizontal = 16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 42.dp)
+                            .testTag("home_review_due_button")
+                    ) {
+                        Text(
+                            text = "Start review ($reviewDueNowCount) →",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.5.sp,
+                                color = ProtoOnGoldDark
+                            ),
+                            color = ProtoOnGoldDark
+                        )
                     }
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ProtoGold,
-                    contentColor = ProtoOnGoldDark
-                ),
-                shape = RoundedCornerShape(11.dp),
-                contentPadding = PaddingValues(vertical = 11.dp, horizontal = 16.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 42.dp)
-                    .testTag("home_review_due_button")
-            ) {
-                val label = if (reviewDueTodayCount > 0) "Start review →" else "Practice more cards →"
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.5.sp,
-                        color = ProtoOnGoldDark
-                    ),
-                    color = ProtoOnGoldDark
-                )
+                }
+                hasWaitingLater -> {
+                    Button(
+                        onClick = onStartEarlyReview,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = SurfaceElevatedDark,
+                            contentColor = ProtoGold
+                        ),
+                        border = BorderStroke(1.dp, ProtoGoldBorder),
+                        shape = RoundedCornerShape(11.dp),
+                        contentPadding = PaddingValues(vertical = 11.dp, horizontal = 16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 42.dp)
+                            .testTag("home_review_due_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = ProtoGold,
+                            modifier = Modifier.size(16.dp).padding(end = 6.dp)
+                        )
+                        Text(
+                            text = "مراجعة مبكرة بدون انتظار ⚡",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.5.sp,
+                                color = ProtoGold
+                            ),
+                            color = ProtoGold
+                        )
+                    }
+                }
+                else -> {
+                    Button(
+                        onClick = {
+                            onOpenFlashcardsForDeck(continueDeckId)
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = SurfaceElevatedDark,
+                            contentColor = TextSecondary
+                        ),
+                        shape = RoundedCornerShape(11.dp),
+                        contentPadding = PaddingValues(vertical = 11.dp, horizontal = 16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 42.dp)
+                            .testTag("home_review_due_button")
+                    ) {
+                        Text(
+                            text = "Practice more cards →",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.5.sp,
+                                color = TextSecondary
+                            ),
+                            color = TextSecondary
+                        )
+                    }
+                }
             }
         }
     }
@@ -1348,6 +1497,191 @@ private fun ContinueLearningSection(
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NewWordsCompletedBottomSheet(
+    completedCount: Int,
+    onDismiss: () -> Unit,
+    onReviewTodayLearnedWords: () -> Unit,
+    onLearnExtraNewWords: (Int) -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = ProtoBgCard,
+        tonalElevation = 8.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(EmeraldAccent.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = EmeraldAccent,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "هدف الكلمات اليومي مكتمل! 🎉",
+                        style = ArabicTypography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp
+                        ),
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = if (completedCount > 0) "أكملت دراسة $completedCount كلمة بنجاح اليوم" else "أتممت دراسة حصة المفردات لليوم",
+                        style = ArabicTypography.labelSmall.copy(fontSize = 13.sp),
+                        color = TextSecondary
+                    )
+                }
+            }
+
+            HorizontalDivider(color = ProtoBorderSubtle)
+
+            Text(
+                text = "ماذا ترغب أن تفعل الآن؟",
+                style = ArabicTypography.labelMedium.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp
+                ),
+                color = ProtoGold
+            )
+
+            // Option 1: Review today's learned words
+            Button(
+                onClick = {
+                    onDismiss()
+                    onReviewTodayLearnedWords()
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ProtoGold,
+                    contentColor = ProtoOnGoldDark
+                ),
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(vertical = 12.dp, horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "مراجعة وتثبيت كلمات اليوم (${if (completedCount > 0) completedCount else "اليوم"})",
+                        style = ArabicTypography.bodyLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        ),
+                        color = ProtoOnGoldDark
+                    )
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        tint = ProtoOnGoldDark,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            // Option 2: Learn 5 extra words
+            OutlinedButton(
+                onClick = {
+                    onDismiss()
+                    onLearnExtraNewWords(5)
+                },
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = TextPrimary
+                ),
+                border = BorderStroke(1.dp, ProtoGoldBorder),
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(vertical = 12.dp, horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "تعلم 5 كلمات إضافية 🚀",
+                        style = ArabicTypography.bodyLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        ),
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "+5",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        ),
+                        color = ProtoGold
+                    )
+                }
+            }
+
+            // Option 3: Learn 10 extra words
+            OutlinedButton(
+                onClick = {
+                    onDismiss()
+                    onLearnExtraNewWords(10)
+                },
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = TextPrimary
+                ),
+                border = BorderStroke(1.dp, ProtoBorderSubtle),
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(vertical = 12.dp, horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "تعلم 10 كلمات إضافية 📚",
+                        style = ArabicTypography.bodyLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        ),
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "+10",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        ),
+                        color = ProtoGold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

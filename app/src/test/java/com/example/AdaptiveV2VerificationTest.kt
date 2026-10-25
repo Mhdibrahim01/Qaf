@@ -927,4 +927,332 @@ class AdaptiveV2VerificationTest {
         assertTrue(!grammarQ.topicLabelAr.contains("some"))
         assertTrue(!grammarQ.promptAr.contains("المعدود"))
     }
+
+    @Test
+    fun testSm2DueCardsExcludesUnseenCardsRepetitionsZero() = runBlocking {
+        // Card 1: Unseen card (repetitions = 0) with a past due_timestamp
+        dao.upsertWordProgress(
+            WordProgressEntity(
+                cardKey = "oxford5000:unseen_word",
+                deck = "oxford5000",
+                text = "unseen_word",
+                repetitions = 0,
+                dueTimestamp = 1000L,
+                isMastered = false
+            )
+        )
+        // Card 2: Valid SM-2 reviewed card (repetitions = 2) due now
+        dao.upsertWordProgress(
+            WordProgressEntity(
+                cardKey = "oxford5000:reviewed_due",
+                deck = "oxford5000",
+                text = "reviewed_due",
+                repetitions = 2,
+                dueTimestamp = 1000L,
+                isMastered = false
+            )
+        )
+        // Card 3: Future card (repetitions = 1) due at 5000L
+        dao.upsertWordProgress(
+            WordProgressEntity(
+                cardKey = "oxford5000:future_card",
+                deck = "oxford5000",
+                text = "future_card",
+                repetitions = 1,
+                dueTimestamp = 5000L,
+                isMastered = false
+            )
+        )
+
+        val nowMs = 2000L
+        val dueNowCount = dao.getDueNowCardsCount(nowMs)
+        val dueNowForDecks = dao.getDueNowCardsCountForDecks(nowMs, listOf("oxford5000"))
+        val dueTodayCount = dao.getReviewDueTodayCount(nowMs)
+
+        // Only Card 2 satisfies repetitions > 0 AND due_timestamp <= 2000L!
+        assertEquals("Due cards count must strictly exclude unseen cards (repetitions = 0)", 1, dueNowCount)
+        assertEquals("Due cards for decks must strictly exclude unseen cards", 1, dueNowForDecks)
+        assertEquals("Due today count must strictly exclude unseen cards", 1, dueTodayCount)
+    }
+
+    @Test
+    fun testStudyPlanWhenNoDueCardsGeneratesZeroTargetAndCompleted() = runBlocking {
+        val repo = StudyPlanRepository(context, dao, FixedTestTimeProvider())
+
+        // Generate tasks when database has 0 due cards
+        val checklist = repo.getOrCreateDailyChecklist("2026-11-02")
+        val tasks = json.decodeFromString<List<DailyTaskItem>>(checklist.tasksJson)
+        val flashcardsTask = tasks.find { it.type == "flashcards" }
+
+        assertNotNull("Flashcards task must exist in plan", flashcardsTask)
+        assertEquals("Target count must be 0 when no cards are due", 0, flashcardsTask!!.targetCount)
+        assertEquals("Completed count must be 0 when no cards are due", 0, flashcardsTask.completedCount)
+        assertTrue("Task must be marked completed (0/0) when 0 cards are due", flashcardsTask.isCompleted)
+        assertTrue("Subtitle must reflect all reviews up to date", flashcardsTask.subtitleEn.contains("0 cards due today"))
+    }
+
+    @Test
+    fun testStudyPlanRefreshChecklistNewWordsDoNotCompleteDueFlashcards() = runBlocking {
+        val repo = StudyPlanRepository(context, dao, FixedTestTimeProvider())
+        val initialTask = DailyTaskItem(
+            id = "task_flashcards",
+            type = "flashcards",
+            titleEn = "Review Due Flashcards",
+            titleAr = "مراجعة البطاقات المستحقة",
+            subtitleEn = "5 cards due today",
+            targetCount = 5,
+            completedCount = 0,
+            isCompleted = false
+        )
+        val checklist = DailyChecklistEntity(
+            date = "2026-11-02",
+            tasksJson = json.encodeToString(listOf(initialTask))
+        )
+
+        // No review attempts, but user learned 10 new words today
+        dao.insertAttempt(
+            AttemptEntity(
+                activityType = "flashcard_new",
+                itemId = "oxford5000:new1",
+                timestamp = 1793577600000L + 1000L,
+                sm2Rating = 3,
+                isCorrect = true
+            )
+        )
+
+        val refreshed = repo.refreshChecklistCompletion(checklist)
+        val refreshedTasks = json.decodeFromString<List<DailyTaskItem>>(refreshed.tasksJson)
+        val refreshedFlashcards = refreshedTasks.find { it.type == "flashcards" }!!
+
+        // task_flashcards must NOT be satisfied by new words rated today!
+        assertEquals("Flashcards completedCount must remain 0 when only new words were learned", 0, refreshedFlashcards.completedCount)
+        assertTrue("Flashcards task must NOT be completed by new words", !refreshedFlashcards.isCompleted)
+    }
+
+    @Test
+    fun testArabicDefinitionChipsDeduplication() {
+        val rawArabic1 = "المريض، صابر، زبون، صبور، حليم"
+        val rawArabic2 = "صابر، حليم، مستكين"
+        val entries = listOf(
+            EntryEntity(
+                id = "1",
+                type = "word",
+                deck = "oxford5000",
+                text = "patient",
+                pos = "noun",
+                level = "B1",
+                definitionEn = "a person receiving medical care",
+                noteEn = "",
+                examplesEn = "",
+                definitionUrl = "",
+                audioUrl = "",
+                arabic = rawArabic1
+            ),
+            EntryEntity(
+                id = "2",
+                type = "word",
+                deck = "oxford5000",
+                text = "patient",
+                pos = "adjective",
+                level = "B1",
+                definitionEn = "able to wait calmly",
+                noteEn = "",
+                examplesEn = "",
+                definitionUrl = "",
+                audioUrl = "",
+                arabic = rawArabic2
+            )
+        )
+
+        val deduplicatedChips = entries
+            .flatMap { entry ->
+                entry.arabic
+                    .split(',', '،', ';', '؛', '\n', '/')
+                    .map { it.trim().removePrefix("-").removePrefix("•").trim() }
+                    .filter { it.isNotBlank() }
+            }
+            .distinct()
+
+        val expected = listOf("المريض", "صابر", "زبون", "صبور", "حليم", "مستكين")
+        assertEquals(expected, deduplicatedChips)
+    }
+
+    @Test
+    fun testFlashcardSessionSummaryDynamicMetrics() {
+        val reviewSummary = com.example.ui.viewmodel.FlashcardSessionSummary(
+            sessionType = com.example.ui.viewmodel.FlashcardSessionType.REVIEW,
+            deckName = "Oxford 5000",
+            totalCount = 20,
+            masteredCount = 18,
+            needsReviewCount = 2,
+            qualitySum = 85
+        )
+        assertEquals(90, reviewSummary.retentionRatePercent)
+
+        val learnNewSummary = com.example.ui.viewmodel.FlashcardSessionSummary(
+            sessionType = com.example.ui.viewmodel.FlashcardSessionType.LEARN_NEW,
+            deckName = "Oxford 5000",
+            totalCount = 10,
+            masteredCount = 8,
+            needsReviewCount = 2,
+            qualitySum = 42
+        )
+        assertEquals(10, learnNewSummary.totalCount)
+        assertEquals(8, learnNewSummary.masteredCount)
+        assertEquals(2, learnNewSummary.needsReviewCount)
+    }
+
+    @Test
+    fun testDueNowVsWaitingLaterTodaySeparation() = runBlocking {
+        val now = 1793577600000L // 12:00:00
+        val endOfDay = now + 43200_000L // 23:59:59
+
+        dao.insertEntryIgnore(
+            EntryEntity(
+                id = "cool_sep",
+                type = "word",
+                deck = "oxford5000",
+                text = "cooldown",
+                pos = "noun",
+                level = "B2",
+                definitionEn = "cooling down",
+                noteEn = "",
+                examplesEn = "",
+                definitionUrl = "",
+                audioUrl = "",
+                arabic = "تبريد"
+            )
+        )
+
+        // 1 card due right now (dueTimestamp = now - 1000L)
+        dao.upsertWordProgress(
+            WordProgressEntity(
+                cardKey = "oxford5000:due_now",
+                deck = "oxford5000",
+                text = "due_now",
+                repetitions = 2,
+                dueTimestamp = now - 1000L,
+                lastReviewedTimestamp = now - 86400_000L
+            )
+        )
+        // 1 card waiting on cooldown later today (e.g. +9 minutes = now + 540_000L)
+        dao.upsertWordProgress(
+            WordProgressEntity(
+                cardKey = "oxford5000:cooldown",
+                deck = "oxford5000",
+                text = "cooldown",
+                repetitions = 1,
+                dueTimestamp = now + 540_000L,
+                lastReviewedTimestamp = now - 60_000L
+            )
+        )
+        // 1 card due tomorrow (dueTimestamp = endOfDay + 10_000L)
+        dao.upsertWordProgress(
+            WordProgressEntity(
+                cardKey = "oxford5000:tomorrow",
+                deck = "oxford5000",
+                text = "tomorrow",
+                repetitions = 3,
+                dueTimestamp = endOfDay + 10_000L,
+                lastReviewedTimestamp = now - 86400_000L
+            )
+        )
+
+        val dueNow = dao.getDueNowCardsCount(now)
+        val waitingLater = dao.getLaterTodayCardsCount(now, endOfDay)
+        val earlyReviewEntries = dao.getEarlyReviewEntriesOrdered(now, endOfDay)
+
+        assertEquals("Due now must count only cards with dueTimestamp <= now", 1, dueNow)
+        assertEquals("Waiting later must count cards with now < dueTimestamp <= endOfDay", 1, waitingLater)
+        assertEquals("Early review entries must retrieve the cooldown card", 1, earlyReviewEntries.size)
+        assertEquals("cooldown", earlyReviewEntries[0].text)
+    }
+
+    @Test
+    fun testEarlyReviewSessionLoadsWaitingCooldownCards() = runBlocking {
+        val now = 1793577600000L
+        val endOfDay = now + 43200_000L
+
+        // Insert entry and progress on cooldown
+        dao.insertEntryIgnore(
+            EntryEntity(
+                id = "cool_1",
+                type = "word",
+                deck = "oxford5000",
+                text = "phenomenon",
+                pos = "noun",
+                level = "B2",
+                definitionEn = "a remarkable occurrence",
+                noteEn = "",
+                examplesEn = "",
+                definitionUrl = "",
+                audioUrl = "",
+                arabic = "ظاهرة"
+            )
+        )
+        dao.upsertWordProgress(
+            WordProgressEntity(
+                cardKey = "oxford5000:phenomenon",
+                deck = "oxford5000",
+                text = "phenomenon",
+                repetitions = 0,
+                lastReviewedTimestamp = now - 60_000L, // was reviewed 1 min ago with AGAIN
+                dueTimestamp = now + 540_000L // 9 mins later
+            )
+        )
+
+        val earlyEntries = dao.getEarlyReviewEntriesOrdered(now, endOfDay)
+        assertEquals(1, earlyEntries.size)
+        assertEquals("phenomenon", earlyEntries[0].text)
+    }
+
+    @Test
+    fun testLearnedTodayEntriesQuery() = runBlocking {
+        val now = 1793577600000L
+        val startOfDay = now - 3600_000L
+
+        dao.insertEntryIgnore(
+            EntryEntity(
+                id = "learn_1",
+                type = "word",
+                deck = "oxford5000",
+                text = "resilience",
+                pos = "noun",
+                level = "B2",
+                definitionEn = "capacity to recover quickly",
+                noteEn = "",
+                examplesEn = "",
+                definitionUrl = "",
+                audioUrl = "",
+                arabic = "مرونة"
+            )
+        )
+        dao.upsertWordProgress(
+            WordProgressEntity(
+                cardKey = "oxford5000:resilience",
+                deck = "oxford5000",
+                text = "resilience",
+                firstLearnedTimestamp = now,
+                lastReviewedTimestamp = now,
+                repetitions = 1,
+                dueTimestamp = now + 86400_000L
+            )
+        )
+        // Insert flashcard_new attempt today
+        dao.insertAttempt(
+            AttemptEntity(
+                activityType = "flashcard_new",
+                itemId = "oxford5000:resilience",
+                timestamp = now,
+                sm2Rating = 3,
+                isCorrect = true,
+                score = 80f,
+                deck = "oxford5000"
+            )
+        )
+
+        val learnedToday = dao.getEntriesLearnedToday(startOfDay)
+        assertEquals(1, learnedToday.size)
+        assertEquals("resilience", learnedToday[0].text)
+    }
 }

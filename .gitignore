@@ -39,3 +39,4 @@ __pycache__/
 scratch/
 data_import_backup/
 public/
+.antigravityignore

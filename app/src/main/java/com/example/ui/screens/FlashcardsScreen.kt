@@ -53,6 +53,7 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FitnessCenter
@@ -141,6 +142,7 @@ import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.GoldAccent
 import com.example.ui.theme.GoldAccentBorder
 import com.example.ui.theme.GoldAccentDim
+import com.example.ui.theme.OnGoldDark
 import com.example.ui.theme.SurfaceDark
 import com.example.ui.theme.SurfaceElevatedDark
 import com.example.ui.theme.TextMuted
@@ -205,8 +207,22 @@ fun FlashcardsScreen(
     onDismissCoachTipRate: () -> Unit = {},
     waitingLaterTodayCount: Int = 0,
     nextWaitingDueTimestamp: Long? = null,
+    onStartEarlyReview: () -> Unit = {},
+    isSessionCompleted: Boolean = false,
+    sessionSummary: com.example.ui.viewmodel.FlashcardSessionSummary = com.example.ui.viewmodel.FlashcardSessionSummary(),
+    onRestartSession: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    if (isSessionCompleted) {
+        FlashcardSessionCompletionView(
+            summary = sessionSummary,
+            onRestart = onRestartSession,
+            onNavigateHome = onNavigateHome,
+            modifier = modifier
+        )
+        return
+    }
+
     val formatter = remember { NumberFormat.getIntegerInstance(Locale.US) }
     val studyDecks = remember(decks) {
         decks.filter { it.id != DataImportRepository.SAVED_WORDS_DECK_ID && it.rowCount > 0 }
@@ -261,7 +277,7 @@ fun FlashcardsScreen(
 
     val handleRateCard: (Sm2Rating) -> Unit = { rating ->
         val cardBeingRated = activeCard
-        if (isActiveCardFlipped && !isAnimatingRating && cardBeingRated != null) {
+        if (cardBeingRated != null && isActiveCardFlipped && !isAnimatingRating) {
             isAnimatingRating = true
             ratingCardSnapshot = cardBeingRated
             ratingStamp = rating
@@ -715,6 +731,31 @@ fun FlashcardsScreen(
                             },
                             icon = Icons.AutoMirrored.Filled.MenuBook
                         )
+
+                        if (activeDeckId == DataImportRepository.DUE_TODAY_DECK_ID && waitingLaterTodayCount > 0) {
+                            Button(
+                                onClick = onStartEarlyReview,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = GoldAccent,
+                                    contentColor = BackgroundDark
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth(0.85f)
+                                    .testTag("btn_empty_flashcards_early_review")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AutoAwesome,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "مراجعة مبكرة بدون انتظار ⚡ ($waitingLaterTodayCount بطاقة)",
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
 
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -2148,5 +2189,271 @@ private fun highlightWordInGold(sentence: String, rawWord: String) = buildAnnota
     }
     if (lastIndex < sentence.length) {
         append(sentence.substring(lastIndex))
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// END-OF-SESSION COMPLETION SCREEN (Image 2 Redesign)
+// -------------------------------------------------------------------------------------------------
+
+@Composable
+fun FlashcardSessionCompletionView(
+    summary: com.example.ui.viewmodel.FlashcardSessionSummary,
+    onRestart: () -> Unit,
+    onNavigateHome: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxSize()
+            .testTag("flashcard_session_completion_view"),
+        color = Color(0xFF0F1117)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 32.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                // 1. Trophy Celebration Icon
+                Surface(
+                    modifier = Modifier.size(76.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color(0xFF2C2517),
+                    border = BorderStroke(1.5.dp, GoldAccentBorder)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.EmojiEvents,
+                            contentDescription = "Trophy",
+                            tint = GoldAccent,
+                            modifier = Modifier.size(42.dp)
+                        )
+                    }
+                }
+
+                // 2. Celebration Title
+                Text(
+                    text = "رائع! أكملت الجلسة بنجاح 🎉",
+                    style = ArabicTypography.headlineMedium.copy(
+                        fontSize = 22.sp
+                    ),
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                )
+
+                // 3. Subtitle Confirmation Text
+                val subtitleText = when (summary.sessionType) {
+                    com.example.ui.viewmodel.FlashcardSessionType.REVIEW -> {
+                        val deckLabel = if (summary.deckName.isNotBlank()) summary.deckName else "أهم 5000 كلمة أكاديمية وعامة"
+                        "أتممت مراجعة ${summary.totalCount} بطاقة من حقيبة \"$deckLabel\"."
+                    }
+                    com.example.ui.viewmodel.FlashcardSessionType.LEARN_NEW -> {
+                        "أتممت تعلم ${summary.totalCount} كلمة جديدة بنجاح."
+                    }
+                }
+
+                Text(
+                    text = subtitleText,
+                    style = ArabicTypography.bodyMedium.copy(
+                        fontSize = 13.5.sp,
+                        lineHeight = 20.sp
+                    ),
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(Modifier.height(4.dp))
+
+                // 4. Dynamic 2x2 Summary Grid
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    when (summary.sessionType) {
+                        com.example.ui.viewmodel.FlashcardSessionType.REVIEW -> {
+                            // Row 1
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                CompletionStatCard(
+                                    label = "معدل التذكر",
+                                    value = "${summary.retentionRatePercent}%",
+                                    valueColor = GoldAccent,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                CompletionStatCard(
+                                    label = "سهل ومتقن",
+                                    value = "${summary.masteredCount}",
+                                    valueColor = EmeraldAccent,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            // Row 2
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                CompletionStatCard(
+                                    label = "بحاجة لمراجعة",
+                                    value = "${summary.needsReviewCount}",
+                                    valueColor = if (summary.needsReviewCount > 0) Color(0xFFFF6B6B) else TextMuted,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                val difficultyDisplay = if (summary.needsReviewCount == 0) "0" else String.format(Locale.US, "%.1f", (5f - summary.averageQuality).coerceAtLeast(0f))
+                                CompletionStatCard(
+                                    label = "مستوى الصعوبة",
+                                    value = difficultyDisplay,
+                                    valueColor = Color(0xFF64B5F6),
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                        com.example.ui.viewmodel.FlashcardSessionType.LEARN_NEW -> {
+                            // Row 1
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                CompletionStatCard(
+                                    label = "متقنة من أول مرة",
+                                    value = "${summary.masteredCount}",
+                                    valueColor = EmeraldAccent,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                CompletionStatCard(
+                                    label = "كلمات تحتاج تدريب",
+                                    value = "${summary.needsReviewCount}",
+                                    valueColor = if (summary.needsReviewCount > 0) Color(0xFFFF6B6B) else TextMuted,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            // Row 2
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                CompletionStatCard(
+                                    label = "أضيفت للمراجعة القادمة",
+                                    value = "${summary.totalCount}",
+                                    valueColor = GoldAccent,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                CompletionStatCard(
+                                    label = "إجمالي الكلمات المكتملة",
+                                    value = "${summary.totalCount}",
+                                    valueColor = Color.White,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                // 5. Action Buttons
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    val retryLabel = if (summary.failedCards.isNotEmpty()) {
+                        "مراجعة الكلمات المتعثرة (${summary.failedCards.size})"
+                    } else {
+                        "مراجعة الحقيبة مجدداً"
+                    }
+
+                    Button(
+                        onClick = onRestart,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = GoldAccent,
+                            contentColor = OnGoldDark
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .testTag("btn_completion_restart")
+                    ) {
+                        Text(
+                            text = retryLabel,
+                            style = ArabicTypography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = OnGoldDark
+                            )
+                        )
+                    }
+
+                    Button(
+                        onClick = onNavigateHome,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF1E222B),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .testTag("btn_completion_navigate_home")
+                    ) {
+                        Text(
+                            text = "العودة للرئيسية",
+                            style = ArabicTypography.titleMedium.copy(
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 14.5.sp,
+                                color = Color.White
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompletionStatCard(
+    label: String,
+    value: String,
+    valueColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFF1E222B),
+        border = BorderStroke(1.dp, Color(0xFF2E3440))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp, horizontal = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = label,
+                style = ArabicTypography.labelMedium.copy(fontSize = 12.5.sp),
+                color = TextSecondary,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 24.sp
+                ),
+                color = valueColor,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }

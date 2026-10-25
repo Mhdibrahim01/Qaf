@@ -413,6 +413,9 @@ fun WordBooksAppShell(
             ) {
                 composable<AppRoute.Home> {
                     val reviewDueTodayCount by wordBooksViewModel.reviewDueTodayCount.collectAsStateWithLifecycle()
+                    val reviewDueNowCount by wordBooksViewModel.reviewDueNowCount.collectAsStateWithLifecycle()
+                    val waitingLaterTodayCount by wordBooksViewModel.waitingLaterTodayCount.collectAsStateWithLifecycle()
+                    val nextWaitingDueTimestamp by wordBooksViewModel.nextWaitingDueTimestamp.collectAsStateWithLifecycle()
                     val studiedTodayCount by wordBooksViewModel.studiedTodayCount.collectAsStateWithLifecycle()
                     val masteredCount by wordBooksViewModel.masteredCount.collectAsStateWithLifecycle()
                     val deckStudyStates by wordBooksViewModel.deckStudyStates.collectAsStateWithLifecycle()
@@ -425,6 +428,9 @@ fun WordBooksAppShell(
                         importState = importState,
                         totalEntriesCount = totalEntriesCount,
                         reviewDueTodayCount = reviewDueTodayCount,
+                        reviewDueNowCount = reviewDueNowCount,
+                        waitingLaterTodayCount = waitingLaterTodayCount,
+                        nextWaitingDueTimestamp = nextWaitingDueTimestamp,
                         studiedTodayCount = studiedTodayCount,
                         masteredCount = masteredCount,
                         deckStudyStates = deckStudyStates,
@@ -480,6 +486,18 @@ fun WordBooksAppShell(
                                 wordBooksViewModel.selectFlashcardDeck(DataImportRepository.DUE_TODAY_DECK_ID)
                                 navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
                             }
+                        },
+                        onStartEarlyReview = {
+                            wordBooksViewModel.startEarlyReviewSession()
+                            navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
+                        },
+                        onReviewTodayLearnedWords = {
+                            wordBooksViewModel.startReviewTodayLearnedWordsSession()
+                            navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
+                        },
+                        onLearnExtraNewWords = { count ->
+                            wordBooksViewModel.startFocusedNewWordsSession(count)
+                            navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
                         }
                     )
                 }
@@ -583,6 +601,8 @@ fun WordBooksAppShell(
                     val flashcardAutoShowAnswer by wordBooksViewModel.flashcardAutoShowAnswer.collectAsStateWithLifecycle()
                     val waitingLaterTodayCount by wordBooksViewModel.waitingLaterTodayCount.collectAsStateWithLifecycle()
                     val nextWaitingDueTimestamp by wordBooksViewModel.nextWaitingDueTimestamp.collectAsStateWithLifecycle()
+                    val isFlashcardSessionCompleted by wordBooksViewModel.isFlashcardSessionCompleted.collectAsStateWithLifecycle()
+                    val flashcardSessionSummary by wordBooksViewModel.flashcardSessionSummary.collectAsStateWithLifecycle()
                     FlashcardsScreen(
                         decks = decks,
                         activeDeckId = flashcardDeckId,
@@ -610,6 +630,7 @@ fun WordBooksAppShell(
                             navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
                         },
                         onNavigateHome = {
+                            wordBooksViewModel.dismissFlashcardSessionCompletion()
                             navController.navigate(AppRoute.Home) { launchSingleTop = true }
                         },
                         onIndexChanged = wordBooksViewModel::onFlashcardIndexChanged,
@@ -643,7 +664,11 @@ fun WordBooksAppShell(
                         onDismissCoachTipFlip = wordBooksViewModel::dismissCoachTipFlip,
                         onDismissCoachTipRate = wordBooksViewModel::dismissCoachTipRate,
                         waitingLaterTodayCount = waitingLaterTodayCount,
-                        nextWaitingDueTimestamp = nextWaitingDueTimestamp
+                        nextWaitingDueTimestamp = nextWaitingDueTimestamp,
+                        onStartEarlyReview = wordBooksViewModel::startEarlyReviewSession,
+                        isSessionCompleted = isFlashcardSessionCompleted,
+                        sessionSummary = flashcardSessionSummary,
+                        onRestartSession = wordBooksViewModel::restartCurrentFlashcardSession
                     )
                 }
                 composable<AppRoute.Sentences> {
@@ -795,7 +820,8 @@ fun WordBooksAppShell(
                         userLevel = userLevel,
                         onScheduleWordForToday = wordBooksViewModel::scheduleLookedUpWordForToday,
                         storyReadabilityById = learnerModelSnapshot.storyReadabilityById,
-                        wordStageMap = learnerModelSnapshot.wordStageByHeadword
+                        wordStageMap = learnerModelSnapshot.wordStageByHeadword,
+                        onOpenDetailedDefinition = wordBooksViewModel::openDetailedDefinition
                     )
                 }
                 composable<AppRoute.Labs> {

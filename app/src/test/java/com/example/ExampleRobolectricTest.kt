@@ -1684,6 +1684,21 @@ class ExampleRobolectricTest {
             selectedDecksJson = "[\"oxford5000\"]",
             restDaysJson = "[6]" // Friday
         )
+
+        // Seed 10 due cards for oxford5000 so flashTask has due cards to review
+        val now = timeProvider.currentTimeMillis()
+        for (i in 1..10) {
+            dao.upsertWordProgress(
+                WordProgressEntity(
+                    cardKey = "oxford5000:pre_due_$i",
+                    deck = "oxford5000",
+                    text = "pre_due_$i",
+                    repetitions = 2,
+                    dueTimestamp = now - 1000L,
+                    lastReviewedTimestamp = now - 86400000L
+                )
+            )
+        }
         planRepo.updateProfile(profile)
 
         // 1. Unchanged checklist when regenerated on same day
