@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -1195,13 +1196,16 @@ private fun FlashcardFrontFace(
         verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Merged Top Row: CEFR Level + IPA pill on left, Audio + Turtle + Heart on right
+        // Merged Top Row: CEFR Level + IPA pill on left, Turtle + Heart on right
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -1211,11 +1215,14 @@ private fun FlashcardFrontFace(
                         modifier = Modifier.testTag("flashcard_level_badge")
                     )
                 }
-                if (card.ipa.isNotBlank() && effectiveDirection != FlashcardDirection.ARABIC_TO_ENGLISH) {
+                if (effectiveDirection != FlashcardDirection.ARABIC_TO_ENGLISH) {
+                    val ipaLabel = if (card.ipa.isNotBlank()) "US ${card.ipa}" else "US"
                     Surface(
                         modifier = Modifier
+                            .weight(1f, fill = false)
                             .clip(RoundedCornerShape(8.dp))
-                            .clickable(onClick = onPlayAudio),
+                            .clickable(onClick = onPlayAudio)
+                            .testTag("flashcard_ipa_speaker_chip"),
                         color = if (isPlayingAudio) GoldAccent else GoldAccentDim,
                         shape = RoundedCornerShape(8.dp),
                         border = BorderStroke(1.dp, GoldAccentBorder)
@@ -1229,15 +1236,18 @@ private fun FlashcardFrontFace(
                                 imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                                 contentDescription = "Play pronunciation",
                                 tint = if (isPlayingAudio) BackgroundDark else GoldAccent,
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.requiredSize(14.dp)
                             )
                             Text(
-                                text = "US ${card.ipa}",
+                                text = ipaLabel,
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 11.5.sp
                                 ),
-                                color = if (isPlayingAudio) BackgroundDark else GoldAccent
+                                color = if (isPlayingAudio) BackgroundDark else GoldAccent,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.testTag("flashcard_ipa_text")
                             )
                         }
                     }
@@ -1248,29 +1258,10 @@ private fun FlashcardFrontFace(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = if (isPlayingAudio) GoldAccent else SurfaceElevatedDark,
-                    border = BorderStroke(1.dp, if (isPlayingAudio) GoldAccent else BorderDark),
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .clickable(onClick = onPlayAudio)
-                        .testTag("flashcard_front_audio_button")
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                            contentDescription = "Play pronunciation",
-                            tint = if (isPlayingAudio) BackgroundDark else TextSecondary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-
                 SlowAudioTurtleButton(
                     onClick = onPlayAudioSlow,
                     showSpeedLabel = false,
+                    modifier = Modifier.requiredSize(32.dp),
                     testTag = "flashcard_front_slow_audio_button"
                 )
 
@@ -1279,7 +1270,7 @@ private fun FlashcardFrontFace(
                     color = SurfaceElevatedDark,
                     border = BorderStroke(1.dp, if (isFavorite) GoldAccentBorder else BorderDark),
                     modifier = Modifier
-                        .size(34.dp)
+                        .requiredSize(32.dp)
                         .clip(CircleShape)
                         .clickable(onClick = onToggleFavorite)
                         .testTag("flashcard_favorite_button")
@@ -1464,9 +1455,9 @@ private fun FlashcardBackFace(
                     )
                 )
             )
-            .padding(horizontal = 16.dp, vertical = 14.dp)
+            .padding(12.dp)
             .testTag("flashcard_back_face"),
-        verticalArrangement = Arrangement.SpaceBetween
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         // 1. Merged Top Metadata & Audio Controls Row (.fc-top-bar)
         Row(
@@ -1476,9 +1467,11 @@ private fun FlashcardBackFace(
         ) {
             // Left: [A1] + [🔊 US /ə/]
             Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f, fill = false)
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 if (card.primaryLevel.isNotBlank()) {
                     Surface(
@@ -1494,94 +1487,59 @@ private fun FlashcardBackFace(
                                 fontSize = 12.sp
                             ),
                             color = GoldAccent,
+                            maxLines = 1,
+                            softWrap = false,
                             modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
                         )
                     }
                 }
 
-                if (card.ipa.isNotBlank()) {
-                    Surface(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable(onClick = onPlayAudio)
-                            .testTag("flashcard_ipa_speaker_chip"),
-                        color = if (isPlayingAudio) GoldAccent else GoldAccentDim,
-                        shape = RoundedCornerShape(8.dp),
-                        border = BorderStroke(1.dp, GoldAccentBorder)
+                val ipaLabel = if (card.ipa.isNotBlank()) "US ${card.ipa}" else "US"
+                Surface(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable(onClick = onPlayAudio)
+                        .testTag("flashcard_ipa_speaker_chip"),
+                    color = if (isPlayingAudio) GoldAccent else GoldAccentDim,
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, GoldAccentBorder)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                contentDescription = "Play pronunciation",
-                                tint = if (isPlayingAudio) BackgroundDark else GoldAccent,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Text(
-                                text = "US ${card.ipa}",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 12.sp
-                                ),
-                                color = if (isPlayingAudio) BackgroundDark else GoldAccent,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.testTag("flashcard_ipa_text")
-                            )
-                        }
-                    }
-                }
-
-                if (isMastered) {
-                    Surface(
-                        color = EmeraldAccent.copy(alpha = 0.16f),
-                        shape = RoundedCornerShape(8.dp),
-                        border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.5f))
-                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = "Play pronunciation",
+                            tint = if (isPlayingAudio) BackgroundDark else GoldAccent,
+                            modifier = Modifier.requiredSize(14.dp)
+                        )
                         Text(
-                            text = "Mastered",
+                            text = ipaLabel,
                             style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.sp
                             ),
-                            color = EmeraldAccent,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            color = if (isPlayingAudio) BackgroundDark else GoldAccent,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.testTag("flashcard_ipa_text")
                         )
                     }
                 }
             }
 
-            // Right: [Speaker] [Turtle] [Heart] (34.dp circle buttons)
+            // Right: [Turtle] [Heart] (32.dp circle buttons, non-shrinking)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = if (isPlayingAudio) GoldAccent else SurfaceElevatedDark,
-                    border = BorderStroke(1.dp, if (isPlayingAudio) GoldAccent else BorderDark),
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .clickable(onClick = onPlayAudio)
-                        .testTag("flashcard_back_audio_button")
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                            contentDescription = "Play pronunciation",
-                            tint = if (isPlayingAudio) BackgroundDark else TextSecondary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-
                 SlowAudioTurtleButton(
                     onClick = onPlayAudioSlow,
                     showSpeedLabel = false,
+                    modifier = Modifier.requiredSize(32.dp),
                     testTag = "flashcard_back_slow_audio_button"
                 )
 
@@ -1590,7 +1548,7 @@ private fun FlashcardBackFace(
                     color = SurfaceElevatedDark,
                     border = BorderStroke(1.dp, if (isFavorite) GoldAccentBorder else BorderDark),
                     modifier = Modifier
-                        .size(34.dp)
+                        .requiredSize(32.dp)
                         .clip(CircleShape)
                         .clickable(onClick = onToggleFavorite)
                         .testTag("flashcard_favorite_button")
@@ -1610,13 +1568,13 @@ private fun FlashcardBackFace(
         // 2. Headword + Arabic Translation Box (.fc-word-section)
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(
                 text = card.text,
                 style = MaterialTheme.typography.headlineMedium.copy(
-                    fontSize = 28.sp,
-                    lineHeight = 31.sp,
+                    fontSize = 24.sp,
+                    lineHeight = 28.sp,
                     fontWeight = FontWeight.Bold
                 ),
                 color = TextPrimary,
@@ -1637,8 +1595,8 @@ private fun FlashcardBackFace(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 9.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         val groupedByPos = variantsWithArabic.groupBy { it.pos.trim() }.entries.take(2)
                         groupedByPos.forEach { (pos, posVariants) ->
@@ -1678,8 +1636,8 @@ private fun FlashcardBackFace(
                                     text = "\u2067$combinedArabic\u2069",
                                     style = ArabicTypography.titleMedium.copy(
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp,
-                                        lineHeight = 21.sp,
+                                        fontSize = 15.5.sp,
+                                        lineHeight = 20.sp,
                                         textDirection = androidx.compose.ui.text.style.TextDirection.Rtl,
                                         textAlign = TextAlign.End
                                     ),
@@ -1722,7 +1680,8 @@ private fun FlashcardBackFace(
                 Text(
                     text = "DEFINITION",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        fontSize = 11.sp,
+                        fontSize = 10.5.sp,
+                        lineHeight = 13.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.4.sp
                     ),
@@ -1732,8 +1691,8 @@ private fun FlashcardBackFace(
                     Text(
                         text = primaryDefinitionEn,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 13.5.sp,
-                            lineHeight = 18.sp,
+                            fontSize = 13.sp,
+                            lineHeight = 17.sp,
                             color = TextPrimary
                         ),
                         maxLines = 2,
@@ -1744,8 +1703,8 @@ private fun FlashcardBackFace(
                     Text(
                         text = "\u2067$primaryDefinitionAr\u2069",
                         style = ArabicTypography.bodySmall.copy(
-                            fontSize = 13.sp,
-                            lineHeight = 17.5.sp,
+                            fontSize = 12.5.sp,
+                            lineHeight = 16.5.sp,
                             textDirection = androidx.compose.ui.text.style.TextDirection.Rtl,
                             textAlign = TextAlign.Right
                         ),
@@ -1796,14 +1755,14 @@ private fun FlashcardBackFace(
                         Column(
                             modifier = Modifier
                                 .weight(1f)
-                                .padding(horizontal = 12.dp, vertical = 9.dp),
+                                .padding(horizontal = 10.dp, vertical = 7.dp),
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             Text(
                                 text = highlightWordInGold(sentenceEn, card.text),
                                 style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontSize = 13.5.sp,
-                                    lineHeight = 18.sp,
+                                    fontSize = 13.sp,
+                                    lineHeight = 17.sp,
                                     fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                                 ),
                                 color = TextPrimary,
@@ -1815,9 +1774,9 @@ private fun FlashcardBackFace(
                                     text = "\u2067$sentenceAr\u2069",
                                     style = ArabicTypography.bodySmall.copy(
                                         fontSize = 12.5.sp,
-                                        lineHeight = 17.sp,
+                                        lineHeight = 16.5.sp,
                                         textDirection = androidx.compose.ui.text.style.TextDirection.Rtl,
-                                        textAlign = TextAlign.Left
+                                        textAlign = TextAlign.Right
                                     ),
                                     color = TextSecondary,
                                     maxLines = 1,
@@ -1886,7 +1845,7 @@ private fun FlashcardBottomActionsBar(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (isMastered) "Mastered ✓" else "Mark Mastered",
+                        text = if (isMastered) "Mastered" else "Mark Mastered",
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontSize = 12.5.sp,
                             fontWeight = FontWeight.SemiBold

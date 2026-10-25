@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
@@ -51,7 +52,7 @@ fun SlowAudioTurtleButton(
 
     Surface(
         modifier = modifier
-            .height(34.dp)
+            .then(if (showSpeedLabel) Modifier.height(34.dp) else Modifier.requiredSize(32.dp))
             .clip(CircleShape)
             .clickable(onClick = onClick)
             .semantics {
@@ -64,9 +65,9 @@ fun SlowAudioTurtleButton(
         border = BorderStroke(1.dp, borderColor)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = if (showSpeedLabel) 10.dp else 8.dp),
+            modifier = Modifier.padding(horizontal = if (showSpeedLabel) 10.dp else 0.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = if (showSpeedLabel) Arrangement.spacedBy(4.dp) else Arrangement.Center
         ) {
             Icon(
                 painter = painterResource(id = com.example.R.drawable.ic_turtle_flat),
