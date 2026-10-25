@@ -202,6 +202,7 @@ object FreeDictionaryAndTranslationEngine {
                         pos = normPos,
                         arabic = arabicList,
                         definitionEn = sense.definitionEn,
+                        definitionAr = if (containsArabicScript(defAr)) defAr else "",
                         example = AiExampleItem(
                             en = sense.exampleEn,
                             ar = exAr

@@ -30,7 +30,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         QuizResultEntity::class,
         WordDetailEntity::class
     ],
-    version = 16,
+    version = 17,
     exportSchema = true
 )
 abstract class WordBooksDatabase : RoomDatabase() {
@@ -265,6 +265,12 @@ abstract class WordBooksDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE entries ADD COLUMN definition_ar TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         private val PERFORMANCE_INDEX_CALLBACK = object : RoomDatabase.Callback() {
             override fun onOpen(db: SupportSQLiteDatabase) {
                 super.onOpen(db)
@@ -301,7 +307,8 @@ abstract class WordBooksDatabase : RoomDatabase() {
                         MIGRATION_12_13,
                         MIGRATION_13_14,
                         MIGRATION_14_15,
-                        MIGRATION_15_16
+                        MIGRATION_15_16,
+                        MIGRATION_16_17
                     )
                     .addCallback(PERFORMANCE_INDEX_CALLBACK)
                     .build()

@@ -1408,6 +1408,9 @@ private fun FlashcardBackFace(
     val primaryDefinitionEn = remember(card.posVariants) {
         card.posVariants.firstOrNull { it.definitionEn.isNotBlank() }?.definitionEn.orEmpty()
     }
+    val primaryDefinitionAr = remember(card.posVariants) {
+        card.posVariants.firstOrNull { it.definitionAr.isNotBlank() }?.definitionAr.orEmpty()
+    }
 
     Column(
         modifier = Modifier
@@ -1668,12 +1671,12 @@ private fun FlashcardBackFace(
         }
 
         // 3. Compact Definition Block (.fc-def-section)
-        if (primaryDefinitionEn.isNotBlank()) {
+        if (primaryDefinitionEn.isNotBlank() || primaryDefinitionAr.isNotBlank()) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("flashcard_definition_section"),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
                     text = "DEFINITION",
@@ -1684,16 +1687,35 @@ private fun FlashcardBackFace(
                     ),
                     color = GoldAccent
                 )
-                Text(
-                    text = primaryDefinitionEn,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 14.sp,
-                        lineHeight = 19.sp,
-                        color = TextPrimary
-                    ),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
+                if (primaryDefinitionEn.isNotBlank()) {
+                    Text(
+                        text = primaryDefinitionEn,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 13.5.sp,
+                            lineHeight = 18.sp,
+                            color = TextPrimary
+                        ),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (primaryDefinitionAr.isNotBlank()) {
+                    Text(
+                        text = "\u2067$primaryDefinitionAr\u2069",
+                        style = ArabicTypography.bodySmall.copy(
+                            fontSize = 13.sp,
+                            lineHeight = 17.5.sp,
+                            textDirection = androidx.compose.ui.text.style.TextDirection.Rtl,
+                            textAlign = TextAlign.Right
+                        ),
+                        color = TextSecondary,
+                        maxLines = if (primaryDefinitionEn.length > 75) 1 else 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("flashcard_definition_ar_text")
+                    )
+                }
             }
         }
 
