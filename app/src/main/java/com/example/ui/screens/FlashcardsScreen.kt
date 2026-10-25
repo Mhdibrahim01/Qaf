@@ -107,7 +107,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.SpanStyle
@@ -117,6 +119,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -1261,16 +1264,16 @@ private fun FlashcardFrontFace(
                 SlowAudioTurtleButton(
                     onClick = onPlayAudioSlow,
                     showSpeedLabel = false,
-                    modifier = Modifier.requiredSize(32.dp),
+                    modifier = Modifier.requiredSize(34.dp),
                     testTag = "flashcard_front_slow_audio_button"
                 )
 
                 Surface(
                     shape = CircleShape,
-                    color = SurfaceElevatedDark,
+                    color = if (isFavorite) GoldAccentDim else SurfaceElevatedDark,
                     border = BorderStroke(1.dp, if (isFavorite) GoldAccentBorder else BorderDark),
                     modifier = Modifier
-                        .requiredSize(32.dp)
+                        .requiredSize(34.dp)
                         .clip(CircleShape)
                         .clickable(onClick = onToggleFavorite)
                         .testTag("flashcard_favorite_button")
@@ -1455,17 +1458,17 @@ private fun FlashcardBackFace(
                     )
                 )
             )
-            .padding(12.dp)
+            .padding(16.dp)
             .testTag("flashcard_back_face"),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // 1. Merged Top Metadata & Audio Controls Row (.fc-top-bar)
+        // Block 1: Top Header Row (.fc-top-bar)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left: [A1] + [🔊 US /ə/]
+            // Left: [B1] + [🔊 US /ˈpaʊ.ə.fəl/]
             Row(
                 modifier = Modifier
                     .weight(1f)
@@ -1489,7 +1492,7 @@ private fun FlashcardBackFace(
                             color = GoldAccent,
                             maxLines = 1,
                             softWrap = false,
-                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                         )
                     }
                 }
@@ -1506,7 +1509,7 @@ private fun FlashcardBackFace(
                     border = BorderStroke(1.dp, GoldAccentBorder)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
@@ -1520,7 +1523,7 @@ private fun FlashcardBackFace(
                             text = ipaLabel,
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.SemiBold,
-                                fontSize = 12.sp
+                                fontSize = 12.5.sp
                             ),
                             color = if (isPlayingAudio) BackgroundDark else GoldAccent,
                             maxLines = 1,
@@ -1531,7 +1534,7 @@ private fun FlashcardBackFace(
                 }
             }
 
-            // Right: [Turtle] [Heart] (32.dp circle buttons, non-shrinking)
+            // Right: [Turtle] + [Heart] with requiredSize(34.dp)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -1539,16 +1542,16 @@ private fun FlashcardBackFace(
                 SlowAudioTurtleButton(
                     onClick = onPlayAudioSlow,
                     showSpeedLabel = false,
-                    modifier = Modifier.requiredSize(32.dp),
+                    modifier = Modifier.requiredSize(34.dp),
                     testTag = "flashcard_back_slow_audio_button"
                 )
 
                 Surface(
                     shape = CircleShape,
-                    color = SurfaceElevatedDark,
+                    color = if (isFavorite) GoldAccentDim else SurfaceElevatedDark,
                     border = BorderStroke(1.dp, if (isFavorite) GoldAccentBorder else BorderDark),
                     modifier = Modifier
-                        .requiredSize(32.dp)
+                        .requiredSize(34.dp)
                         .clip(CircleShape)
                         .clickable(onClick = onToggleFavorite)
                         .testTag("flashcard_favorite_button")
@@ -1565,16 +1568,16 @@ private fun FlashcardBackFace(
             }
         }
 
-        // 2. Headword + Arabic Translation Box (.fc-word-section)
+        // Block 2: Headword + Meaning Box (.fc-word-block)
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
                 text = card.text,
                 style = MaterialTheme.typography.headlineMedium.copy(
-                    fontSize = 24.sp,
-                    lineHeight = 28.sp,
+                    fontSize = 28.sp,
+                    lineHeight = 32.sp,
                     fontWeight = FontWeight.Bold
                 ),
                 color = TextPrimary,
@@ -1589,14 +1592,14 @@ private fun FlashcardBackFace(
                         .fillMaxWidth()
                         .testTag("flashcard_arabic_section"),
                     color = SurfaceElevatedDark,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     border = BorderStroke(1.dp, BorderDark)
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 10.dp, vertical = 7.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         val groupedByPos = variantsWithArabic.groupBy { it.pos.trim() }.entries.take(2)
                         groupedByPos.forEach { (pos, posVariants) ->
@@ -1622,32 +1625,39 @@ private fun FlashcardBackFace(
                                             style = MaterialTheme.typography.labelSmall.copy(
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = GoldAccent,
-                                                fontSize = 11.5.sp
+                                                fontSize = 12.sp
                                             ),
                                             maxLines = 1,
-                                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 2.dp)
+                                            softWrap = false,
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                                         )
                                     }
                                 } else {
                                     Spacer(modifier = Modifier.width(4.dp))
                                 }
 
-                                Text(
-                                    text = "\u2067$combinedArabic\u2069",
-                                    style = ArabicTypography.titleMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 15.5.sp,
-                                        lineHeight = 20.sp,
-                                        textDirection = androidx.compose.ui.text.style.TextDirection.Rtl,
-                                        textAlign = TextAlign.End
-                                    ),
-                                    color = TextPrimary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                                Box(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .padding(start = 10.dp)
-                                )
+                                        .padding(start = 12.dp),
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                        Text(
+                                            text = "\u2067$combinedArabic\u2069",
+                                            style = ArabicTypography.titleMedium.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 16.5.sp,
+                                                lineHeight = 22.sp,
+                                                textDirection = androidx.compose.ui.text.style.TextDirection.Rtl,
+                                                textAlign = TextAlign.Right
+                                            ),
+                                            color = TextPrimary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -1656,34 +1666,34 @@ private fun FlashcardBackFace(
                 Surface(
                     modifier = Modifier.testTag("flashcard_no_arabic_label"),
                     color = SurfaceElevatedDark,
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(14.dp),
                     border = BorderStroke(1.dp, BorderDark)
                 ) {
                     Text(
                         text = "No Arabic yet",
                         style = MaterialTheme.typography.labelSmall,
                         color = TextMuted,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
                     )
                 }
             }
         }
 
-        // 3. Compact Definition Block (.fc-def-section)
+        // Block 3: Bilingual Definition Box (.fc-def-block)
         if (primaryDefinitionEn.isNotBlank() || primaryDefinitionAr.isNotBlank()) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("flashcard_definition_section"),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = "DEFINITION",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        fontSize = 10.5.sp,
-                        lineHeight = 13.sp,
+                        fontSize = 11.5.sp,
+                        lineHeight = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.4.sp
+                        letterSpacing = 0.5.sp
                     ),
                     color = GoldAccent
                 )
@@ -1691,8 +1701,8 @@ private fun FlashcardBackFace(
                     Text(
                         text = primaryDefinitionEn,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 13.sp,
-                            lineHeight = 17.sp,
+                            fontSize = 15.sp,
+                            lineHeight = 21.sp,
                             color = TextPrimary
                         ),
                         maxLines = 2,
@@ -1700,26 +1710,28 @@ private fun FlashcardBackFace(
                     )
                 }
                 if (primaryDefinitionAr.isNotBlank()) {
-                    Text(
-                        text = "\u2067$primaryDefinitionAr\u2069",
-                        style = ArabicTypography.bodySmall.copy(
-                            fontSize = 12.5.sp,
-                            lineHeight = 16.5.sp,
-                            textDirection = androidx.compose.ui.text.style.TextDirection.Rtl,
-                            textAlign = TextAlign.Right
-                        ),
-                        color = TextSecondary,
-                        maxLines = if (primaryDefinitionEn.length > 75) 1 else 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("flashcard_definition_ar_text")
-                    )
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                        Text(
+                            text = "\u2067$primaryDefinitionAr\u2069",
+                            style = ArabicTypography.bodySmall.copy(
+                                fontSize = 13.5.sp,
+                                lineHeight = 20.sp,
+                                textDirection = androidx.compose.ui.text.style.TextDirection.Rtl,
+                                textAlign = TextAlign.Right
+                            ),
+                            color = Color(0xFFD1D5DB),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("flashcard_definition_ar_text")
+                        )
+                    }
                 }
             }
         }
 
-        // 4. Compact Example Quote Box (No Separate Header Line, No Clipped Bottom Hint)
+        // Block 4: Example Quote Box (.example-quote-box)
         if (examplePairs.isNotEmpty()) {
             val (sentenceEn, sentenceAr) = examplePairs.first()
             val isSaved = sentenceEn.trim().lowercase() in savedSentenceKeys
@@ -1731,14 +1743,14 @@ private fun FlashcardBackFace(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(14.dp))
                         .combinedClickable(
                             onClick = onFlipCard,
                             onLongClick = { onToggleSaveSentence(sentenceEn, sentenceAr) }
                         )
                         .testTag("flashcard_example_card_0"),
                     color = SurfaceElevatedDark,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     border = BorderStroke(1.dp, if (isSaved) GoldAccentBorder else BorderDark)
                 ) {
                     Row(
@@ -1755,14 +1767,14 @@ private fun FlashcardBackFace(
                         Column(
                             modifier = Modifier
                                 .weight(1f)
-                                .padding(horizontal = 10.dp, vertical = 7.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
                                 text = highlightWordInGold(sentenceEn, card.text),
                                 style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontSize = 13.sp,
-                                    lineHeight = 17.sp,
+                                    fontSize = 14.5.sp,
+                                    lineHeight = 20.sp,
                                     fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                                 ),
                                 color = TextPrimary,
@@ -1770,19 +1782,21 @@ private fun FlashcardBackFace(
                                 overflow = TextOverflow.Ellipsis
                             )
                             if (sentenceAr.isNotEmpty()) {
-                                Text(
-                                    text = "\u2067$sentenceAr\u2069",
-                                    style = ArabicTypography.bodySmall.copy(
-                                        fontSize = 12.5.sp,
-                                        lineHeight = 16.5.sp,
-                                        textDirection = androidx.compose.ui.text.style.TextDirection.Rtl,
-                                        textAlign = TextAlign.Right
-                                    ),
-                                    color = TextSecondary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
+                                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                    Text(
+                                        text = "\u2067$sentenceAr\u2069",
+                                        style = ArabicTypography.bodySmall.copy(
+                                            fontSize = 13.5.sp,
+                                            lineHeight = 19.sp,
+                                            textDirection = androidx.compose.ui.text.style.TextDirection.Rtl,
+                                            textAlign = TextAlign.Right
+                                        ),
+                                        color = Color(0xFF9CA3AF),
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
                             }
                         }
                     }
