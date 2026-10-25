@@ -85,11 +85,13 @@ class NewWordSelectionGoldenTest {
         assertEquals(10, day1Words.size)
         assertNull(day1Selection.reasonString)
 
-        // 1. Must be in strictly ascending numeric order
-        val day1Ids = day1Words.map { it.id.toLong() }
-        for (i in 0 until day1Ids.size - 1) {
-            assertTrue("Day 1 IDs must be sorted numerically: ${day1Ids[i]} < ${day1Ids[i + 1]}", day1Ids[i] < day1Ids[i + 1])
-        }
+        // 1. Must be 100% deterministic (calling again with identical state yields identical word order)
+        val repeatSelection = planRepo.selectNewWordsForProfile(profileA, 10)
+        assertEquals(day1Words.map { it.id }, repeatSelection.words.map { it.id })
+
+        // 2. Must not be alphabetically clumped (span at least 4 distinct initial letters)
+        val initialLetters = day1Words.map { it.text.trim().first().lowercaseChar() }.distinct()
+        assertTrue("Selection must span >= 4 distinct initial letters, got: $initialLetters", initialLetters.size >= 4)
 
         // 2. Must have 10 distinct lowercase headwords
         assertEquals(10, day1Words.map { it.text.trim().lowercase() }.distinct().size)
@@ -149,11 +151,11 @@ class NewWordSelectionGoldenTest {
         val day7Words = day7Selection.words
         assertEquals(10, day7Words.size)
 
-        // Day 7 words must be in numeric order
-        val day7Ids = day7Words.map { it.id.toLong() }
-        for (i in 0 until day7Ids.size - 1) {
-            assertTrue("Day 7 IDs must be sorted numerically: ${day7Ids[i]} < ${day7Ids[i + 1]}", day7Ids[i] < day7Ids[i + 1])
-        }
+        // Day 7 words must be 100% deterministic and span >= 4 distinct initial letters
+        val repeatDay7 = planRepo.selectNewWordsForProfile(profileA, 10)
+        assertEquals(day7Words.map { it.id }, repeatDay7.words.map { it.id })
+        val day7InitialLetters = day7Words.map { it.text.trim().first().lowercaseChar() }.distinct()
+        assertTrue("Day 7 selection must span >= 4 distinct initial letters, got: $day7InitialLetters", day7InitialLetters.size >= 4)
 
         // Day 7 words must NOT contain any previously studied words
         for (w in day7Words) {
@@ -194,11 +196,11 @@ class NewWordSelectionGoldenTest {
         assertEquals(10, day1Words.size)
         assertNull("Both ielts_core and it_industry have Oxford-matched A2 words, so no shortfall reason needed", day1Selection.reasonString)
 
-        // 1. Must be sorted numerically
-        val day1Ids = day1Words.map { it.id.toLong() }
-        for (i in 0 until day1Ids.size - 1) {
-            assertTrue("Day 1 IDs must be sorted numerically: ${day1Ids[i]} < ${day1Ids[i + 1]}", day1Ids[i] < day1Ids[i + 1])
-        }
+        // 1. Must be 100% deterministic and span >= 4 distinct initial letters
+        val repeatDay1B = planRepo.selectNewWordsForProfile(profileB, 10)
+        assertEquals(day1Words.map { it.id }, repeatDay1B.words.map { it.id })
+        val initialLettersB = day1Words.map { it.text.trim().first().lowercaseChar() }.distinct()
+        assertTrue("Selection must span >= 4 distinct initial letters, got: $initialLettersB", initialLettersB.size >= 4)
 
         // 2. Must come ONLY from selectedDecks (6 from ielts_core, 4 from it_industry) - never unselected oxford5000
         val ieltsWords = day1Words.filter { it.deck == "ielts_core" }
@@ -243,11 +245,11 @@ class NewWordSelectionGoldenTest {
         val day7Words = day7Selection.words
         assertEquals(10, day7Words.size)
 
-        // Numeric order
-        val day7Ids = day7Words.map { it.id.toLong() }
-        for (i in 0 until day7Ids.size - 1) {
-            assertTrue("Day 7 IDs must be sorted numerically: ${day7Ids[i]} < ${day7Ids[i + 1]}", day7Ids[i] < day7Ids[i + 1])
-        }
+        // Day 7 words must be 100% deterministic and span >= 4 distinct initial letters
+        val repeatDay7B = planRepo.selectNewWordsForProfile(profileB, 10)
+        assertEquals(day7Words.map { it.id }, repeatDay7B.words.map { it.id })
+        val day7InitialLettersB = day7Words.map { it.text.trim().first().lowercaseChar() }.distinct()
+        assertTrue("Day 7 selection must span >= 4 distinct initial letters, got: $day7InitialLettersB", day7InitialLettersB.size >= 4)
 
         // Includes 6 IELTS and 4 IT words (only selected decks)
         assertEquals(6, day7Words.count { it.deck == "ielts_core" })

@@ -2084,7 +2084,7 @@ interface WordBooksDao {
             WHEN 'C2' THEN 6
             ELSE 7
           END ASC,
-          CAST(e.id AS INTEGER) ASC,
+          ((CAST(e.id AS INTEGER) * 2654435761) % 4294967296) ASC,
           e.id ASC
         LIMIT :limit
     """)
@@ -2191,7 +2191,7 @@ interface WordBooksDao {
               SELECT 1 FROM word_progress r
               WHERE r.entry_id = entries.id
           )
-        ORDER BY CASE WHEN TRIM(audio_url) != '' THEN 0 ELSE 1 END ASC, CAST(id AS INTEGER) ASC, id ASC
+        ORDER BY CASE WHEN TRIM(audio_url) != '' THEN 0 ELSE 1 END ASC, ((CAST(id AS INTEGER) * 2654435761) % 4294967296) ASC, id ASC
         LIMIT 3
         """
     )
@@ -2259,7 +2259,7 @@ interface WordBooksDao {
           AND (deck IN (:decks) OR :hasDecks = 0)
           AND TRIM(arabic) != ''
           AND TRIM(text) != ''
-        ORDER BY CAST(id AS INTEGER) ASC, id ASC
+        ORDER BY ((CAST(id AS INTEGER) * 2654435761) % 4294967296) ASC, id ASC
         LIMIT :limit
         """
     )

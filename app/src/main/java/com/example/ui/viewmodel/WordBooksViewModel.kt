@@ -2568,11 +2568,11 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 }
 
                 val activeProfile = studyPlanProfile.value ?: studyPlanRepository.getOrCreateProfile()
-                val newEntries = studyPlanRepository.selectNewWordsForProfile(
+                val newEntries = studyPlanRepository.getTodayTargetNewWords(
                     profile = activeProfile,
-                    targetCount = taskCount * 2
-                ).words.ifEmpty {
-                    database.wordBooksDao().getPlacementVocabularyCandidatesForLevel(userLevel, limit = taskCount * 2)
+                    targetCount = taskCount
+                ).ifEmpty {
+                    database.wordBooksDao().getPlacementVocabularyCandidatesForLevel(userLevel, limit = taskCount)
                 }
 
                 val allProgress = database.wordBooksDao().getAllWordProgressList().associateBy { it.cardKey }
