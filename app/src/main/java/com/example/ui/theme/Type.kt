@@ -5,6 +5,7 @@ import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontLoadingStrategy
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextDirection
@@ -27,23 +28,23 @@ private val DeterministicLineHeightStyle = LineHeightStyle(
 )
 
 val InterFontFamily = FontFamily(
-    Font(R.font.inter, FontWeight.Normal),
-    Font(R.font.inter, FontWeight.Medium),
-    Font(R.font.inter, FontWeight.SemiBold),
-    Font(R.font.inter, FontWeight.Bold)
+    Font(R.font.inter, FontWeight.Normal, loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(R.font.inter, FontWeight.Medium, loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(R.font.inter, FontWeight.SemiBold, loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(R.font.inter, FontWeight.Bold, loadingStrategy = FontLoadingStrategy.OptionalLocal)
 )
 
 val CairoFontFamily = FontFamily(
-    Font(R.font.cairo, FontWeight.Normal),
-    Font(R.font.cairo, FontWeight.Medium),
-    Font(R.font.cairo, FontWeight.SemiBold),
-    Font(R.font.cairo, FontWeight.Bold)
+    Font(R.font.cairo, FontWeight.Normal, loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(R.font.cairo, FontWeight.Medium, loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(R.font.cairo, FontWeight.SemiBold, loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(R.font.cairo, FontWeight.Bold, loadingStrategy = FontLoadingStrategy.OptionalLocal)
 )
 
 val TajawalFontFamily = FontFamily(
-    Font(R.font.tajawal, FontWeight.Normal),
-    Font(R.font.tajawal, FontWeight.Medium),
-    Font(R.font.tajawal, FontWeight.Bold)
+    Font(R.font.tajawal, FontWeight.Normal, loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(R.font.tajawal, FontWeight.Medium, loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(R.font.tajawal, FontWeight.Bold, loadingStrategy = FontLoadingStrategy.OptionalLocal)
 )
 
 // Dedicated Arabic TextStyles with Cairo/Tajawal, ContentOrRtl direction, and locked font padding
