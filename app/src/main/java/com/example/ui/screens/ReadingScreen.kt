@@ -3215,6 +3215,17 @@ fun WordLookupBottomSheet(
                                 )
                             }
 
+                            if (entry.definitionAr.isNotBlank()) {
+                                Spacer(Modifier.height(3.dp))
+                                BidiText(
+                                    text = entry.definitionAr,
+                                    style = ArabicTypography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fillMaxWidth = true,
+                                    textAlign = TextAlign.Right
+                                )
+                            }
+
                             if (entry.examplesEn.isNotBlank()) {
                                 Spacer(Modifier.height(4.dp))
                                 Text(

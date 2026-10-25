@@ -147,6 +147,7 @@ data class PosSenseVariant(
     val arabicMeaning: String,
     val arabicSource: String = "",
     val definitionEn: String,
+    val definitionAr: String = "",
     val noteEn: String,
     val examplesEn: List<String>,
     val examplesAr: List<String> = emptyList(),
@@ -304,7 +305,7 @@ class DataImportRepository(
         const val BATCH_SIZE = 500
         const val CORE_EXPECTED_ROWS = 9862
         const val TOTAL_EXPECTED_ROWS = 27435
-        const val DATA_VERSION = 8
+        const val DATA_VERSION = 9
         const val SAVED_WORDS_DECK_ID = "saved_words"
         const val DUE_TODAY_DECK_ID = "due_today"
         const val DAY_MILLIS = 24L * 60L * 60L * 1000L
@@ -875,6 +876,7 @@ class DataImportRepository(
                 arabicMeaning = entry.arabic.trim(),
                 arabicSource = entry.arabicSource.trim(),
                 definitionEn = entry.definitionEn.trim(),
+                definitionAr = entry.definitionAr.trim(),
                 noteEn = entry.noteEn.trim(),
                 examplesEn = entry.examplesEn
                     .split("|")
@@ -1515,6 +1517,7 @@ class DataImportRepository(
             level = raw.level,
             effectiveLevel = effectiveLevel,
             definitionEn = raw.definitionEn,
+            definitionAr = raw.definitionAr,
             noteEn = raw.noteEn,
             examplesEn = raw.examplesEn,
             examplesAr = raw.examplesAr,

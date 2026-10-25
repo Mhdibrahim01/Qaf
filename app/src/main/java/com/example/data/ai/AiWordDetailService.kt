@@ -190,6 +190,7 @@ class AiWordDetailService(
                       "pos": "adv.",
                       "arabic": ["سياسياً", "من الناحية السياسية"],
                       "definition_en": "in a way that relates to politics",
+                      "definition_ar": "بطريقة تتعلق بالسياسة أو الشؤون السياسية",
                       "example": {
                         "en": "The decision was politically motivated.",
                         "ar": "كان القرار مدفوعاً سياسياً."
