@@ -111,8 +111,10 @@ val EmeraldMasteredBorderStroke: BorderStroke
  */
 object WordBooksDesignTokens {
     const val CANONICAL_EMULATOR_WIDTH_DP = 411f
-    const val MIN_NORMALIZED_WIDTH_DP = 392f
+    const val MIN_NORMALIZED_WIDTH_DP = CANONICAL_EMULATOR_WIDTH_DP
     const val LOCKED_FONT_SCALE = 1.0f
+    const val MIN_ACCESSIBLE_FONT_SCALE = 0.90f
+    const val MAX_ACCESSIBLE_FONT_SCALE = 1.30f
 
     val CompactActionButtonPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
     val StandardCardPadding = PaddingValues(16.dp)
@@ -159,14 +161,21 @@ fun WordBooksTheme(
     }
 
     // Single Source of Truth Density & Font Scale Normalizer:
-    // 1. Locks fontScale = 1.0f so OEM font size settings (1.15x - 1.35x) never break single-line buttons or badges.
-    // 2. Normalizes horizontal density when a physical device's Display Zoom shrinks screenWidthDp below 392dp.
+    // 1. Locks fontScale to 1.0f so system "Large/Huge Font" settings do not overflow single-line badges or compact buttons.
+    // 2. Normalizes horizontal density on any handset narrower than 411dp (e.g., 360dp, 384dp, 392dp, 393dp)
+    //    so physical phones render with the exact 411dp viewport proportions of the AI Studio Emulator.
     val configuration = LocalConfiguration.current
     val baseDensity = LocalDensity.current
-    val normalizedDensity = remember(configuration.screenWidthDp, baseDensity.density) {
-        val rawWidthDp = configuration.screenWidthDp.toFloat()
-        val widthScaleFactor = if (rawWidthDp in 240f..<WordBooksDesignTokens.MIN_NORMALIZED_WIDTH_DP) {
-            rawWidthDp / WordBooksDesignTokens.MIN_NORMALIZED_WIDTH_DP
+    val displayWidthPx = view.resources.displayMetrics.widthPixels
+    val normalizedDensity = remember(configuration.screenWidthDp, displayWidthPx, baseDensity.density) {
+        val exactWidthDp = if (displayWidthPx > 0 && baseDensity.density > 0f) {
+            displayWidthPx.toFloat() / baseDensity.density
+        } else {
+            configuration.screenWidthDp.toFloat()
+        }
+        val rawWidthDp = if (exactWidthDp > 0f) exactWidthDp else configuration.screenWidthDp.toFloat()
+        val widthScaleFactor = if (rawWidthDp in 240f..<WordBooksDesignTokens.CANONICAL_EMULATOR_WIDTH_DP) {
+            rawWidthDp / WordBooksDesignTokens.CANONICAL_EMULATOR_WIDTH_DP
         } else {
             1.0f
         }

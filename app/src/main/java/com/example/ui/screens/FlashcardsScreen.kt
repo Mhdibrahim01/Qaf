@@ -149,9 +149,13 @@ import com.example.ui.theme.GoldAccentDim
 import com.example.ui.theme.OnGoldDark
 import com.example.ui.theme.SurfaceDark
 import com.example.ui.theme.SurfaceElevatedDark
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.TextSubtle
 import kotlinx.coroutines.delay
 import java.text.NumberFormat
 import java.util.Locale
@@ -1085,12 +1089,27 @@ private fun FlipFlashcardItem(
     onOpenDetailedDefinition: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val isReduceMotionEnabled = remember(context) {
+        try {
+            android.provider.Settings.Global.getFloat(
+                context.contentResolver,
+                android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,
+                1f
+            ) == 0f
+        } catch (_: Exception) {
+            false
+        }
+    }
     val rotation by animateFloatAsState(
         targetValue = if (isFlipped) 180f else 0f,
-        animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
+        animationSpec = tween(
+            durationMillis = if (isReduceMotionEnabled) 0 else 420,
+            easing = FastOutSlowInEasing
+        ),
         label = "flashcard3dFlip"
     )
-    val showingBack = rotation > 90f
+    val showingBack = if (isReduceMotionEnabled) isFlipped else rotation > 90f
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -1224,7 +1243,7 @@ private fun FlashcardFrontFace(
                         modifier = Modifier
                             .weight(1f, fill = false)
                             .clip(RoundedCornerShape(8.dp))
-                            .clickable(onClick = onPlayAudio)
+                            .clickable(role = Role.Button, onClick = onPlayAudio)
                             .testTag("flashcard_ipa_speaker_chip"),
                         color = if (isPlayingAudio) GoldAccent else GoldAccentDim,
                         shape = RoundedCornerShape(8.dp),
@@ -1275,7 +1294,7 @@ private fun FlashcardFrontFace(
                     modifier = Modifier
                         .requiredSize(34.dp)
                         .clip(CircleShape)
-                        .clickable(onClick = onToggleFavorite)
+                        .clickable(role = Role.Button, onClick = onToggleFavorite)
                         .testTag("flashcard_favorite_button")
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -1327,12 +1346,14 @@ private fun FlashcardFrontFace(
                         color = SurfaceElevatedDark,
                         shape = RoundedCornerShape(10.dp),
                         border = BorderStroke(1.dp, BorderDark),
-                        modifier = Modifier.testTag("flashcard_no_arabic_label")
+                        modifier = Modifier
+                            .clickable(role = Role.Button, onClick = onOpenDetailedDefinition)
+                            .testTag("flashcard_no_arabic_label")
                     ) {
                         Text(
-                            text = "No Arabic yet",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = TextMuted,
+                            text = "لا توجد ترجمة محفوظة بعد • اضغط تفاصيل الكلمة (Word Details)",
+                            style = ArabicTypography.labelSmall,
+                            color = TextSecondary,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         )
                     }
@@ -1502,7 +1523,7 @@ private fun FlashcardBackFace(
                     modifier = Modifier
                         .weight(1f, fill = false)
                         .clip(RoundedCornerShape(8.dp))
-                        .clickable(onClick = onPlayAudio)
+                        .clickable(role = Role.Button, onClick = onPlayAudio)
                         .testTag("flashcard_ipa_speaker_chip"),
                     color = if (isPlayingAudio) GoldAccent else GoldAccentDim,
                     shape = RoundedCornerShape(8.dp),
@@ -1553,7 +1574,7 @@ private fun FlashcardBackFace(
                     modifier = Modifier
                         .requiredSize(34.dp)
                         .clip(CircleShape)
-                        .clickable(onClick = onToggleFavorite)
+                        .clickable(role = Role.Button, onClick = onToggleFavorite)
                         .testTag("flashcard_favorite_button")
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -1664,15 +1685,17 @@ private fun FlashcardBackFace(
                 }
             } else {
                 Surface(
-                    modifier = Modifier.testTag("flashcard_no_arabic_label"),
+                    modifier = Modifier
+                        .clickable(role = Role.Button, onClick = onOpenDetailedDefinition)
+                        .testTag("flashcard_no_arabic_label"),
                     color = SurfaceElevatedDark,
                     shape = RoundedCornerShape(14.dp),
                     border = BorderStroke(1.dp, BorderDark)
                 ) {
                     Text(
-                        text = "No Arabic yet",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextMuted,
+                        text = "لا توجد ترجمة محفوظة بعد • اضغط تفاصيل الكلمة (Word Details)",
+                        style = ArabicTypography.labelSmall,
+                        color = TextSecondary,
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
                     )
                 }
@@ -1719,7 +1742,7 @@ private fun FlashcardBackFace(
                                 textDirection = androidx.compose.ui.text.style.TextDirection.Rtl,
                                 textAlign = TextAlign.Right
                             ),
-                            color = Color(0xFFD1D5DB),
+                            color = TextSecondary,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier
@@ -1791,7 +1814,7 @@ private fun FlashcardBackFace(
                                             textDirection = androidx.compose.ui.text.style.TextDirection.Rtl,
                                             textAlign = TextAlign.Right
                                         ),
-                                        color = Color(0xFF9CA3AF),
+                                        color = TextSubtle,
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis,
                                         modifier = Modifier.fillMaxWidth()
@@ -1835,7 +1858,7 @@ private fun FlashcardBottomActionsBar(
                     .weight(1f)
                     .height(38.dp)
                     .clip(RoundedCornerShape(11.dp))
-                    .clickable(onClick = onToggleMastered)
+                    .clickable(role = Role.Button, onClick = onToggleMastered)
                     .testTag("flashcard_mastered_button"),
                 color = if (isMastered) EmeraldAccent.copy(alpha = 0.2f) else SurfaceDark,
                 shape = RoundedCornerShape(11.dp),
@@ -1877,7 +1900,7 @@ private fun FlashcardBottomActionsBar(
                     .weight(1f)
                     .height(38.dp)
                     .clip(RoundedCornerShape(11.dp))
-                    .clickable(onClick = onOpenDetailedDefinition)
+                    .clickable(role = Role.Button, onClick = onOpenDetailedDefinition)
                     .testTag("flashcard_ai_definition_button"),
                 color = SurfaceDark,
                 shape = RoundedCornerShape(11.dp),
@@ -1999,7 +2022,9 @@ private fun FlashcardSettingsDialog(
                     )
                     IconButton(
                         onClick = onDismiss,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .size(32.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,

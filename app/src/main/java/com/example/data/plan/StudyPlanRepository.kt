@@ -740,7 +740,7 @@ class StudyPlanRepository(
                 targetCount = candidateWords.size.coerceAtLeast(1),
                 completedCount = 0,
                 isCompleted = false,
-                linkedRoute = "word_books",
+                linkedRoute = "new_words",
                 linkedId = "$primaryDeck|${profile.level}",
                 explanationAr = if (isAdjustedAfterMissedDay) {
                     "أهلاً بعودتك! خففنا كلمات اليوم لتستأنف التعلم بسلاسة وبدون أي ضغط."

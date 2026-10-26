@@ -8,8 +8,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -50,6 +52,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -318,7 +321,9 @@ fun OnboardingGoalAndTimeStep(
                 ) {
                     OnboardingStep3Defaults.MINUTES_OPTIONS.chunked(2).forEach { rowItems ->
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Min),
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             rowItems.forEach { minOpt ->
@@ -327,7 +332,9 @@ fun OnboardingGoalAndTimeStep(
                                     option = minOpt,
                                     isSelected = isSelected,
                                     onClick = { onSelectMinutesPerDay(minOpt.minutes) },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight()
                                 )
                             }
                         }
@@ -347,7 +354,9 @@ fun OnboardingGoalAndTimeStep(
                 )
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -356,6 +365,7 @@ fun OnboardingGoalAndTimeStep(
                         Surface(
                             modifier = Modifier
                                 .weight(1f)
+                                .fillMaxHeight()
                                 .heightIn(min = 54.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .clickable(
@@ -372,7 +382,7 @@ fun OnboardingGoalAndTimeStep(
                         ) {
                             Column(
                                 modifier = Modifier
-                                    .fillMaxWidth()
+                                    .fillMaxSize()
                                     .padding(vertical = 10.dp, horizontal = 4.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
@@ -383,7 +393,8 @@ fun OnboardingGoalAndTimeStep(
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.ExtraBold
                                     ),
-                                    color = if (isSelected) GoldAccent else TextPrimary
+                                    color = if (isSelected) GoldAccent else TextPrimary,
+                                    maxLines = 1
                                 )
                                 Text(
                                     text = "days/wk",
@@ -391,7 +402,8 @@ fun OnboardingGoalAndTimeStep(
                                         fontSize = 10.5.sp,
                                         fontWeight = FontWeight.Medium
                                     ),
-                                    color = if (isSelected) GoldAccent.copy(alpha = 0.85f) else TextSecondary
+                                    color = if (isSelected) GoldAccent.copy(alpha = 0.85f) else TextSecondary,
+                                    maxLines = 1
                                 )
                             }
                         }
@@ -452,7 +464,9 @@ fun OnboardingGoalAndTimeStep(
                 ) {
                     AdaptiveConfig.MACRO_TOPICS.chunked(2).forEach { rowTopics ->
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Min),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             rowTopics.forEach { (topicId, labelEn, labelAr) ->
@@ -460,6 +474,7 @@ fun OnboardingGoalAndTimeStep(
                                 Surface(
                                     modifier = Modifier
                                         .weight(1f)
+                                        .fillMaxHeight()
                                         .heightIn(min = 54.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .clickable(
@@ -486,24 +501,28 @@ fun OnboardingGoalAndTimeStep(
                                 ) {
                                     Column(
                                         modifier = Modifier
-                                            .fillMaxWidth()
+                                            .fillMaxSize()
                                             .padding(horizontal = 12.dp, vertical = 10.dp),
                                         horizontalAlignment = Alignment.Start,
-                                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                                        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)
                                     ) {
                                         Text(
                                             text = labelEn,
                                             style = MaterialTheme.typography.labelMedium.copy(
-                                                fontSize = 13.5.sp,
+                                                fontSize = 13.sp,
                                                 fontWeight = FontWeight.Bold
                                             ),
-                                            color = if (isTopicSelected) GoldAccent else TextPrimary
+                                            color = if (isTopicSelected) GoldAccent else TextPrimary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                                             Text(
                                                 text = labelAr,
                                                 style = ArabicTypography.labelSmall.copy(fontSize = 12.sp),
-                                                color = if (isTopicSelected) GoldAccent.copy(alpha = 0.9f) else TextSecondary
+                                                color = if (isTopicSelected) GoldAccent.copy(alpha = 0.9f) else TextSecondary,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                         }
                                     }
@@ -774,9 +793,9 @@ private fun MinutesOptionCard(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .padding(horizontal = 13.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(5.dp)
+            verticalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterVertically)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -789,7 +808,9 @@ private fun MinutesOptionCard(
                         fontSize = 15.sp,
                         fontWeight = FontWeight.ExtraBold
                     ),
-                    color = if (isSelected) GoldAccent else TextPrimary
+                    color = if (isSelected) GoldAccent else TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 if (option.isRecommended) {
                     Surface(
@@ -803,6 +824,7 @@ private fun MinutesOptionCard(
                                 fontWeight = FontWeight.Bold
                             ),
                             color = GoldAccent,
+                            maxLines = 1,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -817,18 +839,23 @@ private fun MinutesOptionCard(
                     Text(
                         text = "${option.newWordsPerDay} new words/day",
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
-                        color = TextSecondary
+                        color = TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = "•",
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
-                        color = TextMuted
+                        color = TextMuted,
+                        maxLines = 1
                     )
                     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                         Text(
                             text = option.wordsAr,
                             style = ArabicTypography.labelSmall.copy(fontSize = 11.5.sp),
-                            color = TextSecondary
+                            color = TextSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }

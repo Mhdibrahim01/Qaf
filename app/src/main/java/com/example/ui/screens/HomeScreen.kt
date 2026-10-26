@@ -296,7 +296,8 @@ fun HomeScreen(
                     }
                 }
             } else {
-                // Single-column phone layout matching prototype order
+                // Single-column phone layout: Primary Daily Plan & Due Reviews first (above the fold on 360dp),
+                // followed by CEFR Mastery & Collapsible Vocabulary Lifecycle Stages.
                 TodayPlanCard(
                     todayChecklist = todayChecklist,
                     onOpenPlanScreen = onOpenPlanScreen,
@@ -307,6 +308,15 @@ fun HomeScreen(
                         showNewWordsCompletedDialog = true
                     },
                     newWordsLearnedTodayCount = newWordsLearnedTodayCount
+                )
+
+                ReviewDueSection(
+                    reviewDueNowCount = reviewDueNowCount,
+                    waitingLaterTodayCount = waitingLaterTodayCount,
+                    nextWaitingDueTimestamp = nextWaitingDueTimestamp,
+                    continueDeckId = continueDeckId,
+                    onOpenFlashcardsForDeck = onOpenFlashcardsForDeck,
+                    onStartEarlyReview = onStartEarlyReview
                 )
 
                 CefrAndLifecycleCard(
@@ -324,15 +334,6 @@ fun HomeScreen(
                         conqueredWords = learnerModelSnapshot.conqueredWords
                     )
                 }
-
-                ReviewDueSection(
-                    reviewDueNowCount = reviewDueNowCount,
-                    waitingLaterTodayCount = waitingLaterTodayCount,
-                    nextWaitingDueTimestamp = nextWaitingDueTimestamp,
-                    continueDeckId = continueDeckId,
-                    onOpenFlashcardsForDeck = onOpenFlashcardsForDeck,
-                    onStartEarlyReview = onStartEarlyReview
-                )
 
                 ContinueLearningSection(
                     continueDeck = continueDeck,
@@ -1024,7 +1025,7 @@ private fun TaskCheckRow(
                             color = if (task.isCompleted) EmeraldAccent else BorderMedium,
                             shape = RoundedCornerShape(6.dp)
                         )
-                        .clickable { onToggleComplete() }
+                        .clickable(role = Role.Checkbox) { onToggleComplete() }
                         .testTag("home_task_checkbox_${task.id}"),
                     contentAlignment = Alignment.Center
                 ) {
@@ -1098,14 +1099,14 @@ private fun TaskCheckRow(
                         }
                     }
 
-                    // Line 2: Arabic Subtitle with explicit RTL direction and right alignment
+                    // Line 2: Arabic Subtitle with RTL direction aligned beneath the English title
                     if (task.titleAr.isNotBlank()) {
                         BidiText(
                             text = task.titleAr,
                             style = ArabicTypography.labelSmall.copy(fontSize = 12.sp),
                             color = if (task.isCompleted) TextMuted else TextSecondary,
                             fillMaxWidth = true,
-                            textAlign = TextAlign.Right
+                            textAlign = TextAlign.Left
                         )
                     }
 
@@ -1220,10 +1221,11 @@ private fun ReviewDueSection(
                 val isWaitingQueueState = !hasDueNow && hasWaitingLater
                 val displayedCount = if (isWaitingQueueState) waitingLaterTodayCount else reviewDueNowCount
                 val displayedLabel = if (isWaitingQueueState) "in queue" else "due now"
+                val displayedLabelAr = if (isWaitingQueueState) "في الانتظار" else "مستحقة الآن"
 
                 // Due Now / In Queue Count Block
                 Column(
-                    modifier = Modifier.widthIn(min = 56.dp),
+                    modifier = Modifier.widthIn(min = 60.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
@@ -1246,6 +1248,13 @@ private fun ReviewDueSection(
                             fontSize = 11.sp
                         ),
                         color = if (isWaitingQueueState) ProtoGold.copy(alpha = 0.75f) else TextSecondary
+                    )
+                    Text(
+                        text = displayedLabelAr,
+                        style = ArabicTypography.labelSmall.copy(
+                            fontSize = 10.sp
+                        ),
+                        color = if (isWaitingQueueState) ProtoGold.copy(alpha = 0.70f) else TextMuted
                     )
                 }
 
@@ -1372,7 +1381,7 @@ private fun ReviewDueSection(
                             .testTag("home_review_due_button")
                     ) {
                         Text(
-                            text = "Practice more cards →",
+                            text = "Practice more cards • تدريب إضافي →",
                             style = MaterialTheme.typography.labelLarge.copy(
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 13.5.sp,
@@ -1404,10 +1413,12 @@ private fun ContinueLearningSection(
 ) {
     val activeDeck = continueDeck
 
-    val formattedTotalCards = try {
-        NumberFormat.getNumberInstance(Locale.US).format(continueTotalCards)
-    } catch (_: Exception) {
-        continueTotalCards.toString()
+    val formattedTotalCards = remember(continueTotalCards) {
+        try {
+            NumberFormat.getNumberInstance(Locale.US).format(continueTotalCards)
+        } catch (_: Exception) {
+            continueTotalCards.toString()
+        }
     }
 
     val (accentColor, accentBg) = when (activeDeck?.id) {

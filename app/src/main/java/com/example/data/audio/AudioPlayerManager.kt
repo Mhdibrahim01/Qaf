@@ -167,6 +167,30 @@ class AudioPlayerManager(context: Context) {
     private val _currentlyPlayingIsGb = MutableStateFlow(false)
     val currentlyPlayingIsGb: StateFlow<Boolean> = _currentlyPlayingIsGb.asStateFlow()
 
+    private val _audioErrorMessage = MutableStateFlow<String?>(null)
+    val audioErrorMessage: StateFlow<String?> = _audioErrorMessage.asStateFlow()
+
+    private var lastErrorToastTimestampMs: Long = 0L
+
+    fun clearAudioError() {
+        _audioErrorMessage.value = null
+    }
+
+    private fun reportMissingTtsEngineIfUserRequested(hadPendingRequest: Boolean) {
+        if (!hadPendingRequest) return
+        val bilingualMessage = "النطق الصوتي غير متاح: يرجى تفعيل محرك Google للنطق (TTS) من إعدادات الجهاز • English TTS voice unavailable"
+        _audioErrorMessage.value = bilingualMessage
+        val now = System.currentTimeMillis()
+        if (now - lastErrorToastTimestampMs > 6_000L) {
+            lastErrorToastTimestampMs = now
+            mainHandler.post {
+                try {
+                    android.widget.Toast.makeText(appContext, bilingualMessage, android.widget.Toast.LENGTH_LONG).show()
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
     private var exoPlayer: ExoPlayer? = null
     private var tts: TextToSpeech? = null
     private var isTtsReady = false
@@ -213,7 +237,7 @@ class AudioPlayerManager(context: Context) {
             .map { voice -> voice to scoreVoiceForLocale(voice, locale) }
             .filter { (_, score) -> score >= 0 }
             .maxByOrNull { (_, score) -> score }
-            ?.first
+            .let { it?.first }
     }
 
     private fun applyBestVoiceAndLocale(locale: Locale) {
@@ -305,6 +329,7 @@ class AudioPlayerManager(context: Context) {
                     pendingTtsText = null
                     pendingSpeechRate = null
                     if (!pending.isNullOrBlank() && isTtsReady) {
+                        _audioErrorMessage.value = null
                         applyBestVoiceAndLocale(targetLocale)
                         tts?.setSpeechRate(rateToUse)
                         tts?.speak(
@@ -320,6 +345,7 @@ class AudioPlayerManager(context: Context) {
                         tts = null
                         _currentlyPlayingWord.value = null
                         _isPlayingSlow.value = false
+                        reportMissingTtsEngineIfUserRequested(!pending.isNullOrBlank())
                     }
                 } else if (shouldUseGoogle) {
                     // Gracefully fallback to system default TTS engine scheduled asynchronously
@@ -332,6 +358,7 @@ class AudioPlayerManager(context: Context) {
                         ensureTtsInitialized(useGoogleEngine = false)
                     }
                 } else {
+                    val hadPending = !pendingTtsText.isNullOrBlank()
                     pendingTtsText = null
                     pendingSpeechRate = null
                     _currentlyPlayingWord.value = null
@@ -340,6 +367,7 @@ class AudioPlayerManager(context: Context) {
                         tts?.shutdown()
                     } catch (_: Exception) {}
                     tts = null
+                    reportMissingTtsEngineIfUserRequested(hadPending)
                 }
             }
 
@@ -359,6 +387,7 @@ class AudioPlayerManager(context: Context) {
                     ensureTtsInitialized(useGoogleEngine = false)
                 }
             } else {
+                val hadPending = !pendingTtsText.isNullOrBlank()
                 pendingTtsText = null
                 pendingSpeechRate = null
                 _currentlyPlayingWord.value = null
@@ -367,6 +396,7 @@ class AudioPlayerManager(context: Context) {
                     tts?.shutdown()
                 } catch (_: Exception) {}
                 tts = null
+                reportMissingTtsEngineIfUserRequested(hadPending)
             }
         }
     }

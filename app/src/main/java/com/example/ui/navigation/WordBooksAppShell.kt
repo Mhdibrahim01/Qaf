@@ -55,9 +55,11 @@ import com.example.ui.screens.QuizDialog
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -208,7 +210,10 @@ fun WordBooksAppShell(
         else -> AppRoute.Home
     }
 
+    var taskOriginRoute by remember { mutableStateOf<AppRoute?>(null) }
+
     val onNavigateToDestination: (BottomNavDestination) -> Unit = { destination ->
+        taskOriginRoute = null
         if (destination.route == AppRoute.WordBooks) {
             wordBooksViewModel.selectDeck(null)
         }
@@ -238,10 +243,25 @@ fun WordBooksAppShell(
 
     val canNavigateBack = currentRoute !in topLevelDestinations ||
         (currentRoute == AppRoute.Grammar && selectedGrammarLesson != null) ||
-        (currentRoute == AppRoute.Reading && selectedReadingText != null)
+        (currentRoute == AppRoute.Reading && selectedReadingText != null) ||
+        (taskOriginRoute != null && currentRoute != taskOriginRoute)
 
     val onNavigateBack: () -> Unit = {
+        val origin = taskOriginRoute
         when {
+            origin != null && currentRoute != origin -> {
+                if (currentRoute == AppRoute.Grammar && selectedGrammarLesson != null) {
+                    wordBooksViewModel.selectGrammarLesson(null)
+                }
+                if (currentRoute == AppRoute.Reading && selectedReadingText != null) {
+                    wordBooksViewModel.stopAudio()
+                    wordBooksViewModel.selectReadingText(null)
+                }
+                taskOriginRoute = null
+                if (!navController.popBackStack(origin, inclusive = false)) {
+                    navController.navigate(origin) { launchSingleTop = true }
+                }
+            }
             currentRoute == AppRoute.Grammar && selectedGrammarLesson != null -> {
                 wordBooksViewModel.selectGrammarLesson(null)
             }
@@ -450,20 +470,24 @@ fun WordBooksAppShell(
                         onDismissInsight = wordBooksViewModel::dismissAdaptiveInsight,
                         onAcceptLevelUp = wordBooksViewModel::acceptSuggestedLevelUp,
                         onOpenDeck = { deckId ->
+                            taskOriginRoute = AppRoute.Home
                             wordBooksViewModel.selectDeck(deckId.ifBlank { null })
                             navController.navigate(AppRoute.WordBooks) { launchSingleTop = true }
                         },
                         onOpenFlashcardsForDeck = { deckId ->
+                            taskOriginRoute = AppRoute.Home
                             wordBooksViewModel.selectFlashcardDeck(deckId)
                             navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
                         },
                         onOpenPlanScreen = {
+                            taskOriginRoute = AppRoute.Home
                             navController.navigate(AppRoute.Plan) { launchSingleTop = true }
                         },
                         onNavigateToTask = { route, linkedId ->
                             if (route == "quiz") {
                                 wordBooksViewModel.startDailyMiniQuiz()
                             } else {
+                                taskOriginRoute = AppRoute.Home
                                 wordBooksViewModel.preparePlanTaskNavigation(route, linkedId)
                                 when (route) {
                                     "flashcards", "new_words" -> navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
@@ -479,6 +503,7 @@ fun WordBooksAppShell(
                         onLoadStageWords = wordBooksViewModel::getWordsForLifecycleStage,
                         onSpeakWord = { word -> wordBooksViewModel.playWordVoiceAudio(word) },
                         onOpenDictionaryForStage = { stageKey ->
+                            taskOriginRoute = AppRoute.Home
                             val filterStatus = when (stageKey.lowercase()) {
                                 "learning", "familiar" -> "learning"
                                 "mature", "conquered" -> "mastered"
@@ -491,15 +516,18 @@ fun WordBooksAppShell(
                             if (stageKey.equals("new", ignoreCase = true)) {
                                 wordBooksViewModel.startDailyMiniQuiz()
                             } else {
+                                taskOriginRoute = AppRoute.Home
                                 wordBooksViewModel.selectFlashcardDeck(DataImportRepository.DUE_TODAY_DECK_ID)
                                 navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
                             }
                         },
                         onStartEarlyReview = {
+                            taskOriginRoute = AppRoute.Home
                             wordBooksViewModel.startEarlyReviewSession()
                             navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
                         },
                         onReviewTodayLearnedWords = {
+                            taskOriginRoute = AppRoute.Home
                             wordBooksViewModel.startReviewTodayLearnedWordsSession()
                             navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
                         },
@@ -611,6 +639,9 @@ fun WordBooksAppShell(
                     val nextWaitingDueTimestamp by wordBooksViewModel.nextWaitingDueTimestamp.collectAsStateWithLifecycle()
                     val isFlashcardSessionCompleted by wordBooksViewModel.isFlashcardSessionCompleted.collectAsStateWithLifecycle()
                     val flashcardSessionSummary by wordBooksViewModel.flashcardSessionSummary.collectAsStateWithLifecycle()
+                    BackHandler(enabled = taskOriginRoute != null && detailedCard == null) {
+                        onNavigateBack()
+                    }
                     FlashcardsScreen(
                         decks = decks,
                         activeDeckId = flashcardDeckId,
@@ -639,7 +670,11 @@ fun WordBooksAppShell(
                         },
                         onNavigateHome = {
                             wordBooksViewModel.dismissFlashcardSessionCompletion()
-                            navController.navigate(AppRoute.Home) { launchSingleTop = true }
+                            val targetRoute = taskOriginRoute ?: AppRoute.Home
+                            taskOriginRoute = null
+                            if (!navController.popBackStack(targetRoute, inclusive = false)) {
+                                navController.navigate(targetRoute) { launchSingleTop = true }
+                            }
                         },
                         onIndexChanged = wordBooksViewModel::onFlashcardIndexChanged,
                         onFlipCard = {
@@ -758,7 +793,8 @@ fun WordBooksAppShell(
                         onSyncAssets = { wordBooksViewModel.syncGrammarLessonsFromAssets() },
                         onImportJsonUris = { wordBooksViewModel.importGrammarLessonsFromUris(it) },
                         onImportJsonText = { wordBooksViewModel.importGrammarLessonsFromText(it) },
-                        userLevel = userLevel
+                        userLevel = userLevel,
+                        onBackFromDetail = if (taskOriginRoute != null) onNavigateBack else null
                     )
                 }
                 composable<AppRoute.Reading> {
@@ -853,7 +889,8 @@ fun WordBooksAppShell(
                         onScheduleWordForToday = wordBooksViewModel::scheduleLookedUpWordForToday,
                         storyReadabilityById = learnerModelSnapshot.storyReadabilityById,
                         wordStageMap = learnerModelSnapshot.wordStageByHeadword,
-                        onOpenDetailedDefinition = wordBooksViewModel::openDetailedDefinition
+                        onOpenDetailedDefinition = wordBooksViewModel::openDetailedDefinition,
+                        onBackFromDetail = if (taskOriginRoute != null) onNavigateBack else null
                     )
 
                     if (detailedCard != null) {
@@ -1034,6 +1071,7 @@ fun WordBooksAppShell(
                         onStartDirectDailyQuiz = wordBooksViewModel::startDailyMiniQuiz,
                         onLoadStageWords = wordBooksViewModel::getWordsForLifecycleStage,
                         onOpenDictionaryForStage = { stageKey ->
+                            taskOriginRoute = AppRoute.Plan
                             val filterStatus = when (stageKey.lowercase()) {
                                 "learning", "familiar" -> "learning"
                                 "mature", "conquered" -> "mastered"
@@ -1046,6 +1084,7 @@ fun WordBooksAppShell(
                             if (stageKey.equals("new", ignoreCase = true)) {
                                 wordBooksViewModel.startDailyMiniQuiz()
                             } else {
+                                taskOriginRoute = AppRoute.Plan
                                 wordBooksViewModel.selectFlashcardDeck(DataImportRepository.DUE_TODAY_DECK_ID)
                                 navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
                             }
@@ -1054,6 +1093,7 @@ fun WordBooksAppShell(
                             if (route == "quiz") {
                                 wordBooksViewModel.startDailyMiniQuiz()
                             } else {
+                                taskOriginRoute = AppRoute.Plan
                                 wordBooksViewModel.preparePlanTaskNavigation(route, linkedId)
                                 when (route) {
                                     "flashcards", "new_words" -> navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }

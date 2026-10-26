@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -49,11 +51,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
@@ -195,12 +202,13 @@ fun AdaptiveInsightBannerCard(
             IconButton(
                 onClick = { onDismiss(insight.id) },
                 modifier = Modifier
-                    .size(24.dp)
+                    .minimumInteractiveComponentSize()
+                    .size(28.dp)
                     .testTag("btn_dismiss_insight")
             ) {
                 Icon(
                     imageVector = Icons.Filled.Close,
-                    contentDescription = "Dismiss insight",
+                    contentDescription = "Dismiss insight • إغلاق التنبيه",
                     tint = TextMuted,
                     modifier = Modifier.size(16.dp)
                 )
@@ -311,7 +319,7 @@ fun CefrAndLifecycleCard(
             ) {
                 Box(modifier = Modifier.weight(1f)) {
                     ReadinessPillarMetric(
-                        label = "Vocab (50%)",
+                        label = "${readiness.currentLevel} Vocab (50%)",
                         percent = readiness.vocabScorePercent,
                         detail = "${readiness.vocabFamiliarOrMatureCount}/${readiness.vocabTargetCount}",
                         color = GoldAccent
@@ -359,7 +367,8 @@ fun CefrAndLifecycleCard(
 
             HorizontalDivider(color = BorderSubtle, thickness = 1.dp)
 
-            // Bottom Part: Vocabulary Lifecycle Stages (2-Column x 3-Row Grid)
+            // Bottom Part: Vocabulary Lifecycle Stages (2-Column x 3-Row Grid, Collapsible for 360dp ergonomics)
+            var isLifecycleExpanded by remember { mutableStateOf(true) }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -367,127 +376,175 @@ fun CefrAndLifecycleCard(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable(
+                            role = Role.Button,
+                            onClick = { isLifecycleExpanded = !isLifecycleExpanded }
+                        )
+                        .padding(vertical = 2.dp)
+                        .testTag("btn_toggle_lifecycle_stages"),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Vocabulary Lifecycle Stages",
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 12.5.sp
-                        ),
-                        color = TextPrimary,
+                    Column(
                         modifier = Modifier
                             .weight(1f, fill = false)
-                            .padding(end = 8.dp)
-                    )
-                    Text(
-                        text = "${funnel.activeStudiedCount} active • 🏆 ${funnel.conqueredCount} conquered",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 11.sp
-                        ),
-                        color = GoldAccent,
-                        maxLines = 1
-                    )
+                            .padding(end = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(1.dp)
+                    ) {
+                        Text(
+                            text = "Vocabulary Lifecycle Stages",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.5.sp
+                            ),
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "All Selected Books • كل الكتب المختارة",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
+                            color = TextSecondary
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "${funnel.activeStudiedCount} active • 🏆 ${funnel.conqueredCount} conquered",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 11.sp
+                            ),
+                            color = GoldAccent,
+                            maxLines = 1
+                        )
+                        Icon(
+                            imageVector = if (isLifecycleExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                            contentDescription = if (isLifecycleExpanded) "Collapse vocabulary lifecycle stages" else "Expand vocabulary lifecycle stages",
+                            tint = TextSecondary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
 
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Row 1: New & Seen
-                    Row(
+                AnimatedVisibility(visible = isLifecycleExpanded) {
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        FunnelStageChip(
-                            labelEn = "New",
-                            labelAr = "جديدة",
-                            count = funnel.newCount,
-                            color = Color(0xFF6B7280),
-                            testTag = "funnel_stage_new",
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                selectedStageKey = "new"
-                                showStageWordsSheet = true
-                            }
-                        )
-                        FunnelStageChip(
-                            labelEn = "Seen",
-                            labelAr = "مقروءة",
-                            count = funnel.seenCount,
-                            color = Color(0xFF38BDF8),
-                            testTag = "funnel_stage_seen",
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                selectedStageKey = "seen"
-                                showStageWordsSheet = true
-                            }
-                        )
-                    }
+                        // Row 1: New & Seen
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Min),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FunnelStageChip(
+                                labelEn = "New",
+                                labelAr = "جديدة",
+                                count = funnel.newCount,
+                                color = TextMuted,
+                                testTag = "funnel_stage_new",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
+                                onClick = {
+                                    selectedStageKey = "new"
+                                    showStageWordsSheet = true
+                                }
+                            )
+                            FunnelStageChip(
+                                labelEn = "Seen",
+                                labelAr = "مقروءة",
+                                count = funnel.seenCount,
+                                color = SkyAccent,
+                                testTag = "funnel_stage_seen",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
+                                onClick = {
+                                    selectedStageKey = "seen"
+                                    showStageWordsSheet = true
+                                }
+                            )
+                        }
 
-                    // Row 2: Learning & Familiar
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        FunnelStageChip(
-                            labelEn = "Learning",
-                            labelAr = "قيد التعلم",
-                            count = funnel.learningCount,
-                            color = CoralAccent,
-                            testTag = "funnel_stage_learning",
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                selectedStageKey = "learning"
-                                showStageWordsSheet = true
-                            }
-                        )
-                        FunnelStageChip(
-                            labelEn = "Familiar",
-                            labelAr = "مألوفة",
-                            count = funnel.familiarCount,
-                            color = Color(0xFFF5B82E),
-                            testTag = "funnel_stage_familiar",
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                selectedStageKey = "familiar"
-                                showStageWordsSheet = true
-                            }
-                        )
-                    }
+                        // Row 2: Learning & Familiar
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Min),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FunnelStageChip(
+                                labelEn = "Learning",
+                                labelAr = "قيد التعلم",
+                                count = funnel.learningCount,
+                                color = CoralAccent,
+                                testTag = "funnel_stage_learning",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
+                                onClick = {
+                                    selectedStageKey = "learning"
+                                    showStageWordsSheet = true
+                                }
+                            )
+                            FunnelStageChip(
+                                labelEn = "Familiar",
+                                labelAr = "مألوفة",
+                                count = funnel.familiarCount,
+                                color = GoldAccent,
+                                testTag = "funnel_stage_familiar",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
+                                onClick = {
+                                    selectedStageKey = "familiar"
+                                    showStageWordsSheet = true
+                                }
+                            )
+                        }
 
-                    // Row 3: Mature & Conquered
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        FunnelStageChip(
-                            labelEn = "Mature",
-                            labelAr = "متقنة",
-                            count = funnel.matureCount,
-                            color = EmeraldAccent,
-                            testTag = "funnel_stage_mature",
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                selectedStageKey = "mature"
-                                showStageWordsSheet = true
-                            }
-                        )
-                        FunnelStageChip(
-                            labelEn = "Conquered",
-                            labelAr = "محسومة",
-                            count = funnel.conqueredCount,
-                            color = Color(0xFFA855F7),
-                            testTag = "funnel_stage_conquered",
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                selectedStageKey = "conquered"
-                                showStageWordsSheet = true
-                            }
-                        )
+                        // Row 3: Mature & Conquered
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Min),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FunnelStageChip(
+                                labelEn = "Mature",
+                                labelAr = "متقنة",
+                                count = funnel.matureCount,
+                                color = EmeraldAccent,
+                                testTag = "funnel_stage_mature",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
+                                onClick = {
+                                    selectedStageKey = "mature"
+                                    showStageWordsSheet = true
+                                }
+                            )
+                            FunnelStageChip(
+                                labelEn = "Conquered",
+                                labelAr = "محسومة",
+                                count = funnel.conqueredCount,
+                                color = VioletAccent,
+                                testTag = "funnel_stage_conquered",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
+                                onClick = {
+                                    selectedStageKey = "conquered"
+                                    showStageWordsSheet = true
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -762,7 +819,9 @@ fun WordLifecycleFunnelCard(
             ) {
                 // Row 1: New & Seen
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     FunnelStageChip(
@@ -771,7 +830,9 @@ fun WordLifecycleFunnelCard(
                         count = funnel.newCount,
                         color = TextMuted,
                         testTag = "funnel_stage_new",
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
                         onClick = {
                             selectedStageKey = "new"
                             showStageWordsSheet = true
@@ -783,7 +844,9 @@ fun WordLifecycleFunnelCard(
                         count = funnel.seenCount,
                         color = SkyAccent,
                         testTag = "funnel_stage_seen",
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
                         onClick = {
                             selectedStageKey = "seen"
                             showStageWordsSheet = true
@@ -793,7 +856,9 @@ fun WordLifecycleFunnelCard(
 
                 // Row 2: Learning & Familiar
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     FunnelStageChip(
@@ -802,7 +867,9 @@ fun WordLifecycleFunnelCard(
                         count = funnel.learningCount,
                         color = CoralAccent,
                         testTag = "funnel_stage_learning",
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
                         onClick = {
                             selectedStageKey = "learning"
                             showStageWordsSheet = true
@@ -814,7 +881,9 @@ fun WordLifecycleFunnelCard(
                         count = funnel.familiarCount,
                         color = GoldAccent,
                         testTag = "funnel_stage_familiar",
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
                         onClick = {
                             selectedStageKey = "familiar"
                             showStageWordsSheet = true
@@ -824,7 +893,9 @@ fun WordLifecycleFunnelCard(
 
                 // Row 3: Mature & Conquered
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     FunnelStageChip(
@@ -833,7 +904,9 @@ fun WordLifecycleFunnelCard(
                         count = funnel.matureCount,
                         color = EmeraldAccent,
                         testTag = "funnel_stage_mature",
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
                         onClick = {
                             selectedStageKey = "mature"
                             showStageWordsSheet = true
@@ -845,7 +918,9 @@ fun WordLifecycleFunnelCard(
                         count = funnel.conqueredCount,
                         color = VioletAccent,
                         testTag = "funnel_stage_conquered",
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
                         onClick = {
                             selectedStageKey = "conquered"
                             showStageWordsSheet = true
@@ -1133,7 +1208,7 @@ private fun FunnelStageChip(
             .clip(RoundedCornerShape(11.dp))
             .then(
                 if (onClick != null) {
-                    Modifier.clickable(onClick = onClick)
+                    Modifier.clickable(role = Role.Button, onClick = onClick)
                 } else {
                     Modifier
                 }

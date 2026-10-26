@@ -209,7 +209,7 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { pendingRestoreUri = null }) {
-                    Text("Cancel / إلغاء", color = TextMuted)
+                    Text("Keep Current Data / إلغاء الاستعادة", color = TextSecondary)
                 }
             },
             containerColor = SurfaceDark
@@ -257,7 +257,7 @@ fun SettingsScreen(
                     onClick = { showRedoSetupConfirmDialog = false },
                     modifier = Modifier.testTag("btn_cancel_redo_onboarding")
                 ) {
-                    Text("Cancel / إلغاء", color = TextMuted)
+                    Text("Keep Current Plan / الاحتفاظ بخطتي", color = TextSecondary)
                 }
             }
         )

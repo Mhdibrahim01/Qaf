@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.BorderSubtle
+import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.GoldAccent
 import com.example.ui.theme.GoldAccentBorder
 import com.example.ui.theme.GoldAccentDim
@@ -49,7 +50,7 @@ fun SlowAudioTurtleButton(
     val containerColor = if (isPlayingSlow) GoldAccentDim else SurfaceElevatedDark
     val borderColor = when {
         isPlayingSlow -> GoldAccentBorder
-        !showSpeedLabel -> Color(0xFF10B981).copy(alpha = 0.35f)
+        !showSpeedLabel -> EmeraldAccent.copy(alpha = 0.38f)
         else -> BorderSubtle
     }
     val labelColor = if (isPlayingSlow) GoldAccent else TextSecondary
@@ -58,10 +59,10 @@ fun SlowAudioTurtleButton(
         modifier = modifier
             .then(if (showSpeedLabel) Modifier.height(34.dp) else Modifier.requiredSize(34.dp))
             .clip(CircleShape)
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
             .semantics {
                 role = Role.Button
-                contentDescription = "Play slow pronunciation at 0.6x speed"
+                contentDescription = "Play slow pronunciation at 0.6x speed • نطق بطيء"
             }
             .testTag(testTag),
         shape = CircleShape,
@@ -75,8 +76,8 @@ fun SlowAudioTurtleButton(
         ) {
             Icon(
                 painter = painterResource(id = com.example.R.drawable.ic_turtle_flat),
-                contentDescription = "Slow pronunciation",
-                tint = Color(0xFF34D399),
+                contentDescription = null,
+                tint = EmeraldAccent,
                 modifier = Modifier.size(16.dp)
             )
             if (showSpeedLabel) {
