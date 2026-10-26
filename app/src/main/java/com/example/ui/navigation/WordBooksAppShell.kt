@@ -150,6 +150,7 @@ fun WordBooksAppShell(
     val placementQuizState by wordBooksViewModel.placementQuizState.collectAsStateWithLifecycle()
     val userLevel = studyPlanProfile?.level?.ifBlank { "B2" } ?: "B2"
     val activeQuizSession by wordBooksViewModel.activeQuizSession.collectAsStateWithLifecycle()
+    var isQuizDictionaryRequested by remember { mutableStateOf(false) }
     val isQuizLoading by wordBooksViewModel.isQuizLoading.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
     var isApiKeyDialogOpen by remember { mutableStateOf(false) }
@@ -1111,7 +1112,8 @@ fun WordBooksAppShell(
                             }
                         },
                         onOpenDictionaryWord = { word ->
-                            wordBooksViewModel.openDetailedDefinition("", word)
+                            isQuizDictionaryRequested = true
+                wordBooksViewModel.openDetailedDefinition("", word)
                         }
                     )
                 }
@@ -1239,11 +1241,74 @@ fun WordBooksAppShell(
                 }
             },
             onOpenDictionaryWord = { word ->
+                isQuizDictionaryRequested = true
                 wordBooksViewModel.openDetailedDefinition("", word)
             },
             scopeInfo = activeQuizSession!!.scopeInfo,
             onDismiss = { wordBooksViewModel.dismissActiveQuiz() }
         )
+    }
+
+    // Dictionary review opened from the quiz summary: the route-level sheets live below the quiz
+    // dialog window, so render the definition sheet here, above the quiz.
+    if (isQuizDictionaryRequested) {
+        val quizDetailedCard by wordBooksViewModel.detailedCard.collectAsStateWithLifecycle()
+        val quizCard = quizDetailedCard
+        if (quizCard != null) {
+            val quizPlayingWord by wordBooksViewModel.currentlyPlayingWord.collectAsStateWithLifecycle()
+            val quizAiStatus by wordBooksViewModel.aiStatus.collectAsStateWithLifecycle()
+            val quizSavedSentenceKeys by wordBooksViewModel.savedSentenceKeys.collectAsStateWithLifecycle()
+            val quizAiDetail by wordBooksViewModel.currentAiWordDetail.collectAsStateWithLifecycle()
+            val quizAiDetailLoading by wordBooksViewModel.isAiDetailLoading.collectAsStateWithLifecycle()
+            val quizAiDetailError by wordBooksViewModel.aiDetailError.collectAsStateWithLifecycle()
+            val quizSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            ModalBottomSheet(
+                onDismissRequest = {
+                    isQuizDictionaryRequested = false
+                    wordBooksViewModel.dismissDetailedDefinition()
+                },
+                sheetState = quizSheetState,
+                containerColor = SurfaceDark,
+                contentColor = TextPrimary
+            ) {
+                val audioUrl = quizCard.posVariants.firstOrNull { it.audioUrl.isNotBlank() }?.audioUrl ?: ""
+                WordDetailedDefinitionSheet(
+                    card = quizCard,
+                    isPlaying = quizPlayingWord == quizCard.text,
+                    isAiTranslating = quizAiStatus.isRunning,
+                    savedSentenceKeys = quizSavedSentenceKeys,
+                    aiDetail = quizAiDetail,
+                    isAiDetailLoading = quizAiDetailLoading,
+                    aiDetailError = quizAiDetailError,
+                    canRequestAi = wordBooksViewModel.canMakeAiRequest(),
+                    isAllowAi = batchTranslateState.allowAi,
+                    isOnline = wordBooksViewModel.isDeviceOnline(),
+                    onDismiss = {
+                        isQuizDictionaryRequested = false
+                        wordBooksViewModel.dismissDetailedDefinition()
+                    },
+                    onRetryAiDefinition = { wordBooksViewModel.retryAiDefinition(quizCard.text) },
+                    onPlayAudio = { wordBooksViewModel.playAudio(quizCard.text, audioUrl) },
+                    onPlayAudioSlow = { wordBooksViewModel.playAudioSlow(quizCard.text, audioUrl) },
+                    onPlayVoiceAudioSlow = { isGb ->
+                        wordBooksViewModel.playAudioSlow(quizCard.text, if (!isGb) audioUrl else "", isGb)
+                    },
+                    onPlayVoiceAudio = { isGb ->
+                        wordBooksViewModel.playWordVoiceAudio(quizCard.text, if (!isGb) audioUrl else "", isGb)
+                    },
+                    onSpeakSentenceTts = { wordBooksViewModel.speakSentenceTts(it) },
+                    onEnrichWithAi = { wordBooksViewModel.enrichCurrentWordWithAi(quizCard.deck, quizCard.text) },
+                    onSaveUserArabic = { entryId, userArabic ->
+                        wordBooksViewModel.saveUserArabicForEntry(entryId, quizCard.deck, quizCard.text, userArabic)
+                    },
+                    onToggleSaveSentence = { en, ar ->
+                        wordBooksViewModel.toggleSaveExampleSentence(en, ar, quizCard.text)
+                    },
+                    onToggleFavorite = { wordBooksViewModel.toggleFavorite(quizCard.deck, quizCard.text) },
+                    onToggleMastered = { wordBooksViewModel.toggleMastered(quizCard.deck, quizCard.text) }
+                )
+            }
+        }
     }
 
     if (isQuizLoading) {

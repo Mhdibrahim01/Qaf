@@ -129,12 +129,32 @@ class LocalQuizEngine(
         // 1. VOCABULARY (5 Questions from today's 10 assigned words)
         // -------------------------------------------------------------
         val assignedWords = mutableListOf<EntryEntity>()
-        if (studyPlanRepository != null && profile != null) {
+        val quizDate = checklist?.date ?: timeProvider.todayDateString()
+        // Priority 1: words the learner actually studied today.
+        try {
+            val startMillis = timeProvider.startOfDayMillis(quizDate)
+            val endMillis = startMillis + 24L * 60 * 60 * 1000 - 1
+            assignedWords.addAll(
+                dao.getEntriesLearnedInRange(startMillis, endMillis)
+                    .filter { it.text.isNotBlank() && it.arabic.isNotBlank() }
+                    .distinctBy { it.text.lowercase().trim() }
+                    .shuffled()
+            )
+        } catch (_: Exception) {
+            // Ignore and fall back to planned words
+        }
+        // Priority 2: today's planned words (when not enough were studied yet).
+        if (assignedWords.size < 5 && studyPlanRepository != null && profile != null) {
             try {
-                val date = checklist?.date ?: timeProvider.todayDateString()
                 val targetCount = vocabTask?.targetCount ?: 10
-                val selection = studyPlanRepository.getTodayTargetNewWords(profile, targetCount, date)
-                assignedWords.addAll(selection.filter { it.text.isNotBlank() && it.arabic.isNotBlank() })
+                val selection = studyPlanRepository.getTodayTargetNewWords(profile, targetCount, quizDate)
+                val existing = assignedWords.mapTo(HashSet()) { it.text.lowercase().trim() }
+                assignedWords.addAll(
+                    selection.filter {
+                        it.text.isNotBlank() && it.arabic.isNotBlank() &&
+                            it.text.lowercase().trim() !in existing
+                    }
+                )
             } catch (_: Exception) {
                 // Ignore and fall back to database entries
             }

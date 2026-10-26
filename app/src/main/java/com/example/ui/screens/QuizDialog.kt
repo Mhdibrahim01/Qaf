@@ -482,11 +482,12 @@ fun QuizDialog(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Text(
+                                        BidiText(
                                             text = optText,
                                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal),
                                             color = TextPrimary,
-                                            modifier = Modifier.weight(1f)
+                                            modifier = Modifier.weight(1f),
+                                            fillMaxWidth = false
                                         )
                                         if (isSubmitted && isCorrectAnswer) {
                                             Icon(Icons.Filled.Check, contentDescription = "Correct", tint = EmeraldAccent, modifier = Modifier.size(18.dp))
@@ -681,11 +682,20 @@ fun QuizDialog(
 
                             missedQuestions.forEachIndexed { index, missed ->
                                 val targetWord = remember(missed) {
-                                    val wordCandidate = missed.correctText.trim().takeIf { it.isNotBlank() && !it.contains(" ") }
-                                        ?: missed.audioText.trim().takeIf { it.isNotBlank() && !it.contains(" ") }
-                                        ?: missed.promptEn.split(" ").firstOrNull { w -> w.length > 2 && w.all { c -> c.isLetter() } }
-                                        ?: missed.correctText
-                                    wordCandidate.lowercase().replace(Regex("[^a-z\\s-]"), "").trim()
+                                    // Only vocabulary-style questions get a dictionary review shortcut.
+                                    if (!missed.skill.equals("vocabulary", ignoreCase = true)) {
+                                        ""
+                                    } else {
+                                        fun singleLatinWord(s: String): String? =
+                                            s.trim().takeIf { it.isNotBlank() && !it.contains(" ") && it.any { c -> c in 'A'..'Z' || c in 'a'..'z' } }
+                                        val quotedInPrompt = Regex("\"([A-Za-z][A-Za-z-]*)\"")
+                                            .find(missed.promptEn)?.groupValues?.getOrNull(1)
+                                        val wordCandidate = singleLatinWord(missed.correctText)
+                                            ?: singleLatinWord(missed.audioText)
+                                            ?: quotedInPrompt
+                                            ?: ""
+                                        wordCandidate.lowercase().replace(Regex("[^a-z\\s-]"), "").trim()
+                                    }
                                 }
 
                                 val userAnswerIdx = userAnswers[missed.id] ?: -1
