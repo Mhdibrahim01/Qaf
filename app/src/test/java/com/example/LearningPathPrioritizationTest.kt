@@ -249,6 +249,50 @@ class LearningPathPrioritizationTest {
     }
 
     @Test
+    fun testDailyMiniQuizUsesWordsLearnedToday() = runBlocking {
+        val profile = StudyPlanProfileEntity(
+            id = 1,
+            level = "B2",
+            goal = "it_career",
+            minutesPerDay = 30,
+            studyDaysPerWeek = 6,
+            startDate = "2026-11-02",
+            selectedDecksJson = json.encodeToString(listOf("oxford5000", "oxford_opal", "it_industry")),
+            restDaysJson = "[6]",
+            startAtUserLevel = true,
+            updatedAt = timeProvider.currentTimeMillis()
+        )
+        db.wordBooksDao().upsertStudyPlanProfile(profile)
+
+        // Simulate the learner having studied 8 words today.
+        val studied = planRepo.selectNewWordsForProfile(profile, 8).words
+        val now = timeProvider.currentTimeMillis()
+        studied.forEach {
+            db.wordBooksDao().upsertWordProgress(
+                WordProgressEntity(
+                    cardKey = "${it.deck}:${it.text}",
+                    entryId = it.id,
+                    deck = it.deck,
+                    text = it.text,
+                    repetitions = 1,
+                    lastReviewedTimestamp = now,
+                    firstLearnedTimestamp = now
+                )
+            )
+        }
+        val studiedSet = studied.map { it.text.trim().lowercase() }.toSet()
+
+        val result = quizEngine.generateAlignedDailyQuiz(null, profile, isTtsAvailable = true)
+        val vocab = result.questions.filter { it.skill == "vocabulary" }
+        assertEquals(5, vocab.size)
+        for (q in vocab) {
+            val matches = studiedSet.any { w -> q.promptEn.lowercase().contains(w) || q.correctText.lowercase() == w } ||
+                studied.any { it.arabic == q.correctText }
+            assertTrue("Question '${q.promptEn}' should come from words studied today", matches)
+        }
+    }
+
+    @Test
     fun testPlacementAssessmentIsGeneralEnglishFair() = runBlocking {
         val questions = OnboardingPlacementQuiz.buildPlacementQuizQuestions(db.wordBooksDao(), seed = 12345L)
         assertNotNull(questions)

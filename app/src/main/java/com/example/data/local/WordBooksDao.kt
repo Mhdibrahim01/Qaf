@@ -1850,6 +1850,13 @@ interface WordBooksDao {
     """)
     suspend fun getNewWordsRatedTodayCount(startOfDayMillis: Long): Int
 
+    /**
+     * Entries whose word was first learned within [startMillis, endMillis], oldest-learned first.
+     * Used to build the Daily Mini-Quiz from words the learner actually studied today.
+     */
+    @Query("SELECT e.* FROM entries e INNER JOIN word_progress wp ON (wp.entry_id = e.id OR (wp.entry_id IS NULL AND wp.deck = e.deck AND LOWER(TRIM(wp.text)) = LOWER(TRIM(e.text)))) WHERE wp.first_learned_timestamp >= :startMillis AND wp.first_learned_timestamp <= :endMillis AND TRIM(e.text) != '' AND TRIM(e.arabic) != '' ORDER BY wp.first_learned_timestamp ASC")
+    suspend fun getEntriesLearnedInRange(startMillis: Long, endMillis: Long): List<EntryEntity>
+
     @Query("""
         SELECT COUNT(*) FROM word_progress
         WHERE (first_learned_timestamp >= :startMillis AND first_learned_timestamp <= :endMillis)
