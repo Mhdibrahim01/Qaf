@@ -10,20 +10,33 @@
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose%20%26%20Material%203-4285F4.svg?logo=jetpackcompose&logoColor=white)](#)
 [![Room Database](https://img.shields.io/badge/Database-Room%20SQLite%20(100%25%20Offline)-orange.svg)](#)
 [![Gemini AI](https://img.shields.io/badge/AI-Google%20Gemini%20API-blue.svg?logo=google&logoColor=white)](#)
-[![Latest Release](https://img.shields.io/github/v/release/Mhdibrahim01/Qaf?color=gold&label=Release%20v2.1.0)](https://github.com/Mhdibrahim01/Qaf/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/Mhdibrahim01/Qaf?color=gold&label=Release%20v3.1.0)](https://github.com/Mhdibrahim01/Qaf/releases/latest)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary%20%7C%20All%20Rights%20Reserved-red.svg)](LICENSE)
 
 <p align="center">
   <b>قاف (Qaf)</b> هو تطبيق أندرويد متكامل وشامل لتعلّم وإتقان اللغة الإنجليزية للمتحدثين بالعربية، يجمع بين قوة <b>محرك التعلّم التكيفي (Adaptive V2)</b>، وخوارزميات <b>التكرار المتباعد (SuperMemo SM-2)</b>، ومكتبة ضخمة تضم <b>27,435 بطاقة استذكار</b> موزعة على 13 حقيبة تخصصية، وقاموس أوفلاين فوري يضم <b>13,393 كلمة مشروحة تفصيلياً</b>، مع نصوص قراءة متدرجة وقواعد تفاعلية مدعومة بالذكاء الاصطناعي.
 </p>
 
-[📥 تحميل ملف الإصدار المباشر (Download APK v2.1.0)](https://github.com/Mhdibrahim01/Qaf/releases/latest) • [✨ مميزات الإصدار 2.0](#-أبرز-مميزات-الإصدار-20--adaptive-v2-features) • [📚 الحقائب المتوفرة](#-الحقائب-والمجموعات-المتوفرة-13-decks--21624-cards) • [🏗️ البنية المعمارية](#️-البنية-البرمجية-والمعمارية--architecture--tech-stack) • [🛠️ طريقة البناء](#-كيفية-بناء-التطبيق-وتشغيله-build--run) • [📋 سجل الإصدارات](CHANGELOG.md)
+[📥 تحميل ملف الإصدار المباشر (Download APK v3.1.0)](https://github.com/Mhdibrahim01/Qaf/releases/latest) • [✨ مميزات الإصدار 3.1](#-أبرز-مميزات-الإصدار-31--adaptive-v2--ux-unification) • [📚 الحقائب المتوفرة](#-الحقائب-والمجموعات-المتوفرة-13-decks--27435-cards) • [🏗️ البنية المعمارية](#️-البنية-البرمجية-والمعمارية--architecture--tech-stack) • [🛠️ طريقة البناء](#-كيفية-بناء-التطبيق-وتشغيله-build--run) • [📋 سجل الإصدارات](CHANGELOG.md)
 
 </div>
 
 ---
 
-## 🌟 أبرز مميزات الإصدار 2.0 • Adaptive V2 Features
+## 🌟 أبرز مميزات الإصدار 3.1 • Adaptive V2 & UX Unification
+
+### 0. 📱 تجربة مستخدم موحدة وذكية عبر كافة الأجهزة (v3.1.0 UX & Cross-Device Unification)
+- **توحيد التخطيط القياسي عبر كافة الهواتف (`411dp` Canonical Viewport)**:
+  - معايرة ذكية لكثافة الشاشة وتثبيت معامل تحجيم الخط (`fontScale = 1.0f`) لضمان تطابق التصميم وأبعاد الشبكات والبطاقات 100% على جميع أجهزة أندرويد بمختلف واجهاتها.
+  - بطاقات متساوية الارتفاع (`IntrinsicSize.Min`) في شبكات مواضيع القراءة، أوقات الدراسة، ومراحل إتقان المفردات دون انقسام أو التفاف عشوائي للعناوين.
+- **بطاقات خطة يومية أنيقة وتنقل مباشر**:
+  - تصميم مدمج لبطاقات المهام اليومية بدون تكرار نصي، مع توجيه فوري لمهمة الكلمات الجديدة إلى جلسة البطاقات التعليمية وعودة مباشرة بالرجوع (`Back`) إلى الشاشة السابقة.
+- **استئناف ذكي لبطاقات الكتب ومراحل إتقان تفاعلية**:
+  - البدء دائماً من البطاقة رقم `1` عند فتح أي كتاب لأول مرة مع حفظ واستئناف موضع التوقف الفعلي لكل كتاب بشكل مستقل، بالإضافة إلى إمكانية النقر على أي مرحلة من مراحل الإتقان الست لاستعراض كلماتها مباشرة.
+- **توزيع تربوي ذكي للمفردات اليومية وموسوعة IELTS المحدثة**:
+  - اختيار متوازن للكلمات اليومية يمنع التكرار الأبجدي المتتالي، مع توحيد شامل لمستويات CEFR وتوسيع حقيبة الآيلتس إلى **9,386 كلمة**.
+
+---
 
 ### 1. 🧠 محرك التعلّم التكيفي الذكي (Adaptive V2 Engine)
 - **دورة حياة المفردات خماسية المراحل (5-Stage Vocabulary Lifecycle)**:
@@ -79,7 +92,7 @@
 
 ---
 
-## 📚 الحقائب والمجموعات المتوفرة (13 Decks • 21,624 Cards)
+## 📚 الحقائب والمجموعات المتوفرة (13 Decks • 27,435 Cards)
 
 | الحقيبة (Deck) | المستوى / الفئة | عدد البطاقات | الوصف والمحتوى |
 | :--- | :--- | :---: | :--- |
@@ -88,14 +101,14 @@
 | **Oxford Phrasal Verbs** | General Fluency | **750** | أهم الأفعال المركبة شائعة الاستخدام في الحديث اليومي |
 | **Essential Idioms** | Idiomatic English | **468** | أشهر التعابير الاصطلاحية والأمثال الإنجليزية |
 | **Everyday Expressions** | Conversational English | **600** | التعبيرات اليومية والمحادثات الواقعية الشائعة |
-| **IELTS Core Vocabulary** | Exam Preparation | **3,575** | المفردات الأساسية والمتقدمة لاجتياز اختبار الآيلتس |
+| **IELTS Comprehensive Vocabulary** | Exam Preparation | **9,386** | الموسوعة الشاملة لمفردات ومصطلحات اختبار الآيلتس الأكاديمي والعام |
 | **PTE Academic Advanced** | Exam Preparation | **2,651** | مفردات اختبار بيرسون الأكاديمي المعتمدة |
 | **CEFR C1 Advanced** | Advanced Mastery | **1,853** | مفردات المستوى المتقدم الاحترافي للطلاقة التامة |
 | **IT & Tech Industry** | Industry-Specific | **1,622** | مصطلحات البرمجة وهندسة البرمجيات والذكاء الاصطناعي |
 | **Business English** | Professional English | **1,250** | الإنجليزية المهنية وإدارة الأعمال والشركات والتفاوض |
 | **Job Interview & Career** | Career Mastery | **406** | مصطلحات مقابلات العمل والتوظيف الدولي والعمل عن بعد |
 | **Medical & Healthcare** | OET / PLAB Healthcare | **405** | المصطلحات الطبية والصحية ورعاية المرضى والأطباء |
-| **المجموع الكلي** | **جميع التخصصات** | **21,624** | **تغطية شاملة لكل احتياجات متعلم اللغة الإنجليزية** |
+| **المجموع الكلي** | **جميع التخصصات** | **27,435** | **تغطية شاملة لكل احتياجات متعلم اللغة الإنجليزية** |
 
 ---
 

@@ -233,6 +233,7 @@ fun ReadingScreen(
     storyReadabilityById: Map<String, com.example.data.plan.StoryReadabilityReport> = emptyMap(),
     wordStageMap: Map<String, com.example.data.plan.WordStage> = emptyMap(),
     onOpenDetailedDefinition: (deckId: String, word: String) -> Unit = { _, _ -> },
+    onBackFromDetail: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     if (selectedText != null) {
@@ -244,7 +245,11 @@ fun ReadingScreen(
             grammarLessons = grammarLessons,
             onBack = {
                 onStopAudio()
-                onSelectText(null)
+                if (onBackFromDetail != null) {
+                    onBackFromDetail()
+                } else {
+                    onSelectText(null)
+                }
             },
             onSaveProgress = { completed, total, score, isDone, elapsedMs ->
                 onSaveProgress(selectedText.id, completed, total, score, isDone, elapsedMs)
@@ -491,17 +496,24 @@ fun ReadingListScreen(
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(end = 8.dp)
                                 ) {
                                     Text(
                                         text = "$completedCount Completed",
                                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 15.sp),
-                                        color = GoldAccent
+                                        color = GoldAccent,
+                                        maxLines = 1,
+                                        softWrap = false
                                     )
                                     Text(
                                         text = " • $totalPassages Passages",
                                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                                        color = TextSecondary
+                                        color = TextSecondary,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
 
@@ -535,7 +547,9 @@ fun ReadingListScreen(
                                             Text(
                                                 text = "+ AI Text",
                                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                                color = GoldAccent
+                                                color = GoldAccent,
+                                                maxLines = 1,
+                                                softWrap = false
                                             )
                                         }
                                     }
@@ -4641,7 +4655,9 @@ fun ReadingRecommendedShelf(
                     Text(
                         text = "Recommended for You",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = TextPrimary
+                        color = TextPrimary,
+                        maxLines = 1,
+                        softWrap = false
                     )
                     Surface(
                         shape = RoundedCornerShape(6.dp),
@@ -4652,6 +4668,8 @@ fun ReadingRecommendedShelf(
                             text = userLevel.uppercase(),
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp),
                             color = SkyAccent,
+                            maxLines = 1,
+                            softWrap = false,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -4672,6 +4690,8 @@ fun ReadingRecommendedShelf(
                     text = "${recommendedTexts.size} passages",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
                     color = GoldAccent,
+                    maxLines = 1,
+                    softWrap = false,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                 )
             }

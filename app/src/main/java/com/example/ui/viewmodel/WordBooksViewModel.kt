@@ -1274,14 +1274,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                     totalCount = sortedCards.size,
                     initialCards = sortedCards
                 )
-                val restoredIndex = if (sortedCards.isEmpty()) {
-                    0
-                } else {
-                    val matchingIndex = sortedCards.indexOfFirst {
-                        it.text.equals(studyState.lastWordText, ignoreCase = true)
-                    }
-                    if (matchingIndex >= 0) matchingIndex else studyState.lastCardIndex.coerceIn(0, sortedCards.size - 1)
-                }
+                val restoredIndex = resolveRestoredFlashcardIndex(sortedCards, studyState)
                 _flashcardIndex.value = restoredIndex
                 _isCurrentCardFlipped.value = false
                 cardDisplayStartTimeMillis = System.currentTimeMillis()
@@ -1310,13 +1303,19 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         cardDisplayStartTimeMillis = System.currentTimeMillis()
         val currentCard = cards[clamped]
         val deckId = _flashcardDeckId.value
-        viewModelScope.launch {
-            repository.saveDeckStudyPosition(
-                deckId = deckId,
-                cardIndex = clamped,
-                wordText = currentCard.text,
-                incrementStudied = false
-            )
+        val sessionType = _flashcardSessionType.value
+        if (sessionType != FlashcardSessionType.LEARN_NEW &&
+            deckId != DataImportRepository.DUE_TODAY_DECK_ID &&
+            deckId != "learned_today"
+        ) {
+            viewModelScope.launch {
+                repository.saveDeckStudyPosition(
+                    deckId = deckId,
+                    cardIndex = clamped,
+                    wordText = currentCard.text,
+                    incrementStudied = false
+                )
+            }
         }
     }
 
@@ -1493,12 +1492,17 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 refreshDetailedCardIfOpen(currentCard.deck, currentCard.text)
                 _learnerModelSnapshot.value = studyPlanRepository.learnerModelRepository.buildSnapshot(studyPlanProfile.value)
             }
-            repository.saveDeckStudyPosition(
-                deckId = activeDeckId,
-                cardIndex = nextIndex,
-                wordText = nextWordText,
-                incrementStudied = true
-            )
+            if (_flashcardSessionType.value != FlashcardSessionType.LEARN_NEW &&
+                activeDeckId != DataImportRepository.DUE_TODAY_DECK_ID &&
+                activeDeckId != "learned_today"
+            ) {
+                repository.saveDeckStudyPosition(
+                    deckId = activeDeckId,
+                    cardIndex = nextIndex,
+                    wordText = nextWordText,
+                    incrementStudied = true
+                )
+            }
             val selectedDecks = parseSelectedDecks(studyPlanProfile.value)
             _waitingLaterTodayCount.value = repository.getLaterTodayCardsCount(
                 nowMillis = nowMillis,
@@ -1788,7 +1792,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 playWordVoiceAudio(card.text, url, _preferredAccentUk.value)
             }
             loadAiDefinitionForWord(targetWord, forceFetch = false)
-            if (targetDeck.isNotBlank() && targetWord.isNotBlank()) {
+            if (cardIndex >= 0 && targetDeck.isNotBlank() && targetWord.isNotBlank()) {
                 repository.saveDeckStudyPosition(
                     deckId = targetDeck,
                     cardIndex = cardIndex,
@@ -3206,6 +3210,23 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                         (seed * 2654435761L) and 0x7FFFFFFFL
                     }
                 }
+            }
+        }
+
+        internal fun resolveRestoredFlashcardIndex(
+            sortedCards: List<GroupedWordCard>,
+            studyState: com.example.data.local.DeckStudyStateEntity
+        ): Int {
+            if (sortedCards.isEmpty()) return 0
+            if (studyState.lastWordText.isBlank()) return 0
+            if (studyState.lastCardIndex == 0 && studyState.totalStudiedInDeck == 0) return 0
+            val matchingIndex = sortedCards.indexOfFirst {
+                it.text.equals(studyState.lastWordText, ignoreCase = true)
+            }
+            return if (matchingIndex >= 0) {
+                matchingIndex
+            } else {
+                studyState.lastCardIndex.coerceIn(0, sortedCards.size - 1)
             }
         }
     }

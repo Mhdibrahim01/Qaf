@@ -380,6 +380,7 @@ fun PlanScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TodayTabContent(
     todayChecklist: DailyChecklistEntity?,
@@ -534,11 +535,15 @@ private fun TodayTabContent(
             key = { it.id },
             contentType = { "daily_task_row" }
         ) { task ->
-            val canOpenRoute = task.linkedRoute.isNotBlank() || task.type == "quiz"
+            val effectiveRoute = if (task.type == "new_words") "new_words" else task.linkedRoute
+            val canOpenRoute = effectiveRoute.isNotBlank() || task.type == "quiz"
             val taskProgress = if (task.targetCount > 0) {
                 (task.completedCount.toFloat() / task.targetCount.toFloat()).coerceIn(0f, 1f)
             } else {
                 if (task.isCompleted) 1f else 0f
+            }
+            val cleanSummaryLine = remember(task.subtitleEn, task.reason, task.estimatedMinutes, task.type) {
+                buildCleanTaskDetailEn(task)
             }
 
             Surface(
@@ -551,7 +556,7 @@ private fun TodayTabContent(
                                 if (task.type == "quiz") {
                                     onStartMiniQuiz()
                                 } else {
-                                    onOpenTask(task.linkedRoute, task.linkedId)
+                                    onOpenTask(effectiveRoute, task.linkedId)
                                 }
                             }
                         } else {
@@ -562,11 +567,14 @@ private fun TodayTabContent(
                 shape = RoundedCornerShape(14.dp),
                 border = BorderStroke(1.dp, if (task.isCompleted) EmeraldAccent.copy(alpha = 0.55f) else BorderSubtle)
             ) {
-                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         IconButton(
                             onClick = {
@@ -574,99 +582,111 @@ private fun TodayTabContent(
                                     onToggleTask(todayChecklist.date, task.id)
                                 }
                             },
-                            modifier = Modifier.testTag("btn_toggle_${task.type}")
+                            modifier = Modifier
+                                .size(36.dp)
+                                .testTag("btn_toggle_${task.type}")
                         ) {
                             Icon(
                                 imageVector = if (task.isCompleted) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
                                 contentDescription = if (task.isCompleted) "Uncheck task" else "Complete task",
                                 tint = if (task.isCompleted) EmeraldAccent else GoldAccent,
-                                modifier = Modifier.size(26.dp)
+                                modifier = Modifier.size(24.dp)
                             )
                         }
 
                         Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(horizontal = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(
-                                    text = task.titleEn,
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (task.isCompleted) TextMuted else TextPrimary,
-                                        textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None
-                                    ),
-                                    modifier = Modifier.weight(1f, fill = false)
-                                )
-                                if (task.estimatedMinutes > 0) {
-                                    Surface(
-                                        color = SurfaceElevatedDark,
-                                        shape = RoundedCornerShape(6.dp)
-                                    ) {
-                                        Text(
-                                            text = "${task.estimatedMinutes} min",
-                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                                            color = TextSecondary,
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                        )
-                                    }
-                                }
-                                if (task.backlogRemaining > 0) {
-                                    Surface(
-                                        color = CoralAccent.copy(alpha = 0.15f),
-                                        shape = RoundedCornerShape(6.dp)
-                                    ) {
-                                        Text(
-                                            text = "${task.backlogRemaining} backlog",
-                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                            color = CoralAccent,
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                        )
-                                    }
-                                }
-                                if (task.targetCount > 1) {
-                                    Surface(
-                                        color = if (task.isCompleted) EmeraldAccent.copy(alpha = 0.15f) else SurfaceElevatedDark,
-                                        shape = RoundedCornerShape(6.dp)
-                                    ) {
-                                        Text(
-                                            text = "${task.completedCount}/${task.targetCount}",
-                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                            color = if (task.isCompleted) EmeraldAccent else GoldAccent,
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                        )
-                                    }
-                                }
-                            }
                             Text(
-                                text = task.titleAr,
-                                style = ArabicTypography.labelSmall,
-                                color = if (task.isCompleted) TextMuted else TextSecondary
+                                text = task.titleEn,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (task.isCompleted) TextMuted else TextPrimary,
+                                    textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None
+                                )
                             )
-                            if (task.subtitleEn.isNotBlank()) {
-                                Text(
-                                    text = task.subtitleEn,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = GoldAccent
+                            if (task.titleAr.isNotBlank()) {
+                                BidiText(
+                                    text = task.titleAr,
+                                    style = ArabicTypography.labelSmall,
+                                    color = if (task.isCompleted) TextMuted else TextSecondary,
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             }
-                            if (task.reason.isNotBlank()) {
-                                Surface(
-                                    color = SurfaceElevatedDark.copy(alpha = 0.6f),
-                                    shape = RoundedCornerShape(6.dp)
+
+                            if (task.estimatedMinutes > 0 || task.backlogRemaining > 0 || task.targetCount > 1) {
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                    modifier = Modifier.padding(top = 2.dp)
                                 ) {
-                                    Text(
-                                        text = task.reason,
-                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                        color = GoldAccent,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
+                                    if (task.targetCount > 1) {
+                                        Surface(
+                                            color = if (task.isCompleted) EmeraldAccent.copy(alpha = 0.15f) else SurfaceElevatedDark,
+                                            shape = RoundedCornerShape(6.dp),
+                                            border = BorderStroke(
+                                                0.5.dp,
+                                                if (task.isCompleted) EmeraldAccent.copy(alpha = 0.4f) else GoldAccentBorder
+                                            )
+                                        ) {
+                                            Text(
+                                                text = "${task.completedCount}/${task.targetCount}",
+                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                                color = if (task.isCompleted) EmeraldAccent else GoldAccent,
+                                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                    if (task.estimatedMinutes > 0) {
+                                        Surface(
+                                            color = SurfaceElevatedDark,
+                                            shape = RoundedCornerShape(6.dp)
+                                        ) {
+                                            Text(
+                                                text = "${task.estimatedMinutes} min",
+                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                                                color = TextSecondary,
+                                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                    if (task.backlogRemaining > 0) {
+                                        Surface(
+                                            color = CoralAccent.copy(alpha = 0.15f),
+                                            shape = RoundedCornerShape(6.dp)
+                                        ) {
+                                            Text(
+                                                text = "${task.backlogRemaining} backlog",
+                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                                color = CoralAccent,
+                                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
                                 }
+                            }
+
+                            if (cleanSummaryLine.isNotBlank()) {
+                                Text(
+                                    text = cleanSummaryLine,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = GoldAccent,
+                                    maxLines = 2,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                )
+                            }
+
+                            if (task.explanationAr.isNotBlank()) {
+                                BidiText(
+                                    text = task.explanationAr,
+                                    style = ArabicTypography.labelSmall.copy(fontSize = 11.sp),
+                                    color = TextMuted,
+                                    maxLines = 2,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
                             }
                         }
 
@@ -697,9 +717,9 @@ private fun TodayTabContent(
                             ) {
                                 Text(actionLabel, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = btnTextColor)
                             }
-                        } else if (task.linkedRoute.isNotBlank()) {
+                        } else if (effectiveRoute.isNotBlank()) {
                             Button(
-                                onClick = { onOpenTask(task.linkedRoute, task.linkedId) },
+                                onClick = { onOpenTask(effectiveRoute, task.linkedId) },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = if (task.isCompleted) SurfaceElevatedDark else GoldAccent,
                                     contentColor = btnTextColor
@@ -722,22 +742,13 @@ private fun TodayTabContent(
                         }
                     }
 
-                    if (task.explanationAr.isNotBlank()) {
-                        Text(
-                            text = task.explanationAr,
-                            style = ArabicTypography.labelSmall.copy(fontSize = 11.sp),
-                            color = TextMuted,
-                            modifier = Modifier.padding(horizontal = 8.dp)
-                        )
-                    }
-
                     // Show progress bar for multi-item tasks (e.g. Flashcards, New Words, Sentences)
                     if (task.targetCount > 1) {
                         LinearProgressIndicator(
                             progress = { taskProgress },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 8.dp)
+                                .padding(start = 46.dp, end = 4.dp)
                                 .height(4.dp)
                                 .clip(RoundedCornerShape(2.dp)),
                             color = if (task.isCompleted) EmeraldAccent else GoldAccent,
@@ -1469,3 +1480,39 @@ private fun AnalyticsTabContent(
         }
     }
 }
+
+private val TRAILING_DURATION_REGEX = Regex("""(\s*•\s*~?\d+\s*min|\s*\(~?\d+\s*min\)|\s*\(\d+\s*exercises,\s*~?\d+\s*min\))$""", RegexOption.IGNORE_CASE)
+
+internal fun buildCleanTaskDetailEn(task: DailyTaskItem): String {
+    fun stripDuration(raw: String): String {
+        val trimmed = raw.trim()
+        return if (task.estimatedMinutes > 0) {
+            trimmed.replace(TRAILING_DURATION_REGEX, "").trim()
+        } else {
+            trimmed
+        }
+    }
+
+    val sub = stripDuration(task.subtitleEn)
+    val rsn = stripDuration(task.reason)
+
+    if (sub.isBlank()) return rsn
+    if (rsn.isBlank()) return sub
+    if (sub.equals(rsn, ignoreCase = true)) return sub
+    if (sub.contains(rsn, ignoreCase = true)) return sub
+    if (rsn.contains(sub, ignoreCase = true)) return rsn
+
+    if (task.type == "new_words") {
+        val focusPart = sub.substringAfter("Focus:", "").trim()
+        return if (focusPart.isNotEmpty() && rsn.contains("Pre-teaching", ignoreCase = true)) {
+            "Focus: $focusPart • $rsn"
+        } else if (focusPart.isNotEmpty()) {
+            sub
+        } else {
+            rsn
+        }
+    }
+
+    return sub
+}
+

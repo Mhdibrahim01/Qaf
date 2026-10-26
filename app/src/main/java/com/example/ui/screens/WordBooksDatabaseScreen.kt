@@ -1159,15 +1159,45 @@ private fun PagedDeckWordListScreen(
                 .testTag("paged_word_list"),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp)
         ) {
-            // 1. Deck Header (Back + Title + Studied Progress + Study Button)
+            // 1. Deck Header (Back + Title + Study Button on Top Row, Full-Width Progress Bar Below)
             item(key = "deck_header", contentType = "deck_header") {
-                Row(
+                val totalCount = remember(deck, allDecks, totalEntriesCount) {
+                    if (deck != null) {
+                        if (deck.uniqueWordCount > 0) deck.uniqueWordCount else deck.rowCount
+                    } else {
+                        val sum = allDecks
+                            .filter { it.id != DataImportRepository.SAVED_WORDS_DECK_ID }
+                            .sumOf { if (it.uniqueWordCount > 0) it.uniqueWordCount else it.rowCount }
+                        if (sum > 0) sum else totalEntriesCount
+                    }
+                }
+                val studiedWords = remember(progressMap, currentDeckId, deck?.masteredCount, masteredCount) {
+                    progressMap.values.count {
+                        (currentDeckId.isEmpty() || it.deck == currentDeckId) && (it.isMastered || it.repetitions > 0)
+                    }.coerceAtLeast(deck?.masteredCount ?: masteredCount)
+                }
+                val leftWords = remember(totalCount, studiedWords) { (totalCount - studiedWords).coerceAtLeast(0) }
+                val progressFraction = remember(totalCount, studiedWords) {
+                    if (totalCount > 0) (studiedWords.toFloat() / totalCount.toFloat()).coerceIn(0f, 1f) else 0f
+                }
+                val visualProgressFraction = remember(studiedWords, progressFraction) {
+                    if (studiedWords > 0) progressFraction.coerceIn(0.02f, 1f) else 0f
+                }
+                val progressPercentText = remember(studiedWords, totalCount) {
+                    formatProgressPercent(studiedWords, totalCount)
+                }
+
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
                         Column(
                             modifier = Modifier
                                 .weight(1f)
@@ -1196,7 +1226,9 @@ private fun PagedDeckWordListScreen(
                                         fontSize = 11.sp,
                                         letterSpacing = 1.5.sp
                                     ),
-                                    color = TextMuted
+                                    color = TextMuted,
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                             }
 
@@ -1204,39 +1236,13 @@ private fun PagedDeckWordListScreen(
                                 text = deck?.name ?: "All Words",
                                 style = MaterialTheme.typography.headlineMedium.copy(
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 28.sp,
+                                    fontSize = 26.sp,
                                     letterSpacing = (-0.5).sp
                                 ),
                                 color = TextPrimary,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
-
-                            val totalCount = remember(deck, allDecks, totalEntriesCount) {
-                                if (deck != null) {
-                                    if (deck.uniqueWordCount > 0) deck.uniqueWordCount else deck.rowCount
-                                } else {
-                                    val sum = allDecks
-                                        .filter { it.id != DataImportRepository.SAVED_WORDS_DECK_ID }
-                                        .sumOf { if (it.uniqueWordCount > 0) it.uniqueWordCount else it.rowCount }
-                                    if (sum > 0) sum else totalEntriesCount
-                                }
-                            }
-                            val studiedWords = remember(progressMap, currentDeckId, deck?.masteredCount, masteredCount) {
-                                progressMap.values.count { 
-                                    (currentDeckId.isEmpty() || it.deck == currentDeckId) && (it.isMastered || it.repetitions > 0)
-                                }.coerceAtLeast(deck?.masteredCount ?: masteredCount)
-                            }
-                            val leftWords = remember(totalCount, studiedWords) { (totalCount - studiedWords).coerceAtLeast(0) }
-                            val progressFraction = remember(totalCount, studiedWords) {
-                                if (totalCount > 0) (studiedWords.toFloat() / totalCount.toFloat()).coerceIn(0f, 1f) else 0f
-                            }
-                            val visualProgressFraction = remember(studiedWords, progressFraction) {
-                                if (studiedWords > 0) progressFraction.coerceIn(0.02f, 1f) else 0f
-                            }
-                            val progressPercentText = remember(studiedWords, totalCount) {
-                                formatProgressPercent(studiedWords, totalCount)
-                            }
 
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -1246,7 +1252,9 @@ private fun PagedDeckWordListScreen(
                                 Text(
                                     text = "${formatNumber(totalCount)} entries",
                                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                                    color = TextSecondary
+                                    color = TextSecondary,
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                                 Text(
                                     text = "•",
@@ -1262,81 +1270,10 @@ private fun PagedDeckWordListScreen(
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = GoldAccent
-                                    )
+                                    ),
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
-                            }
-
-                            // Studied vs Left Progress Bar Card
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 8.dp),
-                                shape = RoundedCornerShape(10.dp),
-                                color = SurfaceElevatedDark,
-                                border = BorderStroke(1.dp, BorderDark)
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(7.dp)
-                                                    .clip(CircleShape)
-                                                    .background(GoldAccent)
-                                            )
-                                            Text(
-                                                text = "${formatNumber(studiedWords)} Studied",
-                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = GoldAccent
-                                                )
-                                            )
-                                            Text(
-                                                text = "•",
-                                                color = TextMuted,
-                                                style = MaterialTheme.typography.labelSmall
-                                            )
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(7.dp)
-                                                    .clip(CircleShape)
-                                                    .border(1.dp, TextMuted, CircleShape)
-                                            )
-                                            Text(
-                                                text = "${formatNumber(leftWords)} Left",
-                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                    color = TextSecondary
-                                                )
-                                            )
-                                        }
-                                        Text(
-                                            text = progressPercentText,
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                fontWeight = FontWeight.Bold,
-                                                color = GoldAccent
-                                            )
-                                        )
-                                    }
-                                    LinearProgressIndicator(
-                                        progress = { visualProgressFraction },
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(5.dp)
-                                            .clip(RoundedCornerShape(3.dp)),
-                                        color = GoldAccent,
-                                        trackColor = BorderDark
-                                    )
-                                }
                             }
                         }
 
@@ -1380,11 +1317,93 @@ private fun PagedDeckWordListScreen(
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp
                                 ),
-                                color = BackgroundDark
+                                color = BackgroundDark,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
+
+                    // Full-Width Studied vs Left Progress Bar Card
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        color = SurfaceElevatedDark,
+                        border = BorderStroke(1.dp, BorderDark)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    modifier = Modifier.weight(1f, fill = false),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(7.dp)
+                                            .clip(CircleShape)
+                                            .background(GoldAccent)
+                                    )
+                                    Text(
+                                        text = "${formatNumber(studiedWords)} Studied",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = GoldAccent
+                                        ),
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                    Text(
+                                        text = "•",
+                                        color = TextMuted,
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(7.dp)
+                                            .clip(CircleShape)
+                                            .border(1.dp, TextMuted, CircleShape)
+                                    )
+                                    Text(
+                                        text = "${formatNumber(leftWords)} Left",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color = TextSecondary
+                                        ),
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+                                Text(
+                                    text = progressPercentText,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = GoldAccent
+                                    ),
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    modifier = Modifier.padding(start = 8.dp)
+                                )
+                            }
+                            LinearProgressIndicator(
+                                progress = { visualProgressFraction },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(5.dp)
+                                    .clip(RoundedCornerShape(3.dp)),
+                                color = GoldAccent,
+                                trackColor = BorderDark
                             )
                         }
                     }
                 }
+            }
 
             // 2. Search & Filters Card
             item(key = "search_and_filters", contentType = "search_and_filters") {
@@ -2019,7 +2038,9 @@ private fun WordBookFilterPill(
                 fontSize = 13.sp
             ),
             color = if (selected) GoldAccent else TextSecondary,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+            maxLines = 1,
+            softWrap = false,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
         )
     }
 }
@@ -2338,6 +2359,8 @@ fun WordBookEntryRow(
                                 fontSize = 10.sp
                             ),
                             color = GoldAccent,
+                            maxLines = 1,
+                            softWrap = false,
                             modifier = Modifier
                                 .drawBehind {
                                     drawRoundRect(
@@ -2353,7 +2376,9 @@ fun WordBookEntryRow(
                         Text(
                             text = ipaAndPos,
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                            color = TextMuted
+                            color = TextMuted,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -3387,6 +3412,8 @@ fun LevelProgressSummaryBanner(
                             text = "Level $displayLevel",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                             color = levelColor,
+                            maxLines = 1,
+                            softWrap = false,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                         )
                     }
@@ -3400,6 +3427,8 @@ fun LevelProgressSummaryBanner(
                             text = levelAr,
                             style = ArabicTypography.labelSmall.copy(fontWeight = FontWeight.Medium),
                             color = TextSecondary,
+                            maxLines = 1,
+                            softWrap = false,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
@@ -3418,6 +3447,8 @@ fun LevelProgressSummaryBanner(
                         },
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                         color = levelColor,
+                        maxLines = 1,
+                        softWrap = false,
                         modifier = Modifier
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                             .testTag("level_progress_mastered_badge")

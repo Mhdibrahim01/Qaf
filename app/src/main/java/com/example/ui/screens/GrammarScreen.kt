@@ -175,6 +175,7 @@ fun GrammarScreen(
     onImportJsonUris: ((List<Uri>) -> Unit)? = null,
     onImportJsonText: (suspend (String) -> Result<Int>)? = null,
     userLevel: String = "B2",
+    onBackFromDetail: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var showAddLessonDialog by remember { mutableStateOf(false) }
@@ -188,7 +189,13 @@ fun GrammarScreen(
             chatHistory = chatHistory,
             sentenceCheckHistory = sentenceCheckHistory,
             readingTexts = readingTexts,
-            onBack = { onSelectLesson(null) },
+            onBack = {
+                if (onBackFromDetail != null) {
+                    onBackFromDetail()
+                } else {
+                    onSelectLesson(null)
+                }
+            },
             onSpeakTts = onSpeakTts,
             onOpenReadingText = onOpenReadingText,
             onSaveProgress = onSaveProgress,
@@ -371,17 +378,24 @@ fun GrammarLessonListScreen(
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(end = 8.dp)
                                 ) {
                                     Text(
                                         text = "$completedCount Completed",
                                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 15.sp),
-                                        color = GoldAccent
+                                        color = GoldAccent,
+                                        maxLines = 1,
+                                        softWrap = false
                                     )
                                     Text(
                                         text = " • $totalLessons Lessons",
                                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                                        color = TextSecondary
+                                        color = TextSecondary,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
 
@@ -412,7 +426,9 @@ fun GrammarLessonListScreen(
                                             Text(
                                                 text = "+ AI Lesson",
                                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                                color = GoldAccent
+                                                color = GoldAccent,
+                                                maxLines = 1,
+                                                softWrap = false
                                             )
                                         }
                                     }
@@ -3534,7 +3550,9 @@ fun GrammarRecommendedShelf(
                     Text(
                         text = "Recommended for You",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = TextPrimary
+                        color = TextPrimary,
+                        maxLines = 1,
+                        softWrap = false
                     )
                     Surface(
                         shape = RoundedCornerShape(6.dp),
@@ -3545,6 +3563,8 @@ fun GrammarRecommendedShelf(
                             text = userLevel.uppercase(),
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp),
                             color = SkyAccent,
+                            maxLines = 1,
+                            softWrap = false,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -3565,6 +3585,8 @@ fun GrammarRecommendedShelf(
                     text = "${recommendedLessons.size} lessons",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
                     color = GoldAccent,
+                    maxLines = 1,
+                    softWrap = false,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                 )
             }

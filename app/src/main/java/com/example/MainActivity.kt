@@ -1,5 +1,7 @@
 package com.example
 
+import android.content.Context
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -7,9 +9,22 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.ui.navigation.WordBooksAppShell
+import com.example.ui.theme.WordBooksDesignTokens
 import com.example.ui.theme.WordBooksTheme
 
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: Context) {
+        val currentConfig = newBase.resources.configuration
+        if (currentConfig.fontScale != WordBooksDesignTokens.LOCKED_FONT_SCALE) {
+            val overrideConfig = Configuration(currentConfig).apply {
+                fontScale = WordBooksDesignTokens.LOCKED_FONT_SCALE
+            }
+            super.attachBaseContext(newBase.createConfigurationContext(overrideConfig))
+        } else {
+            super.attachBaseContext(newBase)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

@@ -274,11 +274,14 @@ private fun bindInlineEnglishRun(candidate: String): String {
 }
 
 private fun isolateLatinInRtlLine(rawLine: String): String {
-    // First, protect pure-Arabic parentheticals `(أتمنى لو ...)` with RLM around parentheses
-    // so their opening/closing brackets never mirror the wrong way across line wraps.
-    val arabicParenRegex = Regex("""\(([\u0600-\u06FF][^A-Za-z)]*)\)""")
+    // Protect Arabic-started parentheticals (both pure Arabic `(أتمنى لو ...)` and mixed `(مستوى B2)`)
+    // with RLM around both parentheses, and bind short parentheticals (<= 24 chars) with NBSP
+    // so they never split mid-parenthetical or mirror their closing bracket after a Latin token.
+    val arabicParenRegex = Regex("""\(([\u0600-\u06FF][^)]*)\)""")
     val line = arabicParenRegex.replace(rawLine) { m ->
-        "$RLM($RLM${m.groupValues[1]}$RLM)$RLM"
+        val innerRaw = m.groupValues[1].trim()
+        val inner = if (innerRaw.length <= 24) innerRaw.replace(' ', NBSP) else innerRaw
+        "$RLM($RLM$inner$RLM)$RLM"
     }
 
     if (!hasLatinCharacters(line)) return line

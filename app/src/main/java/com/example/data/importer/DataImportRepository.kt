@@ -472,17 +472,24 @@ class DataImportRepository(
             buildGroupedCardFromEntries(variants, progressByKey[cardKey])
         }
 
+        val firstAlphaWord = cards.firstOrNull()?.text.orEmpty()
+        val isLegacyUnstudiedDefault = savedState != null &&
+            savedState.totalStudiedInDeck == 0 &&
+            (savedState.lastCardIndex == 0 || savedState.lastWordText.equals(firstAlphaWord, ignoreCase = true))
+
+        val effectiveSavedState = if (isLegacyUnstudiedDefault) null else savedState
+
         val clampedIndex = if (cards.isEmpty()) {
             0
         } else {
-            (savedState?.lastCardIndex ?: 0).coerceIn(0, cards.size - 1)
+            (effectiveSavedState?.lastCardIndex ?: 0).coerceIn(0, cards.size - 1)
         }
 
-        val resolvedState = savedState?.copy(lastCardIndex = clampedIndex)
+        val resolvedState = effectiveSavedState?.copy(lastCardIndex = clampedIndex)
             ?: DeckStudyStateEntity(
                 deckId = deckId,
                 lastCardIndex = 0,
-                lastWordText = cards.firstOrNull()?.text.orEmpty(),
+                lastWordText = "",
                 totalStudiedInDeck = 0
             )
 

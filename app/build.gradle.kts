@@ -18,8 +18,8 @@ android {
     applicationId = "com.aistudio.wordbooks.nxvkqp"
     minSdk = 24
     targetSdk = 36
-    versionCode = 5
-    versionName = "2.1.0"
+    versionCode = 7
+    versionName = "3.1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
