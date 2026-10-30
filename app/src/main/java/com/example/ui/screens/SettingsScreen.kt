@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -87,7 +88,9 @@ import com.example.data.local.StudyPlanProfileEntity
 import com.example.ui.components.ArabicText
 import com.example.ui.components.ProgressBadge
 import com.example.ui.components.SlowAudioTurtleButton
+import com.example.ui.theme.AppLanguage
 import com.example.ui.theme.AppThemeMode
+import com.example.ui.theme.bi
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
@@ -124,6 +127,8 @@ fun SettingsScreen(
     isDeveloperModeEnabled: Boolean,
     themeMode: AppThemeMode = AppThemeMode.DARK,
     onSelectThemeMode: (AppThemeMode) -> Unit = {},
+    appLanguage: AppLanguage = com.example.ui.theme.AppLanguageState.currentLanguage,
+    onSelectAppLanguage: (AppLanguage) -> Unit = {},
 
     onSelectAccentUk: (Boolean) -> Unit,
     onSelectSpeechRate: (Float) -> Unit,
@@ -378,6 +383,92 @@ fun SettingsScreen(
                             accentColor = GoldAccent,
                             onClick = { onSelectThemeMode(AppThemeMode.SYSTEM) },
                             testTag = "btn_theme_system",
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
+                    }
+                }
+            }
+
+            // =========================================================================
+            // SECTION 0.5: INTERFACE LANGUAGE (ENGLISH / ARABIC / SYSTEM)
+            // =========================================================================
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = SurfaceDark,
+                border = BorderStroke(1.dp, BorderDark),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("settings_section_language")
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Translate,
+                                contentDescription = null,
+                                tint = GoldAccent,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = bi("Interface Language", "لغة الواجهة"),
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = TextPrimary
+                            )
+                        }
+                        ArabicText(
+                            text = "لغة واجهة التطبيق",
+                            style = ArabicTypography.labelSmall,
+                            color = TextSecondary
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(IntrinsicSize.Min),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        SettingsChoicePill(
+                            labelEn = "English",
+                            subtitleEn = "الإنجليزية (Default)",
+                            isSelected = appLanguage == AppLanguage.ENGLISH,
+                            accentColor = GoldAccent,
+                            onClick = { onSelectAppLanguage(AppLanguage.ENGLISH) },
+                            testTag = "btn_lang_en",
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
+                        SettingsChoicePill(
+                            labelEn = "العربية",
+                            subtitleEn = "Arabic (RTL)",
+                            isSelected = appLanguage == AppLanguage.ARABIC,
+                            accentColor = GoldAccent,
+                            onClick = { onSelectAppLanguage(AppLanguage.ARABIC) },
+                            testTag = "btn_lang_ar",
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
+                        SettingsChoicePill(
+                            labelEn = "System",
+                            subtitleEn = "تلقائي",
+                            isSelected = appLanguage == AppLanguage.SYSTEM,
+                            accentColor = GoldAccent,
+                            onClick = { onSelectAppLanguage(AppLanguage.SYSTEM) },
+                            testTag = "btn_lang_system",
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
@@ -1061,6 +1152,8 @@ fun SettingsScreen(
 
                 HorizontalDivider(color = BorderSubtle)
 
+                com.example.ui.update.UpdateSettingsRow()
+
                 // Interactive 7-Tap Version Row
                 Surface(
                     color = SurfaceElevatedDark,
@@ -1111,7 +1204,7 @@ fun SettingsScreen(
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
-                                text = "Version 1.0 (Build 1)",
+                                text = "Version ${com.example.BuildConfig.VERSION_NAME} (Build ${com.example.BuildConfig.VERSION_CODE})",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                 color = TextPrimary
                             )

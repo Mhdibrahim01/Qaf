@@ -53,6 +53,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -66,6 +67,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -74,7 +76,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.ai.AiKeyProvider
@@ -745,58 +749,65 @@ fun ApiKeyDialog(
                         )
                     }
 
-                    OutlinedTextField(
-                        value = newKeyInput,
-                        onValueChange = { newKeyInput = it },
-                        label = { Text("API Key Token", style = MaterialTheme.typography.bodySmall) },
-                        placeholder = {
-                            Text(
-                                "Paste Gemini (AIzaSy.../AQ...), Groq (gsk_...), or OpenRouter (sk-or-...) key",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = TextMuted
-                            )
-                        },
-                        singleLine = true,
-                        visualTransformation = if (isNewKeyPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        trailingIcon = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(onClick = {
-                                    val clip = clipboardManager.getText()?.text
-                                    if (!clip.isNullOrBlank()) {
-                                        newKeyInput = clip.trim()
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        OutlinedTextField(
+                            value = newKeyInput,
+                            onValueChange = { newKeyInput = it },
+                            label = { Text("API Key Token", style = MaterialTheme.typography.bodySmall) },
+                            placeholder = {
+                                Text(
+                                    "Paste Gemini (AIzaSy.../AQ...), Groq (gsk_...), or OpenRouter (sk-or-...) key",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextMuted
+                                )
+                            },
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                fontFamily = FontFamily.Monospace,
+                                textDirection = TextDirection.Ltr,
+                                textAlign = TextAlign.Left
+                            ),
+                            singleLine = true,
+                            visualTransformation = if (isNewKeyPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            trailingIcon = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(onClick = {
+                                        val clip = clipboardManager.getText()?.text
+                                        if (!clip.isNullOrBlank()) {
+                                            newKeyInput = clip.trim()
+                                        }
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.Default.ContentPaste,
+                                            contentDescription = "Paste",
+                                            tint = GoldAccent,
+                                            modifier = Modifier.size(18.dp)
+                                        )
                                     }
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Default.ContentPaste,
-                                        contentDescription = "Paste",
-                                        tint = GoldAccent,
-                                        modifier = Modifier.size(18.dp)
-                                    )
+                                    IconButton(onClick = { isNewKeyPasswordVisible = !isNewKeyPasswordVisible }) {
+                                        Icon(
+                                            imageVector = if (isNewKeyPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                            contentDescription = if (isNewKeyPasswordVisible) "Hide key" else "Show key",
+                                            tint = TextSecondary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
                                 }
-                                IconButton(onClick = { isNewKeyPasswordVisible = !isNewKeyPasswordVisible }) {
-                                    Icon(
-                                        imageVector = if (isNewKeyPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                        contentDescription = if (isNewKeyPasswordVisible) "Hide key" else "Show key",
-                                        tint = TextSecondary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = GoldAccent,
-                            unfocusedBorderColor = BorderDark,
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary,
-                            focusedContainerColor = BackgroundDark,
-                            unfocusedContainerColor = BackgroundDark
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("input_custom_gemini_api_key")
-                    )
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = GoldAccent,
+                                unfocusedBorderColor = BorderDark,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                focusedContainerColor = BackgroundDark,
+                                unfocusedContainerColor = BackgroundDark
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("input_custom_gemini_api_key")
+                        )
+                    }
 
                     // Live auto-detection chip for new key
                     if (sanitizedNewKey.isNotBlank()) {

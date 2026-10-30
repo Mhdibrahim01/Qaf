@@ -28,6 +28,8 @@ import com.example.ui.components.SlowAudioTurtleButton
 import com.example.ui.screens.AiDefinitionPanel
 import com.example.ui.screens.MoreScreen
 import com.example.ui.screens.SettingsScreen
+import com.example.ui.theme.AppLanguage
+import com.example.ui.theme.AppLanguageState
 import com.example.ui.theme.WordBooksTheme
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -367,10 +369,14 @@ class SettingsAndDeveloperModeTest {
             }
         }
 
-        // Verify Google Speech Services status card exists
-        composeTestRule.onNodeWithTag("card_google_tts_engine").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Google Speech Services").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Active Engine").assertIsDisplayed()
+        // Verify Language section and Google Speech Services status card exist
+        composeTestRule.onNodeWithTag("settings_section_language").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("btn_lang_en").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("btn_lang_ar").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("btn_lang_system").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("card_google_tts_engine").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Google Speech Services").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Active Engine").performScrollTo().assertIsDisplayed()
         }
     }
 
@@ -528,5 +534,36 @@ class SettingsAndDeveloperModeTest {
         // Entry 5: (5 * 2654435761) & 0x7FFFFFFF = 387520747 (lower hash -> comes first!)
         // Entry 9 ("island"): (9 * 2654435761) & 0x7FFFFFFF = 264024825 (lowest hash -> comes first!)
         assertEquals("island", mixedSorted.first().text)
+    }
+
+    @Test
+    fun appLanguage_defaultsToEnglishLtrAndSwitchesToArabicRtlExplicitly() = runBlocking {
+        val originalLocale = Locale.getDefault()
+        try {
+            // Even on an Arabic OS locale, default app language must stay English (LTR)
+            Locale.setDefault(Locale("ar"))
+            val initialSnap = onboardingRepo.getSnapshot()
+            assertEquals("en", initialSnap.appLanguage)
+            assertEquals(AppLanguage.ENGLISH, AppLanguage.fromCode(initialSnap.appLanguage))
+            assertEquals(AppLanguage.ENGLISH, AppLanguage.fromCode(null))
+
+            AppLanguageState.currentLanguage = AppLanguage.fromCode(initialSnap.appLanguage)
+            assertFalse("Default English mode must stay LTR even on Arabic OS", AppLanguageState.isArabic)
+
+            // Switching to Arabic mode persists "ar" and activates RTL
+            onboardingRepo.setAppLanguage(AppLanguage.ARABIC.code)
+            val updatedSnap = onboardingRepo.getSnapshot()
+            assertEquals("ar", updatedSnap.appLanguage)
+            AppLanguageState.currentLanguage = AppLanguage.fromCode(updatedSnap.appLanguage)
+            assertTrue("Arabic mode must activate RTL", AppLanguageState.isArabic)
+
+            // Switching to System mode follows OS locale
+            onboardingRepo.setAppLanguage(AppLanguage.SYSTEM.code)
+            AppLanguageState.currentLanguage = AppLanguage.fromCode(onboardingRepo.getSnapshot().appLanguage)
+            assertTrue("System mode on Arabic OS must activate RTL", AppLanguageState.isArabic)
+        } finally {
+            AppLanguageState.currentLanguage = AppLanguage.ENGLISH
+            Locale.setDefault(originalLocale)
+        }
     }
 }

@@ -185,6 +185,7 @@ fun MoreScreen(
                 LearningStatCard(
                     value = "$grammarLessonsCount",
                     labelEn = "Grammar",
+                    labelAr = "القواعد",
                     accentColor = VioletAccent,
                     onClick = onNavigateToGrammar,
                     modifier = Modifier.weight(1f)
@@ -192,6 +193,7 @@ fun MoreScreen(
                 LearningStatCard(
                     value = "$readingTextsCount",
                     labelEn = "Reading",
+                    labelAr = "القراءة",
                     accentColor = SkyAccent,
                     onClick = onNavigateToReading,
                     modifier = Modifier.weight(1f)
@@ -199,6 +201,7 @@ fun MoreScreen(
                 LearningStatCard(
                     value = "$correctionEntriesCount",
                     labelEn = "Notebook",
+                    labelAr = "دفتر التصحيح",
                     accentColor = CoralAccent,
                     onClick = onNavigateToCorrectionNotebook,
                     modifier = Modifier.weight(1f)
@@ -206,6 +209,7 @@ fun MoreScreen(
                 LearningStatCard(
                     value = "${studyStreak}d",
                     labelEn = "Streak",
+                    labelAr = "الحماسة",
                     accentColor = GoldAccent,
                     onClick = onNavigateToPlan,
                     modifier = Modifier.weight(1f)

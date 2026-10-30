@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.navigation.AppRoute
 import com.example.ui.navigation.BottomNavDestination
+import com.example.ui.theme.AppLanguageState
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
@@ -161,7 +162,7 @@ fun WordBooksTopAppBar(
 
                     Column(verticalArrangement = Arrangement.Center) {
                         Text(
-                            text = title,
+                            text = if (AppLanguageState.isArabic && !arabicTitle.isNullOrBlank()) arabicTitle else title,
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = (-0.2).sp
@@ -267,14 +268,14 @@ fun WordBooksBottomNavigation(
                         ) {
                             Icon(
                                 imageVector = if (isSelected) destination.selectedIcon else destination.unselectedIcon,
-                                contentDescription = destination.titleEn,
+                                contentDescription = if (AppLanguageState.isArabic) destination.titleAr else destination.titleEn,
                                 tint = if (isSelected) GoldAccent else TextMuted,
                                 modifier = Modifier.size(21.dp)
                             )
                         }
                         Spacer(modifier = Modifier.height(3.dp))
                         Text(
-                            text = destination.shortLabel,
+                            text = if (AppLanguageState.isArabic) destination.titleAr else destination.shortLabel,
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontSize = 11.sp,
                                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
@@ -346,13 +347,13 @@ fun WordBooksNavigationRail(
                 icon = {
                     Icon(
                         imageVector = if (isSelected) destination.selectedIcon else destination.unselectedIcon,
-                        contentDescription = destination.titleEn,
+                        contentDescription = if (AppLanguageState.isArabic) destination.titleAr else destination.titleEn,
                         modifier = Modifier.size(22.dp)
                     )
                 },
                 label = {
                     Text(
-                        text = destination.shortLabel,
+                        text = if (AppLanguageState.isArabic) destination.titleAr else destination.shortLabel,
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontSize = 11.sp,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
@@ -625,7 +626,7 @@ fun LearningStatCard(
                 }
             }
             Text(
-                text = labelEn,
+                text = if (AppLanguageState.isArabic && !labelAr.isNullOrBlank()) labelAr else labelEn,
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontWeight = FontWeight.Medium,
                     fontSize = 11.sp

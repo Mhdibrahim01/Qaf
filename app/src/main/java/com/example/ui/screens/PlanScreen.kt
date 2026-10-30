@@ -98,6 +98,8 @@ import com.example.ui.theme.SurfaceElevatedDark
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.AppLanguageState
+import com.example.ui.theme.bi
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
@@ -594,21 +596,24 @@ private fun TodayTabContent(
                             )
                         }
 
+                        val isArMode = AppLanguageState.isArabic
+                        val primaryTitle = if (isArMode && task.titleAr.isNotBlank()) task.titleAr else task.titleEn
+                        val secondaryTitle = if (isArMode && task.titleAr.isNotBlank()) task.titleEn else task.titleAr
                         Column(
                             modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                text = task.titleEn,
+                                text = primaryTitle,
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = if (task.isCompleted) TextMuted else TextPrimary,
                                     textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None
                                 )
                             )
-                            if (task.titleAr.isNotBlank()) {
+                            if (secondaryTitle.isNotBlank()) {
                                 BidiText(
-                                    text = task.titleAr,
+                                    text = secondaryTitle,
                                     style = ArabicTypography.labelSmall,
                                     color = if (task.isCompleted) TextMuted else TextSecondary,
                                     modifier = Modifier.fillMaxWidth()
