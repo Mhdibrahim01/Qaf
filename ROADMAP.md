@@ -12,14 +12,14 @@ This document serves as the self-contained, master engineering roadmap for **ق�
 | المرحلة | الميزة | الجهد المقدر | ركيزة التعلّم الأساسية | الاعتماديات البرمجية الأساسية | الحالة |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Phase 1A** | **Mistake Notebook & Weak-Words ("Leech") Drill** | ⚡ سريع | المعالجة الفورية للأخطاء والكلمات المتعثرة | Room SSOT (`again_count`, `correction_notebook`) | ✅ **منجز (v2.0)** |
-| **Phase 1B** | **Smart Daily Study Reminders & Streak Freeze** | ⚡ سريع | بناء العادة اليومية وحماية السلسلة | `WorkManager`, `NotificationCompat`, DataStore | ⏳ قيد التخطيط |
-| **Phase 2A** | **Interactive Listening & Dictation Challenges** | 🛠️ متوسط | دقة الاستماع والتهجئة والكتابة | Universal TTS, `SentencesScreen`, `quiz_results` | ⏳ قيد التخطيط |
+| **Phase 1B** | **Smart Daily Study Reminders & Streak Freeze** | ⚡ سريع | بناء العادة اليومية وحماية السلسلة | `AlarmManager`, `NotificationCompat`, DataStore | ✅ **منجز (v3.1)** |
+| **Phase 2A** | **Interactive Listening & Dictation Challenges** | 🛠️ متوسط | دقة الاستماع والتهجئة والكتابة | Universal TTS, `SentencesScreen`, `FlashcardsScreen` | ✅ **منجز (v3.1)** |
 | **Phase 2B** | **Android Home Screen "Word of the Day" Widget** | 🛠️ متوسط | التذكير المستمر والوصول السريع | Jetpack Glance (`glance-appwidget`), Room DAO | ⏳ قيد التخطيط |
 | **Phase 3A** | **Hands-Free Vocabulary Podcast Mode** | 🛠️ متوسط | الاستماع أثناء القيادة والمشي والرياضة | `MediaSession`, Background Service, Lock Screen UI | 💡 موصى به أولاً |
 | **Phase 3B** | **IELTS AI Writing & Speaking Examiner** | 🚀 متقدم | تقييم الآيلتس الرسمي وتقدير Band Score | Gemini AI 2.5 Flash, 9,386 IELTS Dataset, Grammar Link | 💡 جديد مقترح |
 | **Phase 4A** | **Voice Pronunciation & Shadow Speaking Lab** | 🚀 متقدم | طلاقة التحدث ومخارج الحروف السليمة | Android `SpeechRecognizer`, Phonetic Matrix, Audio Record | ⏳ قيد التخطيط |
-| **Phase 4B** | **Visual Lexical Mind-Map & Collocation Web** | 🛠️ متوسط | ربط المترادفات والمتلازمات اللفظية بصرياً | 13,393 AI Word Details, Compose Canvas / Force Graph | 💡 جديد مقترح |
-| **Phase 4C** | **60-Second Vocabulary Blitz & Speed Quizzes** | ⚡ سريع | التنافسية وردة الفعل اللغوية السريعة | StateFlow Timer, Gamification Badge System | 💡 جديد مقترح |
+| **Phase 4B** | **Visual Lexical Mind-Map & Collocation Web** | 🛠️ متوسط | ربط المترادفات والمتلازمات اللفظية بصرياً | 13,393 AI Word Details, Compose Canvas / Force Graph | ✅ **منجز (v3.1)** |
+| **Phase 4C** | **60-Second Vocabulary Blitz & Speed Quizzes** | ⚡ سريع | التنافسية وردة الفعل اللغوية السريعة | StateFlow Timer, Gamification Badge System | ✅ **منجز (v3.1)** |
 | **Phase 5** | **Cloud Backup & Multi-Device Sync** | 🚀 متقدم | الحفاظ على البيانات ومزامنة الأجهزة المتعددة | Firebase Firestore + Google Sign-In (`CredentialManager`) | ⏳ قيد التخطيط (Local ✅) |
 
 ---

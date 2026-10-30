@@ -15,6 +15,7 @@ import com.example.data.local.StudyPlanJson
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.local.WeakAreasState
 import com.example.data.local.WordBooksDao
+import com.example.data.onboarding.OnboardingPreferencesRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
@@ -1375,6 +1376,107 @@ class StudyPlanRepository(
         return streak
     }
 
+    /**
+     * Evaluates study streak with Streak Freeze Shield protection:
+     * - Auto-consumes 1 shield when a scheduled study day was missed after an active streak,
+     *   recording `lastProtectedDate` so the streak continues unbroken.
+     * - Awards +1 shield (up to MAX_STREAK_FREEZES = 2) whenever the user reaches a new 7-day
+     *   streak milestone (7, 14, 21, ...).
+     */
+    suspend fun evaluateStreakAndShields(
+        onboardingRepo: OnboardingPreferencesRepository
+    ): StreakShieldStatus {
+        val snap = onboardingRepo.getSnapshot()
+        var shields = snap.streakFreezeCount
+        var lastProtected = snap.lastProtectedDate
+
+        val all = dao.getAllDailyChecklists().sortedByDescending { it.date }
+        if (all.isEmpty()) {
+            return StreakShieldStatus(
+                streak = 0,
+                shieldCount = shields,
+                wasShieldConsumedRecently = false,
+                protectedDate = lastProtected
+            )
+        }
+
+        val profile = getOrCreateProfile()
+        val restDays: List<Int> = try {
+            json.decodeFromString(profile.restDaysJson)
+        } catch (_: Exception) {
+            listOf(Calendar.FRIDAY)
+        }
+
+        var streak = 0
+        val cal = Calendar.getInstance()
+        cal.timeInMillis = timeProvider.currentTimeMillis()
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+
+        val todayStr = sdf.format(cal.time)
+        val todayChecklist = all.find { it.date == todayStr }
+        if (todayChecklist?.isCompleted == true) {
+            streak++
+        }
+        cal.add(Calendar.DAY_OF_YEAR, -1)
+        val yesterdayStr = sdf.format(cal.time)
+
+        val completedDates = all.filter { it.isCompleted }.map { it.date }.toSet()
+
+        for (i in 0..60) {
+            val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
+            val dateStr = sdf.format(cal.time)
+
+            if (dateStr in completedDates) {
+                streak++
+            } else if (restDays.contains(dayOfWeek)) {
+                // Scheduled rest day does not break streak
+            } else if (dateStr == lastProtected) {
+                // Already protected by a Streak Freeze Shield
+            } else {
+                // Check if there is an active streak immediately preceding this missed day
+                val priorCal = (cal.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -1) }
+                var hasPriorCompleted = false
+                for (lookback in 0..3) {
+                    val lbDate = sdf.format(priorCal.time)
+                    val lbDow = priorCal.get(Calendar.DAY_OF_WEEK)
+                    if (lbDate in completedDates) {
+                        hasPriorCompleted = true
+                        break
+                    } else if (!restDays.contains(lbDow)) {
+                        break
+                    }
+                    priorCal.add(Calendar.DAY_OF_YEAR, -1)
+                }
+
+                if (hasPriorCompleted && shields > 0 && lastProtected != dateStr) {
+                    onboardingRepo.recordShieldConsumed(dateStr)
+                    shields = (shields - 1).coerceAtLeast(0)
+                    lastProtected = dateStr
+                } else {
+                    break
+                }
+            }
+            cal.add(Calendar.DAY_OF_YEAR, -1)
+        }
+
+        // Award +1 shield for every 7-day streak milestone (7, 14, 21, ...)
+        val milestone = (streak / 7) * 7
+        if (milestone >= 7 && milestone > snap.lastAwardedStreakMilestone) {
+            onboardingRepo.awardShieldForMilestone(milestone)
+            shields = onboardingRepo.getSnapshot().streakFreezeCount
+        }
+
+        val wasConsumedRecently = lastProtected.isNotBlank() &&
+            (lastProtected == yesterdayStr || lastProtected == todayStr)
+
+        return StreakShieldStatus(
+            streak = streak,
+            shieldCount = shields,
+            wasShieldConsumedRecently = wasConsumedRecently,
+            protectedDate = lastProtected
+        )
+    }
+
     suspend fun getWeakAreas(limit: Int = 10): WeakAreasState {
         val profile = getOrCreateProfile()
         val weakestWords = dao.getWeakestWords(limit)
@@ -2089,4 +2191,12 @@ data class WordSelectionResult(
     val words: List<EntryEntity>,
     val reasonString: String? = null
 )
+
+data class StreakShieldStatus(
+    val streak: Int = 0,
+    val shieldCount: Int = 1,
+    val wasShieldConsumedRecently: Boolean = false,
+    val protectedDate: String = ""
+)
+
 

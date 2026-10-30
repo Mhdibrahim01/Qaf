@@ -78,6 +78,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
@@ -131,6 +133,7 @@ import com.example.data.importer.PosSenseVariant
 import com.example.data.importer.Sm2Rating
 import com.example.data.local.DeckEntity
 import com.example.data.local.WordProgressEntity
+import com.example.data.sentences.SentencePracticeUtils
 import com.example.ui.components.ArabicText
 import com.example.ui.components.BooksModeSwitcher
 import com.example.ui.components.EmptyState
@@ -244,6 +247,7 @@ fun FlashcardsScreen(
 
     var showSettingsDialog by remember { mutableStateOf(false) }
     var isDistractionFreeMode by remember { mutableStateOf(false) }
+    var isDictationMode by remember { mutableStateOf(false) }
     var isAnimatingRating by remember { mutableStateOf(false) }
     var ratingStamp by remember { mutableStateOf<Sm2Rating?>(null) }
     var ratingCardSnapshot by remember { mutableStateOf<GroupedWordCard?>(null) }
@@ -638,6 +642,31 @@ fun FlashcardsScreen(
                                 }
                             }
 
+                            Surface(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable { isDictationMode = !isDictationMode }
+                                    .testTag("flashcard_dictation_toggle"),
+                                color = if (isDictationMode) GoldAccentDim else SurfaceElevatedDark,
+                                shape = RoundedCornerShape(6.dp),
+                                border = BorderStroke(1.dp, if (isDictationMode) GoldAccent else BorderDark)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.5.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = if (isDictationMode) "🎧 Dictation On" else "🎧 Dictation",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 11.sp,
+                                            color = GoldAccent
+                                        )
+                                    )
+                                }
+                            }
+
                             if (reviewDueTodayCount > 0) {
                                 GoldBadge(text = "Due: $reviewDueTodayCount")
                             }
@@ -923,6 +952,7 @@ fun FlashcardsScreen(
                                     card = card,
                                     isFlipped = isActiveCardFlipped,
                                     effectiveDirection = effectiveDirection,
+                                    isDictationMode = isDictationMode,
                                     autoShowAnswer = autoShowAnswer,
                                     isMastered = isMastered,
                                     isFavorite = isFavorite,
@@ -1075,6 +1105,7 @@ private fun FlipFlashcardItem(
     card: GroupedWordCard,
     isFlipped: Boolean,
     effectiveDirection: FlashcardDirection,
+    isDictationMode: Boolean = false,
     autoShowAnswer: Boolean,
     isMastered: Boolean,
     isFavorite: Boolean,
@@ -1141,6 +1172,7 @@ private fun FlipFlashcardItem(
                     FlashcardFrontFace(
                         card = card,
                         effectiveDirection = effectiveDirection,
+                        isDictationMode = isDictationMode,
                         autoShowAnswer = autoShowAnswer,
                         isFavorite = isFavorite,
                         isPlayingAudio = isPlayingAudio,
@@ -1190,6 +1222,7 @@ private fun Sm2Rating.ratingAccent(): Color = when (this) {
 private fun FlashcardFrontFace(
     card: GroupedWordCard,
     effectiveDirection: FlashcardDirection,
+    isDictationMode: Boolean = false,
     autoShowAnswer: Boolean,
     isFavorite: Boolean,
     isPlayingAudio: Boolean,
@@ -1200,6 +1233,15 @@ private fun FlashcardFrontFace(
 ) {
     val variantsWithArabic = remember(card.posVariants) {
         card.posVariants.filter { it.arabicMeaning.isNotBlank() }
+    }
+    var dictationInput by remember(card.cardKey) { mutableStateOf("") }
+    var dictationChecked by remember(card.cardKey) { mutableStateOf(false) }
+
+    // Automatically pronounce the current word as soon as Dictation Mode is activated or the card changes
+    LaunchedEffect(isDictationMode, card.cardKey) {
+        if (isDictationMode) {
+            onPlayAudio()
+        }
     }
 
     Column(
@@ -1317,7 +1359,122 @@ private fun FlashcardFrontFace(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            if (effectiveDirection == FlashcardDirection.ARABIC_TO_ENGLISH) {
+            if (isDictationMode) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("flashcard_dictation_front_panel")
+                ) {
+                    Text(
+                        text = "_ ".repeat(card.text.length.coerceIn(3, 12)).trim(),
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 2.sp
+                        ),
+                        color = GoldAccent
+                    )
+
+                    if (variantsWithArabic.isNotEmpty()) {
+                        ArabicText(
+                            text = variantsWithArabic.first().arabicMeaning,
+                            style = ArabicTypography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = TextSecondary,
+                            maxLines = 1
+                        )
+                    }
+
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = dictationInput,
+                                onValueChange = {
+                                    dictationInput = it
+                                    dictationChecked = false
+                                },
+                                placeholder = { Text("Type word you heard...", color = TextMuted) },
+                                singleLine = true,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("flashcard_dictation_input"),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = GoldAccent,
+                                    unfocusedBorderColor = BorderDark,
+                                    focusedContainerColor = SurfaceElevatedDark,
+                                    unfocusedContainerColor = SurfaceElevatedDark,
+                                    focusedTextColor = TextPrimary,
+                                    unfocusedTextColor = TextPrimary
+                                )
+                            )
+
+                            Button(
+                                onClick = { dictationChecked = true },
+                                enabled = dictationInput.isNotBlank(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = GoldAccent,
+                                    contentColor = BackgroundDark
+                                ),
+                                modifier = Modifier.testTag("flashcard_dictation_check")
+                            ) {
+                                Text("Check", fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        if (dictationChecked) {
+                            val cleanTyped = dictationInput.trim()
+                            val isExact = cleanTyped.equals(card.text.trim(), ignoreCase = true)
+                            val charSpans = SentencePracticeUtils.computeCharDiffSpans(cleanTyped, card.text.trim())
+                            Surface(
+                                color = if (isExact) EmeraldAccent.copy(alpha = 0.16f) else AmberAccent.copy(alpha = 0.16f),
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, if (isExact) EmeraldAccent else AmberAccent),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("flashcard_dictation_feedback")
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (isExact) {
+                                        Text(
+                                            text = "✓ Correct: ${card.text}",
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = EmeraldAccent
+                                        )
+                                    } else {
+                                        val diffAnnotated = buildAnnotatedString {
+                                            charSpans.forEach { span ->
+                                                withStyle(
+                                                    SpanStyle(
+                                                        color = if (span.isMatch) EmeraldAccent else CoralAccent,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                ) {
+                                                    append(span.char)
+                                                }
+                                            }
+                                            withStyle(SpanStyle(color = GoldAccent, fontWeight = FontWeight.ExtraBold)) {
+                                                append(" → ${card.text}")
+                                            }
+                                        }
+                                        Text(
+                                            text = diffAnnotated,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (effectiveDirection == FlashcardDirection.ARABIC_TO_ENGLISH) {
                 if (variantsWithArabic.isNotEmpty()) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,

@@ -76,6 +76,7 @@ import com.example.data.local.DeckStudyStateEntity
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.plan.LearnerModelSnapshot
 import com.example.data.plan.LifecycleStageWordItem
+import com.example.data.plan.StreakShieldStatus
 import com.example.ui.components.AdaptiveInsightBannerCard
 import com.example.ui.components.BidiText
 import com.example.ui.components.CefrAndLifecycleCard
@@ -157,6 +158,7 @@ fun HomeScreen(
     todayChecklist: DailyChecklistEntity? = null,
     weeklyChecklists: List<DailyChecklistEntity> = emptyList(),
     studyStreak: Int = 0,
+    streakShieldStatus: StreakShieldStatus = StreakShieldStatus(),
     studyPlanProfile: StudyPlanProfileEntity? = null,
     learnerModelSnapshot: LearnerModelSnapshot = LearnerModelSnapshot(),
     onDismissInsight: (String) -> Unit = {},
@@ -218,6 +220,7 @@ fun HomeScreen(
             // 1. Hero Card with Integrated 7-Day Weekly Strip
             WelcomeSection(
                 studyStreak = studyStreak,
+                streakShieldStatus = streakShieldStatus,
                 studyPlanProfile = studyPlanProfile,
                 todayChecklist = todayChecklist,
                 weeklyChecklists = weeklyChecklists,
@@ -370,6 +373,7 @@ fun HomeScreen(
 @Composable
 private fun WelcomeSection(
     studyStreak: Int,
+    streakShieldStatus: StreakShieldStatus = StreakShieldStatus(),
     studyPlanProfile: StudyPlanProfileEntity? = null,
     todayChecklist: DailyChecklistEntity? = null,
     weeklyChecklists: List<DailyChecklistEntity> = emptyList(),
@@ -448,36 +452,83 @@ private fun WelcomeSection(
                     }
                 }
 
-                // Streak Badge Pill
+                // Streak Badge Pill + Streak Freeze Shield Pill
                 val streakCount = if (studyStreak > 0) studyStreak else 1
-                Surface(
-                    color = CoralAccentBg,
-                    shape = PillShape,
-                    border = BorderStroke(1.dp, CoralAccentBorder),
-                    modifier = Modifier
-                        .padding(top = 2.dp)
-                        .testTag("home_study_streak_badge")
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 2.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    Surface(
+                        color = SkyAccentBg,
+                        shape = PillShape,
+                        border = BorderStroke(1.dp, SkyAccentBorder),
+                        modifier = Modifier.testTag("streak_freeze_badge")
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.LocalFireDepartment,
-                            contentDescription = null,
-                            tint = CoralAccent,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = "$streakCount day streak",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 11.5.sp
-                            ),
-                            color = CoralAccent
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "🛡️ x${streakShieldStatus.shieldCount}",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp
+                                ),
+                                color = SkyAccent
+                            )
+                        }
                     }
+
+                    Surface(
+                        color = CoralAccentBg,
+                        shape = PillShape,
+                        border = BorderStroke(1.dp, CoralAccentBorder),
+                        modifier = Modifier.testTag("home_study_streak_badge")
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocalFireDepartment,
+                                contentDescription = null,
+                                tint = CoralAccent,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = "$streakCount day streak",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 11.5.sp
+                                ),
+                                color = CoralAccent
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (streakShieldStatus.wasShieldConsumedRecently) {
+                Surface(
+                    color = SkyAccentBg,
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, SkyAccentBorder),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("streak_freeze_consumed_banner")
+                ) {
+                    Text(
+                        text = bi(
+                            "🛡️ Streak Freeze Shield protected your ${if (studyStreak > 0) studyStreak else 1}-day streak!",
+                            "🛡️ تم استخدام درع الحماية للحفاظ على سلسلتك اليومية البالغة ${if (studyStreak > 0) studyStreak else 1} يوماً بنجاح!"
+                        ),
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = SkyAccent,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
                 }
             }
 

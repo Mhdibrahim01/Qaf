@@ -44,7 +44,16 @@ data class OnboardingPreferencesState(
     val ttsSpeechRate: Float = 0.85f,
     val ttsEngineMode: String = "system",
     val themeMode: String = "dark",
-    val appLanguage: String = "en"
+    val appLanguage: String = "en",
+    val streakFreezeCount: Int = 1,
+    val lastProtectedDate: String = "",
+    val lastAwardedStreakMilestone: Int = 0,
+    val studyReminderEnabled: Boolean = true,
+    val studyReminderTimeMinutes: Int = 20 * 60,
+    val blitzHighScore: Int = 0,
+    val blitzBestStreak: Int = 0,
+    val blitzBadgeWordSniper: Boolean = false,
+    val blitzBadgeAcademicLightning: Boolean = false
 ) {
     /**
      * Returns the 1-indexed step (1..5) that should currently be shown when onboarding is active.
@@ -64,6 +73,8 @@ class OnboardingPreferencesRepository(
         get() = customDataStore ?: context.applicationContext.onboardingDataStore
 
     companion object {
+        const val MAX_STREAK_FREEZES = 2
+
         val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val KEY_LAST_COMPLETED_STEP = intPreferencesKey("last_completed_step")
         val KEY_SELECTED_LEVEL = stringPreferencesKey("selected_level")
@@ -89,14 +100,23 @@ class OnboardingPreferencesRepository(
         val KEY_TTS_ENGINE_MODE = stringPreferencesKey("tts_engine_mode")
         val KEY_THEME_MODE = stringPreferencesKey("app_theme_mode")
         val KEY_APP_LANGUAGE = stringPreferencesKey("app_language")
+        val KEY_STREAK_FREEZE_COUNT = intPreferencesKey("streak_freeze_count")
+        val KEY_LAST_PROTECTED_DATE = stringPreferencesKey("last_protected_date")
+        val KEY_LAST_AWARDED_STREAK_MILESTONE = intPreferencesKey("last_awarded_streak_milestone")
+        val KEY_STUDY_REMINDER_ENABLED = booleanPreferencesKey("study_reminder_enabled")
+        val KEY_STUDY_REMINDER_TIME_MINUTES = intPreferencesKey("study_reminder_time_minutes")
+        val KEY_BLITZ_HIGH_SCORE = intPreferencesKey("blitz_high_score")
+        val KEY_BLITZ_BEST_STREAK = intPreferencesKey("blitz_best_streak")
+        val KEY_BLITZ_BADGE_WORD_SNIPER = booleanPreferencesKey("blitz_badge_word_sniper")
+        val KEY_BLITZ_BADGE_ACADEMIC_LIGHTNING = booleanPreferencesKey("blitz_badge_academic_lightning")
 
-        /**
-         * Kept false until the daily reminder WorkManager notification feature is enabled.
-         */
-        const val ENABLE_DAILY_REMINDER_PROMPT = false
+        const val ENABLE_DAILY_REMINDER_PROMPT = true
     }
 
     val stateFlow: Flow<OnboardingPreferencesState> = dataStore.data.map { prefs ->
+        val reminderHour = prefs[KEY_REMINDER_HOUR] ?: 20
+        val reminderMin = prefs[KEY_REMINDER_MINUTE] ?: 0
+        val defaultReminderMinutes = (reminderHour * 60 + reminderMin).coerceIn(0, 23 * 60 + 59)
         OnboardingPreferencesState(
             onboardingCompleted = prefs[KEY_ONBOARDING_COMPLETED] ?: false,
             lastCompletedStep = (prefs[KEY_LAST_COMPLETED_STEP] ?: 0).coerceIn(0, 5),
@@ -112,8 +132,8 @@ class OnboardingPreferencesRepository(
             coachTipWordTapDismissed = prefs[KEY_COACH_TIP_WORD_TAP_DISMISSED] ?: false,
             firstSessionCompleted = prefs[KEY_FIRST_SESSION_COMPLETED] ?: false,
             notificationPromptShown = prefs[KEY_NOTIFICATION_PROMPT_SHOWN] ?: false,
-            reminderHour = prefs[KEY_REMINDER_HOUR] ?: 20,
-            reminderMinute = prefs[KEY_REMINDER_MINUTE] ?: 0,
+            reminderHour = reminderHour,
+            reminderMinute = reminderMin,
             preferredTopicsJson = prefs[KEY_PREFERRED_TOPICS] ?: "[]",
             quietModeEnabled = prefs[KEY_QUIET_MODE] ?: false,
             isDeveloperModeEnabled = prefs[KEY_DEVELOPER_MODE_ENABLED] ?: false,
@@ -122,7 +142,16 @@ class OnboardingPreferencesRepository(
             ttsSpeechRate = prefs[KEY_TTS_SPEECH_RATE] ?: 0.85f,
             ttsEngineMode = prefs[KEY_TTS_ENGINE_MODE] ?: "system",
             themeMode = prefs[KEY_THEME_MODE] ?: "dark",
-            appLanguage = prefs[KEY_APP_LANGUAGE] ?: "en"
+            appLanguage = prefs[KEY_APP_LANGUAGE] ?: "en",
+            streakFreezeCount = (prefs[KEY_STREAK_FREEZE_COUNT] ?: 1).coerceIn(0, MAX_STREAK_FREEZES),
+            lastProtectedDate = prefs[KEY_LAST_PROTECTED_DATE] ?: "",
+            lastAwardedStreakMilestone = prefs[KEY_LAST_AWARDED_STREAK_MILESTONE] ?: 0,
+            studyReminderEnabled = prefs[KEY_STUDY_REMINDER_ENABLED] ?: true,
+            studyReminderTimeMinutes = (prefs[KEY_STUDY_REMINDER_TIME_MINUTES] ?: defaultReminderMinutes).coerceIn(0, 23 * 60 + 59),
+            blitzHighScore = prefs[KEY_BLITZ_HIGH_SCORE] ?: 0,
+            blitzBestStreak = prefs[KEY_BLITZ_BEST_STREAK] ?: 0,
+            blitzBadgeWordSniper = prefs[KEY_BLITZ_BADGE_WORD_SNIPER] ?: false,
+            blitzBadgeAcademicLightning = prefs[KEY_BLITZ_BADGE_ACADEMIC_LIGHTNING] ?: false
         )
     }
 
@@ -287,6 +316,71 @@ class OnboardingPreferencesRepository(
     suspend fun setAppLanguage(languageCode: String) {
         dataStore.edit { prefs ->
             prefs[KEY_APP_LANGUAGE] = languageCode.trim().lowercase()
+        }
+    }
+
+    suspend fun setStreakFreezeCount(count: Int) {
+        dataStore.edit { prefs ->
+            prefs[KEY_STREAK_FREEZE_COUNT] = count.coerceIn(0, MAX_STREAK_FREEZES)
+        }
+    }
+
+    suspend fun recordShieldConsumed(protectedDate: String) {
+        dataStore.edit { prefs ->
+            val current = (prefs[KEY_STREAK_FREEZE_COUNT] ?: 1).coerceIn(0, MAX_STREAK_FREEZES)
+            prefs[KEY_STREAK_FREEZE_COUNT] = (current - 1).coerceAtLeast(0)
+            prefs[KEY_LAST_PROTECTED_DATE] = protectedDate.trim()
+        }
+    }
+
+    suspend fun awardShieldForMilestone(milestone: Int) {
+        if (milestone <= 0 || milestone % 7 != 0) return
+        dataStore.edit { prefs ->
+            val prevMilestone = prefs[KEY_LAST_AWARDED_STREAK_MILESTONE] ?: 0
+            if (milestone > prevMilestone) {
+                val current = (prefs[KEY_STREAK_FREEZE_COUNT] ?: 1).coerceIn(0, MAX_STREAK_FREEZES)
+                prefs[KEY_STREAK_FREEZE_COUNT] = (current + 1).coerceAtMost(MAX_STREAK_FREEZES)
+                prefs[KEY_LAST_AWARDED_STREAK_MILESTONE] = milestone
+            }
+        }
+    }
+
+    suspend fun setStudyReminderEnabled(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[KEY_STUDY_REMINDER_ENABLED] = enabled
+        }
+    }
+
+    suspend fun setStudyReminderTimeMinutes(minutesFromMidnight: Int) {
+        val clamped = minutesFromMidnight.coerceIn(0, 23 * 60 + 59)
+        dataStore.edit { prefs ->
+            prefs[KEY_STUDY_REMINDER_TIME_MINUTES] = clamped
+            prefs[KEY_REMINDER_HOUR] = clamped / 60
+            prefs[KEY_REMINDER_MINUTE] = clamped % 60
+        }
+    }
+
+    suspend fun recordBlitzResult(
+        score: Int,
+        maxCombo: Int,
+        unlockedWordSniper: Boolean,
+        unlockedAcademicLightning: Boolean
+    ) {
+        dataStore.edit { prefs ->
+            val prevHigh = prefs[KEY_BLITZ_HIGH_SCORE] ?: 0
+            if (score > prevHigh) {
+                prefs[KEY_BLITZ_HIGH_SCORE] = score
+            }
+            val prevStreak = prefs[KEY_BLITZ_BEST_STREAK] ?: 0
+            if (maxCombo > prevStreak) {
+                prefs[KEY_BLITZ_BEST_STREAK] = maxCombo
+            }
+            if (unlockedWordSniper) {
+                prefs[KEY_BLITZ_BADGE_WORD_SNIPER] = true
+            }
+            if (unlockedAcademicLightning) {
+                prefs[KEY_BLITZ_BADGE_ACADEMIC_LIGHTNING] = true
+            }
         }
     }
 
