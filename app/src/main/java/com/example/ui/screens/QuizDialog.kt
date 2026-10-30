@@ -78,6 +78,7 @@ import com.example.ui.theme.SurfaceElevatedDark
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.bi
 
 private fun normalizeSentenceForComparison(text: String): String {
     return text.trim()
@@ -170,7 +171,14 @@ fun QuizDialog(
                         color = TextPrimary
                     )
                     Text(
-                        text = if (!isFinished) "Question ${currentIndex + 1} of ${questions.size} • Skill: ${currentQuestion.skill.uppercase()}" else "Quiz Summary & Word Review",
+                        text = if (!isFinished) {
+                            bi(
+                                "Question ${currentIndex + 1} of ${questions.size} • Skill: ${currentQuestion.skill.uppercase()}",
+                                "السؤال ${currentIndex + 1} من ${questions.size} • المهارة: ${currentQuestion.skill.uppercase()}"
+                            )
+                        } else {
+                            bi("Quiz Summary & Word Review", "ملخص الاختبار ومراجعة الكلمات")
+                        },
                         style = MaterialTheme.typography.labelSmall,
                         color = GoldAccent
                     )
@@ -670,7 +678,7 @@ fun QuizDialog(
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Text(
-                                text = "Missed Questions (${missedQuestions.size})",
+                                text = bi("Missed Questions (${missedQuestions.size})", "الأسئلة الخاطئة (${missedQuestions.size})"),
                                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                                 color = CoralAccent
                             )
@@ -783,7 +791,10 @@ fun QuizDialog(
                                                 )
                                                 Spacer(modifier = Modifier.width(6.dp))
                                                 Text(
-                                                    text = "Review \"$targetWord\" in Dictionary 📖",
+                                                    text = bi(
+                                                        "Review \"$targetWord\" in Dictionary 📖",
+                                                        "مراجعة \"$targetWord\" في القاموس 📖"
+                                                    ),
                                                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
                                                 )
                                             }
@@ -816,7 +827,7 @@ fun QuizDialog(
                         colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = BackgroundDark),
                         shape = RoundedCornerShape(10.dp)
                     ) {
-                        Text("Check Answer", fontWeight = FontWeight.Bold)
+                        Text(bi("Check Answer", "تحقق من الإجابة"), fontWeight = FontWeight.Bold)
                     }
                 } else {
                     Button(
@@ -834,7 +845,10 @@ fun QuizDialog(
                         colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = BackgroundDark),
                         shape = RoundedCornerShape(10.dp)
                     ) {
-                        Text(if (currentIndex < questions.size - 1) "Next" else "Finish & Save", fontWeight = FontWeight.Bold)
+                        Text(
+                            if (currentIndex < questions.size - 1) bi("Next", "التالي") else bi("Finish & Save", "إنهاء وحفظ"),
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             } else {
@@ -843,7 +857,7 @@ fun QuizDialog(
                     colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = BackgroundDark),
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text("Close", fontWeight = FontWeight.Bold)
+                    Text(bi("Close", "إغلاق"), fontWeight = FontWeight.Bold)
                 }
             }
         },

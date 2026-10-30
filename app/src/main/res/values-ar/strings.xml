@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">┘é╪د┘</string>
+    <string name="app_tagline">┘à┘╪╡╪ر ╪ز╪╣┘┘ّ┘à ┘ê┘à┘à╪د╪▒╪│╪ر ╪د┘╪ح┘╪ش┘┘è╪▓┘è╪ر ╪د┘╪░┘â┘è╪ر</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">╪د┘╪▒╪خ┘è╪│┘è╪ر</string>
+    <string name="nav_word_books">╪د┘╪ص┘é╪د╪خ╪ذ</string>
+    <string name="nav_flashcards">╪د┘╪ذ╪╖╪د┘é╪د╪ز</string>
+    <string name="nav_sentences">╪د┘╪ش┘à┘</string>
+    <string name="nav_grammar">╪د┘┘é┘ê╪د╪╣╪»</string>
+    <string name="nav_reading">╪د┘┘é╪▒╪د╪ة╪ر</string>
+    <string name="nav_more">╪د┘┘à╪▓┘è╪»</string>
+    <string name="nav_plan">╪«╪╖╪ر ╪د┘╪»╪▒╪د╪│╪ر</string>
+    <string name="nav_correction">╪»┘╪ز╪▒ ╪د┘╪ث╪«╪╖╪د╪ة</string>
+    <string name="nav_settings">╪د┘╪ح╪╣╪»╪د╪»╪د╪ز</string>
+    <string name="nav_labs">╪د┘┘à╪╣┘à┘</string>
+    <string name="placeholder_ready">┘ê╪د╪ش┘ç╪ر ╪ش╪د┘ç╪▓╪ر</string>
+
+    <!-- Common Actions -->
+    <string name="action_cancel">╪ح┘╪║╪د╪ة</string>
+    <string name="action_confirm">╪ز╪ث┘â┘è╪»</string>
+    <string name="action_save">╪ص┘╪╕</string>
+    <string name="action_delete">╪ص╪░┘</string>
+    <string name="action_close">╪ح╪║┘╪د┘é</string>
+    <string name="action_continue">┘à╪ز╪د╪ذ╪╣╪ر</string>
+    <string name="action_back">╪▒╪ش┘ê╪╣</string>
+    <string name="action_done">╪ز┘à</string>
+    <string name="action_retry">╪ح╪╣╪د╪»╪ر ╪د┘┘à╪ص╪د┘ê┘╪ر</string>
+    <string name="action_search">╪ذ╪ص╪س</string>
+    <string name="action_filter">╪ز╪╡┘┘è╪ر</string>
+    <string name="action_clear">┘à╪│╪ص</string>
+    <string name="action_start">╪ذ╪»╪ة</string>
+    <string name="action_reset">╪ح╪╣╪د╪»╪ر ╪╢╪ذ╪╖</string>
+    <string name="action_view_all">╪╣╪▒╪╢ ╪د┘┘â┘</string>
+
+    <!-- Home Screen -->
+    <string name="home_greeting_morning">╪╡╪ذ╪د╪ص ╪د┘╪«┘è╪▒</string>
+    <string name="home_greeting_afternoon">╪╖╪د╪ذ ┘è┘ê┘à┘â</string>
+    <string name="home_greeting_evening">┘à╪│╪د╪ة ╪د┘╪«┘è╪▒</string>
+    <string name="home_learner">┘è╪د ╪ذ╪╖┘</string>
+    <string name="home_ready_prompt">╪ش╪د┘ç╪▓ ┘╪ش┘╪│╪ر ╪ز╪╣┘┘à ╪ش╪»┘è╪»╪ر ╪د┘┘è┘ê┘à╪ا</string>
+    <string name="home_streak_format">╪│┘╪│┘╪ر %1$d ╪ث┘è╪د┘à</string>
+    <string name="home_daily_goal">╪د┘┘ç╪»┘ ╪د┘┘è┘ê┘à┘è</string>
+    <string name="home_minutes_format">%1$d ╪»┘é┘è┘é╪ر</string>
+    <string name="home_due_for_review">┘à╪│╪ز╪ص┘é╪ر ┘┘┘à╪▒╪د╪ش╪╣╪ر</string>
+    <string name="home_new_words">┘â┘┘à╪د╪ز ╪ش╪»┘è╪»╪ر</string>
+    <string name="home_start_session">╪د╪ذ╪»╪ث ╪ش┘╪│╪ر ╪د┘┘è┘ê┘à</string>
+    <string name="home_session_completed">╪د┘â╪ز┘à┘╪ز ┘à┘ç╪د┘à ╪د┘┘è┘ê┘à ╪ذ┘╪ش╪د╪ص!</string>
+    <string name="home_radar_title">╪▒╪د╪»╪د╪▒ ╪ح╪ز┘é╪د┘ ╪د┘┘à╪│╪ز┘ê┘è╪د╪ز ╪د┘╪ث┘ê╪▒┘ê╪ذ┘è╪ر</string>
+    <string name="home_radar_subtitle">┘à╪»┘ë ╪س╪ذ╪د╪ز ╪د┘┘â┘┘à╪د╪ز ┘┘è ╪د┘╪░╪د┘â╪▒╪ر ╪╖┘ê┘è┘╪ر ╪د┘┘à╪»┘ë</string>
+    <string name="home_mastered_words">┘à╪ز┘é┘╪ر</string>
+    <string name="home_learning_words">┘é┘è╪» ╪د┘╪ز╪╣┘┘à</string>
+    <string name="home_seen_words">┘à╪▒╪ز ╪│╪د╪ذ┘é╪د┘ï</string>
+    <string name="home_new_badge">╪ش╪»┘è╪»╪ر</string>
+    <string name="home_mature_badge">┘à╪ز┘é┘╪ر</string>
+    <string name="home_conquered_badge">╪▒╪د╪│╪«╪ر</string>
+    <string name="home_quick_actions">╪ح╪ش╪▒╪د╪ة╪د╪ز ╪│╪▒┘è╪╣╪ر</string>
+    <string name="home_review_due_cards">┘à╪▒╪د╪ش╪╣╪ر ╪د┘╪ذ╪╖╪د┘é╪د╪ز ╪د┘┘à╪│╪ز╪ص┘é╪ر</string>
+    <string name="home_practice_reading">╪ز╪»╪▒┘è╪ذ ╪د┘┘é╪▒╪د╪ة╪ر</string>
+    <string name="home_study_grammar">┘à╪░╪د┘â╪▒╪ر ╪د┘┘é┘ê╪د╪╣╪»</string>
+
+    <!-- Word Books & Database -->
+    <string name="words_search_placeholder">╪د╪ذ╪ص╪س ┘┘è 27,435 ┘â┘┘à╪ر ┘ê┘à╪╣┘┘ë ┘ê┘à╪╡╪╖┘╪ص╪د┘ïظخ</string>
+    <string name="words_count_format">%1$s ┘â┘┘à╪ر</string>
+    <string name="words_all_levels">╪ش┘à┘è╪╣ ╪د┘┘à╪│╪ز┘ê┘è╪د╪ز</string>
+    <string name="words_filter_favorites">╪د┘┘à┘╪╢┘╪ر</string>
+    <string name="words_filter_mastered">╪د┘┘à╪ز┘é┘╪ر</string>
+    <string name="words_filter_learning">┘é┘è╪» ╪د┘╪ز╪╣┘┘à</string>
+    <string name="words_sort_default">╪د┘╪د┘╪ز╪▒╪د╪╢┘è</string>
+    <string name="words_sort_alpha">╪ث╪ذ╪ش╪»┘è╪د┘ï (A ╪ح┘┘ë Z)</string>
+    <string name="words_sort_level">╪ص╪│╪ذ ╪د┘┘à╪│╪ز┘ê┘ë</string>
+    <string name="words_empty_search">┘╪د ╪ز┘ê╪ش╪» ┘â┘┘à╪د╪ز ┘à╪╖╪د╪ذ┘é╪ر ┘╪ذ╪ص╪س┘â</string>
+    <string name="words_deck_ielts">┘à┘╪▒╪»╪د╪ز ╪د┘╪ت┘è┘╪ز╪│ ╪د┘╪┤╪د┘à┘╪ر</string>
+    <string name="words_deck_oxford">┘à┘╪▒╪»╪د╪ز ╪ث┘â╪│┘┘ê╪▒╪» ╪د┘╪ث╪│╪د╪│┘è╪ر</string>
+    <string name="words_deck_opal">╪د┘┘à┘╪▒╪»╪د╪ز ╪د┘╪ث┘â╪د╪»┘è┘à┘è╪ر (OPAL)</string>
+    <string name="words_deck_phrases">╪╣╪ذ╪د╪▒╪د╪ز ╪ث┘â╪│┘┘ê╪▒╪» ╪د┘╪┤╪د╪خ╪╣╪ر</string>
+    <string name="words_deck_idioms">╪د┘┘à╪╡╪╖┘╪ص╪د╪ز ┘ê╪د┘╪ز╪╣╪ذ┘è╪▒╪د╪ز ╪د┘╪د╪╡╪╖┘╪د╪ص┘è╪ر</string>
+    <string name="words_deck_expressions">╪ز╪╣╪ذ┘è╪▒╪د╪ز ╪د┘╪ص┘è╪د╪ر ╪د┘┘è┘ê┘à┘è╪ر</string>
+    <string name="words_deck_it">┘à╪╡╪╖┘╪ص╪د╪ز ╪د┘╪ذ╪▒┘à╪ش╪ر ┘ê╪ز┘â┘┘ê┘┘ê╪ش┘è╪د ╪د┘┘à╪╣┘┘ê┘à╪د╪ز</string>
+    <string name="words_deck_business">╪د┘┘╪║╪ر ╪د┘╪ح┘╪ش┘┘è╪▓┘è╪ر ┘┘╪ث╪╣┘à╪د┘</string>
+    <string name="words_deck_interview">╪د┘┘à┘é╪د╪ذ┘╪د╪ز ╪د┘┘ê╪╕┘è┘┘è╪ر ┘ê╪د┘┘à╪│╪د╪▒ ╪د┘┘à┘ç┘┘è</string>
+    <string name="words_deck_c1">╪د┘┘à╪│╪ز┘ê┘ë ╪د┘┘à╪ز┘é╪»┘à C1</string>
+    <string name="words_deck_pte">┘à┘╪▒╪»╪د╪ز ╪د╪«╪ز╪ذ╪د╪▒ PTE ╪د┘╪ث┘â╪د╪»┘è┘à┘è</string>
+    <string name="words_deck_medical">╪د┘┘à╪╡╪╖┘╪ص╪د╪ز ╪د┘╪╖╪ذ┘è╪ر ┘ê╪د┘╪▒╪╣╪د┘è╪ر ╪د┘╪╡╪ص┘è╪ر</string>
+
+    <!-- Flashcards Screen -->
+    <string name="flashcard_tap_to_flip">╪د┘┘é╪▒ ╪╣┘┘ë ╪د┘╪ذ╪╖╪د┘é╪ر ┘┘é┘╪ذ┘ç╪د</string>
+    <string name="flashcard_front_hint">╪د┘┘â┘┘à╪ر ╪ذ╪د┘╪ح┘╪ش┘┘è╪▓┘è╪ر ┘ê┘╪╖┘é┘ç╪د ╪د┘╪╡┘ê╪ز┘è</string>
+    <string name="flashcard_back_hint">╪د┘┘à╪╣┘┘ë ╪ذ╪د┘╪╣╪▒╪ذ┘è╪ر╪î ╪د┘╪ث┘à╪س┘╪ر╪î ┘ê╪د┘┘à┘╪د╪ص╪╕╪د╪ز</string>
+    <string name="flashcard_again">┘╪│┘è╪ز┘ç╪د</string>
+    <string name="flashcard_hard">╪╡╪╣╪ذ╪ر</string>
+    <string name="flashcard_good">╪ش┘è╪»╪ر</string>
+    <string name="flashcard_easy">╪│┘ç┘╪ر</string>
+    <string name="flashcard_session_completed">╪د┘â╪ز┘à┘╪ز ╪د┘╪ش┘╪│╪ر ╪ذ┘╪ش╪د╪ص!</string>
+    <string name="flashcard_reviewed_count">╪▒╪د╪ش╪╣╪ز %1$d ╪ذ╪╖╪د┘é╪ر ╪د┘┘è┘ê┘à</string>
+    <string name="flashcard_continue_button">┘à╪ز╪د╪ذ╪╣╪ر ╪د┘╪ز╪╣┘┘à</string>
+    <string name="flashcard_no_cards_due">┘╪د ╪ز┘ê╪ش╪» ╪ذ╪╖╪د┘é╪د╪ز ┘à╪│╪ز╪ص┘é╪ر ┘┘┘à╪▒╪د╪ش╪╣╪ر ╪د┘╪ت┘!</string>
+
+    <!-- Grammar Screen -->
+    <string name="grammar_title">╪┤╪▒┘ê╪ص╪د╪ز ┘ê╪د╪«╪ز╪ذ╪د╪▒╪د╪ز ╪د┘┘é┘ê╪د╪╣╪»</string>
+    <string name="grammar_subtitle">90 ╪»╪▒╪│╪د┘ï ╪┤╪د┘à┘╪د┘ï ┘ê┘à╪ز╪▒╪د╪ذ╪╖╪د┘ï ┘à┘ A1 ╪ح┘┘ë C1</string>
+    <string name="grammar_take_quiz">╪ذ╪»╪ة ╪د┘╪د╪«╪ز╪ذ╪د╪▒</string>
+    <string name="grammar_quiz_question_format">╪د┘╪│╪ج╪د┘ %1$d ┘à┘ %2$d</string>
+    <string name="grammar_score_format">┘╪ز┘è╪ش╪ز┘â: %1$d ┘à┘ %2$d</string>
+    <string name="grammar_read_linked_story">╪د┘é╪▒╪ث ╪د┘┘é╪╡╪ر ╪د┘┘à╪▒╪ز╪ذ╪╖╪ر ╪ذ╪د┘┘é╪د╪╣╪»╪ر</string>
+    <string name="grammar_correct_answer">╪ح╪ش╪د╪ذ╪ر ╪╡╪ص┘è╪ص╪ر!</string>
+    <string name="grammar_incorrect_answer">╪ح╪ش╪د╪ذ╪ر ╪║┘è╪▒ ╪╡╪ص┘è╪ص╪ر</string>
+
+    <!-- Reading Screen -->
+    <string name="reading_title">┘é╪╡╪╡ ╪د┘┘é╪▒╪د╪ة╪ر ╪د┘┘à╪ز╪»╪▒╪ش╪ر</string>
+    <string name="reading_subtitle">97 ┘é╪╡╪ر ┘à╪ز╪»╪▒╪ش╪ر ┘ê┘à╪▒╪ذ┘ê╪╖╪ر ╪ذ╪د┘┘é┘ê╪د╪╣╪» ┘ê╪د┘┘à┘╪▒╪»╪د╪ز</string>
+    <string name="reading_words_format">%1$d ┘â┘┘à╪ر</string>
+    <string name="reading_time_format">┘é╪▒╪د╪ة╪ر ┘┘è %1$d ╪»┘é┘è┘é╪ر</string>
+    <string name="reading_target_rule">╪د┘┘é╪د╪╣╪»╪ر ╪د┘┘à╪│╪ز┘ç╪»┘╪ر</string>
+    <string name="reading_quiz_title">╪د╪«╪ز╪ذ╪د╪▒ ╪د┘┘┘ç┘à ┘ê╪د┘╪د╪│╪ز┘è╪╣╪د╪ذ</string>
+    <string name="reading_vocab_sheet_title">┘à┘╪▒╪»╪د╪ز ╪د┘┘é╪╡╪ر</string>
+
+    <!-- Sentences Screen -->
+    <string name="sentences_title">╪ش┘à┘ ╪د┘┘à╪ص╪د╪»╪س╪ر ╪د┘┘è┘ê┘à┘è╪ر</string>
+    <string name="sentences_subtitle">╪ز╪▒╪د┘â┘è╪ذ ┘ê╪╣╪ذ╪د╪▒╪د╪ز ╪ص┘è╪ر ┘à╪ز┘â╪▒╪▒╪ر ┘┘┘à╪ز╪ص╪»╪س┘è┘ ╪د┘╪ث╪╡┘┘è┘è┘</string>
+    <string name="sentences_search_placeholder">╪د╪ذ╪ص╪س ┘┘è ╪د┘╪ش┘à┘ ╪ذ╪د┘╪ح┘╪ش┘┘è╪▓┘è╪ر ╪ث┘ê ╪د┘╪╣╪▒╪ذ┘è╪رظخ</string>
+
+    <!-- Mistake Notebook -->
+    <string name="notebook_title">┘â╪▒╪د╪│ ╪د┘╪ث╪«╪╖╪د╪ة ┘ê╪د┘┘â┘┘à╪د╪ز ╪د┘╪╡╪╣╪ذ╪ر</string>
+    <string name="notebook_subtitle">┘à╪╣╪د┘╪ش╪ر ┘┘ê╪▒┘è╪ر ┘à┘â╪س┘╪ر ┘┘┘â┘┘à╪د╪ز ╪د┘┘à╪ز╪╣╪س╪▒╪ر ┘ê╪ث╪«╪╖╪د╪ة ╪د┘╪د╪«╪ز╪ذ╪د╪▒╪د╪ز</string>
+    <string name="notebook_leech_words">┘â┘┘à╪د╪ز ┘à╪ز╪╣╪س╪▒╪ر (╪╡╪╣╪ذ╪ر)</string>
+    <string name="notebook_quiz_mistakes">╪ث╪«╪╖╪د╪ة ╪د┘╪د╪«╪ز╪ذ╪د╪▒╪د╪ز</string>
+    <string name="notebook_start_drill">╪د╪ذ╪»╪ث ╪ز╪»╪▒┘è╪ذ ╪د┘┘à╪╣╪د┘╪ش╪ر ╪د┘╪│╪▒┘è╪╣</string>
+    <string name="notebook_no_mistakes">╪▒╪د╪خ╪╣ ╪ش╪»╪د┘ï! ┘╪د ╪ز┘ê╪ش╪» ╪ث╪«╪╖╪د╪ة ┘à╪│╪ش┘╪ر ╪ص╪د┘┘è╪د┘ï.</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">╪د┘╪ح╪╣╪»╪د╪»╪د╪ز</string>
+    <string name="settings_section_general">╪د┘╪ز┘╪╢┘è┘╪د╪ز ╪د┘╪╣╪د┘à╪ر</string>
+    <string name="settings_section_audio">╪د┘╪╡┘ê╪ز ┘ê╪د┘┘╪╖┘é</string>
+    <string name="settings_section_data">╪د┘╪ذ┘è╪د┘╪د╪ز ┘ê╪د┘┘╪│╪« ╪د┘╪د╪ص╪ز┘è╪د╪╖┘è</string>
+    <string name="settings_app_language">┘╪║╪ر ╪د┘╪ز╪╖╪ذ┘è┘é</string>
+    <string name="settings_lang_ar">╪د┘╪╣╪▒╪ذ┘è╪ر</string>
+    <string name="settings_lang_en">English (╪د┘╪ح┘╪ش┘┘è╪▓┘è╪ر)</string>
+    <string name="settings_lang_system">╪ز┘┘é╪د╪خ┘è ╪ص╪│╪ذ ┘╪║╪ر ╪د┘┘ç╪د╪ز┘</string>
+    <string name="settings_theme_mode">╪د┘┘à╪╕┘ç╪▒ ┘ê╪د┘┘┘à╪╖</string>
+    <string name="settings_theme_dark">╪د┘┘┘à╪╖ ╪د┘╪»╪د┘â┘</string>
+    <string name="settings_theme_light">╪د┘┘┘à╪╖ ╪د┘┘╪د╪ز╪ص</string>
+    <string name="settings_theme_system">╪ز┘┘é╪د╪خ┘è ╪ص╪│╪ذ ╪د┘┘╪╕╪د┘à</string>
+    <string name="settings_voice_accent">┘┘â┘╪ر ╪د┘┘╪╖┘é ╪د┘┘à┘╪╢┘╪ر</string>
+    <string name="settings_accent_us">╪ث┘à╪▒┘è┘â┘è╪ر (US)</string>
+    <string name="settings_accent_uk">╪ذ╪▒┘è╪╖╪د┘┘è╪ر (UK)</string>
+    <string name="settings_speech_rate">╪│╪▒╪╣╪ر ╪د┘┘╪╖┘é</string>
+    <string name="settings_auto_play_audio">╪ز╪┤╪║┘è┘ ╪د┘╪╡┘ê╪ز ╪ز┘┘é╪د╪خ┘è╪د┘ï ╪╣┘╪» ┘╪ز╪ص ╪د┘┘â┘┘à╪ر</string>
+    <string name="settings_backup_title">╪د┘┘╪│╪« ╪د┘╪د╪ص╪ز┘è╪د╪╖┘è ┘ê╪د┘╪د╪│╪ز╪╣╪د╪»╪ر</string>
+    <string name="settings_export_backup">╪ز╪╡╪»┘è╪▒ ┘╪│╪«╪ر ╪د╪ص╪ز┘è╪د╪╖┘è╪ر (.json)</string>
+    <string name="settings_import_backup">╪د╪│╪ز╪╣╪د╪»╪ر ┘à┘ ┘╪│╪«╪ر ╪│╪د╪ذ┘é╪ر</string>
+    <string name="settings_developer_mode">┘ê╪╢╪╣ ╪د┘┘à╪╖┘ê╪▒┘è┘</string>
+    <string name="settings_about_app">╪ص┘ê┘ ╪ز╪╖╪ذ┘è┘é ┘é╪د┘</string>
+    <string name="settings_version_format">╪د┘╪ح╪╡╪»╪د╪▒ %1$s (%2$d)</string>
+
+    <!-- Onboarding Flow -->
+    <string name="onboarding_step_format">╪د┘╪«╪╖┘ê╪ر %1$d ┘à┘ %2$d</string>
+    <string name="onboarding_btn_continue">┘à╪ز╪د╪ذ╪╣╪ر</string>
+    <string name="onboarding_btn_back">╪▒╪ش┘ê╪╣</string>
+    <string name="onboarding_btn_get_started">╪د╪ذ╪»╪ث ╪▒╪ص┘╪ز┘â</string>
+    <string name="onboarding_step1_title">┘à╪▒╪ص╪ذ╪د┘ï ╪ذ┘â ┘┘è ┘é╪د┘</string>
+    <string name="onboarding_step1_subtitle">╪▒┘┘è┘é┘â ╪د┘╪░┘â┘è ┘╪ح╪ز┘é╪د┘ ╪د┘┘╪║╪ر ╪د┘╪ح┘╪ش┘┘è╪▓┘è╪ر ╪ذ╪»┘ê┘ ╪ح┘╪ز╪▒┘╪ز</string>
+    <string name="onboarding_step2_title">╪د╪«╪ز╪▒ ┘à╪│╪ز┘ê╪د┘â ┘┘è ╪د┘╪ح┘╪ش┘┘è╪▓┘è╪ر</string>
+    <string name="onboarding_step2_subtitle">┘╪«╪╡╪╡ ╪د┘┘â┘┘à╪د╪ز ┘ê╪د┘╪ز┘à╪د╪▒┘è┘ ╪ذ┘╪د╪ة┘ï ╪╣┘┘ë ╪د┘╪ح╪╖╪د╪▒ ╪د┘╪ث┘ê╪▒┘ê╪ذ┘è ╪د┘┘à╪┤╪ز╪▒┘â CEFR</string>
+    <string name="onboarding_step3_title">╪ص╪»╪» ┘ç╪»┘┘â ╪د┘╪▒╪خ┘è╪│┘è</string>
+    <string name="onboarding_step3_subtitle">╪د╪╢╪ذ╪╖ ┘ê┘é╪ز ╪د┘┘à╪░╪د┘â╪▒╪ر ╪د┘┘è┘ê┘à┘è ┘ê╪ث┘è╪د┘à ╪د┘╪ز╪╣┘┘à ╪د┘╪ث╪│╪ذ┘ê╪╣┘è╪ر</string>
+    <string name="onboarding_step4_title">╪د╪«╪ز╪▒ ╪ص┘é╪د╪خ╪ذ ╪د┘╪ذ╪»╪د┘è╪ر</string>
+    <string name="onboarding_step4_subtitle">╪د╪«╪ز╪▒ ╪د┘┘â╪ز╪ذ ┘ê╪د┘╪ص┘é╪د╪خ╪ذ ╪د┘╪ز╪«╪╡╪╡┘è╪ر ┘╪ذ┘╪د╪ة ┘à╪«╪▓┘ê┘┘â ╪د┘┘╪║┘ê┘è</string>
+    <string name="onboarding_step5_title">┘à╪▓╪د┘è╪د ╪د┘╪░┘â╪د╪ة ╪د┘╪د╪╡╪╖┘╪د╪╣┘è ┘ê╪د┘╪د┘╪╖┘╪د┘é</string>
+    <string name="onboarding_step5_subtitle">╪«╪╖╪ر ╪»╪▒╪د╪│╪ز┘â ╪د┘╪┤╪«╪╡┘è╪ر ╪ش╪د┘ç╪▓╪ر ┘┘╪د┘╪╖┘╪د┘é ╪ث┘ê┘┘╪د┘è┘ ╪ذ╪د┘┘â╪د┘à┘</string>
+</resources>

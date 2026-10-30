@@ -1410,7 +1410,11 @@ private fun FlashcardFrontFace(
                 modifier = Modifier.size(14.dp)
             )
             Text(
-                text = if (autoShowAnswer) "Tap to flip • Auto-flips in 5s" else "Tap anywhere on card to flip",
+                text = if (com.example.ui.theme.AppLanguageState.isArabic) {
+                    if (autoShowAnswer) "انقر للقلب • يقلب تلقائياً بعد 5 ثوانٍ" else "انقر في أي مكان على البطاقة للقلب"
+                } else {
+                    if (autoShowAnswer) "Tap to flip • Auto-flips in 5s" else "Tap anywhere on card to flip"
+                },
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
                 color = TextMuted
             )
@@ -1882,7 +1886,11 @@ private fun FlashcardBottomActionsBar(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (isMastered) "Mastered" else "Mark Mastered",
+                        text = if (com.example.ui.theme.AppLanguageState.isArabic) {
+                            if (isMastered) "مُتقنة" else "تحديد كمُتقنة"
+                        } else {
+                            if (isMastered) "Mastered" else "Mark Mastered"
+                        },
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontSize = 12.5.sp,
                             fontWeight = FontWeight.SemiBold
@@ -1921,7 +1929,7 @@ private fun FlashcardBottomActionsBar(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Word Details",
+                        text = if (com.example.ui.theme.AppLanguageState.isArabic) "تفاصيل الكلمة" else "Word Details",
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontSize = 12.5.sp,
                             fontWeight = FontWeight.SemiBold
@@ -1942,6 +1950,7 @@ private fun FlashcardBottomActionsBar(
             label = "sm2ButtonsAlpha"
         )
 
+        val isAr = com.example.ui.theme.AppLanguageState.isArabic
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1950,7 +1959,7 @@ private fun FlashcardBottomActionsBar(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Sm2RateButton(
-                label = "Again",
+                label = if (isAr) "نسيتها" else "Again",
                 intervalText = intervalPreview.againLabel,
                 accentColor = CoralAccent,
                 testTag = "sm2_button_again",
@@ -1959,7 +1968,7 @@ private fun FlashcardBottomActionsBar(
                 modifier = Modifier.weight(1f)
             )
             Sm2RateButton(
-                label = "Hard",
+                label = if (isAr) "صعبة" else "Hard",
                 intervalText = intervalPreview.hardLabel,
                 accentColor = AmberAccent,
                 testTag = "sm2_button_hard",
@@ -1968,7 +1977,7 @@ private fun FlashcardBottomActionsBar(
                 modifier = Modifier.weight(1f)
             )
             Sm2RateButton(
-                label = "Good",
+                label = if (isAr) "جيدة" else "Good",
                 intervalText = intervalPreview.goodLabel,
                 accentColor = GoldAccent,
                 testTag = "sm2_button_good",
@@ -1977,7 +1986,7 @@ private fun FlashcardBottomActionsBar(
                 modifier = Modifier.weight(1f)
             )
             Sm2RateButton(
-                label = "Easy",
+                label = if (isAr) "سهلة" else "Easy",
                 intervalText = intervalPreview.easyLabel,
                 accentColor = EmeraldAccent,
                 testTag = "sm2_button_easy",

@@ -192,15 +192,66 @@ fun WordBooksTheme(
         Typography
     }
 
+    val currentContext = androidx.compose.ui.platform.LocalContext.current
+    val currentLanguage = AppLanguageState.currentLanguage
+    val isArabic = AppLanguageState.isArabic
+    val layoutDirection = if (isArabic) androidx.compose.ui.unit.LayoutDirection.Rtl else androidx.compose.ui.unit.LayoutDirection.Ltr
+
+    val localizedConfiguration = remember(currentLanguage, isArabic) {
+        val targetLocale = if (isArabic) java.util.Locale.forLanguageTag("ar") else java.util.Locale.ENGLISH
+        android.content.res.Configuration(currentContext.resources.configuration).apply {
+            setLocale(targetLocale)
+            setLayoutDirection(targetLocale)
+        }
+    }
+    val localizedContext = remember(currentContext, localizedConfiguration) {
+        val configContext = currentContext.createConfigurationContext(localizedConfiguration)
+        object : android.content.ContextWrapper(currentContext) {
+            override fun getResources(): android.content.res.Resources = configContext.resources
+            override fun getAssets(): android.content.res.AssetManager = configContext.assets
+        }
+    }
+
+    val activityResultRegistryOwner = androidx.activity.compose.LocalActivityResultRegistryOwner.current
+        ?: (currentContext as? androidx.activity.result.ActivityResultRegistryOwner)
+
+    val compositionLocals = remember(
+        localizedContext,
+        localizedConfiguration,
+        layoutDirection,
+        currentLanguage,
+        normalizedDensity,
+        activityResultRegistryOwner
+    ) {
+        buildList {
+            add(androidx.compose.ui.platform.LocalContext provides localizedContext)
+            add(LocalConfiguration provides localizedConfiguration)
+            add(androidx.compose.ui.platform.LocalLayoutDirection provides layoutDirection)
+            add(LocalUiLanguage provides currentLanguage)
+            add(LocalDensity provides normalizedDensity)
+            add(androidx.compose.material3.LocalContentColor provides TextPrimary)
+            if (activityResultRegistryOwner != null) {
+                add(androidx.activity.compose.LocalActivityResultRegistryOwner provides activityResultRegistryOwner)
+            }
+        }.toTypedArray()
+    }
+
     CompositionLocalProvider(
-        LocalDensity provides normalizedDensity,
-        androidx.compose.material3.LocalContentColor provides TextPrimary
+        *compositionLocals
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = typography,
             shapes = WordBooksShapes,
-            content = content
+            content = {
+                // App-wide bidi default: each paragraph takes its direction from its first strong
+                // character, so Arabic text/input is RTL and right-aligned while English stays LTR.
+                // An explicit textDirection / textAlign on a Text still wins.
+                androidx.compose.material3.ProvideTextStyle(
+                    androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content),
+                    content = content
+                )
+            }
         )
     }
 }

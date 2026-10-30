@@ -106,6 +106,8 @@ import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.VioletAccent
 import com.example.ui.theme.VioletAccentBg
 import com.example.ui.theme.WordBooksSpacing
+import com.example.ui.theme.AppLanguageState
+import com.example.ui.theme.bi
 import kotlinx.serialization.json.Json
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -1044,14 +1046,17 @@ private fun TaskCheckRow(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    // Line 1: Full English Title (no truncation) + inline duration & progress pills
+                    // Line 1: Primary Title (Arabic in Arabic UI mode, English in English UI mode) + inline duration & progress pills
+                    val isArMode = AppLanguageState.isArabic
+                    val primaryTitle = if (isArMode && task.titleAr.isNotBlank()) task.titleAr else task.titleEn
+                    val secondaryTitle = if (isArMode && task.titleAr.isNotBlank()) task.titleEn else task.titleAr
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
                         Text(
-                            text = task.titleEn,
+                            text = primaryTitle,
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 13.5.sp,
@@ -1099,14 +1104,13 @@ private fun TaskCheckRow(
                         }
                     }
 
-                    // Line 2: Arabic Subtitle with RTL direction aligned beneath the English title
-                    if (task.titleAr.isNotBlank()) {
+                    // Line 2: Secondary Subtitle
+                    if (secondaryTitle.isNotBlank()) {
                         BidiText(
-                            text = task.titleAr,
+                            text = secondaryTitle,
                             style = ArabicTypography.labelSmall.copy(fontSize = 12.sp),
                             color = if (task.isCompleted) TextMuted else TextSecondary,
-                            fillMaxWidth = true,
-                            textAlign = TextAlign.Left
+                            fillMaxWidth = true
                         )
                     }
 

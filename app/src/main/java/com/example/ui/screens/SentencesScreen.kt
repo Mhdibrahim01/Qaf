@@ -88,6 +88,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -102,6 +103,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -112,6 +114,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -1274,48 +1277,54 @@ private fun DictationTabContent(
                     )
                 }
 
-                // Dictation Input Field
-                OutlinedTextField(
-                    value = typedInput,
-                    onValueChange = { typedInput = it },
-                    label = { Text("Type the English sentence you heard...") },
-                    placeholder = { Text("Type here and tap Check Dictation...", color = TextMuted) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("dictation_input_field"),
-                    minLines = 2,
-                    maxLines = 4,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            focusManager.clearFocus()
-                            if (typedInput.isNotBlank()) {
-                                val computed = SentencePracticeUtils.computeSentenceDiff(
-                                    expected = currentSentence.englishText,
-                                    actual = typedInput,
-                                    ignorePunctuation = ignorePunctuation
-                                )
-                                diffResult = computed
-                                val itemId = if (currentSentence.id > 0L) {
-                                    "sentence:${currentSentence.id}"
-                                } else {
-                                    currentSentence.englishText
+                // Dictation Input Field (locked to LTR for English dictation)
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    OutlinedTextField(
+                        value = typedInput,
+                        onValueChange = { typedInput = it },
+                        label = { Text("Type the English sentence you heard...") },
+                        placeholder = { Text("Type here and tap Check Dictation...", color = TextMuted) },
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(
+                            textDirection = TextDirection.Ltr,
+                            textAlign = TextAlign.Left
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("dictation_input_field"),
+                        minLines = 2,
+                        maxLines = 4,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                focusManager.clearFocus()
+                                if (typedInput.isNotBlank()) {
+                                    val computed = SentencePracticeUtils.computeSentenceDiff(
+                                        expected = currentSentence.englishText,
+                                        actual = typedInput,
+                                        ignorePunctuation = ignorePunctuation
+                                    )
+                                    diffResult = computed
+                                    val itemId = if (currentSentence.id > 0L) {
+                                        "sentence:${currentSentence.id}"
+                                    } else {
+                                        currentSentence.englishText
+                                    }
+                                    onRecordAttempt(itemId, computed.accuracyPercent)
                                 }
-                                onRecordAttempt(itemId, computed.accuracyPercent)
                             }
-                        }
-                    ),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = GoldAccent,
-                        unfocusedBorderColor = BorderDark,
-                        focusedContainerColor = SurfaceElevatedDark,
-                        unfocusedContainerColor = SurfaceElevatedDark,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                        focusedLabelColor = GoldAccent,
-                        unfocusedLabelColor = TextSecondary
+                        ),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = GoldAccent,
+                            unfocusedBorderColor = BorderDark,
+                            focusedContainerColor = SurfaceElevatedDark,
+                            unfocusedContainerColor = SurfaceElevatedDark,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedLabelColor = GoldAccent,
+                            unfocusedLabelColor = TextSecondary
+                        )
                     )
-                )
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1768,55 +1777,64 @@ private fun SpeakingTabContent(
                         color = TextSecondary
                     )
 
-                    FlowRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("quiet_mode_word_tiles"),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        quietTokens.forEach { token ->
-                            Surface(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable {
-                                        quietTypedInput = if (quietTypedInput.isBlank()) token else "$quietTypedInput $token"
-                                    },
-                                color = SurfaceElevatedDark,
-                                shape = RoundedCornerShape(8.dp),
-                                border = BorderStroke(1.dp, BorderDark)
-                            ) {
-                                Text(
-                                    text = token,
-                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                                    color = GoldAccent,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
-                                )
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        FlowRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("quiet_mode_word_tiles"),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            quietTokens.forEach { token ->
+                                Surface(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable {
+                                            quietTypedInput = if (quietTypedInput.isBlank()) token else "$quietTypedInput $token"
+                                        },
+                                    color = SurfaceElevatedDark,
+                                    shape = RoundedCornerShape(8.dp),
+                                    border = BorderStroke(1.dp, BorderDark)
+                                ) {
+                                    Text(
+                                        text = token,
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            fontWeight = FontWeight.SemiBold,
+                                            textDirection = TextDirection.Ltr
+                                        ),
+                                        color = GoldAccent,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                                    )
+                                }
                             }
                         }
-                    }
 
-                    OutlinedTextField(
-                        value = quietTypedInput,
-                        onValueChange = { quietTypedInput = it },
-                        label = { Text("Assembled Sentence") },
-                        placeholder = { Text("Tap word tiles or type sentence...", color = TextMuted) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("speaking_quiet_input_field"),
-                        minLines = 2,
-                        maxLines = 3,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = GoldAccent,
-                            unfocusedBorderColor = BorderDark,
-                            focusedContainerColor = SurfaceElevatedDark,
-                            unfocusedContainerColor = SurfaceElevatedDark,
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary,
-                            focusedLabelColor = GoldAccent,
-                            unfocusedLabelColor = TextSecondary
+                        OutlinedTextField(
+                            value = quietTypedInput,
+                            onValueChange = { quietTypedInput = it },
+                            label = { Text("Assembled Sentence") },
+                            placeholder = { Text("Tap word tiles or type sentence...", color = TextMuted) },
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                textDirection = TextDirection.Ltr,
+                                textAlign = TextAlign.Left
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("speaking_quiet_input_field"),
+                            minLines = 2,
+                            maxLines = 3,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = GoldAccent,
+                                unfocusedBorderColor = BorderDark,
+                                focusedContainerColor = SurfaceElevatedDark,
+                                unfocusedContainerColor = SurfaceElevatedDark,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                focusedLabelColor = GoldAccent,
+                                unfocusedLabelColor = TextSecondary
+                            )
                         )
-                    )
+                    }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1997,87 +2015,89 @@ private fun SentenceDiffResultCard(
                 GoldBadge(text = "Accuracy: ${diff.accuracyPercent}%")
             }
 
-            // Word-by-word visual diff chips
-            FlowRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("${testTag}_tokens"),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                diff.tokens.forEach { token ->
-                    when (token.status) {
-                        DiffTokenStatus.CORRECT -> {
-                            Surface(
-                                color = EmeraldAccent.copy(alpha = 0.15f),
-                                shape = RoundedCornerShape(8.dp),
-                                border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.5f))
-                            ) {
-                                Text(
-                                    text = token.text,
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                                    color = EmeraldAccent,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
-                        }
-
-                        DiffTokenStatus.WRONG -> {
-                            Surface(
-                                color = CoralAccent.copy(alpha = 0.15f),
-                                shape = RoundedCornerShape(8.dp),
-                                border = BorderStroke(1.dp, CoralAccent.copy(alpha = 0.6f))
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+            // Word-by-word visual diff chips (locked to LTR for English sentence tokens)
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("${testTag}_tokens"),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    diff.tokens.forEach { token ->
+                        when (token.status) {
+                            DiffTokenStatus.CORRECT -> {
+                                Surface(
+                                    color = EmeraldAccent.copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.5f))
                                 ) {
                                     Text(
                                         text = token.text,
-                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                            textDecoration = TextDecoration.LineThrough
-                                        ),
-                                        color = CoralAccent
-                                    )
-                                    Text(
-                                        text = "→ ${token.expectedText}",
-                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = GoldAccent
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        color = EmeraldAccent,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                     )
                                 }
                             }
-                        }
 
-                        DiffTokenStatus.MISSING -> {
-                            Surface(
-                                color = AmberAccent.copy(alpha = 0.16f),
-                                shape = RoundedCornerShape(8.dp),
-                                border = BorderStroke(1.dp, AmberAccent.copy(alpha = 0.6f))
-                            ) {
-                                Text(
-                                    text = "[missing: ${token.expectedText}]",
-                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                                    color = AmberAccent,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
+                            DiffTokenStatus.WRONG -> {
+                                Surface(
+                                    color = CoralAccent.copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    border = BorderStroke(1.dp, CoralAccent.copy(alpha = 0.6f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = token.text,
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                textDecoration = TextDecoration.LineThrough
+                                            ),
+                                            color = CoralAccent
+                                        )
+                                        Text(
+                                            text = "→ ${token.expectedText}",
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = GoldAccent
+                                        )
+                                    }
+                                }
                             }
-                        }
 
-                        DiffTokenStatus.EXTRA -> {
-                            Surface(
-                                color = CoralAccent.copy(alpha = 0.12f),
-                                shape = RoundedCornerShape(8.dp),
-                                border = BorderStroke(1.dp, CoralAccent.copy(alpha = 0.5f))
-                            ) {
-                                Text(
-                                    text = "+${token.text}",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        textDecoration = TextDecoration.LineThrough
-                                    ),
-                                    color = CoralAccent,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
+                            DiffTokenStatus.MISSING -> {
+                                Surface(
+                                    color = AmberAccent.copy(alpha = 0.16f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    border = BorderStroke(1.dp, AmberAccent.copy(alpha = 0.6f))
+                                ) {
+                                    Text(
+                                        text = "[missing: ${token.expectedText}]",
+                                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                        color = AmberAccent,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+
+                            DiffTokenStatus.EXTRA -> {
+                                Surface(
+                                    color = CoralAccent.copy(alpha = 0.12f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    border = BorderStroke(1.dp, CoralAccent.copy(alpha = 0.5f))
+                                ) {
+                                    Text(
+                                        text = "+${token.text}",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            textDecoration = TextDecoration.LineThrough
+                                        ),
+                                        color = CoralAccent,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
                             }
                         }
                     }

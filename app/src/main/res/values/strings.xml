@@ -1,11 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Qaf</string>
+    <string name="app_tagline">The Intelligent English Learning Platform</string>
+
+    <!-- Navigation -->
     <string name="nav_home">Home</string>
     <string name="nav_word_books">Word Books</string>
     <string name="nav_flashcards">Flashcards</string>
     <string name="nav_sentences">Sentences</string>
     <string name="nav_grammar">Grammar</string>
     <string name="nav_reading">Reading</string>
+    <string name="nav_more">More</string>
+    <string name="nav_plan">Study Plan</string>
+    <string name="nav_correction">Mistake Notebook</string>
+    <string name="nav_settings">Settings</string>
     <string name="nav_labs">Labs</string>
     <string name="placeholder_ready">Phase 1 Shell Ready</string>
+
+    <!-- Common Actions -->
+    <string name="action_cancel">Cancel</string>
+    <string name="action_confirm">Confirm</string>
+    <string name="action_save">Save</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_close">Close</string>
+    <string name="action_continue">Continue</string>
+    <string name="action_back">Back</string>
+    <string name="action_done">Done</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_search">Search</string>
+    <string name="action_filter">Filter</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_start">Start</string>
+    <string name="action_reset">Reset</string>
+    <string name="action_view_all">View All</string>
+
+    <!-- Home Screen -->
+    <string name="home_greeting_morning">Good Morning</string>
+    <string name="home_greeting_afternoon">Good Afternoon</string>
+    <string name="home_greeting_evening">Good Evening</string>
+    <string name="home_learner">Learner</string>
+    <string name="home_ready_prompt">Ready for today\'s learning session?</string>
+    <string name="home_streak_format">%1$d day streak</string>
+    <string name="home_daily_goal">Daily Goal</string>
+    <string name="home_minutes_format">%1$d mins</string>
+    <string name="home_due_for_review">Due for Review</string>
+    <string name="home_new_words">New Words</string>
+    <string name="home_start_session">Start Daily Session</string>
+    <string name="home_session_completed">Today\'s Tasks Completed!</string>
+    <string name="home_radar_title">CEFR Level Readiness Radar</string>
+    <string name="home_radar_subtitle">Long-term memory retention across levels</string>
+    <string name="home_mastered_words">Mastered</string>
+    <string name="home_learning_words">Learning</string>
+    <string name="home_seen_words">Seen</string>
+    <string name="home_new_badge">New</string>
+    <string name="home_mature_badge">Mature</string>
+    <string name="home_conquered_badge">Conquered</string>
+    <string name="home_quick_actions">Quick Actions</string>
+    <string name="home_review_due_cards">Review Due Cards</string>
+    <string name="home_practice_reading">Practice Reading</string>
+    <string name="home_study_grammar">Study Grammar</string>
+
+    <!-- Word Books & Database -->
+    <string name="words_search_placeholder">Search 27,435 words, meanings, or topicsظخ</string>
+    <string name="words_count_format">%1$s words</string>
+    <string name="words_all_levels">All Levels</string>
+    <string name="words_filter_favorites">Favorites</string>
+    <string name="words_filter_mastered">Mastered</string>
+    <string name="words_filter_learning">Learning</string>
+    <string name="words_sort_default">Default</string>
+    <string name="words_sort_alpha">A to Z</string>
+    <string name="words_sort_level">By Level</string>
+    <string name="words_empty_search">No words found matching your search</string>
+    <string name="words_deck_ielts">IELTS Vocabulary</string>
+    <string name="words_deck_oxford">Oxford 5000</string>
+    <string name="words_deck_opal">Academic OPAL</string>
+    <string name="words_deck_phrases">Oxford Phrases</string>
+    <string name="words_deck_idioms">Essential Idioms</string>
+    <string name="words_deck_expressions">Everyday Expressions</string>
+    <string name="words_deck_it">IT &amp; Tech Industry</string>
+    <string name="words_deck_business">Business English</string>
+    <string name="words_deck_interview">Job Interview &amp; Career</string>
+    <string name="words_deck_c1">CEFR C1 Advanced</string>
+    <string name="words_deck_pte">PTE Academic</string>
+    <string name="words_deck_medical">Medical &amp; Healthcare</string>
+
+    <!-- Flashcards Screen -->
+    <string name="flashcard_tap_to_flip">Tap card to flip</string>
+    <string name="flashcard_front_hint">English word &amp; pronunciation</string>
+    <string name="flashcard_back_hint">Arabic meaning, examples &amp; notes</string>
+    <string name="flashcard_again">Again</string>
+    <string name="flashcard_hard">Hard</string>
+    <string name="flashcard_good">Good</string>
+    <string name="flashcard_easy">Easy</string>
+    <string name="flashcard_session_completed">Session Complete!</string>
+    <string name="flashcard_reviewed_count">You reviewed %1$d cards</string>
+    <string name="flashcard_continue_button">Continue Learning</string>
+    <string name="flashcard_no_cards_due">No cards due for review right now!</string>
+
+    <!-- Grammar Screen -->
+    <string name="grammar_title">Grammar Rules &amp; Quizzes</string>
+    <string name="grammar_subtitle">90 comprehensive lessons covering A1 to C1</string>
+    <string name="grammar_take_quiz">Take Quiz</string>
+    <string name="grammar_quiz_question_format">Question %1$d of %2$d</string>
+    <string name="grammar_score_format">Your Score: %1$d / %2$d</string>
+    <string name="grammar_read_linked_story">Read Linked Story</string>
+    <string name="grammar_correct_answer">Correct!</string>
+    <string name="grammar_incorrect_answer">Incorrect</string>
+
+    <!-- Reading Screen -->
+    <string name="reading_title">Graded Reading Stories</string>
+    <string name="reading_subtitle">97 stories linked with grammar &amp; vocabulary</string>
+    <string name="reading_words_format">%1$d words</string>
+    <string name="reading_time_format">%1$d min read</string>
+    <string name="reading_target_rule">Target Rule</string>
+    <string name="reading_quiz_title">Comprehension Quiz</string>
+    <string name="reading_vocab_sheet_title">Story Vocabulary</string>
+
+    <!-- Sentences Screen -->
+    <string name="sentences_title">Daily Conversational Sentences</string>
+    <string name="sentences_subtitle">High-frequency natural spoken English</string>
+    <string name="sentences_search_placeholder">Search sentences in English or Arabicظخ</string>
+
+    <!-- Mistake Notebook -->
+    <string name="notebook_title">Mistake Notebook &amp; Weak Words</string>
+    <string name="notebook_subtitle">Targeted remediation for difficult words and quiz errors</string>
+    <string name="notebook_leech_words">Weak Words (Leeches)</string>
+    <string name="notebook_quiz_mistakes">Quiz Mistakes</string>
+    <string name="notebook_start_drill">Start Rapid Drill</string>
+    <string name="notebook_no_mistakes">Great job! No mistakes or weak words recorded.</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_general">General Preferences</string>
+    <string name="settings_section_audio">Audio &amp; Pronunciation</string>
+    <string name="settings_section_data">Data &amp; Backup</string>
+    <string name="settings_app_language">App Language</string>
+    <string name="settings_lang_ar">╪د┘╪╣╪▒╪ذ┘è╪ر (Arabic)</string>
+    <string name="settings_lang_en">English</string>
+    <string name="settings_lang_system">System Default</string>
+    <string name="settings_theme_mode">Appearance &amp; Theme</string>
+    <string name="settings_theme_dark">Dark Mode</string>
+    <string name="settings_theme_light">Light Mode</string>
+    <string name="settings_theme_system">Follow System</string>
+    <string name="settings_voice_accent">Preferred Voice Accent</string>
+    <string name="settings_accent_us">American (US)</string>
+    <string name="settings_accent_uk">British (UK)</string>
+    <string name="settings_speech_rate">Speech Rate</string>
+    <string name="settings_auto_play_audio">Auto-play audio on card open</string>
+    <string name="settings_backup_title">Backup &amp; Restore</string>
+    <string name="settings_export_backup">Export Backup (.json)</string>
+    <string name="settings_import_backup">Restore from Backup</string>
+    <string name="settings_developer_mode">Developer Mode</string>
+    <string name="settings_about_app">About Qaf</string>
+    <string name="settings_version_format">Version %1$s (%2$d)</string>
+
+    <!-- Onboarding Flow -->
+    <string name="onboarding_step_format">Step %1$d of %2$d</string>
+    <string name="onboarding_btn_continue">Continue</string>
+    <string name="onboarding_btn_back">Back</string>
+    <string name="onboarding_btn_get_started">Get Started</string>
+    <string name="onboarding_step1_title">Welcome to Qaf</string>
+    <string name="onboarding_step1_subtitle">Your intelligent companion for mastering English offline</string>
+    <string name="onboarding_step2_title">Select Your English Level</string>
+    <string name="onboarding_step2_subtitle">We tailor words and exercises according to the CEFR framework</string>
+    <string name="onboarding_step3_title">Choose Your Primary Goal</string>
+    <string name="onboarding_step3_subtitle">Set your daily learning target and study days</string>
+    <string name="onboarding_step4_title">Choose Your Starting Decks</string>
+    <string name="onboarding_step4_subtitle">Pick specialized books to build your vocabulary foundation</string>
+    <string name="onboarding_step5_title">AI Enhancements &amp; Launch</string>
+    <string name="onboarding_step5_subtitle">Ready to launch your personalized offline study plan</string>
 </resources>

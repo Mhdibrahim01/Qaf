@@ -2135,163 +2135,165 @@ fun ReadingSentenceBlock(
                 }
         }
 
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            for ((token, cleanWord, isTarget, isGrammar, stage) in parsedTokens) {
-                val lowerClean = cleanWord.lowercase()
-                val isArticle = lowerClean in setOf("a", "an", "the")
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                for ((token, cleanWord, isTarget, isGrammar, stage) in parsedTokens) {
+                    val lowerClean = cleanWord.lowercase()
+                    val isArticle = lowerClean in setOf("a", "an", "the")
 
-                when {
-                    // Gold Words: Soft translucent gold background, gold text, rounded 6dp, subtle gold border
-                    isTarget -> {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(GoldAccentDim)
-                                .border(
-                                    BorderStroke(1.dp, GoldAccentBorder),
-                                    RoundedCornerShape(6.dp)
-                                )
-                                .clickable {
-                                    if (cleanWord.isNotBlank()) onWordClicked(cleanWord)
-                                }
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = token,
-                                style = MaterialTheme.typography.bodyLarge.copy(
-                                    fontSize = 18.sp,
-                                    lineHeight = 30.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                ),
-                                color = GoldAccent
-                            )
-                        }
-                    }
-
-                    // Grammar Words (e.g. was): Elevated inner background, dashed gold border, gold text
-                    isGrammar -> {
-                        val dashGold = GoldAccent
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(SurfaceElevatedDark)
-                                .drawBehind {
-                                    val strokeWidth = 1.dp.toPx()
-                                    val radius = 6.dp.toPx()
-                                    drawRoundRect(
-                                        color = dashGold,
-                                        style = Stroke(
-                                            width = strokeWidth,
-                                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
-                                        ),
-                                        cornerRadius = CornerRadius(radius, radius)
+                    when {
+                        // Gold Words: Soft translucent gold background, gold text, rounded 6dp, subtle gold border
+                        isTarget -> {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(GoldAccentDim)
+                                    .border(
+                                        BorderStroke(1.dp, GoldAccentBorder),
+                                        RoundedCornerShape(6.dp)
                                     )
-                                }
-                                .clickable {
-                                    onGrammarClicked?.invoke()
-                                }
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = token,
-                                style = MaterialTheme.typography.bodyLarge.copy(
-                                    fontSize = 18.sp,
-                                    lineHeight = 30.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                ),
-                                color = GoldAccent
-                            )
-                        }
-                    }
-
-                    // Articles (a, an, the) when Hints are enabled: subtle dotted bottom underline
-                    isArticle && showGrammarHints -> {
-                        val dotColor = TextSecondary
-                        Box(
-                            modifier = Modifier
-                                .drawBehind {
-                                    val strokeWidth = 2.dp.toPx()
-                                    val y = size.height - 1.dp.toPx()
-                                    drawLine(
-                                        color = dotColor,
-                                        start = Offset(0f, y),
-                                        end = Offset(size.width, y),
-                                        strokeWidth = strokeWidth,
-                                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(3f, 3f), 0f)
-                                    )
-                                }
-                                .clickable {
-                                    if (cleanWord.isNotBlank()) onWordClicked(cleanWord)
-                                }
-                                .padding(horizontal = 2.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = token,
-                                style = MaterialTheme.typography.bodyLarge.copy(
-                                    fontSize = 18.sp,
-                                    lineHeight = 30.sp,
-                                    fontWeight = FontWeight.Normal
-                                ),
-                                color = TextPrimary
-                            )
-                        }
-                    }
-
-                    // Word Stages (LEARNING, FAMILIAR, etc.)
-                    stage != null -> {
-                        val stageColor = when (stage) {
-                            com.example.data.plan.WordStage.LEARNING -> SkyAccent
-                            com.example.data.plan.WordStage.FAMILIAR -> EmeraldAccent
-                            com.example.data.plan.WordStage.SEEN -> TextSecondary
-                            else -> TextSecondary
-                        }
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(stageColor.copy(alpha = 0.12f))
-                                .border(
-                                    BorderStroke(1.dp, stageColor.copy(alpha = 0.35f)),
-                                    RoundedCornerShape(4.dp)
+                                    .clickable {
+                                        if (cleanWord.isNotBlank()) onWordClicked(cleanWord)
+                                    }
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = token,
+                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                        fontSize = 18.sp,
+                                        lineHeight = 30.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    ),
+                                    color = GoldAccent
                                 )
-                                .clickable {
-                                    if (cleanWord.isNotBlank()) onWordClicked(cleanWord)
-                                }
-                                .padding(horizontal = 4.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = token,
-                                style = MaterialTheme.typography.bodyLarge.copy(
-                                    fontSize = 18.sp,
-                                    lineHeight = 30.sp,
-                                    fontWeight = FontWeight.Normal
-                                ),
-                                color = stageColor
-                            )
+                            }
                         }
-                    }
 
-                    // Regular words
-                    else -> {
-                        Box(
-                            modifier = Modifier
-                                .clickable {
-                                    if (cleanWord.isNotBlank()) onWordClicked(cleanWord)
-                                }
-                                .padding(horizontal = 1.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = token,
-                                style = MaterialTheme.typography.bodyLarge.copy(
-                                    fontSize = 18.sp,
-                                    lineHeight = 30.sp,
-                                    fontWeight = FontWeight.Normal
-                                ),
-                                color = TextPrimary
-                            )
+                        // Grammar Words (e.g. was): Elevated inner background, dashed gold border, gold text
+                        isGrammar -> {
+                            val dashGold = GoldAccent
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(SurfaceElevatedDark)
+                                    .drawBehind {
+                                        val strokeWidth = 1.dp.toPx()
+                                        val radius = 6.dp.toPx()
+                                        drawRoundRect(
+                                            color = dashGold,
+                                            style = Stroke(
+                                                width = strokeWidth,
+                                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
+                                            ),
+                                            cornerRadius = CornerRadius(radius, radius)
+                                        )
+                                    }
+                                    .clickable {
+                                        onGrammarClicked?.invoke()
+                                    }
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = token,
+                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                        fontSize = 18.sp,
+                                        lineHeight = 30.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    ),
+                                    color = GoldAccent
+                                )
+                            }
+                        }
+
+                        // Articles (a, an, the) when Hints are enabled: subtle dotted bottom underline
+                        isArticle && showGrammarHints -> {
+                            val dotColor = TextSecondary
+                            Box(
+                                modifier = Modifier
+                                    .drawBehind {
+                                        val strokeWidth = 2.dp.toPx()
+                                        val y = size.height - 1.dp.toPx()
+                                        drawLine(
+                                            color = dotColor,
+                                            start = Offset(0f, y),
+                                            end = Offset(size.width, y),
+                                            strokeWidth = strokeWidth,
+                                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(3f, 3f), 0f)
+                                        )
+                                    }
+                                    .clickable {
+                                        if (cleanWord.isNotBlank()) onWordClicked(cleanWord)
+                                    }
+                                    .padding(horizontal = 2.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = token,
+                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                        fontSize = 18.sp,
+                                        lineHeight = 30.sp,
+                                        fontWeight = FontWeight.Normal
+                                    ),
+                                    color = TextPrimary
+                                )
+                            }
+                        }
+
+                        // Word Stages (LEARNING, FAMILIAR, etc.)
+                        stage != null -> {
+                            val stageColor = when (stage) {
+                                com.example.data.plan.WordStage.LEARNING -> SkyAccent
+                                com.example.data.plan.WordStage.FAMILIAR -> EmeraldAccent
+                                com.example.data.plan.WordStage.SEEN -> TextSecondary
+                                else -> TextSecondary
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(stageColor.copy(alpha = 0.12f))
+                                    .border(
+                                        BorderStroke(1.dp, stageColor.copy(alpha = 0.35f)),
+                                        RoundedCornerShape(4.dp)
+                                    )
+                                    .clickable {
+                                        if (cleanWord.isNotBlank()) onWordClicked(cleanWord)
+                                    }
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = token,
+                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                        fontSize = 18.sp,
+                                        lineHeight = 30.sp,
+                                        fontWeight = FontWeight.Normal
+                                    ),
+                                    color = stageColor
+                                )
+                            }
+                        }
+
+                        // Regular words
+                        else -> {
+                            Box(
+                                modifier = Modifier
+                                    .clickable {
+                                        if (cleanWord.isNotBlank()) onWordClicked(cleanWord)
+                                    }
+                                    .padding(horizontal = 1.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = token,
+                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                        fontSize = 18.sp,
+                                        lineHeight = 30.sp,
+                                        fontWeight = FontWeight.Normal
+                                    ),
+                                    color = TextPrimary
+                                )
+                            }
                         }
                     }
                 }
@@ -3645,85 +3647,87 @@ fun ReadingQuestionCard(
 
             Spacer(Modifier.height(14.dp))
 
-            // Options
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                question.options.forEachIndexed { optIndex, optionText ->
-                    val isSelected = selectedOptionIndex == optIndex
-                    val isRightAnswer = optIndex == question.answerIndex
+            // Options (English comprehension options locked to LTR)
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    question.options.forEachIndexed { optIndex, optionText ->
+                        val isSelected = selectedOptionIndex == optIndex
+                        val isRightAnswer = optIndex == question.answerIndex
 
-                    val (containerColor, contentColor, borderColor) = when {
-                        !isAnswered -> Triple(
-                            SurfaceElevatedDark,
-                            TextPrimary,
-                            BorderDark
-                        )
-                        isSelected && isRightAnswer -> Triple(
-                            Color(0xFF1B5E20).copy(alpha = 0.25f),
-                            EmeraldAccent,
-                            Color(0xFF2E7D32)
-                        )
-                        isSelected && !isRightAnswer -> Triple(
-                            Color(0xFFB71C1C).copy(alpha = 0.25f),
-                            Color(0xFFE57373),
-                            Color(0xFFD32F2F)
-                        )
-                        isRightAnswer -> Triple(
-                            Color(0xFF1B5E20).copy(alpha = 0.25f),
-                            EmeraldAccent,
-                            Color(0xFF2E7D32)
-                        )
-                        else -> Triple(
-                            SurfaceElevatedDark.copy(alpha = 0.5f),
-                            TextSecondary.copy(alpha = 0.6f),
-                            BorderDark.copy(alpha = 0.4f)
-                        )
-                    }
+                        val (containerColor, contentColor, borderColor) = when {
+                            !isAnswered -> Triple(
+                                SurfaceElevatedDark,
+                                TextPrimary,
+                                BorderDark
+                            )
+                            isSelected && isRightAnswer -> Triple(
+                                Color(0xFF1B5E20).copy(alpha = 0.25f),
+                                EmeraldAccent,
+                                Color(0xFF2E7D32)
+                            )
+                            isSelected && !isRightAnswer -> Triple(
+                                Color(0xFFB71C1C).copy(alpha = 0.25f),
+                                Color(0xFFE57373),
+                                Color(0xFFD32F2F)
+                            )
+                            isRightAnswer -> Triple(
+                                Color(0xFF1B5E20).copy(alpha = 0.25f),
+                                EmeraldAccent,
+                                Color(0xFF2E7D32)
+                            )
+                            else -> Triple(
+                                SurfaceElevatedDark.copy(alpha = 0.5f),
+                                TextSecondary.copy(alpha = 0.6f),
+                                BorderDark.copy(alpha = 0.4f)
+                            )
+                        }
 
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = !isAnswered) {
-                                onSelectOption(optIndex)
-                            }
-                            .testTag("q_${index}_opt_${optIndex}"),
-                        shape = RoundedCornerShape(12.dp),
-                        color = containerColor,
-                        border = BorderStroke(1.dp, borderColor)
-                    ) {
-                        Row(
+                        Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .clickable(enabled = !isAnswered) {
+                                    onSelectOption(optIndex)
+                                }
+                                .testTag("q_${index}_opt_${optIndex}"),
+                            shape = RoundedCornerShape(12.dp),
+                            color = containerColor,
+                            border = BorderStroke(1.dp, borderColor)
                         ) {
-                            Text(
-                                text = "${('A'.code + optIndex).toChar()}.",
-                                fontWeight = FontWeight.Bold,
-                                color = if (isSelected || (isAnswered && isRightAnswer)) contentColor else TextSecondary,
-                                modifier = Modifier.width(24.dp)
-                            )
-                            Text(
-                                text = optionText,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = contentColor,
-                                modifier = Modifier.weight(1f)
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "${('A'.code + optIndex).toChar()}.",
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected || (isAnswered && isRightAnswer)) contentColor else TextSecondary,
+                                    modifier = Modifier.width(24.dp)
+                                )
+                                Text(
+                                    text = optionText,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = contentColor,
+                                    modifier = Modifier.weight(1f)
+                                )
 
-                            if (isAnswered) {
-                                if (isRightAnswer) {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = "Correct",
-                                        tint = Color(0xFF2E7D32),
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                } else if (isSelected) {
-                                    Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = "Wrong",
-                                        tint = Color(0xFFD32F2F),
-                                        modifier = Modifier.size(18.dp)
-                                    )
+                                if (isAnswered) {
+                                    if (isRightAnswer) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Correct",
+                                            tint = Color(0xFF2E7D32),
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    } else if (isSelected) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Wrong",
+                                            tint = Color(0xFFD32F2F),
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
                                 }
                             }
                         }

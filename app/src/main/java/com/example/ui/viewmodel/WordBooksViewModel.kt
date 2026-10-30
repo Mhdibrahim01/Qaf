@@ -459,6 +459,8 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _themeMode = MutableStateFlow(com.example.ui.theme.AppThemeMode.DARK)
     val themeMode: StateFlow<com.example.ui.theme.AppThemeMode> = _themeMode.asStateFlow()
+    private val _appLanguage = MutableStateFlow(com.example.ui.theme.AppLanguage.ENGLISH)
+    val appLanguage: StateFlow<com.example.ui.theme.AppLanguage> = _appLanguage.asStateFlow()
 
 
     private val _dictationIgnorePunctuation = MutableStateFlow(true)
@@ -653,6 +655,8 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             _isDeveloperModeEnabled.value = onboardingSnap.isDeveloperModeEnabled
             _themeMode.value = com.example.ui.theme.AppThemeMode.fromId(onboardingSnap.themeMode)
             com.example.ui.theme.AppThemeState.themeMode = _themeMode.value
+            _appLanguage.value = com.example.ui.theme.AppLanguage.fromCode(onboardingSnap.appLanguage)
+            com.example.ui.theme.AppLanguageState.currentLanguage = _appLanguage.value
             _preferredAccentUk.value = onboardingSnap.preferredAccentUk
             _autoPlayPronunciation.value = onboardingSnap.autoPlayPronunciation
             _autoPlayPracticeAudio.value = onboardingSnap.autoPlayPronunciation
@@ -675,6 +679,9 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 val resolvedTheme = com.example.ui.theme.AppThemeMode.fromId(prefs.themeMode)
                 _themeMode.value = resolvedTheme
                 com.example.ui.theme.AppThemeState.themeMode = resolvedTheme
+                val resolvedLang = com.example.ui.theme.AppLanguage.fromCode(prefs.appLanguage)
+                _appLanguage.value = resolvedLang
+                com.example.ui.theme.AppLanguageState.currentLanguage = resolvedLang
                 _preferredAccentUk.value = prefs.preferredAccentUk
                 _autoPlayPronunciation.value = prefs.autoPlayPronunciation
                 _ttsSpeechRate.value = prefs.ttsSpeechRate
@@ -2085,6 +2092,14 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         com.example.ui.theme.AppThemeState.themeMode = mode
         viewModelScope.launch {
             onboardingRepository.setThemeMode(mode.id)
+        }
+    }
+
+    fun setAppLanguage(language: com.example.ui.theme.AppLanguage) {
+        _appLanguage.value = language
+        com.example.ui.theme.AppLanguageState.currentLanguage = language
+        viewModelScope.launch {
+            onboardingRepository.setAppLanguage(language.code)
         }
     }
 

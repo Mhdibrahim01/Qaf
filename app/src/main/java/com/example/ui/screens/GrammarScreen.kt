@@ -2336,144 +2336,150 @@ fun GrammarExercisePrompt(
             suffix.split(Regex("""\s+""")).filter { it.isNotBlank() }
         }
 
-        Card(
-            modifier = modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = SurfaceElevatedDark),
-            border = BorderStroke(1.dp, BorderDark)
-        ) {
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+        // English exercise prompts, blanks, and clues must always flow left-to-right
+        // even when the surrounding UI chrome is mirrored in Arabic RTL mode.
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            Card(
+                modifier = modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceElevatedDark),
+                border = BorderStroke(1.dp, BorderDark)
             ) {
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically)
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    for (word in prefixWords) {
-                        Text(
-                            text = word,
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                textDirection = TextDirection.Ltr,
-                                textAlign = TextAlign.Left
-                            ),
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary,
-                            modifier = Modifier.align(Alignment.CenterVertically)
-                        )
-                    }
-
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = when {
-                            submitted && isCorrect -> EmeraldAccent.copy(alpha = 0.22f)
-                            submitted && !isCorrect -> CoralAccent.copy(alpha = 0.22f)
-                            currentAnswer.isNotBlank() -> GoldAccent.copy(alpha = 0.18f)
-                            else -> BackgroundDark
-                        },
-                        border = BorderStroke(
-                            1.5.dp,
-                            when {
-                                submitted && isCorrect -> EmeraldAccent
-                                submitted && !isCorrect -> CoralAccent
-                                currentAnswer.isNotBlank() -> GoldAccent
-                                else -> GoldAccent.copy(alpha = 0.6f)
-                            }
-                        ),
-                        modifier = Modifier
-                            .align(Alignment.CenterVertically)
-                            .testTag("dynamic_blank_slot")
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        for (word in prefixWords) {
+                            Text(
+                                text = word,
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    textDirection = TextDirection.Ltr,
+                                    textAlign = TextAlign.Left
+                                ),
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextPrimary,
+                                modifier = Modifier.align(Alignment.CenterVertically)
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = when {
+                                submitted && isCorrect -> EmeraldAccent.copy(alpha = 0.22f)
+                                submitted && !isCorrect -> CoralAccent.copy(alpha = 0.22f)
+                                currentAnswer.isNotBlank() -> GoldAccent.copy(alpha = 0.18f)
+                                else -> BackgroundDark
+                            },
+                            border = BorderStroke(
+                                1.5.dp,
+                                when {
+                                    submitted && isCorrect -> EmeraldAccent
+                                    submitted && !isCorrect -> CoralAccent
+                                    currentAnswer.isNotBlank() -> GoldAccent
+                                    else -> GoldAccent.copy(alpha = 0.6f)
+                                }
+                            ),
+                            modifier = Modifier
+                                .align(Alignment.CenterVertically)
+                                .testTag("dynamic_blank_slot")
                         ) {
-                            if (currentAnswer.isNotBlank()) {
-                                Text(
-                                    text = currentAnswer,
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = when {
-                                            submitted && isCorrect -> EmeraldAccent
-                                            submitted && !isCorrect -> CoralAccent
-                                            else -> GoldAccent
-                                        }
-                                    )
-                                )
-                                if (submitted) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                if (currentAnswer.isNotBlank()) {
                                     Text(
-                                        text = if (isCorrect) "✓" else "✗",
-                                        color = if (isCorrect) EmeraldAccent else CoralAccent,
-                                        fontWeight = FontWeight.Bold,
-                                        style = MaterialTheme.typography.titleSmall
+                                        text = currentAnswer,
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = when {
+                                                submitted && isCorrect -> EmeraldAccent
+                                                submitted && !isCorrect -> CoralAccent
+                                                else -> GoldAccent
+                                            }
+                                        )
+                                    )
+                                    if (submitted) {
+                                        Text(
+                                            text = if (isCorrect) "✓" else "✗",
+                                            color = if (isCorrect) EmeraldAccent else CoralAccent,
+                                            fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.titleSmall
+                                        )
+                                    }
+                                } else {
+                                    Text(
+                                        text = "[  ______  ]",
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = GoldAccent.copy(alpha = 0.75f),
+                                            letterSpacing = 1.sp
+                                        )
                                     )
                                 }
-                            } else {
-                                Text(
-                                    text = "[  ______  ]",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = GoldAccent.copy(alpha = 0.75f),
-                                        letterSpacing = 1.sp
-                                    )
-                                )
                             }
+                        }
+
+                        for (word in suffixWords) {
+                            Text(
+                                text = word,
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    textDirection = TextDirection.Ltr,
+                                    textAlign = TextAlign.Left
+                                ),
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextPrimary,
+                                modifier = Modifier.align(Alignment.CenterVertically)
+                            )
                         }
                     }
 
-                    for (word in suffixWords) {
-                        Text(
-                            text = word,
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                textDirection = TextDirection.Ltr,
-                                textAlign = TextAlign.Left
-                            ),
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary,
-                            modifier = Modifier.align(Alignment.CenterVertically)
-                        )
-                    }
-                }
-
-                if (displayClue.isNotBlank()) {
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = GoldAccentDim,
-                        border = BorderStroke(1.dp, GoldAccentBorder)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    if (displayClue.isNotBlank()) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = GoldAccentDim,
+                            border = BorderStroke(1.dp, GoldAccentBorder)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Lightbulb,
-                                contentDescription = null,
-                                tint = GoldAccent,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Text(
-                                text = "Clue: $displayClue",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                ),
-                                color = GoldAccent
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Lightbulb,
+                                    contentDescription = null,
+                                    tint = GoldAccent,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = "Clue: $displayClue",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    ),
+                                    color = GoldAccent
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     } else {
-        BidiText(
-            text = prompt,
-            style = MaterialTheme.typography.titleMedium,
-            color = TextPrimary,
-            fontWeight = FontWeight.SemiBold
-        )
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            BidiText(
+                text = prompt,
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
     }
 }
 
@@ -2492,11 +2498,12 @@ fun ExerciseItemView(
     val isCorrect = submitted && isGrammarAnswerCorrect(currentAnswer, exercise.answer)
     val isWrong = submitted && !isCorrect
 
+    val isAr = com.example.ui.theme.AppLanguageState.isArabic
     val typeLabel = when (exercise.type.lowercase()) {
-        "mcq" -> "Multiple Choice"
-        "reorder" -> "Word Order"
-        "fill" -> "Fill in the Blank"
-        "correct" -> "Error Correction"
+        "mcq" -> if (isAr) "اختيار من متعدد" else "Multiple Choice"
+        "reorder" -> if (isAr) "ترتيب الكلمات" else "Word Order"
+        "fill" -> if (isAr) "أكمل الفراغ" else "Fill in the Blank"
+        "correct" -> if (isAr) "تصحيح الخطأ" else "Error Correction"
         else -> exercise.type.uppercase()
     }
 
@@ -2549,104 +2556,111 @@ fun ExerciseItemView(
             correctAnswer = exercise.answer
         )
 
-        when (exercise.type.lowercase()) {
-            "mcq" -> {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    exercise.options.forEachIndexed { optIdx, option ->
-                        val isSelected = currentAnswer == option
-                        val optionLetter = ('A' + optIdx).toString()
-                        val optionIsCorrect = isGrammarAnswerCorrect(option, exercise.answer)
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable(enabled = !submitted) { onAnswerChange(option) }
-                                .testTag("mcq_option_${index}_$option"),
-                            shape = RoundedCornerShape(10.dp),
-                            color = when {
-                                submitted && optionIsCorrect -> EmeraldAccent.copy(alpha = 0.18f)
-                                submitted && isSelected && isWrong -> CoralAccent.copy(alpha = 0.18f)
-                                isSelected -> GoldAccent.copy(alpha = 0.18f)
-                                else -> SurfaceElevatedDark
-                            },
-                            border = BorderStroke(
-                                1.dp,
-                                when {
-                                    submitted && optionIsCorrect -> EmeraldAccent
-                                    submitted && isSelected && isWrong -> CoralAccent
-                                    isSelected -> GoldAccent
-                                    else -> BorderDark
-                                }
-                            )
-                        ) {
-                            Row(
+        // Keep English grammar answer choices and English answer text inputs strictly LTR.
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            when (exercise.type.lowercase()) {
+                "mcq" -> {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        exercise.options.forEachIndexed { optIdx, option ->
+                            val isSelected = currentAnswer == option
+                            val optionLetter = ('A' + optIdx).toString()
+                            val optionIsCorrect = isGrammarAnswerCorrect(option, exercise.answer)
+                            Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = when {
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable(enabled = !submitted) { onAnswerChange(option) }
+                                    .testTag("mcq_option_${index}_$option"),
+                                shape = RoundedCornerShape(10.dp),
+                                color = when {
+                                    submitted && optionIsCorrect -> EmeraldAccent.copy(alpha = 0.18f)
+                                    submitted && isSelected && isWrong -> CoralAccent.copy(alpha = 0.18f)
+                                    isSelected -> GoldAccent.copy(alpha = 0.18f)
+                                    else -> SurfaceElevatedDark
+                                },
+                                border = BorderStroke(
+                                    1.dp,
+                                    when {
                                         submitted && optionIsCorrect -> EmeraldAccent
                                         submitted && isSelected && isWrong -> CoralAccent
                                         isSelected -> GoldAccent
-                                        else -> BackgroundDark
-                                    },
-                                    modifier = Modifier.size(26.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text(
-                                            text = optionLetter,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isSelected || (submitted && optionIsCorrect)) BackgroundDark else TextSecondary
-                                        )
+                                        else -> BorderDark
                                     }
-                                }
-                                Text(
-                                    text = option,
-                                    style = MaterialTheme.typography.bodyLarge.copy(
-                                        textDirection = TextDirection.Ltr,
-                                        textAlign = TextAlign.Left
-                                    ),
-                                    color = TextPrimary,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    modifier = Modifier.weight(1f)
                                 )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = when {
+                                            submitted && optionIsCorrect -> EmeraldAccent
+                                            submitted && isSelected && isWrong -> CoralAccent
+                                            isSelected -> GoldAccent
+                                            else -> BackgroundDark
+                                        },
+                                        modifier = Modifier.size(26.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(
+                                                text = optionLetter,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isSelected || (submitted && optionIsCorrect)) BackgroundDark else TextSecondary
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = option,
+                                        style = MaterialTheme.typography.bodyLarge.copy(
+                                            textDirection = TextDirection.Ltr,
+                                            textAlign = TextAlign.Left
+                                        ),
+                                        color = TextPrimary,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            }
-            "fill", "correct" -> {
-                OutlinedTextField(
-                    value = currentAnswer,
-                    onValueChange = { if (!submitted) onAnswerChange(it) },
-                    enabled = !submitted,
-                    placeholder = { Text("Type your answer...", color = TextMuted) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("fill_input_$index"),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = GoldAccent,
-                        unfocusedBorderColor = BorderDark,
-                        disabledBorderColor = if (isCorrect) EmeraldAccent else if (isWrong) CoralAccent else BorderDark,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                        disabledTextColor = TextPrimary
+                "fill", "correct" -> {
+                    OutlinedTextField(
+                        value = currentAnswer,
+                        onValueChange = { if (!submitted) onAnswerChange(it) },
+                        enabled = !submitted,
+                        placeholder = { Text("Type your answer...", color = TextMuted) },
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(
+                            color = TextPrimary,
+                            textDirection = TextDirection.Ltr
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("fill_input_$index"),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = GoldAccent,
+                            unfocusedBorderColor = BorderDark,
+                            disabledBorderColor = if (isCorrect) EmeraldAccent else if (isWrong) CoralAccent else BorderDark,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            disabledTextColor = TextPrimary
+                        )
                     )
-                )
-            }
-            "reorder" -> {
-                ReorderExerciseView(
-                    options = exercise.options,
-                    currentAnswer = currentAnswer,
-                    submitted = submitted,
-                    onAnswerChange = onAnswerChange
-                )
+                }
+                "reorder" -> {
+                    ReorderExerciseView(
+                        options = exercise.options,
+                        currentAnswer = currentAnswer,
+                        submitted = submitted,
+                        onAnswerChange = onAnswerChange
+                    )
+                }
             }
         }
 

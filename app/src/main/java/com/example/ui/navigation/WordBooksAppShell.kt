@@ -288,35 +288,88 @@ fun WordBooksAppShell(
         }
     }
 
+    val isAr = com.example.ui.theme.AppLanguageState.isArabic
     val (topTitle, topSubtitle, topArabicTitle) = when (currentRoute) {
-        AppRoute.Home -> Triple("Qaf", "قاف • Learning Dashboard", "الرئيسية")
-        AppRoute.WordBooks -> Triple("Word Books", "Vocabulary Library & Cards", "مكتبة المفردات")
+        AppRoute.Home -> Triple(
+            if (isAr) "قاف" else "Qaf",
+            if (isAr) "قاف • لوحة التعلم" else "قاف • Learning Dashboard",
+            "الرئيسية"
+        )
+        AppRoute.WordBooks -> Triple(
+            if (isAr) "مكتبة المفردات" else "Word Books",
+            if (isAr) "مكتبة المفردات والبطاقات" else "Vocabulary Library & Cards",
+            "مكتبة المفردات"
+        )
         AppRoute.Flashcards -> {
             val deckTitle = decks.find { it.id == flashcardDeckId }?.title ?: "Review"
-            Triple("Word Books", "Flashcards • $deckTitle", "البطاقات التعليمية")
+            Triple(
+                if (isAr) "البطاقات التعليمية" else "Word Books",
+                if (isAr) "البطاقات • $deckTitle" else "Flashcards • $deckTitle",
+                "البطاقات التعليمية"
+            )
         }
-        AppRoute.Sentences -> Triple("Sentences", "Favorites & Practice", "الجمل المحفوظة")
-        AppRoute.More -> Triple("Learning Hub", "Advanced Tools & Preferences", "المزيد")
+        AppRoute.Sentences -> Triple(
+            if (isAr) "الجمل المحفوظة" else "Sentences",
+            if (isAr) "المفضلة والتدريب" else "Favorites & Practice",
+            "الجمل المحفوظة"
+        )
+        AppRoute.More -> Triple(
+            if (isAr) "المزيد" else "Learning Hub",
+            if (isAr) "الأدوات والتفضيلات" else "Advanced Tools & Preferences",
+            "المزيد"
+        )
         AppRoute.Grammar -> {
             val lesson = selectedGrammarLesson
             if (lesson != null) {
-                Triple(lesson.titleEn, "${lesson.level} • ${lesson.topic}", cleanGrammarArabicTitle(lesson.titleAr))
+                Triple(
+                    if (isAr && !lesson.titleAr.isNullOrBlank()) cleanGrammarArabicTitle(lesson.titleAr) else lesson.titleEn,
+                    "${lesson.level} • ${lesson.topic}",
+                    cleanGrammarArabicTitle(lesson.titleAr)
+                )
             } else {
-                Triple("Grammar Lessons", "CEFR A1–C1", "القواعد النحوية")
+                Triple(
+                    if (isAr) "القواعد النحوية" else "Grammar Lessons",
+                    if (isAr) "المستويات A1–C1" else "CEFR A1–C1",
+                    "القواعد النحوية"
+                )
             }
         }
         AppRoute.Reading -> {
             val text = selectedReadingText
             if (text != null) {
-                Triple(text.titleEn, "${text.level} • ${text.topic}", text.titleAr)
+                Triple(
+                    if (isAr && !text.titleAr.isNullOrBlank()) text.titleAr else text.titleEn,
+                    "${text.level} • ${text.topic}",
+                    text.titleAr
+                )
             } else {
-                Triple("Graded Reading", "Bilingual Texts", "القراءة المتدرجة")
+                Triple(
+                    if (isAr) "القراءة المتدرجة" else "Graded Reading",
+                    if (isAr) "نصوص ثنائية اللغة" else "Bilingual Texts",
+                    "القراءة المتدرجة"
+                )
             }
         }
-        AppRoute.Plan -> Triple("Study Plan", "Daily Adaptive Checklist", "خطة التعلم")
-        AppRoute.CorrectionNotebook -> Triple("Correction Notebook", "Spaced Review", "دفتر تصحيح الأخطاء")
-        AppRoute.Settings -> Triple("Settings", "Audio, Study Goals, Backups & AI", "الإعدادات")
-        AppRoute.Labs -> Triple("Labs & Diagnostics", "Database Tools", "المختبر")
+        AppRoute.Plan -> Triple(
+            if (isAr) "خطة التعلم" else "Study Plan",
+            if (isAr) "قائمة المهام اليومية" else "Daily Adaptive Checklist",
+            "خطة التعلم"
+        )
+        AppRoute.CorrectionNotebook -> Triple(
+            if (isAr) "دفتر التصحيح" else "Correction Notebook",
+            if (isAr) "المراجعة المتباعدة" else "Spaced Review",
+            "دفتر تصحيح الأخطاء"
+        )
+        AppRoute.Settings -> Triple(
+            if (isAr) "الإعدادات" else "Settings",
+            if (isAr) "الصوت، الأهداف، والنسخ الاحتياطي" else "Audio, Study Goals, Backups & AI",
+            "الإعدادات"
+        )
+        AppRoute.Labs -> Triple(
+            if (isAr) "المختبر" else "Labs & Diagnostics",
+            if (isAr) "أدوات التشخيص" else "Database Tools",
+            "المختبر"
+        )
     }
 
     Scaffold(
@@ -361,7 +414,7 @@ fun WordBooksAppShell(
                 } else null
 
                 WordBooksTopAppBar(
-                    title = topTitle,
+                    title = if (isAr && !topArabicTitle.isNullOrBlank()) topArabicTitle else topTitle,
                     subtitle = topSubtitle,
                     arabicTitle = topArabicTitle,
                     canNavigateBack = canNavigateBack,
@@ -1173,6 +1226,7 @@ fun WordBooksAppShell(
                     val preferredAccentUk by wordBooksViewModel.preferredAccentUk.collectAsStateWithLifecycle()
                     val ttsSpeechRate by wordBooksViewModel.ttsSpeechRate.collectAsStateWithLifecycle()
                     val autoPlayPronunciation by wordBooksViewModel.autoPlayPronunciation.collectAsStateWithLifecycle()
+                    val appLanguage by wordBooksViewModel.appLanguage.collectAsStateWithLifecycle()
                     SettingsScreen(
                         preferredAccentUk = preferredAccentUk,
                         ttsSpeechRate = ttsSpeechRate,
@@ -1187,6 +1241,8 @@ fun WordBooksAppShell(
                         isDeveloperModeEnabled = isDeveloperModeEnabled,
                         themeMode = themeMode,
                         onSelectThemeMode = wordBooksViewModel::setThemeMode,
+                        appLanguage = appLanguage,
+                        onSelectAppLanguage = wordBooksViewModel::setAppLanguage,
                         onSelectAccentUk = wordBooksViewModel::setPreferredAccentUk,
                         onSelectSpeechRate = wordBooksViewModel::updateTtsSpeechRate,
                         onToggleAutoPlayPronunciation = wordBooksViewModel::setAutoPlayPronunciation,
@@ -1310,6 +1366,11 @@ fun WordBooksAppShell(
             }
         }
     }
+
+    // App self-update (GitHub Releases): silent check on launch, dialog only when a newer version exists.
+    val appUpdateController = com.example.ui.update.rememberUpdateController()
+    androidx.compose.runtime.LaunchedEffect(Unit) { appUpdateController.check(manual = false) }
+    com.example.ui.update.UpdateDialogHost(appUpdateController)
 
     if (isQuizLoading) {
         AlertDialog(
