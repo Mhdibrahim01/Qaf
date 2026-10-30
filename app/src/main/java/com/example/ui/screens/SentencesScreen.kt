@@ -122,6 +122,7 @@ import com.example.data.audio.AudioPlayerManager
 import com.example.data.local.SentenceEntity
 import com.example.data.sentences.DictationDiffResult
 import com.example.data.sentences.DiffTokenStatus
+import com.example.data.sentences.ScrambledWordTile
 import com.example.data.sentences.SentencePracticeUtils
 import com.example.data.sentences.SentenceSortOrder
 import com.example.ui.components.ArabicText
@@ -335,7 +336,7 @@ fun SentencesScreen(
                             currentIndex = clampedPracticeIndex,
                             showTranslation = showTranslation,
                             ignorePunctuation = dictationIgnorePunctuation,
-                            autoPlayAudio = autoPlayPracticeAudio,
+                            autoPlayAudio = autoPlayPracticeAudio && !quietModeEnabled,
                             currentlyPlayingText = currentlyPlayingText,
                             onIndexChange = { practiceIndex = it },
                             onPlayNormalTts = { text -> onSpeakSentenceTts(text, null) },
@@ -1136,6 +1137,11 @@ private fun DictationTabContent(
     val currentSentence = savedSentences[currentIndex.coerceIn(0, savedSentences.size - 1)]
     val focusManager = LocalFocusManager.current
     var typedInput by remember(currentSentence.id) { mutableStateOf("") }
+    var isWordTilesMode by remember { mutableStateOf(false) }
+    val scrambledBank = remember(currentSentence.id, currentSentence.englishText) {
+        SentencePracticeUtils.buildScrambledWordTiles(currentSentence.englishText, currentSentence.id.toInt())
+    }
+    var selectedTileIndices by remember(currentSentence.id) { mutableStateOf<List<Int>>(emptyList()) }
     var diffResult by remember(currentSentence.id) { mutableStateOf<DictationDiffResult?>(null) }
     var showEnglishHint by remember(currentSentence.id) { mutableStateOf(false) }
     val scrollState = rememberScrollState()
@@ -1277,53 +1283,207 @@ private fun DictationTabContent(
                     )
                 }
 
-                // Dictation Input Field (locked to LTR for English dictation)
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    OutlinedTextField(
-                        value = typedInput,
-                        onValueChange = { typedInput = it },
-                        label = { Text("Type the English sentence you heard...") },
-                        placeholder = { Text("Type here and tap Check Dictation...", color = TextMuted) },
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(
-                            textDirection = TextDirection.Ltr,
-                            textAlign = TextAlign.Left
-                        ),
+                // Dictation Challenge Mode Selector: Word Tiles vs Full Keyboard
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("dictation_mode_selector"),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Surface(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("dictation_input_field"),
-                        minLines = 2,
-                        maxLines = 4,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(
-                            onDone = {
-                                focusManager.clearFocus()
-                                if (typedInput.isNotBlank()) {
-                                    val computed = SentencePracticeUtils.computeSentenceDiff(
-                                        expected = currentSentence.englishText,
-                                        actual = typedInput,
-                                        ignorePunctuation = ignorePunctuation
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable {
+                                isWordTilesMode = false
+                            }
+                            .testTag("dictation_mode_keyboard"),
+                        color = if (!isWordTilesMode) GoldAccentDim else SurfaceElevatedDark,
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, if (!isWordTilesMode) GoldAccent else BorderDark)
+                    ) {
+                        Text(
+                            text = "⌨️ Full Keyboard • كتابة",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = if (!isWordTilesMode) GoldAccent else TextSecondary,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 8.dp)
+                        )
+                    }
+
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable {
+                                isWordTilesMode = true
+                            }
+                            .testTag("dictation_mode_tiles"),
+                        color = if (isWordTilesMode) GoldAccentDim else SurfaceElevatedDark,
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, if (isWordTilesMode) GoldAccent else BorderDark)
+                    ) {
+                        Text(
+                            text = "🧩 Word Tiles • ترتيب",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = if (isWordTilesMode) GoldAccent else TextSecondary,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 8.dp)
+                        )
+                    }
+                }
+
+                if (isWordTilesMode) {
+                    val arrangedTiles = selectedTileIndices.mapNotNull { idx ->
+                        scrambledBank.find { it.index == idx }
+                    }
+                    val remainingTiles = scrambledBank.filter { it.index !in selectedTileIndices }
+
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("dictation_tile_arranged_box"),
+                                color = SurfaceElevatedDark,
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, GoldAccentBorder)
+                            ) {
+                                if (arrangedTiles.isEmpty()) {
+                                    Text(
+                                        text = "Tap scrambled word tiles below in the order you heard them...",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = TextMuted,
+                                        modifier = Modifier.padding(14.dp)
                                     )
-                                    diffResult = computed
-                                    val itemId = if (currentSentence.id > 0L) {
-                                        "sentence:${currentSentence.id}"
-                                    } else {
-                                        currentSentence.englishText
+                                } else {
+                                    FlowRow(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(10.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        arrangedTiles.forEach { tile ->
+                                            Surface(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .clickable {
+                                                        val updated = selectedTileIndices - tile.index
+                                                        selectedTileIndices = updated
+                                                        typedInput = updated.mapNotNull { id ->
+                                                            scrambledBank.find { it.index == id }?.text
+                                                        }.joinToString(" ")
+                                                    }
+                                                    .testTag("dictation_arranged_tile_${tile.index}"),
+                                                color = GoldAccentDim,
+                                                shape = RoundedCornerShape(8.dp),
+                                                border = BorderStroke(1.dp, GoldAccent)
+                                            ) {
+                                                Text(
+                                                    text = tile.text,
+                                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                                        fontWeight = FontWeight.Bold,
+                                                        textDirection = TextDirection.Ltr
+                                                    ),
+                                                    color = GoldAccent,
+                                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                                )
+                                            }
+                                        }
                                     }
-                                    onRecordAttempt(itemId, computed.accuracyPercent)
                                 }
                             }
-                        ),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = GoldAccent,
-                            unfocusedBorderColor = BorderDark,
-                            focusedContainerColor = SurfaceElevatedDark,
-                            unfocusedContainerColor = SurfaceElevatedDark,
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary,
-                            focusedLabelColor = GoldAccent,
-                            unfocusedLabelColor = TextSecondary
+
+                            FlowRow(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("dictation_tile_bank"),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                remainingTiles.forEach { tile ->
+                                    Surface(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable {
+                                                val updated = selectedTileIndices + tile.index
+                                                selectedTileIndices = updated
+                                                typedInput = updated.mapNotNull { id ->
+                                                    scrambledBank.find { it.index == id }?.text
+                                                }.joinToString(" ")
+                                            }
+                                            .testTag("dictation_bank_tile_${tile.index}"),
+                                        color = SurfaceElevatedDark,
+                                        shape = RoundedCornerShape(8.dp),
+                                        border = BorderStroke(1.dp, BorderDark)
+                                    ) {
+                                        Text(
+                                            text = tile.text,
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                fontWeight = FontWeight.SemiBold,
+                                                textDirection = TextDirection.Ltr
+                                            ),
+                                            color = TextPrimary,
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Dictation Input Field (locked to LTR for English dictation)
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        OutlinedTextField(
+                            value = typedInput,
+                            onValueChange = { typedInput = it },
+                            label = { Text("Type the English sentence you heard...") },
+                            placeholder = { Text("Type here and tap Check Dictation...", color = TextMuted) },
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                textDirection = TextDirection.Ltr,
+                                textAlign = TextAlign.Left
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("dictation_input_field"),
+                            minLines = 2,
+                            maxLines = 4,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    focusManager.clearFocus()
+                                    if (typedInput.isNotBlank()) {
+                                        val computed = SentencePracticeUtils.computeSentenceDiff(
+                                            expected = currentSentence.englishText,
+                                            actual = typedInput,
+                                            ignorePunctuation = ignorePunctuation
+                                        )
+                                        diffResult = computed
+                                        val itemId = if (currentSentence.id > 0L) {
+                                            "sentence:${currentSentence.id}"
+                                        } else {
+                                            currentSentence.englishText
+                                        }
+                                        onRecordAttempt(itemId, computed.accuracyPercent)
+                                    }
+                                }
+                            ),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = GoldAccent,
+                                unfocusedBorderColor = BorderDark,
+                                focusedContainerColor = SurfaceElevatedDark,
+                                unfocusedContainerColor = SurfaceElevatedDark,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                focusedLabelColor = GoldAccent,
+                                unfocusedLabelColor = TextSecondary
+                            )
                         )
-                    )
+                    }
                 }
 
                 Row(
@@ -1366,6 +1526,7 @@ private fun DictationTabContent(
                     OutlinedButton(
                         onClick = {
                             typedInput = ""
+                            selectedTileIndices = emptyList()
                             diffResult = null
                         },
                         border = BorderStroke(1.dp, BorderDark),
@@ -2038,6 +2199,49 @@ private fun SentenceDiffResultCard(
                                         color = EmeraldAccent,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                     )
+                                }
+                            }
+
+                            DiffTokenStatus.TYPO -> {
+                                Surface(
+                                    color = AmberAccent.copy(alpha = 0.16f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    border = BorderStroke(1.dp, AmberAccent.copy(alpha = 0.65f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        val annotatedTypo = buildAnnotatedString {
+                                            if (token.charDiffs.isNotEmpty()) {
+                                                token.charDiffs.forEach { span ->
+                                                    withStyle(
+                                                        SpanStyle(
+                                                            color = if (span.isMatch) EmeraldAccent else AmberAccent,
+                                                            fontWeight = if (span.isMatch) FontWeight.Medium else FontWeight.ExtraBold,
+                                                            textDecoration = if (span.isMatch) TextDecoration.None else TextDecoration.Underline
+                                                        )
+                                                    ) {
+                                                        append(span.char)
+                                                    }
+                                                }
+                                            } else {
+                                                withStyle(SpanStyle(color = AmberAccent, fontWeight = FontWeight.Bold)) {
+                                                    append(token.text)
+                                                }
+                                            }
+                                        }
+                                        Text(
+                                            text = annotatedTypo,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                        Text(
+                                            text = "→ ${token.expectedText}",
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = GoldAccent
+                                        )
+                                    }
                                 }
                             }
 

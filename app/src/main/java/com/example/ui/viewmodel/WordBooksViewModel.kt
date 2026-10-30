@@ -466,7 +466,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     private val _dictationIgnorePunctuation = MutableStateFlow(true)
     val dictationIgnorePunctuation: StateFlow<Boolean> = _dictationIgnorePunctuation.asStateFlow()
 
-    private val _autoPlayPracticeAudio = MutableStateFlow(false)
+    private val _autoPlayPracticeAudio = MutableStateFlow(true)
     val autoPlayPracticeAudio: StateFlow<Boolean> = _autoPlayPracticeAudio.asStateFlow()
 
     private val _explainingSentenceIds = MutableStateFlow<Set<Long>>(emptySet())
@@ -519,6 +519,33 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _studyStreak = MutableStateFlow(0)
     val studyStreak: StateFlow<Int> = _studyStreak.asStateFlow()
+
+    private val _streakShieldStatus = MutableStateFlow(com.example.data.plan.StreakShieldStatus())
+    val streakShieldStatus: StateFlow<com.example.data.plan.StreakShieldStatus> = _streakShieldStatus.asStateFlow()
+
+    private val _studyReminderEnabled = MutableStateFlow(true)
+    val studyReminderEnabled: StateFlow<Boolean> = _studyReminderEnabled.asStateFlow()
+
+    private val _studyReminderTimeMinutes = MutableStateFlow(20 * 60)
+    val studyReminderTimeMinutes: StateFlow<Int> = _studyReminderTimeMinutes.asStateFlow()
+
+    private val _activeBlitzQuestions = MutableStateFlow<List<com.example.data.blitz.BlitzQuestionItem>?>(null)
+    val activeBlitzQuestions: StateFlow<List<com.example.data.blitz.BlitzQuestionItem>?> = _activeBlitzQuestions.asStateFlow()
+
+    val blitzStats: StateFlow<com.example.data.blitz.VocabularyBlitzStats> = onboardingRepository.stateFlow
+        .map { state ->
+            com.example.data.blitz.VocabularyBlitzStats(
+                highScore = state.blitzHighScore,
+                bestStreak = state.blitzBestStreak,
+                wordSniperUnlocked = state.blitzBadgeWordSniper,
+                academicLightningUnlocked = state.blitzBadgeAcademicLightning
+            )
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = com.example.data.blitz.VocabularyBlitzStats()
+        )
 
     val quizHistory: StateFlow<List<QuizResultEntity>> = database.wordBooksDao().observeAllQuizResults().stateIn(
         scope = viewModelScope,
@@ -661,12 +688,21 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             _autoPlayPronunciation.value = onboardingSnap.autoPlayPronunciation
             _autoPlayPracticeAudio.value = onboardingSnap.autoPlayPronunciation
             _ttsSpeechRate.value = onboardingSnap.ttsSpeechRate
+            _studyReminderEnabled.value = onboardingSnap.studyReminderEnabled
+            _studyReminderTimeMinutes.value = onboardingSnap.studyReminderTimeMinutes
             audioPlayer.setPreferUkAccent(onboardingSnap.preferredAccentUk)
             audioPlayer.setDefaultSpeechRate(onboardingSnap.ttsSpeechRate)
+            com.example.data.reminder.DailyStudyReminderManager.scheduleOrCancelDailyReminder(
+                context = getApplication(),
+                enabled = onboardingSnap.studyReminderEnabled,
+                reminderMinutesFromMidnight = onboardingSnap.studyReminderTimeMinutes
+            )
             if (existingProfile != null || onboardingSnap.onboardingCompleted) {
                 val checklist = studyPlanRepository.getOrCreateDailyChecklist()
                 _todayChecklist.value = checklist
-                _studyStreak.value = studyPlanRepository.computeStreak()
+                val shieldStatus = studyPlanRepository.evaluateStreakAndShields(onboardingRepository)
+                _streakShieldStatus.value = shieldStatus
+                _studyStreak.value = shieldStatus.streak
                 _weakAreas.value = studyPlanRepository.getWeakAreas()
                 _learnerModelSnapshot.value = studyPlanRepository.learnerModelRepository.buildSnapshot(existingProfile)
             }
@@ -685,6 +721,9 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 _preferredAccentUk.value = prefs.preferredAccentUk
                 _autoPlayPronunciation.value = prefs.autoPlayPronunciation
                 _ttsSpeechRate.value = prefs.ttsSpeechRate
+                _studyReminderEnabled.value = prefs.studyReminderEnabled
+                _studyReminderTimeMinutes.value = prefs.studyReminderTimeMinutes
+                _streakShieldStatus.value = _streakShieldStatus.value.copy(shieldCount = prefs.streakFreezeCount)
                 audioPlayer.setPreferUkAccent(prefs.preferredAccentUk)
                 audioPlayer.setDefaultSpeechRate(prefs.ttsSpeechRate)
             }
@@ -704,7 +743,9 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                     val updated = studyPlanRepository.recomputeTodayChecklistCompletion()
                     if (updated != null) {
                         _todayChecklist.value = updated
-                        _studyStreak.value = studyPlanRepository.computeStreak()
+                        val shieldStatus = studyPlanRepository.evaluateStreakAndShields(onboardingRepository)
+                        _streakShieldStatus.value = shieldStatus
+                        _studyStreak.value = shieldStatus.streak
                     }
                 }
             }
@@ -2568,16 +2609,13 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             _isFlashcardsLoading.value = true
             try {
                 val checklist = _todayChecklist.value
-                val taskCount = targetCountOverride ?: run {
+                val dailyGoalTarget = run {
                     if (checklist != null && checklist.tasksJson.isNotBlank()) {
                         val tasks = try {
                             kotlinx.serialization.json.Json.decodeFromString<List<DailyTaskItem>>(checklist.tasksJson)
                         } catch (_: Exception) { emptyList() }
                         val newWordsTask = tasks.find { it.type == "new_words" }
-                        if (newWordsTask != null && newWordsTask.targetCount > 0) {
-                            val remaining = newWordsTask.targetCount - newWordsTask.completedCount
-                            if (remaining > 0) remaining else 5
-                        } else null
+                        newWordsTask?.targetCount?.takeIf { it > 0 }
                     } else null
                 } ?: 10
 
@@ -2593,37 +2631,85 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 }
 
                 val activeProfile = studyPlanProfile.value ?: studyPlanRepository.getOrCreateProfile()
-                val newEntries = studyPlanRepository.getTodayTargetNewWords(
-                    profile = activeProfile,
-                    targetCount = taskCount
-                ).ifEmpty {
-                    database.wordBooksDao().getPlacementVocabularyCandidatesForLevel(userLevel, limit = taskCount)
+                val allProgress = database.wordBooksDao().getAllWordProgressList().associateBy { it.cardKey }
+
+                // Reconstruct words already learned today in chronological order (1st learned -> index 0, 2nd -> index 1)
+                val nowMillis = studyPlanRepository.timeProvider.currentTimeMillis()
+                val startOfDay = DataImportRepository.computeStartOfTodayMillis(nowMillis)
+                val learnedTodayEntries = database.wordBooksDao().getEntriesLearnedToday(startOfDay)
+                val learnedGroupedMap = LinkedHashMap<String, MutableList<EntryEntity>>()
+                for (entry in learnedTodayEntries) {
+                    val key = "${entry.deck}:${entry.text.trim().lowercase()}"
+                    learnedGroupedMap.getOrPut(key) { ArrayList(2) }.add(entry)
+                }
+                val learnedTodayCards = learnedGroupedMap.map { (cardKey, variants) ->
+                    repository.buildGroupedCardFromEntries(variants, allProgress[cardKey])
+                }.sortedBy { card ->
+                    val p = allProgress[card.cardKey]
+                    p?.firstLearnedTimestamp?.takeIf { it > 0L } ?: p?.lastReviewedTimestamp ?: 0L
                 }
 
-                val allProgress = database.wordBooksDao().getAllWordProgressList().associateBy { it.cardKey }
+                val isResumingDailyGoal = targetCountOverride == null && learnedTodayCards.size < dailyGoalTarget
+                val remainingNeeded = if (isResumingDailyGoal) {
+                    (dailyGoalTarget - learnedTodayCards.size).coerceAtLeast(1)
+                } else {
+                    (targetCountOverride ?: 5).coerceAtLeast(1)
+                }
+
+                val learnedKeys = learnedTodayCards.mapTo(HashSet()) { it.cardKey }
+                val newEntries = studyPlanRepository.getTodayTargetNewWords(
+                    profile = activeProfile,
+                    targetCount = remainingNeeded + learnedTodayCards.size
+                ).ifEmpty {
+                    database.wordBooksDao().getPlacementVocabularyCandidatesForLevel(
+                        userLevel,
+                        limit = remainingNeeded + learnedTodayCards.size
+                    )
+                }
+
                 val groupedMap = LinkedHashMap<String, MutableList<EntryEntity>>()
                 for (entry in newEntries) {
                     val key = "${entry.deck}:${entry.text.trim().lowercase()}"
+                    if (isResumingDailyGoal && key in learnedKeys) continue
                     val list = groupedMap.getOrPut(key) { ArrayList(2) }
                     list.add(entry)
-                    if (groupedMap.size >= taskCount) break
+                    if (groupedMap.size >= remainingNeeded) break
                 }
 
-                val cards: List<GroupedWordCard> = groupedMap.map { (cardKey, variants) ->
+                val remainingNewCards: List<GroupedWordCard> = groupedMap.map { (cardKey, variants) ->
                     repository.buildGroupedCardFromEntries(variants, allProgress[cardKey])
-                }.take(taskCount)
+                }.take(remainingNeeded)
+
+                val cards: List<GroupedWordCard> = if (isResumingDailyGoal) {
+                    (learnedTodayCards + remainingNewCards).take(dailyGoalTarget)
+                } else {
+                    remainingNewCards
+                }
 
                 if (cards.isNotEmpty()) {
+                    val initialIndex = if (isResumingDailyGoal) {
+                        learnedTodayCards.size.coerceIn(0, (cards.size - 1).coerceAtLeast(0))
+                    } else {
+                        0
+                    }
+
                     _flashcardCards.value = cards
                     _flashcardDeckId.value = selectedDecks.firstOrNull() ?: "oxford5000"
-                    _flashcardIndex.value = 0
+                    _flashcardIndex.value = initialIndex
                     _isCurrentCardFlipped.value = false
 
                     sessionRatedCardKeys.clear()
                     sessionFailedCards.clear()
-                    sessionMasteredCount = 0
-                    sessionNeedsReviewCount = 0
-                    sessionQualitySum = 0
+                    if (isResumingDailyGoal && learnedTodayCards.isNotEmpty()) {
+                        learnedTodayCards.forEach { sessionRatedCardKeys.add(it.cardKey) }
+                        sessionMasteredCount = learnedTodayCards.count { (allProgress[it.cardKey]?.againCount ?: 0) == 0 }
+                        sessionNeedsReviewCount = learnedTodayCards.size - sessionMasteredCount
+                        sessionQualitySum = learnedTodayCards.size * 3
+                    } else {
+                        sessionMasteredCount = 0
+                        sessionNeedsReviewCount = 0
+                        sessionQualitySum = 0
+                    }
                     sessionInitialCards = cards
                     _flashcardSessionType.value = FlashcardSessionType.LEARN_NEW
                     _isFlashcardSessionCompleted.value = false
@@ -2771,7 +2857,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 startFocusedReviewPracticeSession(remainingCount)
             }
             route == "new_words" || safeLinkedId.contains("new_words") || safeLinkedId.contains("learn") -> {
-                startFocusedNewWordsSession(remainingCount)
+                startFocusedNewWordsSession(null)
             }
             route == "word_books" || route == "database" -> {
                 val parts = safeLinkedId.split("|")
@@ -2822,7 +2908,9 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             val checklist = studyPlanRepository.getOrCreateDailyChecklist()
             _todayChecklist.value = checklist
-            _studyStreak.value = studyPlanRepository.computeStreak()
+            val shieldStatus = studyPlanRepository.evaluateStreakAndShields(onboardingRepository)
+            _streakShieldStatus.value = shieldStatus
+            _studyStreak.value = shieldStatus.streak
             _weakAreas.value = studyPlanRepository.getWeakAreas()
             _practiceAccuracySummary.value = studyPlanRepository.getPracticeAccuracySummary()
             _learnerModelSnapshot.value = studyPlanRepository.learnerModelRepository.buildSnapshot(studyPlanProfile.value)
@@ -3168,7 +3256,34 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             val updated = studyPlanRepository.markTaskCompletedManually(date, taskId)
             _todayChecklist.value = updated
-            _studyStreak.value = studyPlanRepository.computeStreak()
+            val shieldStatus = studyPlanRepository.evaluateStreakAndShields(onboardingRepository)
+            _streakShieldStatus.value = shieldStatus
+            _studyStreak.value = shieldStatus.streak
+        }
+    }
+
+    fun setStudyReminderEnabled(enabled: Boolean) {
+        _studyReminderEnabled.value = enabled
+        viewModelScope.launch {
+            onboardingRepository.setStudyReminderEnabled(enabled)
+            com.example.data.reminder.DailyStudyReminderManager.scheduleOrCancelDailyReminder(
+                context = getApplication(),
+                enabled = enabled,
+                reminderMinutesFromMidnight = _studyReminderTimeMinutes.value
+            )
+        }
+    }
+
+    fun setStudyReminderTimeMinutes(minutesFromMidnight: Int) {
+        val clamped = minutesFromMidnight.coerceIn(0, 23 * 60 + 59)
+        _studyReminderTimeMinutes.value = clamped
+        viewModelScope.launch {
+            onboardingRepository.setStudyReminderTimeMinutes(clamped)
+            com.example.data.reminder.DailyStudyReminderManager.scheduleOrCancelDailyReminder(
+                context = getApplication(),
+                enabled = _studyReminderEnabled.value,
+                reminderMinutesFromMidnight = clamped
+            )
         }
     }
 
@@ -3193,6 +3308,47 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun setEngineMode(mode: com.example.data.ai.TranslationEngineMode) {
         com.example.data.ai.GeminiApiKeyManager.setEngineMode(getApplication(), mode)
+    }
+
+    fun startVocabularyBlitz() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val candidates = database.wordBooksDao().getVocabularyBlitzCandidates(limit = 120)
+            val generated = com.example.data.blitz.VocabularyBlitzEngine.generateBlitzQuestions(
+                entries = candidates,
+                count = 60
+            )
+            _activeBlitzQuestions.value = generated
+        }
+    }
+
+    fun dismissVocabularyBlitz() {
+        _activeBlitzQuestions.value = null
+    }
+
+    fun recordVocabularyBlitzResult(sessionState: com.example.data.blitz.VocabularyBlitzSessionState) {
+        viewModelScope.launch(Dispatchers.IO) {
+            onboardingRepository.recordBlitzResult(
+                score = sessionState.score,
+                maxCombo = maxOf(sessionState.maxComboStreak, sessionState.maxAcademicStreak),
+                unlockedWordSniper = sessionState.unlockedWordSniperNow,
+                unlockedAcademicLightning = sessionState.unlockedAcademicLightningNow
+            )
+            if (sessionState.totalAnswered > 0) {
+                val now = System.currentTimeMillis()
+                val todayStr = studyPlanRepository.timeProvider.todayDateString()
+                database.wordBooksDao().insertQuizResult(
+                    QuizResultEntity(
+                        date = todayStr,
+                        quizType = "vocab_blitz_60s",
+                        skill = "vocabulary",
+                        totalQuestions = sessionState.totalAnswered,
+                        correctAnswers = sessionState.correctCount,
+                        accuracyPercent = sessionState.accuracyPercent.toFloat(),
+                        timestamp = now
+                    )
+                )
+            }
+        }
     }
 
     override fun onCleared() {

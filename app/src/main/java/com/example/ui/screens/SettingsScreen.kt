@@ -129,6 +129,11 @@ fun SettingsScreen(
     onSelectThemeMode: (AppThemeMode) -> Unit = {},
     appLanguage: AppLanguage = com.example.ui.theme.AppLanguageState.currentLanguage,
     onSelectAppLanguage: (AppLanguage) -> Unit = {},
+    streakFreezeCount: Int = 1,
+    studyReminderEnabled: Boolean = true,
+    studyReminderTimeMinutes: Int = 20 * 60,
+    onToggleStudyReminder: (Boolean) -> Unit = {},
+    onSelectStudyReminderTime: (Int) -> Unit = {},
 
     onSelectAccentUk: (Boolean) -> Unit,
     onSelectSpeechRate: (Float) -> Unit,
@@ -811,6 +816,133 @@ fun SettingsScreen(
                             style = ArabicTypography.bodySmall,
                             color = TextSecondary
                         )
+                    }
+                }
+            }
+
+            // =========================================================================
+            // SECTION 2.5: DAILY STUDY REMINDER & STREAK FREEZE SHIELD
+            // =========================================================================
+            SettingsCategoryCard(
+                eyebrow = "HABIT & STREAK PROTECTION",
+                titleEn = bi("Daily Study Reminder & Streak Shield", "منبه الدراسة ودرع حماية السلسلة"),
+                titleAr = "التذكير الذكي بالكلمات وحماية السلسلة اليومية",
+                icon = Icons.Default.Shield,
+                accentColor = SkyAccent,
+                testTag = "settings_section_reminders"
+            ) {
+                Surface(
+                    color = SurfaceElevatedDark,
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, SkyAccent.copy(alpha = 0.45f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = bi("Streak Freeze Shields", "دروع تجميد وحماية السلسلة"),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = bi(
+                                    "Automatically protects your streak if you miss a day. Earn +1 shield every 7-day streak (max 2).",
+                                    "يحمي سلسلتك اليومية تلقائياً عند غياب يوم واحد. تكسب درعاً إضافياً كل 7 أيام متتالية (بحد أقصى درعين)."
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Surface(
+                            color = SkyAccent.copy(alpha = 0.16f),
+                            shape = RoundedCornerShape(999.dp),
+                            border = BorderStroke(1.dp, SkyAccent.copy(alpha = 0.55f)),
+                            modifier = Modifier.testTag("settings_streak_shield_count")
+                        ) {
+                            Text(
+                                text = "🛡️ x$streakFreezeCount / 2",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                color = SkyAccent,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+
+                HorizontalDivider(color = BorderSubtle)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = bi("Smart Word-of-the-Day Reminder", "تذكير يومي ذكي مع كلمة اليوم"),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = bi(
+                                "Notifies you only if today's checklist isn't completed yet, with quick Listen & Master actions",
+                                "يرسل تذكيراً فقط إذا لم تكمل خطة اليوم، مع أزرار سريعة للاستماع وتحديد الكلمة كمتقنة"
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                    }
+                    Switch(
+                        checked = studyReminderEnabled,
+                        onCheckedChange = onToggleStudyReminder,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = BackgroundDark,
+                            checkedTrackColor = SkyAccent
+                        ),
+                        modifier = Modifier.testTag("switch_study_reminder")
+                    )
+                }
+
+                if (studyReminderEnabled) {
+                    val timePresets = listOf(
+                        Triple(480, "08:00 AM", "صباحاً"),
+                        Triple(1020, "05:00 PM", "مساءً"),
+                        Triple(1200, "08:00 PM", "ليلاً"),
+                        Triple(1320, "10:00 PM", "ليلاً")
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(IntrinsicSize.Min),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        timePresets.forEach { (minutes, labelEn, labelAr) ->
+                            SettingsChoicePill(
+                                labelEn = labelEn,
+                                subtitleEn = labelAr,
+                                isSelected = studyReminderTimeMinutes == minutes,
+                                accentColor = SkyAccent,
+                                onClick = { onSelectStudyReminderTime(minutes) },
+                                testTag = "btn_reminder_time_$minutes",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                            )
+                        }
                     }
                 }
             }

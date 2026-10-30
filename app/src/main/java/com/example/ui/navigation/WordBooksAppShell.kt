@@ -503,6 +503,7 @@ fun WordBooksAppShell(
                     val todayChecklist by wordBooksViewModel.todayChecklist.collectAsStateWithLifecycle()
                     val monthlyChecklists by wordBooksViewModel.monthlyChecklists.collectAsStateWithLifecycle()
                     val studyStreak by wordBooksViewModel.studyStreak.collectAsStateWithLifecycle()
+                    val streakShieldStatus by wordBooksViewModel.streakShieldStatus.collectAsStateWithLifecycle()
                     val learnerModelSnapshot by wordBooksViewModel.learnerModelSnapshot.collectAsStateWithLifecycle()
                     HomeScreen(
                         decks = decks,
@@ -519,6 +520,7 @@ fun WordBooksAppShell(
                         todayChecklist = todayChecklist,
                         weeklyChecklists = monthlyChecklists,
                         studyStreak = studyStreak,
+                        streakShieldStatus = streakShieldStatus,
                         studyPlanProfile = studyPlanProfile,
                         learnerModelSnapshot = learnerModelSnapshot,
                         onDismissInsight = wordBooksViewModel::dismissAdaptiveInsight,
@@ -1096,6 +1098,7 @@ fun WordBooksAppShell(
                     val currentStudyPlan by wordBooksViewModel.currentStudyPlan.collectAsStateWithLifecycle()
                     val todayChecklist by wordBooksViewModel.todayChecklist.collectAsStateWithLifecycle()
                     val studyStreak by wordBooksViewModel.studyStreak.collectAsStateWithLifecycle()
+                    val streakShieldStatus by wordBooksViewModel.streakShieldStatus.collectAsStateWithLifecycle()
                     val quizHistory by wordBooksViewModel.quizHistory.collectAsStateWithLifecycle()
                     val weakAreas by wordBooksViewModel.weakAreas.collectAsStateWithLifecycle()
                     val monthlyChecklists by wordBooksViewModel.monthlyChecklists.collectAsStateWithLifecycle()
@@ -1106,6 +1109,7 @@ fun WordBooksAppShell(
                         currentPlan = currentStudyPlan,
                         todayChecklist = todayChecklist,
                         streak = studyStreak,
+                        streakShieldStatus = streakShieldStatus,
                         quizHistory = quizHistory,
                         weakAreas = weakAreas,
                         monthlyChecklists = monthlyChecklists,
@@ -1176,6 +1180,7 @@ fun WordBooksAppShell(
                     val correctionEntries by wordBooksViewModel.correctionEntries.collectAsStateWithLifecycle()
                     val savedSentences by wordBooksViewModel.savedSentences.collectAsStateWithLifecycle()
                     val studyStreak by wordBooksViewModel.studyStreak.collectAsStateWithLifecycle()
+                    val blitzStats by wordBooksViewModel.blitzStats.collectAsStateWithLifecycle()
                     MoreScreen(
                         onNavigateToGrammar = {
                             wordBooksViewModel.selectGrammarLesson(null)
@@ -1205,6 +1210,10 @@ fun WordBooksAppShell(
                         onNavigateToSentences = {
                             navController.navigate(AppRoute.Sentences) { launchSingleTop = true }
                         },
+                        onStartVocabularyBlitz = {
+                            wordBooksViewModel.startVocabularyBlitz()
+                        },
+                        blitzHighScore = blitzStats.highScore,
                         onOpenSettings = {
                             navController.navigate(AppRoute.Settings) { launchSingleTop = true }
                         },
@@ -1227,6 +1236,9 @@ fun WordBooksAppShell(
                     val ttsSpeechRate by wordBooksViewModel.ttsSpeechRate.collectAsStateWithLifecycle()
                     val autoPlayPronunciation by wordBooksViewModel.autoPlayPronunciation.collectAsStateWithLifecycle()
                     val appLanguage by wordBooksViewModel.appLanguage.collectAsStateWithLifecycle()
+                    val streakShieldStatus by wordBooksViewModel.streakShieldStatus.collectAsStateWithLifecycle()
+                    val studyReminderEnabled by wordBooksViewModel.studyReminderEnabled.collectAsStateWithLifecycle()
+                    val studyReminderTimeMinutes by wordBooksViewModel.studyReminderTimeMinutes.collectAsStateWithLifecycle()
                     SettingsScreen(
                         preferredAccentUk = preferredAccentUk,
                         ttsSpeechRate = ttsSpeechRate,
@@ -1243,6 +1255,11 @@ fun WordBooksAppShell(
                         onSelectThemeMode = wordBooksViewModel::setThemeMode,
                         appLanguage = appLanguage,
                         onSelectAppLanguage = wordBooksViewModel::setAppLanguage,
+                        streakFreezeCount = streakShieldStatus.shieldCount,
+                        studyReminderEnabled = studyReminderEnabled,
+                        studyReminderTimeMinutes = studyReminderTimeMinutes,
+                        onToggleStudyReminder = wordBooksViewModel::setStudyReminderEnabled,
+                        onSelectStudyReminderTime = wordBooksViewModel::setStudyReminderTimeMinutes,
                         onSelectAccentUk = wordBooksViewModel::setPreferredAccentUk,
                         onSelectSpeechRate = wordBooksViewModel::updateTtsSpeechRate,
                         onToggleAutoPlayPronunciation = wordBooksViewModel::setAutoPlayPronunciation,
@@ -1302,6 +1319,23 @@ fun WordBooksAppShell(
             },
             scopeInfo = activeQuizSession!!.scopeInfo,
             onDismiss = { wordBooksViewModel.dismissActiveQuiz() }
+        )
+    }
+
+    val activeBlitzQuestions by wordBooksViewModel.activeBlitzQuestions.collectAsStateWithLifecycle()
+    val currentBlitzStats by wordBooksViewModel.blitzStats.collectAsStateWithLifecycle()
+    if (activeBlitzQuestions != null) {
+        com.example.ui.screens.VocabularyBlitzDialog(
+            initialQuestions = activeBlitzQuestions!!,
+            savedStats = currentBlitzStats,
+            onPlayPronunciation = { word -> wordBooksViewModel.playWordVoiceAudio(word) },
+            onFinishRound = { finalState ->
+                wordBooksViewModel.recordVocabularyBlitzResult(finalState)
+            },
+            onPlayAgainRequest = {
+                wordBooksViewModel.startVocabularyBlitz()
+            },
+            onDismiss = { wordBooksViewModel.dismissVocabularyBlitz() }
         )
     }
 

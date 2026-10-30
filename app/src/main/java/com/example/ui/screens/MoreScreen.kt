@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Science
@@ -84,6 +85,8 @@ fun MoreScreen(
     onOpenSettings: () -> Unit,
     onNavigateToLabs: () -> Unit = {},
     onNavigateToSentences: () -> Unit = {},
+    onStartVocabularyBlitz: () -> Unit = {},
+    blitzHighScore: Int = 0,
     onExportBackupToUri: (Uri, (Boolean, String) -> Unit) -> Unit = { _, _ -> },
     onImportBackupFromUri: (Uri, (Boolean, String) -> Unit) -> Unit = { _, _ -> },
     grammarLessonsCount: Int = 90,
@@ -295,9 +298,30 @@ fun MoreScreen(
                             onClick = onNavigateToReading,
                             modifier = Modifier.weight(1f)
                         )
+                        MoreModuleCard(
+                            titleEn = "60-Second Vocabulary Blitz",
+                            titleAr = "تحدي الـ 60 ثانية السريع ⚡",
+                            descriptionEn = "Fast-paced 60s vocabulary challenge with combo multipliers, sound effects, and achievement badges.",
+                            tagText = if (blitzHighScore > 0) "Best: $blitzHighScore pts" else "60s Speed Quiz",
+                            accentColor = GoldAccent,
+                            icon = Icons.Default.Bolt,
+                            testTag = "nav_vocab_blitz",
+                            onClick = onStartVocabularyBlitz,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        MoreModuleCard(
+                            titleEn = "60-Second Vocabulary Blitz",
+                            titleAr = "تحدي الـ 60 ثانية السريع ⚡",
+                            descriptionEn = "Fast-paced 60s vocabulary challenge with combo multipliers, sound effects, and achievement badges.",
+                            tagText = if (blitzHighScore > 0) "Best: $blitzHighScore pts" else "60s Speed Quiz",
+                            accentColor = GoldAccent,
+                            icon = Icons.Default.Bolt,
+                            testTag = "nav_vocab_blitz",
+                            onClick = onStartVocabularyBlitz
+                        )
                         MoreModuleCard(
                             titleEn = "Study Plan",
                             titleAr = "خطة التعلم اليومية والشهرية",

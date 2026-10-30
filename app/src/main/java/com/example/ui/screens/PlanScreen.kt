@@ -77,6 +77,7 @@ import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.local.WeakAreasState
 import com.example.data.plan.LearnerModelSnapshot
 import com.example.data.plan.LifecycleStageWordItem
+import com.example.data.plan.StreakShieldStatus
 import com.example.ui.components.AdaptiveInsightBannerCard
 import com.example.ui.components.BidiText
 import com.example.ui.components.CefrReadinessBarCard
@@ -93,6 +94,10 @@ import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.GoldAccent
 import com.example.ui.theme.GoldAccentBorder
 import com.example.ui.theme.GoldAccentDim
+import com.example.ui.theme.PillShape
+import com.example.ui.theme.SkyAccent
+import com.example.ui.theme.SkyAccentBg
+import com.example.ui.theme.SkyAccentBorder
 import com.example.ui.theme.SurfaceDark
 import com.example.ui.theme.SurfaceElevatedDark
 import com.example.ui.theme.TextMuted
@@ -120,6 +125,7 @@ fun PlanScreen(
     currentPlan: StudyPlanEntity?,
     todayChecklist: DailyChecklistEntity?,
     streak: Int,
+    streakShieldStatus: StreakShieldStatus = StreakShieldStatus(),
     quizHistory: List<QuizResultEntity>,
     weakAreas: WeakAreasState,
     monthlyChecklists: List<DailyChecklistEntity>,
@@ -276,6 +282,7 @@ fun PlanScreen(
             0 -> TodayTabContent(
                 todayChecklist = todayChecklist,
                 streak = streak,
+                streakShieldStatus = streakShieldStatus,
                 weakAreas = weakAreas,
                 learnerModelSnapshot = learnerModelSnapshot,
                 onDismissInsight = onDismissInsight,
@@ -387,6 +394,7 @@ fun PlanScreen(
 private fun TodayTabContent(
     todayChecklist: DailyChecklistEntity?,
     streak: Int,
+    streakShieldStatus: StreakShieldStatus = StreakShieldStatus(),
     weakAreas: WeakAreasState,
     learnerModelSnapshot: LearnerModelSnapshot = LearnerModelSnapshot(),
     onDismissInsight: (String) -> Unit = {},
@@ -441,13 +449,26 @@ private fun TodayTabContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Icon(Icons.Filled.LocalFireDepartment, contentDescription = "Streak", tint = GoldAccent, modifier = Modifier.size(22.dp))
                             Text(
                                 text = "$streak Day Streak",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = GoldAccent
                             )
+                            Surface(
+                                color = SkyAccentBg,
+                                shape = PillShape,
+                                border = BorderStroke(1.dp, SkyAccentBorder),
+                                modifier = Modifier.testTag("plan_streak_freeze_badge")
+                            ) {
+                                Text(
+                                    text = "🛡️ x${streakShieldStatus.shieldCount}",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp),
+                                    color = SkyAccent,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
                         }
                         Text(
                             text = "$completedCount of $totalCount tasks completed today",

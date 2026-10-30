@@ -77,6 +77,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.font.FontStyle
 import com.example.data.ai.AiWordDetailJson
 import com.example.ui.components.BidiText
+import com.example.ui.components.VisualLexicalMindMapCard
 import com.example.ui.components.isolateLatin
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Info
@@ -3017,6 +3018,14 @@ fun AiDefinitionPanel(
                     }
                 }
             }
+
+            // Section 4b: Visual Lexical Mind-Map & Collocation Web (Feature 3C)
+            VisualLexicalMindMapCard(
+                headword = card.text,
+                aiDetail = aiDetail,
+                posVariants = card.posVariants,
+                onSpeakText = onSpeakSentenceTts
+            )
 
             // Section 5: Optional Etymology
             val etymology = aiDetail?.etymologyAr

@@ -686,17 +686,12 @@ object FreeDictionaryAndTranslationEngine {
     }
 
     private fun buildNaturalExampleForWord(word: String, pos: String, definitionEn: String): String {
-        val cleanDef = definitionEn.trim().removeSuffix(".")
         return when (pos) {
             "v." -> "They decided to $word carefully in this situation."
             "adj." -> "It is very $word when we look at the whole picture."
             "adv." -> "She spoke $word during the important meeting."
             "prep." -> "We talked $word the new project plans today."
-            else -> if (cleanDef.length in 10..60) {
-                "The word \"$word\" is used to describe $cleanDef."
-            } else {
-                "Understanding how to use \"$word\" is essential in daily English."
-            }
+            else -> "This context shows how $word is used in everyday English."
         }
     }
 
@@ -720,23 +715,17 @@ object FreeDictionaryAndTranslationEngine {
             }
         }
 
-        // Add synonym-paired expressions
-        for (syn in synonyms.take(3)) {
-            if (phrases.size >= 5) break
-            phrases.add("$w / ${syn.lowercase()}")
-        }
-
-        // Fill remaining up to at least 3..5 phrases based on primary POS
+        // Fill remaining up to at least 3..4 natural grammatical collocations based on primary POS
         val primaryPos = senses.firstOrNull()?.pos ?: "n."
         val templates = when (primaryPos) {
-            "prep." -> listOf("$w that matter", "all $w it", "think $w this", "talk $w the plan")
-            "adv." -> listOf("$w important", "act $w now", "think $w", "quite $w")
-            "adj." -> listOf("very $w", "$w situation", "remain $w", "$w example")
-            "v." -> listOf("$w effectively", "try to $w", "$w the issue", "can $w")
-            else -> listOf("key $w", "important $w", "in terms of $w", "clear $w")
+            "prep." -> listOf("go $w", "look $w", "turn $w")
+            "adv." -> listOf("speak $w", "act $w", "work $w")
+            "adj." -> listOf("remain $w", "quite $w", "become $w")
+            "v." -> listOf("$w carefully", "try to $w", "can $w")
+            else -> listOf("common $w", "main $w", "specific $w")
         }
         for (t in templates) {
-            if (phrases.size >= 5) break
+            if (phrases.size >= 4) break
             phrases.add(t)
         }
 

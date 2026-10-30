@@ -566,4 +566,485 @@ class SettingsAndDeveloperModeTest {
             Locale.setDefault(originalLocale)
         }
     }
+
+    @Test
+    fun phase1b_streakFreezeShieldProtectsMissedDayAndReminderSettingsPersist() = runBlocking {
+        val db = androidx.room.Room.inMemoryDatabaseBuilder(
+            context,
+            com.example.data.local.WordBooksDatabase::class.java
+        ).allowMainThreadQueries().build()
+
+        try {
+            val dao = db.wordBooksDao()
+            val planRepo = com.example.data.plan.StudyPlanRepository(context, dao)
+
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            val cal = java.util.Calendar.getInstance()
+            cal.add(java.util.Calendar.DAY_OF_YEAR, -1)
+            val yesterdayStr = sdf.format(cal.time)
+            cal.add(java.util.Calendar.DAY_OF_YEAR, -1)
+            val twoDaysAgoStr = sdf.format(cal.time)
+            cal.add(java.util.Calendar.DAY_OF_YEAR, -1)
+            val threeDaysAgoStr = sdf.format(cal.time)
+
+            // User completed tasks 2 days ago and 3 days ago, but missed yesterday!
+            dao.upsertDailyChecklist(
+                com.example.data.local.DailyChecklistEntity(
+                    date = threeDaysAgoStr,
+                    tasksJson = "[]",
+                    completedCount = 3,
+                    totalCount = 3,
+                    isCompleted = true
+                )
+            )
+            dao.upsertDailyChecklist(
+                com.example.data.local.DailyChecklistEntity(
+                    date = twoDaysAgoStr,
+                    tasksJson = "[]",
+                    completedCount = 3,
+                    totalCount = 3,
+                    isCompleted = true
+                )
+            )
+
+            // Initial shield count is 1
+            assertEquals(1, onboardingRepo.getSnapshot().streakFreezeCount)
+
+            // Evaluate streak & shields -> yesterday should be auto-protected by consuming 1 shield!
+            val status = planRepo.evaluateStreakAndShields(onboardingRepo)
+            assertEquals("Shield should protect missed yesterday and keep 2-day streak intact", 2, status.streak)
+            assertEquals("1 shield should be consumed (1 -> 0)", 0, status.shieldCount)
+            assertTrue("Should flag that shield was consumed recently", status.wasShieldConsumedRecently)
+            assertEquals(yesterdayStr, status.protectedDate)
+
+            // Reminder preferences persistence
+            onboardingRepo.setStudyReminderEnabled(true)
+            onboardingRepo.setStudyReminderTimeMinutes(1020) // 05:00 PM
+            val snap = onboardingRepo.getSnapshot()
+            assertTrue(snap.studyReminderEnabled)
+            assertEquals(1020, snap.studyReminderTimeMinutes)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun phase2a_scrambledWordTilesAndCharacterLevelTypoDiffWorkCorrectly() {
+        val targetSentence = "Effective communication requires active listening."
+        val tiles = com.example.data.sentences.SentencePracticeUtils.buildScrambledWordTiles(targetSentence, seed = 42)
+        assertEquals(5, tiles.size)
+        assertEquals(
+            listOf("Effective", "communication", "requires", "active", "listening."),
+            tiles.sortedBy { it.index }.map { it.text }
+        )
+
+        // Minor spelling typo ("comunication" instead of "communication") -> TYPO status with charDiffs
+        val diffWithTypo = com.example.data.sentences.SentencePracticeUtils.computeSentenceDiff(
+            expected = targetSentence,
+            actual = "Effective comunication requires active listening.",
+            ignorePunctuation = true
+        )
+        val typoToken = diffWithTypo.tokens[1]
+        assertEquals(com.example.data.sentences.DiffTokenStatus.TYPO, typoToken.status)
+        assertTrue("Typo token should populate character-level diff spans", typoToken.charDiffs.isNotEmpty())
+
+        // Completely wrong word ("apple" instead of "communication") -> WRONG status
+        val diffWithWrong = com.example.data.sentences.SentencePracticeUtils.computeSentenceDiff(
+            expected = targetSentence,
+            actual = "Effective apple requires active listening.",
+            ignorePunctuation = true
+        )
+        assertEquals(com.example.data.sentences.DiffTokenStatus.WRONG, diffWithWrong.tokens[1].status)
+
+        // Verify FlashcardsScreen counter shows "3 / 10" when resuming after 2 learned words,
+        // and toggling Dictation Mode immediately auto-plays audio on activation and card change.
+        val tenSessionCards = (1..10).map { idx ->
+            GroupedWordCard(
+                cardKey = "oxford5000:word$idx",
+                deck = "oxford5000",
+                text = "word$idx",
+                primaryLevel = "B2",
+                primaryType = "word",
+                ipa = "/wɜːd/",
+                syllables = "word",
+                posVariants = listOf(
+                    com.example.data.importer.PosSenseVariant(
+                        entryId = "$idx",
+                        pos = "n.",
+                        level = "B2",
+                        type = "word",
+                        arabicMeaning = "كلمة $idx",
+                        arabicSource = "file",
+                        definitionEn = "Sample definition $idx",
+                        definitionAr = "تعريف $idx",
+                        noteEn = "",
+                        examplesEn = emptyList(),
+                        examplesAr = emptyList(),
+                        definitionUrl = "",
+                        audioUrl = ""
+                    )
+                ),
+                isFavorite = false,
+                isMastered = idx <= 2
+            )
+        }
+
+        val autoPlayedWords = mutableListOf<String>()
+        var currentIdx by mutableStateOf(2) // Resuming at 3rd card (index 2 -> "3 / 10")
+
+        composeTestRule.setContent {
+            WordBooksTheme {
+                com.example.ui.screens.FlashcardsScreen(
+                    decks = emptyList(),
+                    activeDeckId = "oxford5000",
+                    cards = tenSessionCards,
+                    currentIndex = currentIdx,
+                    isLoading = false,
+                    progressMap = emptyMap(),
+                    reviewDueTodayCount = 0,
+                    studiedTodayCount = 2,
+                    currentlyPlayingWord = null,
+                    detailedCard = null,
+                    isAiTranslating = false,
+                    onSelectDeck = {},
+                    onIndexChanged = { currentIdx = it },
+                    onRateCard = {},
+                    onToggleMastered = {},
+                    onToggleFavorite = {},
+                    onPlayAudio = { word, _ -> autoPlayedWords.add(word) },
+                    onOpenDetailedDefinition = { _, _ -> },
+                    onDismissDetailedDefinition = {},
+                    onEnrichWordWithAi = { _, _ -> },
+                    onSaveUserArabic = { _, _, _, _ -> },
+                    onToggleCardFavoriteInSheet = { _, _ -> },
+                    onToggleCardMasteredInSheet = { _, _ -> }
+                )
+            }
+        }
+
+        // Counter shows "3 / 10"
+        composeTestRule.onNodeWithTag("flashcard_counter").assertIsDisplayed()
+        assertTrue("Before enabling Dictation Mode, no audio should be auto-played", autoPlayedWords.isEmpty())
+
+        // Enable Dictation Mode -> immediately pronounces "word3"
+        composeTestRule.onNodeWithTag("flashcard_dictation_toggle").performClick()
+        composeTestRule.waitForIdle()
+        assertEquals(listOf("word3"), autoPlayedWords)
+
+        // Advance to next card ("4 / 10") while Dictation Mode is active -> auto-pronounces "word4"
+        composeTestRule.onNodeWithTag("flashcard_next_button").performClick()
+        composeTestRule.waitForIdle()
+        assertEquals(3, currentIdx)
+        assertEquals(listOf("word3", "word4"), autoPlayedWords)
+
+        // Navigate back to previous card -> auto-pronounces "word3"
+        composeTestRule.onNodeWithTag("flashcard_prev_button").performClick()
+        composeTestRule.waitForIdle()
+        assertEquals(2, currentIdx)
+        assertEquals(listOf("word3", "word4", "word3"), autoPlayedWords)
+    }
+
+    @Test
+    fun feature3c_lexicalMindMapExtractorAndCanvasRenderAndSpeakNodes() {
+        val sampleAiDetail = AiWordDetailJson(
+            meanings = listOf(
+                com.example.data.ai.AiMeaningItem(
+                    pos = "v.",
+                    arabic = listOf("يعتمد"),
+                    definitionEn = "To rely on someone or something for support.",
+                    definitionAr = "الاعتماد على شخص أو شيء للحصول على الدعم.",
+                    example = com.example.data.ai.AiExampleItem(
+                        en = "Success depends on consistent daily practice.",
+                        ar = "النجاح يعتمد على الممارسة اليومية المستمرة."
+                    )
+                )
+            ),
+            phrases = listOf(
+                com.example.data.ai.AiPhraseItem(en = "depend on", ar = listOf("يعتمد على")),
+                com.example.data.ai.AiPhraseItem(en = "it depends", ar = listOf("الأمر يتوقف على الظروف"))
+            )
+        )
+
+        val nodes = com.example.ui.components.LexicalMindMapExtractor.extractNodes(
+            headword = "depend",
+            aiDetail = sampleAiDetail,
+            posVariants = emptyList()
+        )
+        assertTrue("Mind map should extract collocations, prepositions, and synonyms", nodes.size >= 3)
+        assertTrue(nodes.any { it.labelEn == "depend on" && it.pillLabelEn == "+ on" && it.type == com.example.ui.components.MindMapBranchType.PREPOSITION })
+        assertTrue(nodes.any { it.labelEn == "it depends" && it.pillLabelEn == "it +" && it.type == com.example.ui.components.MindMapBranchType.COLLOCATION })
+        assertTrue(nodes.any { it.labelEn == "rely on" && it.type == com.example.ui.components.MindMapBranchType.SYNONYM })
+
+        // Verify Data Sanitization rejects non-sequitur definition words ("silent" -> "making", "manipulation" -> "influencing", "overwhelming" -> "great")
+        val silentNodes = com.example.ui.components.LexicalMindMapExtractor.extractNodes(
+            headword = "silent",
+            aiDetail = AiWordDetailJson(
+                meanings = listOf(
+                    com.example.data.ai.AiMeaningItem(
+                        pos = "adj.",
+                        arabic = listOf("صامت"),
+                        definitionEn = "Not making or accompanied by any sound."
+                    )
+                ),
+                phrases = listOf(
+                    com.example.data.ai.AiPhraseItem(en = "silent partner", ar = listOf("شريك صامت")),
+                    com.example.data.ai.AiPhraseItem(en = "keep silent", ar = listOf("يلتزم الصمت"))
+                )
+            ),
+            posVariants = emptyList()
+        )
+        assertTrue("Sanitizer must never emit 'making' for 'silent'", silentNodes.none { it.labelEn.equals("making", ignoreCase = true) })
+        assertTrue("Silent must include purple Related ('quiet') node", silentNodes.any { it.labelEn == "quiet" && it.type == com.example.ui.components.MindMapBranchType.SYNONYM })
+        assertTrue(silentNodes.any { it.labelEn == "silent partner" && it.pillLabelEn == "+ partner" })
+        assertTrue(silentNodes.any { it.labelEn == "keep silent" && it.pillLabelEn == "keep +" })
+
+        // Verify "memory" produces 6 balanced nodes including the purple Related ("recall") node
+        val memoryNodes = com.example.ui.components.LexicalMindMapExtractor.extractNodes(
+            headword = "memory",
+            aiDetail = AiWordDetailJson(
+                meanings = listOf(
+                    com.example.data.ai.AiMeaningItem(
+                        pos = "n.",
+                        arabic = listOf("ذاكرة", "ذكرى"),
+                        definitionEn = "The faculty by which the mind stores and remembers information."
+                    )
+                ),
+                phrases = listOf(
+                    com.example.data.ai.AiPhraseItem(en = "short-term memory", ar = listOf("ذاكرة قصيرة المدى")),
+                    com.example.data.ai.AiPhraseItem(en = "in memory of", ar = listOf("إحياء لذكرى")),
+                    com.example.data.ai.AiPhraseItem(en = "lose one's memory", ar = listOf("يفقد الذاكرة")),
+                    com.example.data.ai.AiPhraseItem(en = "refresh memory", ar = listOf("ينعش الذاكرة"))
+                ),
+                examples = listOf(
+                    com.example.data.ai.AiExampleItem(en = "She has an excellent memory for names.", ar = "لديها ذاكرة ممتازة للأسماء.")
+                )
+            ),
+            posVariants = emptyList()
+        )
+        assertEquals(6, memoryNodes.size)
+        assertTrue(
+            "Memory must include purple Related ('recall') node",
+            memoryNodes.any { it.labelEn == "recall" && it.type == com.example.ui.components.MindMapBranchType.SYNONYM }
+        )
+
+        // Verify general full-sentence definitions (nouns/adjectives outside curated map) also produce a purple Related node
+        val customNounNodes = com.example.ui.components.LexicalMindMapExtractor.extractNodes(
+            headword = "resilience",
+            aiDetail = AiWordDetailJson(
+                meanings = listOf(
+                    com.example.data.ai.AiMeaningItem(
+                        pos = "n.",
+                        arabic = listOf("مرونة"),
+                        definitionEn = "The capacity to recover quickly from difficulties; toughness."
+                    )
+                ),
+                phrases = listOf(
+                    com.example.data.ai.AiPhraseItem(en = "emotional resilience", ar = listOf("مرونة عاطفية"))
+                )
+            ),
+            posVariants = emptyList()
+        )
+        assertTrue(
+            "Full-sentence definitions must always emit at least one purple SYNONYM node",
+            customNounNodes.any { it.type == com.example.ui.components.MindMapBranchType.SYNONYM }
+        )
+
+        // Verify "psychology" never emits "+ at" (from "studying psychology at the university") or "study = علم النفس"
+        val psychologyNodes = com.example.ui.components.LexicalMindMapExtractor.extractNodes(
+            headword = "psychology",
+            aiDetail = AiWordDetailJson(
+                meanings = listOf(
+                    com.example.data.ai.AiMeaningItem(
+                        pos = "n.",
+                        arabic = listOf("علم النفس"),
+                        definitionEn = "The scientific study of the human mind and its functions.",
+                        example = com.example.data.ai.AiExampleItem(
+                            en = "He is studying psychology at the university.",
+                            ar = "يدرس علم النفس في الجامعة."
+                        )
+                    )
+                ),
+                phrases = listOf(
+                    com.example.data.ai.AiPhraseItem(en = "human psychology", ar = listOf("علم النفس البشري")),
+                    com.example.data.ai.AiPhraseItem(en = "child psychology", ar = listOf("علم نفس الطفل")),
+                    com.example.data.ai.AiPhraseItem(en = "reverse psychology", ar = listOf("علم النفس العكسي"))
+                )
+            ),
+            posVariants = emptyList()
+        )
+        assertTrue("Psychology must never invent '+ at' from example sentence", psychologyNodes.none { it.pillLabelEn == "+ at" })
+        assertTrue("Psychology must never emit 'study' as synonym", psychologyNodes.none { it.labelEn == "study" })
+        assertTrue(
+            "Psychology must emit 'psychological' with its own accurate Arabic meaning",
+            psychologyNodes.any { it.labelEn == "psychological" && it.labelAr.contains("نفسي") && it.type == com.example.ui.components.MindMapBranchType.SYNONYM }
+        )
+
+        // Verify "into" classifies phrasal verbs ("turn into", "look into", "run into") as COLLOCATION and emits "inside" (not "movement")
+        val intoNodes = com.example.ui.components.LexicalMindMapExtractor.extractNodes(
+            headword = "into",
+            aiDetail = AiWordDetailJson(
+                meanings = listOf(
+                    com.example.data.ai.AiMeaningItem(
+                        pos = "prep.",
+                        arabic = listOf("إلى داخل"),
+                        definitionEn = "Expressing movement or action with the result that someone becomes enclosed."
+                    )
+                ),
+                phrases = listOf(
+                    com.example.data.ai.AiPhraseItem(en = "turn into", ar = listOf("يتحول إلى")),
+                    com.example.data.ai.AiPhraseItem(en = "look into", ar = listOf("يحقق في")),
+                    com.example.data.ai.AiPhraseItem(en = "run into", ar = listOf("يلتقي صدفة"))
+                )
+            ),
+            posVariants = emptyList()
+        )
+        assertTrue("Into must never emit 'movement'", intoNodes.none { it.labelEn == "movement" })
+        assertTrue("Into phrasal verbs must be COLLOCATIONs", intoNodes.any { it.pillLabelEn == "turn +" && it.type == com.example.ui.components.MindMapBranchType.COLLOCATION })
+        assertTrue("Into must emit 'inside' as SYNONYM", intoNodes.any { it.labelEn == "inside" && it.type == com.example.ui.components.MindMapBranchType.SYNONYM })
+
+        // Verify "puncture" filters synthetic templates ("in terms of puncture", "key puncture") and emits "pierce" + "+ in"
+        val punctureNodes = com.example.ui.components.LexicalMindMapExtractor.extractNodes(
+            headword = "puncture",
+            aiDetail = AiWordDetailJson(
+                meanings = listOf(
+                    com.example.data.ai.AiMeaningItem(
+                        pos = "n.",
+                        arabic = listOf("ثقب"),
+                        definitionEn = "A small hole in a tyre resulting in an escape of air."
+                    )
+                ),
+                phrases = listOf(
+                    com.example.data.ai.AiPhraseItem(en = "in terms of puncture", ar = listOf("من حيث ثقب")),
+                    com.example.data.ai.AiPhraseItem(en = "key puncture", ar = listOf("ثقب مهم")),
+                    com.example.data.ai.AiPhraseItem(en = "puncture repair", ar = listOf("إصلاح الثقب")),
+                    com.example.data.ai.AiPhraseItem(en = "get a puncture", ar = listOf("يتعرض لثقب في الإطار"))
+                )
+            ),
+            posVariants = emptyList()
+        )
+        assertTrue("Puncture must filter out 'in terms of puncture'", punctureNodes.none { it.labelEn.contains("in terms of") })
+        assertTrue("Puncture must filter out 'key puncture'", punctureNodes.none { it.pillLabelEn == "key +" })
+        assertTrue("Puncture must include '+ in' (never '+ on')", punctureNodes.any { it.pillLabelEn == "+ in" && it.type == com.example.ui.components.MindMapBranchType.PREPOSITION })
+        assertTrue("Puncture must include 'pierce' as SYNONYM", punctureNodes.any { it.labelEn == "pierce" && it.type == com.example.ui.components.MindMapBranchType.SYNONYM })
+
+        // Verify compact pill labels for "overwhelming" and "manipulation"
+        assertEquals(
+            "+ response",
+            com.example.ui.components.LexicalMindMapExtractor.formatCompactPillLabel(
+                "overwhelming",
+                "overwhelming response",
+                com.example.ui.components.MindMapBranchType.COLLOCATION
+            )
+        )
+        assertEquals(
+            "emotional +",
+            com.example.ui.components.LexicalMindMapExtractor.formatCompactPillLabel(
+                "manipulation",
+                "emotional manipulation",
+                com.example.ui.components.MindMapBranchType.COLLOCATION
+            )
+        )
+        assertEquals(
+            "+ of",
+            com.example.ui.components.LexicalMindMapExtractor.formatCompactPillLabel(
+                "manipulation",
+                "manipulation + of",
+                com.example.ui.components.MindMapBranchType.PREPOSITION
+            )
+        )
+
+        // Verify 4-node diagonal quadrant topology avoids horizontal centerline collisions
+        val radialOffsets4 = com.example.ui.components.LexicalMindMapExtractor.computeRadialNodeOffsets(
+            nodeCount = 4,
+            widthPx = 600f,
+            heightPx = 400f
+        )
+        assertEquals(4, radialOffsets4.size)
+        assertTrue(
+            "All 4 diagonal quadrant nodes must be vertically offset away from centerY (200f)",
+            radialOffsets4.all { kotlin.math.abs(it.y - 200f) >= 58f }
+        )
+
+        var spokenText = ""
+        composeTestRule.setContent {
+            WordBooksTheme {
+                com.example.ui.components.VisualLexicalMindMapCard(
+                    headword = "depend",
+                    aiDetail = sampleAiDetail,
+                    posVariants = emptyList(),
+                    onSpeakText = { spokenText = it }
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("lexical_mind_map_card").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("mind_map_canvas").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("mind_map_center_node").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("mind_map_node_1").performClick()
+        assertEquals(nodes[1].labelEn, spokenText)
+    }
+
+    @Test
+    fun feature4b_vocabularyBlitzComboMultipliersBadgesHighScoreAndDialogRender(): Unit = runBlocking {
+        // 1. Verify Combo Multiplier progression (1x -> 2x at 5 -> 3x at 10 -> 4x at 15)
+        assertEquals(1, com.example.data.blitz.VocabularyBlitzEngine.computeComboMultiplier(0))
+        assertEquals(1, com.example.data.blitz.VocabularyBlitzEngine.computeComboMultiplier(4))
+        assertEquals(2, com.example.data.blitz.VocabularyBlitzEngine.computeComboMultiplier(5))
+        assertEquals(3, com.example.data.blitz.VocabularyBlitzEngine.computeComboMultiplier(10))
+        assertEquals(4, com.example.data.blitz.VocabularyBlitzEngine.computeComboMultiplier(15))
+
+        // 2. Generate 30 questions and simulate 25 consecutive correct answers
+        val questions = com.example.data.blitz.VocabularyBlitzEngine.generateBlitzQuestions(
+            entries = emptyList(),
+            count = 30,
+            seed = 99
+        )
+        assertEquals(30, questions.size)
+
+        var state = com.example.data.blitz.VocabularyBlitzSessionState(questions = questions)
+        repeat(25) {
+            val q = state.currentQuestion!!
+            state = com.example.data.blitz.VocabularyBlitzEngine.submitAnswer(
+                state = state,
+                selectedOptionIndex = q.correctOptionIndex,
+                previousHighScore = 100
+            )
+        }
+
+        assertEquals(25, state.correctCount)
+        assertEquals(25, state.maxComboStreak)
+        assertTrue("25 correct answers should unlock Word Sniper badge", state.unlockedWordSniperNow)
+        assertTrue("15+ academic streak should unlock Academic Lightning badge", state.unlockedAcademicLightningNow)
+        assertTrue("Score (${state.score}) should exceed previous high score (100)", state.isNewHighScore)
+
+        // 3. Persist high score and badges in DataStore
+        onboardingRepo.recordBlitzResult(
+            score = state.score,
+            maxCombo = state.maxComboStreak,
+            unlockedWordSniper = state.unlockedWordSniperNow,
+            unlockedAcademicLightning = state.unlockedAcademicLightningNow
+        )
+        val snap = onboardingRepo.getSnapshot()
+        assertEquals(state.score, snap.blitzHighScore)
+        assertEquals(25, snap.blitzBestStreak)
+        assertTrue(snap.blitzBadgeWordSniper)
+        assertTrue(snap.blitzBadgeAcademicLightning)
+
+        // 4. Verify Compose UI renders timer ring, score badge, combo badge, and question options
+        composeTestRule.setContent {
+            WordBooksTheme {
+                com.example.ui.screens.VocabularyBlitzDialog(
+                    initialQuestions = questions,
+                    enableTimerAutoTick = false,
+                    onDismiss = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("vocab_blitz_dialog").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("blitz_timer_ring").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("blitz_score_badge").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("blitz_combo_badge").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("blitz_option_0").performScrollTo().assertIsDisplayed()
+    }
 }

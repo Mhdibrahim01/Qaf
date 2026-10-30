@@ -2389,6 +2389,19 @@ interface WordBooksDao {
         """
     )
     suspend fun getEntriesByHeadwords(headwords: List<String>): List<EntryEntity>
+
+    @Query(
+        """
+        SELECT e.* FROM entries e
+        WHERE TRIM(e.text) != ''
+          AND TRIM(e.arabic) != ''
+          AND LENGTH(TRIM(e.text)) >= 3
+        GROUP BY LOWER(TRIM(e.text))
+        ORDER BY RANDOM()
+        LIMIT :limit
+        """
+    )
+    suspend fun getVocabularyBlitzCandidates(limit: Int = 120): List<EntryEntity>
 }
 
 data class DeckEntryStats(
