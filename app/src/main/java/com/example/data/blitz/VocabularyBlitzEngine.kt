@@ -1,11 +1,19 @@
 package com.example.data.blitz
 
+import android.media.AudioAttributes
+import android.media.AudioFormat
 import android.media.AudioManager
+import android.media.AudioTrack
 import android.media.ToneGenerator
 import androidx.compose.runtime.Immutable
 import com.example.data.local.EntryEntity
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import kotlin.math.PI
+import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.roundToInt
+import kotlin.math.sin
 import kotlin.random.Random
 
 enum class BlitzQuestionMode {
@@ -27,6 +35,14 @@ data class BlitzQuestionItem(
     val optionsArabic: List<String>,
     val correctOptionIndex: Int,
     val trueArabicMeaning: String
+)
+
+@Immutable
+data class BlitzFilterConfig(
+    val selectedDecks: List<String> = emptyList(),
+    val allBooksSelected: Boolean = true,
+    val selectedLevels: Set<String> = setOf("A1", "A2", "B1", "B2", "C1"),
+    val studiedOnly: Boolean = false
 )
 
 @Immutable
@@ -54,13 +70,42 @@ data class VocabularyBlitzSessionState(
     val isNewHighScore: Boolean = false,
     val unlockedWordSniperNow: Boolean = false,
     val unlockedAcademicLightningNow: Boolean = false,
-    val lastAnswerCorrect: Boolean? = null
+    val lastAnswerCorrect: Boolean? = null,
+    val missedQuestions: List<BlitzQuestionItem> = emptyList()
 ) {
     val currentQuestion: BlitzQuestionItem?
         get() = if (questions.isNotEmpty()) questions[currentIndex % questions.size] else null
 
     val comboMultiplier: Int
         get() = VocabularyBlitzEngine.computeComboMultiplier(currentStreak)
+
+    val totalAnswered: Int
+        get() = correctCount + wrongCount
+
+    val accuracyPercent: Int
+        get() = if (totalAnswered > 0) {
+            ((correctCount.toDouble() / totalAnswered.toDouble()) * 100.0).roundToInt().coerceIn(0, 100)
+        } else 0
+}
+
+@Immutable
+data class SurvivalSessionState(
+    val questions: List<BlitzQuestionItem> = emptyList(),
+    val currentIndex: Int = 0,
+    val hearts: Int = 3,
+    val maxHearts: Int = 3,
+    val currentStreak: Int = 0,
+    val bestStreakInSession: Int = 0,
+    val correctCount: Int = 0,
+    val wrongCount: Int = 0,
+    val isFinished: Boolean = false,
+    val missedQuestions: List<BlitzQuestionItem> = emptyList(),
+    val heartRecoveredThisTurn: Boolean = false,
+    val lastAnswerCorrect: Boolean? = null,
+    val isNewBestStreak: Boolean = false
+) {
+    val currentQuestion: BlitzQuestionItem?
+        get() = if (questions.isNotEmpty()) questions[currentIndex % questions.size] else null
 
     val totalAnswered: Int
         get() = correctCount + wrongCount
@@ -216,6 +261,7 @@ object VocabularyBlitzEngine {
         val newScore = state.score + pointsEarned
         val newCorrect = if (isCorrect) state.correctCount + 1 else state.correctCount
         val newWrong = if (isCorrect) state.wrongCount else state.wrongCount + 1
+        val newMissed = if (isCorrect) state.missedQuestions else (state.missedQuestions + currentQ)
 
         val unlockedSniper = state.unlockedWordSniperNow || newCorrect >= WORD_SNIPER_THRESHOLD
         val unlockedLightning = state.unlockedAcademicLightningNow ||
@@ -234,8 +280,57 @@ object VocabularyBlitzEngine {
             isNewHighScore = newScore > previousHighScore,
             unlockedWordSniperNow = unlockedSniper,
             unlockedAcademicLightningNow = unlockedLightning,
-            lastAnswerCorrect = isCorrect
+            lastAnswerCorrect = isCorrect,
+            missedQuestions = newMissed
         )
+    }
+
+    /**
+     * Pure state transition for Survival Mode (3 Hearts).
+     * Correct -> streak increases, restores +1 heart on every 15-streak milestone up to maxHearts.
+     * Wrong -> loses 1 heart, resets streak, records mistake, finishes if hearts == 0.
+     */
+    fun submitSurvivalAnswer(
+        state: SurvivalSessionState,
+        selectedOptionIndex: Int,
+        previousBestStreak: Int = 0
+    ): SurvivalSessionState {
+        if (state.isFinished || state.questions.isEmpty()) return state
+        val currentQ = state.currentQuestion ?: return state
+        val isCorrect = selectedOptionIndex == currentQ.correctOptionIndex
+
+        return if (isCorrect) {
+            val newStreak = state.currentStreak + 1
+            val newBestStreak = max(state.bestStreakInSession, newStreak)
+            val shouldRecoverHeart = (newStreak > 0 && newStreak % 15 == 0 && state.hearts < state.maxHearts)
+            val newHearts = if (shouldRecoverHeart) state.hearts + 1 else state.hearts
+            val isNewRecord = newBestStreak > previousBestStreak
+
+            state.copy(
+                currentIndex = state.currentIndex + 1,
+                currentStreak = newStreak,
+                bestStreakInSession = newBestStreak,
+                correctCount = state.correctCount + 1,
+                hearts = newHearts,
+                heartRecoveredThisTurn = shouldRecoverHeart,
+                lastAnswerCorrect = true,
+                isNewBestStreak = isNewRecord
+            )
+        } else {
+            val newHearts = state.hearts - 1
+            val isOver = newHearts <= 0
+            val newMissed = state.missedQuestions + currentQ
+            state.copy(
+                currentIndex = state.currentIndex + 1,
+                currentStreak = 0,
+                wrongCount = state.wrongCount + 1,
+                hearts = max(0, newHearts),
+                isFinished = isOver,
+                missedQuestions = newMissed,
+                heartRecoveredThisTurn = false,
+                lastAnswerCorrect = false
+            )
+        }
     }
 
     private fun fallbackEntries(): List<EntryEntity> = listOf(
@@ -249,34 +344,171 @@ object VocabularyBlitzEngine {
 }
 
 /**
- * Lightweight synthesizer sound effect helper using Android's [ToneGenerator].
- * Safe in headless/Robolectric environments.
+ * Modern, low-latency, warm harmonic sound synthesizer for quiz & speed blitz interactions.
+ * Synthesizes soft acoustic-style waveforms (warm bell ding, muted wooden thud)
+ * directly via [AudioTrack] in static memory buffers:
+ * - Zero external assets or file I/O overhead.
+ * - Single-track retriggering: cutting off previous audio to eliminate overlapping noise on rapid clicks.
+ * - Fallback safety for Robolectric / headless environments.
  */
 object BlitzSoundPlayer {
+    private const val SAMPLE_RATE = 44100
+    private val lock = Any()
+    private var activeTrack: AudioTrack? = null
+
+    // Lazy pre-synthesized PCM buffers
+    private val correctPcm: ByteArray by lazy { generateCorrectChimePcm() }
+    private val wrongPcm: ByteArray by lazy { generateWrongThudPcm() }
+    private val comboPcm: ByteArray by lazy { generateComboChimePcm() }
+    private val tickPcm: ByteArray by lazy { generateTickPcm() }
+
     fun playCorrectChime(enabled: Boolean = true) {
         if (!enabled) return
-        playToneSafe(ToneGenerator.TONE_PROP_ACK, 90)
+        playPcmSafe(correctPcm)
     }
 
     fun playComboLevelUpChime(enabled: Boolean = true) {
         if (!enabled) return
-        playToneSafe(ToneGenerator.TONE_PROP_BEEP2, 140)
+        playPcmSafe(comboPcm)
     }
 
+    /**
+     * Replaces the harsh telecom buzzer with a soft, muted wooden thud / gentle double-tap.
+     */
     fun playWrongBuzz(enabled: Boolean = true) {
         if (!enabled) return
-        playToneSafe(ToneGenerator.TONE_PROP_NACK, 120)
+        playPcmSafe(wrongPcm)
     }
 
     fun playCountdownTick(enabled: Boolean = true) {
         if (!enabled) return
-        playToneSafe(ToneGenerator.TONE_PROP_BEEP, 45)
+        playPcmSafe(tickPcm)
     }
 
-    private fun playToneSafe(toneType: Int, durationMs: Int) {
-        runCatching {
-            val generator = ToneGenerator(AudioManager.STREAM_MUSIC, 70)
-            generator.startTone(toneType, durationMs)
+    private fun playPcmSafe(pcmData: ByteArray) {
+        synchronized(lock) {
+            runCatching {
+                activeTrack?.run {
+                    runCatching { stop() }
+                    runCatching { release() }
+                }
+                activeTrack = null
+
+                val track = AudioTrack.Builder()
+                    .setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
+                    )
+                    .setAudioFormat(
+                        AudioFormat.Builder()
+                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                            .setSampleRate(SAMPLE_RATE)
+                            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                            .build()
+                    )
+                    .setBufferSizeInBytes(pcmData.size)
+                    .setTransferMode(AudioTrack.MODE_STATIC)
+                    .build()
+
+                track.write(pcmData, 0, pcmData.size)
+                track.play()
+                activeTrack = track
+            }.onFailure {
+                // Safe headless / test fallback
+            }
         }
+    }
+
+    /**
+     * Soft, warm bell chime: Dual harmonious frequencies (880 Hz A5 + 1046.5 Hz C6)
+     * with an 8ms anti-click attack and exponential decay over 240ms.
+     */
+    private fun generateCorrectChimePcm(): ByteArray {
+        val durationMs = 240
+        val totalSamples = (SAMPLE_RATE * durationMs) / 1000
+        val buffer = ByteBuffer.allocate(totalSamples * 2).order(ByteOrder.LITTLE_ENDIAN)
+        val attackSamples = (SAMPLE_RATE * 0.008).toInt()
+
+        for (i in 0 until totalSamples) {
+            val t = i.toDouble() / SAMPLE_RATE
+            val envelope = when {
+                i < attackSamples -> i.toDouble() / attackSamples.toDouble()
+                else -> exp(-(t - 0.008) / 0.08)
+            }
+            val sampleVal = (sin(2.0 * PI * 880.0 * t) * 0.65 + sin(2.0 * PI * 1046.5 * t) * 0.35) * envelope * 0.35
+            val pcmShort = (sampleVal * Short.MAX_VALUE).toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+            buffer.putShort(pcmShort)
+        }
+        return buffer.array()
+    }
+
+    /**
+     * Soft low wooden thud: Low acoustic frequency sliding from 170 Hz down to 110 Hz
+     * with rapid decay (110ms) mimicking a warm muted marimba/wood tap.
+     */
+    private fun generateWrongThudPcm(): ByteArray {
+        val durationMs = 110
+        val totalSamples = (SAMPLE_RATE * durationMs) / 1000
+        val buffer = ByteBuffer.allocate(totalSamples * 2).order(ByteOrder.LITTLE_ENDIAN)
+        val attackSamples = (SAMPLE_RATE * 0.004).toInt()
+
+        for (i in 0 until totalSamples) {
+            val t = i.toDouble() / SAMPLE_RATE
+            val envelope = when {
+                i < attackSamples -> i.toDouble() / attackSamples.toDouble()
+                else -> exp(-(t - 0.004) / 0.035)
+            }
+            val freq = 170.0 - (60.0 * (i.toDouble() / totalSamples))
+            val sampleVal = sin(2.0 * PI * freq * t) * envelope * 0.30
+            val pcmShort = (sampleVal * Short.MAX_VALUE).toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+            buffer.putShort(pcmShort)
+        }
+        return buffer.array()
+    }
+
+    /**
+     * Sparkling ascending combo chime: 3 harmonious notes in rapid succession (D5 -> G5 -> D6).
+     */
+    private fun generateComboChimePcm(): ByteArray {
+        val durationMs = 280
+        val totalSamples = (SAMPLE_RATE * durationMs) / 1000
+        val buffer = ByteBuffer.allocate(totalSamples * 2).order(ByteOrder.LITTLE_ENDIAN)
+        val stepSamples = totalSamples / 3
+
+        for (i in 0 until totalSamples) {
+            val noteIndex = (i / stepSamples).coerceIn(0, 2)
+            val noteSample = i % stepSamples
+            val tNote = noteSample.toDouble() / SAMPLE_RATE
+            val freq = when (noteIndex) {
+                0 -> 587.33 // D5
+                1 -> 783.99 // G5
+                else -> 1174.66 // D6
+            }
+            val envelope = exp(-tNote / 0.06)
+            val sampleVal = sin(2.0 * PI * freq * tNote) * envelope * 0.30
+            val pcmShort = (sampleVal * Short.MAX_VALUE).toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+            buffer.putShort(pcmShort)
+        }
+        return buffer.array()
+    }
+
+    /**
+     * Subtle, quiet 35ms mechanical clock tick.
+     */
+    private fun generateTickPcm(): ByteArray {
+        val durationMs = 35
+        val totalSamples = (SAMPLE_RATE * durationMs) / 1000
+        val buffer = ByteBuffer.allocate(totalSamples * 2).order(ByteOrder.LITTLE_ENDIAN)
+
+        for (i in 0 until totalSamples) {
+            val t = i.toDouble() / SAMPLE_RATE
+            val envelope = exp(-t / 0.007)
+            val sampleVal = sin(2.0 * PI * 800.0 * t) * envelope * 0.15
+            val pcmShort = (sampleVal * Short.MAX_VALUE).toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+            buffer.putShort(pcmShort)
+        }
+        return buffer.array()
     }
 }

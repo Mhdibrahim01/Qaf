@@ -23,8 +23,11 @@ import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Science
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Spellcheck
 import androidx.compose.material3.AlertDialog
@@ -60,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import com.example.ui.components.ArabicText
 import com.example.ui.components.LearningStatCard
 import com.example.ui.components.ProgressBadge
+import com.example.ui.theme.AmberAccent
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderSubtle
@@ -87,6 +91,12 @@ fun MoreScreen(
     onNavigateToSentences: () -> Unit = {},
     onStartVocabularyBlitz: () -> Unit = {},
     blitzHighScore: Int = 0,
+    onStartSurvival: () -> Unit = {},
+    survivalBestStreak: Int = 0,
+    onStartMatchMadness: () -> Unit = {},
+    matchMadnessBestTime: Int = 0,
+    onStartGrammarHunter: () -> Unit = {},
+    grammarHunterBestScore: Int = 0,
     onExportBackupToUri: (Uri, (Boolean, String) -> Unit) -> Unit = { _, _ -> },
     onImportBackupFromUri: (Uri, (Boolean, String) -> Unit) -> Unit = { _, _ -> },
     grammarLessonsCount: Int = 90,
@@ -219,7 +229,120 @@ fun MoreScreen(
                 )
             }
 
-            // Section 1: Core Learning Modules
+            // Section 1: Interactive Challenges & Speed Games
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                HubSectionHeader(
+                    eyebrow = "SPEED & INTERACTIVE CHALLENGES",
+                    title = "Interactive Games 🎮⚡"
+                )
+
+                val bestTimeFormatted = if (matchMadnessBestTime > 0) {
+                    "%02d:%02d".format(matchMadnessBestTime / 60, matchMadnessBestTime % 60)
+                } else "3 Rounds"
+
+                if (isTablet) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        MoreModuleCard(
+                            titleEn = "60-Second Vocabulary Blitz",
+                            titleAr = "تحدي الـ 60 ثانية السريع ⚡",
+                            descriptionEn = "Fast-paced 60s vocabulary challenge with filters, combo multipliers, warm audio, and mistake review.",
+                            tagText = if (blitzHighScore > 0) "Best: $blitzHighScore pts" else "60s Sprint",
+                            accentColor = GoldAccent,
+                            icon = Icons.Default.Bolt,
+                            testTag = "nav_vocab_blitz",
+                            onClick = onStartVocabularyBlitz,
+                            modifier = Modifier.weight(1f)
+                        )
+                        MoreModuleCard(
+                            titleEn = "Survival Mode",
+                            titleAr = "تحدي النجاة (3 قلوب) ❤️",
+                            descriptionEn = "Untimed vocabulary challenge with 3 hearts. Streak recovers hearts; 3 mistakes end the run!",
+                            tagText = if (survivalBestStreak > 0) "Streak: $survivalBestStreak" else "3 Hearts",
+                            accentColor = CoralAccent,
+                            icon = Icons.Default.Favorite,
+                            testTag = "nav_survival_mode",
+                            onClick = onStartSurvival,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        MoreModuleCard(
+                            titleEn = "Match Madness",
+                            titleAr = "توصيل الكلمات السريع 🧩",
+                            descriptionEn = "Connect English words with Arabic meanings across 3 rounds of 6 pairs (18 words total) as fast as you can!",
+                            tagText = if (matchMadnessBestTime > 0) "Best: $bestTimeFormatted" else "3 Rounds",
+                            accentColor = SkyAccent,
+                            icon = Icons.Default.Extension,
+                            testTag = "nav_match_madness",
+                            onClick = onStartMatchMadness,
+                            modifier = Modifier.weight(1f)
+                        )
+                        MoreModuleCard(
+                            titleEn = "Grammar Error Hunter",
+                            titleAr = "صائد الأخطاء القواعدية 🔍",
+                            descriptionEn = "Spot grammatical mistakes in CEFR-graded sentences, tap the faulty word, and choose the correct fix!",
+                            tagText = if (grammarHunterBestScore > 0) "Best: $grammarHunterBestScore/10" else "10 Sentences",
+                            accentColor = AmberAccent,
+                            icon = Icons.Default.Search,
+                            testTag = "nav_grammar_hunter",
+                            onClick = onStartGrammarHunter,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        MoreModuleCard(
+                            titleEn = "60-Second Vocabulary Blitz",
+                            titleAr = "تحدي الـ 60 ثانية السريع ⚡",
+                            descriptionEn = "Fast-paced 60s vocabulary challenge with filters, combo multipliers, warm audio, and mistake review.",
+                            tagText = if (blitzHighScore > 0) "Best: $blitzHighScore pts" else "60s Sprint",
+                            accentColor = GoldAccent,
+                            icon = Icons.Default.Bolt,
+                            testTag = "nav_vocab_blitz",
+                            onClick = onStartVocabularyBlitz
+                        )
+                        MoreModuleCard(
+                            titleEn = "Survival Mode",
+                            titleAr = "تحدي النجاة (3 قلوب) ❤️",
+                            descriptionEn = "Untimed vocabulary challenge with 3 hearts. Streak recovers hearts; 3 mistakes end the run!",
+                            tagText = if (survivalBestStreak > 0) "Streak: $survivalBestStreak" else "3 Hearts",
+                            accentColor = CoralAccent,
+                            icon = Icons.Default.Favorite,
+                            testTag = "nav_survival_mode",
+                            onClick = onStartSurvival
+                        )
+                        MoreModuleCard(
+                            titleEn = "Match Madness",
+                            titleAr = "توصيل الكلمات السريع 🧩",
+                            descriptionEn = "Connect English words with Arabic meanings across 3 rounds of 6 pairs (18 words total) as fast as you can!",
+                            tagText = if (matchMadnessBestTime > 0) "Best: $bestTimeFormatted" else "3 Rounds",
+                            accentColor = SkyAccent,
+                            icon = Icons.Default.Extension,
+                            testTag = "nav_match_madness",
+                            onClick = onStartMatchMadness
+                        )
+                        MoreModuleCard(
+                            titleEn = "Grammar Error Hunter",
+                            titleAr = "صائد الأخطاء القواعدية 🔍",
+                            descriptionEn = "Spot grammatical mistakes in CEFR-graded sentences, tap the faulty word, and choose the correct fix!",
+                            tagText = if (grammarHunterBestScore > 0) "Best: $grammarHunterBestScore/10" else "10 Sentences",
+                            accentColor = AmberAccent,
+                            icon = Icons.Default.Search,
+                            testTag = "nav_grammar_hunter",
+                            onClick = onStartGrammarHunter
+                        )
+                    }
+                }
+            }
+
+            // Section 2: Core Curriculum & Study Modules
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 HubSectionHeader(
                     eyebrow = "CURRICULUM & PRACTICE",
@@ -298,30 +421,9 @@ fun MoreScreen(
                             onClick = onNavigateToReading,
                             modifier = Modifier.weight(1f)
                         )
-                        MoreModuleCard(
-                            titleEn = "60-Second Vocabulary Blitz",
-                            titleAr = "تحدي الـ 60 ثانية السريع ⚡",
-                            descriptionEn = "Fast-paced 60s vocabulary challenge with combo multipliers, sound effects, and achievement badges.",
-                            tagText = if (blitzHighScore > 0) "Best: $blitzHighScore pts" else "60s Speed Quiz",
-                            accentColor = GoldAccent,
-                            icon = Icons.Default.Bolt,
-                            testTag = "nav_vocab_blitz",
-                            onClick = onStartVocabularyBlitz,
-                            modifier = Modifier.weight(1f)
-                        )
                     }
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        MoreModuleCard(
-                            titleEn = "60-Second Vocabulary Blitz",
-                            titleAr = "تحدي الـ 60 ثانية السريع ⚡",
-                            descriptionEn = "Fast-paced 60s vocabulary challenge with combo multipliers, sound effects, and achievement badges.",
-                            tagText = if (blitzHighScore > 0) "Best: $blitzHighScore pts" else "60s Speed Quiz",
-                            accentColor = GoldAccent,
-                            icon = Icons.Default.Bolt,
-                            testTag = "nav_vocab_blitz",
-                            onClick = onStartVocabularyBlitz
-                        )
                         MoreModuleCard(
                             titleEn = "Study Plan",
                             titleAr = "خطة التعلم اليومية والشهرية",

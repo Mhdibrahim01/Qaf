@@ -841,6 +841,17 @@ fun WordBooksAppShell(
                         },
                         onSpeakTts = { wordBooksViewModel.speakSentenceTts(it) },
                         onSaveProgress = wordBooksViewModel::saveGrammarProgress,
+                        onSaveCorrectionEntry = { lessonId, title, prompt, wrong, correct, expAr ->
+                            wordBooksViewModel.saveCorrectionNotebookEntry(
+                                textId = lessonId,
+                                grammarLessonId = lessonId,
+                                grammarLessonTitle = title,
+                                originalSentence = prompt,
+                                correctedSentence = correct,
+                                explanationAr = expAr,
+                                status = "not_checked"
+                            )
+                        },
                         onAskAi = wordBooksViewModel::askAiAboutLesson,
                         onExplainMistake = wordBooksViewModel::explainGrammarMistake,
                         onCheckSentence = wordBooksViewModel::checkGrammarSentence,
@@ -1181,6 +1192,9 @@ fun WordBooksAppShell(
                     val savedSentences by wordBooksViewModel.savedSentences.collectAsStateWithLifecycle()
                     val studyStreak by wordBooksViewModel.studyStreak.collectAsStateWithLifecycle()
                     val blitzStats by wordBooksViewModel.blitzStats.collectAsStateWithLifecycle()
+                    val survivalBestStreak by wordBooksViewModel.survivalBestStreak.collectAsStateWithLifecycle()
+                    val matchMadnessBestTime by wordBooksViewModel.matchMadnessBestTime.collectAsStateWithLifecycle()
+                    val grammarHunterBestScore by wordBooksViewModel.grammarHunterBestScore.collectAsStateWithLifecycle()
                     MoreScreen(
                         onNavigateToGrammar = {
                             wordBooksViewModel.selectGrammarLesson(null)
@@ -1214,6 +1228,18 @@ fun WordBooksAppShell(
                             wordBooksViewModel.startVocabularyBlitz()
                         },
                         blitzHighScore = blitzStats.highScore,
+                        onStartSurvival = {
+                            wordBooksViewModel.openSurvivalSetup()
+                        },
+                        survivalBestStreak = survivalBestStreak,
+                        onStartMatchMadness = {
+                            wordBooksViewModel.startMatchMadness()
+                        },
+                        matchMadnessBestTime = matchMadnessBestTime,
+                        onStartGrammarHunter = {
+                            wordBooksViewModel.startGrammarHunter()
+                        },
+                        grammarHunterBestScore = grammarHunterBestScore,
                         onOpenSettings = {
                             navController.navigate(AppRoute.Settings) { launchSingleTop = true }
                         },
@@ -1324,6 +1350,41 @@ fun WordBooksAppShell(
 
     val activeBlitzQuestions by wordBooksViewModel.activeBlitzQuestions.collectAsStateWithLifecycle()
     val currentBlitzStats by wordBooksViewModel.blitzStats.collectAsStateWithLifecycle()
+    val isBlitzSetupOpen by wordBooksViewModel.isBlitzSetupOpen.collectAsStateWithLifecycle()
+    val blitzFilterConfig by wordBooksViewModel.blitzFilterConfig.collectAsStateWithLifecycle()
+    val blitzAvailableWordCount by wordBooksViewModel.blitzAvailableWordCount.collectAsStateWithLifecycle()
+    val availableDecks by wordBooksViewModel.decks.collectAsStateWithLifecycle()
+    val userProfile by wordBooksViewModel.studyPlanProfile.collectAsStateWithLifecycle()
+
+    val isSurvivalSetupOpen by wordBooksViewModel.isSurvivalSetupOpen.collectAsStateWithLifecycle()
+    val activeSurvivalQuestions by wordBooksViewModel.activeSurvivalQuestions.collectAsStateWithLifecycle()
+    val survivalBestStreak by wordBooksViewModel.survivalBestStreak.collectAsStateWithLifecycle()
+
+    val isMatchMadnessActive by wordBooksViewModel.isMatchMadnessActive.collectAsStateWithLifecycle()
+    val matchMadnessCandidates by wordBooksViewModel.matchMadnessCandidates.collectAsStateWithLifecycle()
+    val matchMadnessBestTime by wordBooksViewModel.matchMadnessBestTime.collectAsStateWithLifecycle()
+
+    val isGrammarHunterActive by wordBooksViewModel.isGrammarHunterActive.collectAsStateWithLifecycle()
+    val grammarHunterBestScore by wordBooksViewModel.grammarHunterBestScore.collectAsStateWithLifecycle()
+    val grammarLessons by wordBooksViewModel.grammarLessons.collectAsStateWithLifecycle()
+
+    if (isBlitzSetupOpen) {
+        com.example.ui.screens.VocabularyBlitzSetupDialog(
+            initialConfig = blitzFilterConfig,
+            availableDecks = availableDecks,
+            userCurrentLevel = userProfile?.level ?: "B2",
+            highScore = currentBlitzStats.highScore,
+            availableWordCount = blitzAvailableWordCount,
+            onFilterConfigChanged = { newConfig ->
+                wordBooksViewModel.updateBlitzFilterConfig(newConfig)
+            },
+            onStartChallenge = { finalConfig ->
+                wordBooksViewModel.startFilteredVocabularyBlitz(finalConfig)
+            },
+            onDismiss = { wordBooksViewModel.dismissVocabularyBlitzSetup() }
+        )
+    }
+
     if (activeBlitzQuestions != null) {
         com.example.ui.screens.VocabularyBlitzDialog(
             initialQuestions = activeBlitzQuestions!!,
@@ -1332,10 +1393,75 @@ fun WordBooksAppShell(
             onFinishRound = { finalState ->
                 wordBooksViewModel.recordVocabularyBlitzResult(finalState)
             },
+            onPracticeMistakes = { missedItems ->
+                wordBooksViewModel.practiceBlitzMistakes(missedItems, launchFlashcardsNow = false)
+            },
+            onChangeFiltersRequest = {
+                wordBooksViewModel.dismissVocabularyBlitz()
+                wordBooksViewModel.openVocabularyBlitzSetup()
+            },
             onPlayAgainRequest = {
-                wordBooksViewModel.startVocabularyBlitz()
+                wordBooksViewModel.startFilteredVocabularyBlitz(blitzFilterConfig)
             },
             onDismiss = { wordBooksViewModel.dismissVocabularyBlitz() }
+        )
+    }
+
+    if (isSurvivalSetupOpen) {
+        com.example.ui.screens.VocabularyBlitzSetupDialog(
+            initialConfig = blitzFilterConfig,
+            availableDecks = availableDecks,
+            userCurrentLevel = userProfile?.level ?: "B2",
+            highScore = currentBlitzStats.highScore,
+            availableWordCount = blitzAvailableWordCount,
+            isSurvivalMode = true,
+            bestRecordValue = survivalBestStreak,
+            onFilterConfigChanged = { newConfig ->
+                wordBooksViewModel.updateBlitzFilterConfig(newConfig)
+            },
+            onStartChallenge = { finalConfig ->
+                wordBooksViewModel.startFilteredSurvival(finalConfig)
+            },
+            onDismiss = { wordBooksViewModel.dismissSurvivalSetup() }
+        )
+    }
+
+    if (activeSurvivalQuestions != null) {
+        com.example.ui.screens.SurvivalChallengeDialog(
+            initialQuestions = activeSurvivalQuestions!!,
+            bestStreak = survivalBestStreak,
+            onFinish = { finalState ->
+                wordBooksViewModel.recordSurvivalResult(finalState)
+            },
+            onPracticeMistakes = { missedItems ->
+                wordBooksViewModel.practiceBlitzMistakes(missedItems, launchFlashcardsNow = false)
+            },
+            onPlayPronunciation = { word -> wordBooksViewModel.playWordVoiceAudio(word) },
+            onDismiss = { wordBooksViewModel.dismissSurvival() }
+        )
+    }
+
+    if (isMatchMadnessActive) {
+        com.example.ui.screens.MatchMadnessDialog(
+            initialEntries = matchMadnessCandidates,
+            bestTimeSeconds = matchMadnessBestTime,
+            onFinish = { finalTime ->
+                wordBooksViewModel.recordMatchMadnessResult(finalTime)
+            },
+            onPlayPronunciation = { word -> wordBooksViewModel.playWordVoiceAudio(word) },
+            onDismiss = { wordBooksViewModel.dismissMatchMadness() }
+        )
+    }
+
+    if (isGrammarHunterActive) {
+        com.example.ui.screens.GrammarErrorHunterDialog(
+            lessons = grammarLessons,
+            userLevel = userProfile?.level ?: "B2",
+            bestScore = grammarHunterBestScore,
+            onFinish = { score ->
+                wordBooksViewModel.recordGrammarHunterResult(score)
+            },
+            onDismiss = { wordBooksViewModel.dismissGrammarHunter() }
         )
     }
 

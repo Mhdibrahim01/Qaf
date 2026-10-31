@@ -2425,6 +2425,64 @@ interface WordBooksDao {
         """
     )
     suspend fun getVocabularyBlitzCandidates(limit: Int = 120): List<EntryEntity>
+
+    @Query(
+        """
+        SELECT e.* FROM entries e
+        LEFT JOIN word_progress wp
+            ON (wp.entry_id = e.id OR (wp.entry_id IS NULL AND wp.deck = e.deck AND wp.text = LOWER(e.text)))
+        WHERE TRIM(e.text) != ''
+          AND TRIM(e.arabic) != ''
+          AND LENGTH(TRIM(e.text)) >= 3
+          AND (:allDecks = 1 OR e.deck IN (:decks))
+          AND (:allLevels = 1 OR UPPER(TRIM(COALESCE(NULLIF(TRIM(e.effective_level), ''), e.level))) IN (:levels))
+          AND (
+              :studiedOnly = 0
+              OR (
+                  wp.card_key IS NOT NULL
+                  AND (wp.repetitions > 0 OR wp.lookup_count > 0 OR wp.again_count > 0 OR wp.last_reviewed_timestamp > 0 OR wp.first_learned_timestamp > 0)
+              )
+          )
+        GROUP BY LOWER(TRIM(e.text))
+        ORDER BY RANDOM()
+        LIMIT :limit
+        """
+    )
+    suspend fun getVocabularyBlitzCandidatesFiltered(
+        decks: List<String>,
+        allDecks: Boolean,
+        levels: List<String>,
+        allLevels: Boolean,
+        studiedOnly: Boolean,
+        limit: Int = 120
+    ): List<EntryEntity>
+
+    @Query(
+        """
+        SELECT COUNT(DISTINCT LOWER(TRIM(e.text))) FROM entries e
+        LEFT JOIN word_progress wp
+            ON (wp.entry_id = e.id OR (wp.entry_id IS NULL AND wp.deck = e.deck AND wp.text = LOWER(e.text)))
+        WHERE TRIM(e.text) != ''
+          AND TRIM(e.arabic) != ''
+          AND LENGTH(TRIM(e.text)) >= 3
+          AND (:allDecks = 1 OR e.deck IN (:decks))
+          AND (:allLevels = 1 OR UPPER(TRIM(COALESCE(NULLIF(TRIM(e.effective_level), ''), e.level))) IN (:levels))
+          AND (
+              :studiedOnly = 0
+              OR (
+                  wp.card_key IS NOT NULL
+                  AND (wp.repetitions > 0 OR wp.lookup_count > 0 OR wp.again_count > 0 OR wp.last_reviewed_timestamp > 0 OR wp.first_learned_timestamp > 0)
+              )
+          )
+        """
+    )
+    suspend fun countVocabularyBlitzCandidatesFiltered(
+        decks: List<String>,
+        allDecks: Boolean,
+        levels: List<String>,
+        allLevels: Boolean,
+        studiedOnly: Boolean
+    ): Int
 }
 
 data class DeckEntryStats(

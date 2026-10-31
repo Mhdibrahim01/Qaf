@@ -174,6 +174,7 @@ fun GrammarScreen(
     onSyncAssets: (() -> Unit)? = null,
     onImportJsonUris: ((List<Uri>) -> Unit)? = null,
     onImportJsonText: (suspend (String) -> Result<Int>)? = null,
+    onSaveCorrectionEntry: ((lessonId: String, title: String, prompt: String, wrong: String, correct: String, expAr: String) -> Unit)? = null,
     userLevel: String = "B2",
     onBackFromDetail: (() -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -203,6 +204,7 @@ fun GrammarScreen(
             onExplainMistake = onExplainMistake,
             onCheckSentence = onCheckSentence,
             onMorePractice = onMorePractice,
+            onSaveCorrectionEntry = onSaveCorrectionEntry,
             modifier = modifier
         )
     } else {
@@ -958,23 +960,61 @@ fun LessonCard(
                 }
             }
 
-            // Right side: 32x32px rounded icon box with chevron right
-            Surface(
-                shape = RoundedCornerShape(9.dp),
-                color = if (isCompleted) EmeraldAccent.copy(alpha = 0.15f) else SurfaceElevatedDark,
-                border = BorderStroke(
-                    1.dp,
-                    if (isCompleted) EmeraldAccent.copy(alpha = 0.4f) else BorderDark
-                ),
-                modifier = Modifier.size(32.dp)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = "Open Lesson",
-                        tint = if (isCompleted) EmeraldAccent else TextSecondary,
-                        modifier = Modifier.size(18.dp)
-                    )
+                if (isCompleted) {
+                    Surface(
+                        color = EmeraldAccent.copy(alpha = 0.14f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "Completed",
+                                tint = EmeraldAccent,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            val total = if (progress?.totalExercises != null && progress.totalExercises > 0) {
+                                progress.totalExercises
+                            } else {
+                                8
+                            }
+                            Text(
+                                text = "${progress?.bestScore ?: 0}/$total",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = EmeraldAccent,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
+                }
+
+                // Right side: 32x32px rounded icon box with chevron right
+                Surface(
+                    shape = RoundedCornerShape(9.dp),
+                    color = if (isCompleted) EmeraldAccent.copy(alpha = 0.15f) else SurfaceElevatedDark,
+                    border = BorderStroke(
+                        1.dp,
+                        if (isCompleted) EmeraldAccent.copy(alpha = 0.4f) else BorderDark
+                    ),
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = "Open Lesson",
+                            tint = if (isCompleted) EmeraldAccent else TextSecondary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
         }
@@ -997,6 +1037,7 @@ fun GrammarLessonDetailScreen(
     onExplainMistake: suspend (lessonId: String, title: String, prompt: String, wrong: String, correct: String) -> Result<String>,
     onCheckSentence: suspend (lesson: GrammarLessonEntity, sentence: String) -> Result<GrammarSentenceCheckResult>,
     onMorePractice: suspend (lesson: GrammarLessonEntity) -> Result<List<GrammarExerciseItem>>,
+    onSaveCorrectionEntry: ((lessonId: String, title: String, prompt: String, wrong: String, correct: String, expAr: String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     BackHandler(onBack = onBack)
@@ -1040,14 +1081,20 @@ fun GrammarLessonDetailScreen(
 
     val coroutineScope = rememberCoroutineScope()
 
-    // Exercise state
+    // Exercise state & Persistence
+    val isAlreadyCompleted = progress?.isCompleted == true
+    var isReviewMode by remember(lesson.id, isAlreadyCompleted) { mutableStateOf(isAlreadyCompleted) }
+    var activeMistakeFilterIndices by remember(lesson.id) { mutableStateOf<List<Int>?>(null) }
+    val firstAttemptCorrect = remember(lesson.id) { mutableStateMapOf<Int, Boolean>() }
     val userAnswers = remember(lesson.id) { mutableStateMapOf<Int, String>() }
     val isSubmitted = remember(lesson.id) { mutableStateMapOf<Int, Boolean>() }
     val mistakeExplanations = remember(lesson.id) { mutableStateMapOf<Int, String>() }
     val isExplainingMistake = remember(lesson.id) { mutableStateMapOf<Int, Boolean>() }
-    var exercisesFinished by remember(lesson.id) { mutableStateOf(false) }
+    var exercisesFinished by remember(lesson.id, isAlreadyCompleted) { mutableStateOf(isAlreadyCompleted) }
 
-    val safeQuestionIndex = if (exercises.isEmpty()) 0 else currentQuestionIndex.coerceIn(0, exercises.lastIndex)
+    val activeIndices = activeMistakeFilterIndices ?: exercises.indices.toList()
+    val safeQuestionIndex = if (activeIndices.isEmpty()) 0 else currentQuestionIndex.coerceIn(0, activeIndices.lastIndex)
+    val activeRealIndex = if (activeIndices.isEmpty()) 0 else activeIndices[safeQuestionIndex]
 
     val linkedReadingTexts = remember(readingTexts, lesson.id) {
         readingTexts.filter { text ->
@@ -1387,6 +1434,9 @@ fun GrammarLessonDetailScreen(
                     // Bottom CTA to launch Practice Quiz
                     if (exercises.isNotEmpty()) {
                         item {
+                            val isAr = com.example.ui.theme.AppLanguageState.isArabic
+                            val isCompleted = progress?.isCompleted == true
+                            val bestScore = progress?.bestScore ?: 0
                             Button(
                                 onClick = { selectedTab = 1 },
                                 colors = ButtonDefaults.buttonColors(
@@ -1400,7 +1450,13 @@ fun GrammarLessonDetailScreen(
                                     .testTag("start_practice_quiz_cta")
                             ) {
                                 Text(
-                                    text = "Start Practice Quiz (${exercises.size} Questions) →",
+                                    text = if (isCompleted) {
+                                        if (isAr) "مراجعة تمارين الدرس ($bestScore/${exercises.size} • مكتمل ✓) ←"
+                                        else "Review Practice Quiz ($bestScore/${exercises.size} • Completed ✓) →"
+                                    } else {
+                                        if (isAr) "بدء كويز التمارين (${exercises.size} أسئلة) ←"
+                                        else "Start Practice Quiz (${exercises.size} Questions) →"
+                                    },
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -1429,15 +1485,24 @@ fun GrammarLessonDetailScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column {
+                                        val isAr = com.example.ui.theme.AppLanguageState.isArabic
                                         Text(
-                                            text = if (exercises.isEmpty()) "Practice Quiz" else "Question ${safeQuestionIndex + 1} of ${exercises.size}",
+                                            text = if (activeMistakeFilterIndices != null) {
+                                                if (isAr) "إعادة الأخطاء: السؤال ${safeQuestionIndex + 1} من ${activeIndices.size}"
+                                                else "Retrying Mistakes: Question ${safeQuestionIndex + 1} of ${activeIndices.size}"
+                                            } else if (exercises.isEmpty()) {
+                                                "Practice Quiz"
+                                            } else {
+                                                if (isAr) "السؤال ${safeQuestionIndex + 1} من ${exercises.size}"
+                                                else "Question ${safeQuestionIndex + 1} of ${exercises.size}"
+                                            },
                                             style = MaterialTheme.typography.titleMedium,
                                             color = GoldAccent,
                                             fontWeight = FontWeight.Bold
                                         )
-                                        val answeredCount = exercises.indices.count { isSubmitted[it] == true }
+                                        val answeredCount = activeIndices.count { isSubmitted[it] == true }
                                         Text(
-                                            text = "$answeredCount of ${exercises.size} completed",
+                                            text = "$answeredCount of ${activeIndices.size} completed",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = TextSecondary
                                         )
@@ -1482,7 +1547,7 @@ fun GrammarLessonDetailScreen(
 
                                 if (exercises.isNotEmpty()) {
                                     // Linear Progress Bar
-                                    val progressFraction = ((safeQuestionIndex + 1).toFloat() / exercises.size.toFloat()).coerceIn(0f, 1f)
+                                    val progressFraction = ((safeQuestionIndex + 1).toFloat() / activeIndices.size.toFloat()).coerceIn(0f, 1f)
                                     LinearProgressIndicator(
                                         progress = { progressFraction },
                                         color = GoldAccent,
@@ -1493,15 +1558,16 @@ fun GrammarLessonDetailScreen(
                                             .clip(RoundedCornerShape(3.dp))
                                     )
 
-                                    // Step Number Pills Row (Jump to any question 1..N)
+                                    // Step Number Pills Row
                                     LazyRow(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
-                                        itemsIndexed(exercises) { idx, ex ->
-                                            val isCurrent = idx == safeQuestionIndex
-                                            val sub = isSubmitted[idx] == true
-                                            val ans = userAnswers[idx].orEmpty().trim()
+                                        itemsIndexed(activeIndices) { stepIdx, realIdx ->
+                                            val ex = exercises[realIdx]
+                                            val isCurrent = stepIdx == safeQuestionIndex
+                                            val sub = isSubmitted[realIdx] == true
+                                            val ans = userAnswers[realIdx].orEmpty().trim()
                                             val correct = sub && ans.equals(ex.answer.trim(), ignoreCase = true)
 
                                             val pillBg = when {
@@ -1530,12 +1596,12 @@ fun GrammarLessonDetailScreen(
                                                 modifier = Modifier
                                                     .size(34.dp)
                                                     .clip(RoundedCornerShape(8.dp))
-                                                    .clickable { currentQuestionIndex = idx }
-                                                    .testTag("quiz_step_pill_$idx")
+                                                    .clickable { currentQuestionIndex = stepIdx }
+                                                    .testTag("quiz_step_pill_$realIdx")
                                             ) {
                                                 Box(contentAlignment = Alignment.Center) {
                                                     Text(
-                                                        text = "${idx + 1}",
+                                                        text = "${realIdx + 1}",
                                                         style = MaterialTheme.typography.labelMedium,
                                                         fontWeight = FontWeight.Bold,
                                                         color = pillText
@@ -1548,17 +1614,34 @@ fun GrammarLessonDetailScreen(
                                     HorizontalDivider(color = BorderDark)
 
                                     // Active Question Card
-                                    val activeExercise = exercises[safeQuestionIndex]
-                                    val activeSubmitted = isSubmitted[safeQuestionIndex] == true
+                                    val activeExercise = exercises[activeRealIndex]
+                                    val activeSubmitted = isSubmitted[activeRealIndex] == true
+                                    val isCurrentCorrect = activeSubmitted && isGrammarAnswerCorrect(userAnswers[activeRealIndex].orEmpty(), activeExercise.answer)
+                                    val isCurrentWrong = activeSubmitted && !isCurrentCorrect
+
                                     ExerciseItemView(
-                                        index = safeQuestionIndex,
+                                        index = activeRealIndex,
                                         exercise = activeExercise,
-                                        currentAnswer = userAnswers[safeQuestionIndex].orEmpty(),
+                                        currentAnswer = userAnswers[activeRealIndex].orEmpty(),
                                         submitted = activeSubmitted,
-                                        onAnswerChange = { userAnswers[safeQuestionIndex] = it },
+                                        onAnswerChange = { userAnswers[activeRealIndex] = it },
                                         onSubmit = {
-                                            isSubmitted[safeQuestionIndex] = true
-                                            if (exercises.indices.all { isSubmitted[it] == true }) {
+                                            isSubmitted[activeRealIndex] = true
+                                            val isCorrect = isGrammarAnswerCorrect(userAnswers[activeRealIndex].orEmpty(), activeExercise.answer)
+                                            if (activeRealIndex !in firstAttemptCorrect) {
+                                                firstAttemptCorrect[activeRealIndex] = isCorrect
+                                                if (!isCorrect) {
+                                                    onSaveCorrectionEntry?.invoke(
+                                                        lesson.id,
+                                                        lesson.titleEn,
+                                                        activeExercise.prompt,
+                                                        userAnswers[activeRealIndex].orEmpty(),
+                                                        activeExercise.answer,
+                                                        activeExercise.explanationAr
+                                                    )
+                                                }
+                                            }
+                                            if (activeIndices.all { isSubmitted[it] == true }) {
                                                 exercisesFinished = true
                                                 val score = exercises.indices.count { i ->
                                                     isGrammarAnswerCorrect(userAnswers[i].orEmpty(), exercises[i].answer)
@@ -1567,27 +1650,28 @@ fun GrammarLessonDetailScreen(
                                                 onSaveProgress(lesson.id, exercises.size, exercises.size, score, true, elapsedMs)
                                             }
                                         },
-                                        mistakeExplanation = mistakeExplanations[safeQuestionIndex],
-                                        isExplainingMistake = isExplainingMistake[safeQuestionIndex] == true,
+                                        mistakeExplanation = mistakeExplanations[activeRealIndex],
+                                        isExplainingMistake = isExplainingMistake[activeRealIndex] == true,
                                         onExplainMistakeClick = {
                                             coroutineScope.launch {
-                                                isExplainingMistake[safeQuestionIndex] = true
+                                                isExplainingMistake[activeRealIndex] = true
                                                 val res = onExplainMistake(
                                                     lesson.id,
                                                     lesson.titleEn,
                                                     activeExercise.prompt,
-                                                    userAnswers[safeQuestionIndex].orEmpty(),
+                                                    userAnswers[activeRealIndex].orEmpty(),
                                                     activeExercise.answer
                                                 )
-                                                isExplainingMistake[safeQuestionIndex] = false
+                                                isExplainingMistake[activeRealIndex] = false
                                                 if (res.isSuccess) {
-                                                    mistakeExplanations[safeQuestionIndex] = res.getOrThrow()
+                                                    mistakeExplanations[activeRealIndex] = res.getOrThrow()
                                                 }
                                             }
                                         }
                                     )
 
-                                    // Step Navigation Footer (Previous / Check Answer / Next Question)
+                                    // Step Navigation Footer (Previous / Check Answer / Try Again / Next Question)
+                                    val isAr = com.example.ui.theme.AppLanguageState.isArabic
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -1607,7 +1691,7 @@ fun GrammarLessonDetailScreen(
                                             modifier = Modifier.testTag("quiz_prev_button")
                                         ) {
                                             Text(
-                                                text = "← Previous",
+                                                text = if (isAr) "السابق ←" else "← Previous",
                                                 color = if (safeQuestionIndex > 0) TextPrimary else TextMuted
                                             )
                                         }
@@ -1615,8 +1699,22 @@ fun GrammarLessonDetailScreen(
                                         if (!activeSubmitted) {
                                             Button(
                                                 onClick = {
-                                                    isSubmitted[safeQuestionIndex] = true
-                                                    if (exercises.indices.all { isSubmitted[it] == true }) {
+                                                    isSubmitted[activeRealIndex] = true
+                                                    val isCorrect = isGrammarAnswerCorrect(userAnswers[activeRealIndex].orEmpty(), activeExercise.answer)
+                                                    if (activeRealIndex !in firstAttemptCorrect) {
+                                                        firstAttemptCorrect[activeRealIndex] = isCorrect
+                                                        if (!isCorrect) {
+                                                            onSaveCorrectionEntry?.invoke(
+                                                                lesson.id,
+                                                                lesson.titleEn,
+                                                                activeExercise.prompt,
+                                                                userAnswers[activeRealIndex].orEmpty(),
+                                                                activeExercise.answer,
+                                                                activeExercise.explanationAr
+                                                            )
+                                                        }
+                                                    }
+                                                    if (activeIndices.all { isSubmitted[it] == true }) {
                                                         exercisesFinished = true
                                                         val score = exercises.indices.count { i ->
                                                             isGrammarAnswerCorrect(userAnswers[i].orEmpty(), exercises[i].answer)
@@ -1625,41 +1723,78 @@ fun GrammarLessonDetailScreen(
                                                         onSaveProgress(lesson.id, exercises.size, exercises.size, score, true, elapsedMs)
                                                     }
                                                 },
-                                                enabled = userAnswers[safeQuestionIndex].orEmpty().isNotBlank(),
+                                                enabled = userAnswers[activeRealIndex].orEmpty().isNotBlank(),
                                                 shape = RoundedCornerShape(10.dp),
                                                 colors = ButtonDefaults.buttonColors(
                                                     containerColor = GoldAccent,
                                                     contentColor = BackgroundDark
                                                 ),
-                                                modifier = Modifier.testTag("submit_exercise_$safeQuestionIndex")
+                                                modifier = Modifier.testTag("submit_exercise_$activeRealIndex")
                                             ) {
-                                                Text("Check Answer", fontWeight = FontWeight.Bold)
-                                            }
-                                        } else if (safeQuestionIndex < exercises.lastIndex) {
-                                            Button(
-                                                onClick = {
-                                                    currentQuestionIndex = safeQuestionIndex + 1
-                                                },
-                                                shape = RoundedCornerShape(10.dp),
-                                                colors = ButtonDefaults.buttonColors(
-                                                    containerColor = GoldAccent,
-                                                    contentColor = BackgroundDark
-                                                ),
-                                                modifier = Modifier.testTag("quiz_next_button")
-                                            ) {
-                                                Text("Next Question →", fontWeight = FontWeight.Bold)
+                                                Text(if (isAr) "تحقق من الإجابة" else "Check Answer", fontWeight = FontWeight.Bold)
                                             }
                                         } else {
-                                            Button(
-                                                onClick = { selectedTab = 2 },
-                                                shape = RoundedCornerShape(10.dp),
-                                                colors = ButtonDefaults.buttonColors(
-                                                    containerColor = GoldAccent,
-                                                    contentColor = BackgroundDark
-                                                ),
-                                                modifier = Modifier.testTag("quiz_go_to_writing_button")
+                                            Row(
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                Text("Try AI Writing →", fontWeight = FontWeight.Bold)
+                                                if (isCurrentWrong) {
+                                                    OutlinedButton(
+                                                        onClick = {
+                                                            isSubmitted[activeRealIndex] = false
+                                                        },
+                                                        border = BorderStroke(1.dp, CoralAccent),
+                                                        shape = RoundedCornerShape(10.dp),
+                                                        modifier = Modifier.testTag("try_again_button_$activeRealIndex")
+                                                    ) {
+                                                        Icon(Icons.Default.Refresh, contentDescription = null, tint = CoralAccent, modifier = Modifier.size(16.dp))
+                                                        Spacer(Modifier.width(4.dp))
+                                                        Text(if (isAr) "حاول مجدداً" else "Try Again", color = CoralAccent, fontWeight = FontWeight.Bold)
+                                                    }
+                                                }
+
+                                                if (safeQuestionIndex < activeIndices.lastIndex) {
+                                                    Button(
+                                                        onClick = {
+                                                            currentQuestionIndex = safeQuestionIndex + 1
+                                                        },
+                                                        shape = RoundedCornerShape(10.dp),
+                                                        colors = ButtonDefaults.buttonColors(
+                                                            containerColor = GoldAccent,
+                                                            contentColor = BackgroundDark
+                                                        ),
+                                                        modifier = Modifier.testTag("quiz_next_button")
+                                                    ) {
+                                                        Text(if (isAr) "السؤال التالي ←" else "Next Question →", fontWeight = FontWeight.Bold)
+                                                    }
+                                                } else {
+                                                    Button(
+                                                        onClick = {
+                                                            if (activeMistakeFilterIndices != null) {
+                                                                activeMistakeFilterIndices = null
+                                                                exercisesFinished = true
+                                                                currentQuestionIndex = 0
+                                                            } else {
+                                                                selectedTab = 2
+                                                            }
+                                                        },
+                                                        shape = RoundedCornerShape(10.dp),
+                                                        colors = ButtonDefaults.buttonColors(
+                                                            containerColor = GoldAccent,
+                                                            contentColor = BackgroundDark
+                                                        ),
+                                                        modifier = Modifier.testTag("quiz_go_to_writing_button")
+                                                    ) {
+                                                        Text(
+                                                            if (activeMistakeFilterIndices != null) {
+                                                                if (isAr) "إنهاء مراجعة الأخطاء ✓" else "Finish Retry ✓"
+                                                            } else {
+                                                                if (isAr) "كتابة بالذكاء الاصطناعي ←" else "Try AI Writing →"
+                                                            },
+                                                            fontWeight = FontWeight.Bold
+                                                        )
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -1668,12 +1803,20 @@ fun GrammarLessonDetailScreen(
                         }
                     }
 
-                    // Score Summary Card when all questions are completed
-                    if (exercisesFinished || (exercises.isNotEmpty() && exercises.indices.all { isSubmitted[it] == true })) {
+                    // Score Summary Card when quiz is completed or already completed
+                    if (exercisesFinished || progress?.isCompleted == true || (exercises.isNotEmpty() && exercises.indices.all { isSubmitted[it] == true })) {
                         item {
-                            val correctCount = exercises.indices.count { i ->
-                                userAnswers[i]?.trim().equals(exercises[i].answer.trim(), ignoreCase = true)
+                            val isAr = com.example.ui.theme.AppLanguageState.isArabic
+                            val currentScore = if (userAnswers.isNotEmpty()) {
+                                exercises.indices.count { i ->
+                                    isGrammarAnswerCorrect(userAnswers[i].orEmpty(), exercises[i].answer)
+                                }
+                            } else {
+                                progress?.bestScore ?: 0
                             }
+                            val bestScore = maxOf(progress?.bestScore ?: 0, currentScore)
+                            val percentage = if (exercises.isNotEmpty()) (bestScore * 100) / exercises.size else 100
+
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -1693,37 +1836,71 @@ fun GrammarLessonDetailScreen(
                                         imageVector = Icons.Default.CheckCircle,
                                         contentDescription = null,
                                         tint = EmeraldAccent,
-                                        modifier = Modifier.size(32.dp)
+                                        modifier = Modifier.size(36.dp)
                                     )
                                     Text(
-                                        text = "Quiz Complete: $correctCount / ${exercises.size} (${(correctCount * 100) / exercises.size}%)",
+                                        text = if (isAr) "اكتمل الاختبار: $bestScore من ${exercises.size} ($percentage%)"
+                                        else "Quiz Complete: $bestScore / ${exercises.size} ($percentage%)",
                                         style = MaterialTheme.typography.titleMedium,
                                         color = EmeraldAccent,
                                         fontWeight = FontWeight.Bold
                                     )
                                     Text(
-                                        text = "Your lesson progress has been saved.",
+                                        text = if (isAr) "تم حفظ تقدمك في هذا الدرس بنجاح."
+                                        else "Your lesson progress has been saved.",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = TextSecondary
                                     )
                                     Row(
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
                                         modifier = Modifier.padding(top = 4.dp)
                                     ) {
+                                        val hasMistakes = bestScore < exercises.size
+                                        if (hasMistakes) {
+                                            OutlinedButton(
+                                                onClick = {
+                                                    val mistakeIndices = exercises.indices.filter { idx ->
+                                                        val ans = userAnswers[idx].orEmpty()
+                                                        !isGrammarAnswerCorrect(ans, exercises[idx].answer)
+                                                    }.ifEmpty {
+                                                        exercises.indices.toList().takeLast((exercises.size - bestScore).coerceAtLeast(1))
+                                                    }
+                                                    mistakeIndices.forEach {
+                                                        isSubmitted.remove(it)
+                                                        userAnswers.remove(it)
+                                                    }
+                                                    activeMistakeFilterIndices = mistakeIndices
+                                                    currentQuestionIndex = 0
+                                                    exercisesFinished = false
+                                                    isReviewMode = false
+                                                },
+                                                border = BorderStroke(1.dp, CoralAccent),
+                                                shape = RoundedCornerShape(10.dp)
+                                            ) {
+                                                Icon(Icons.Default.Refresh, contentDescription = null, tint = CoralAccent, modifier = Modifier.size(16.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(if (isAr) "إعادة الأخطاء" else "Retry Mistakes", color = CoralAccent, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+
                                         OutlinedButton(
                                             onClick = {
                                                 userAnswers.clear()
                                                 isSubmitted.clear()
+                                                firstAttemptCorrect.clear()
                                                 mistakeExplanations.clear()
+                                                activeMistakeFilterIndices = null
                                                 exercisesFinished = false
+                                                isReviewMode = false
                                                 currentQuestionIndex = 0
                                             },
                                             border = BorderStroke(1.dp, GoldAccent),
                                             shape = RoundedCornerShape(10.dp)
                                         ) {
                                             Icon(Icons.Default.Refresh, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(16.dp))
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text("Practice Again", color = GoldAccent, fontWeight = FontWeight.Bold)
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(if (isAr) "إعادة الكل" else "Practice Again", color = GoldAccent, fontWeight = FontWeight.Bold)
                                         }
 
                                         Button(
@@ -1731,7 +1908,7 @@ fun GrammarLessonDetailScreen(
                                             colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = BackgroundDark),
                                             shape = RoundedCornerShape(10.dp)
                                         ) {
-                                            Text("AI Writing →", fontWeight = FontWeight.Bold)
+                                            Text(if (isAr) "كتابة بالذكاء الاصطناعي ←" else "AI Writing →", fontWeight = FontWeight.Bold)
                                         }
                                     }
                                 }

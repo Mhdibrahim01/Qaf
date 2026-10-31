@@ -149,6 +149,7 @@ import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
 import com.example.ui.theme.BorderSubtle
+import com.example.ui.theme.CoralAccent
 import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.EmeraldAccentBg
 import com.example.ui.theme.GoldAccent
@@ -1273,8 +1274,12 @@ fun ReadingDetailScreen(
     var isGeneratingQuestionsForPasted by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
-    // Questions / Quiz state
-    val userAnswers = remember { mutableStateMapOf<Int, Int>() } // questionIndex -> selectedOptionIndex
+    // Questions / Quiz state & Persistence
+    val isAlreadyCompleted = progress?.isCompleted == true
+    var isReviewMode by remember(text.id, isAlreadyCompleted) { mutableStateOf(isAlreadyCompleted) }
+    var activeMistakeFilterIndices by remember(text.id) { mutableStateOf<List<Int>?>(null) }
+    val firstAttemptCorrect = remember(text.id) { mutableStateMapOf<Int, Boolean>() }
+    val userAnswers = remember(text.id) { mutableStateMapOf<Int, Int>() } // questionIndex -> selectedOptionIndex
     var openQuestionAnswer by remember { mutableStateOf("") }
     var isSubmittingOpenQuestion by remember { mutableStateOf(false) }
     var openQuestionFeedback by remember { mutableStateOf<String?>(null) }
@@ -1766,22 +1771,92 @@ fun ReadingDetailScreen(
 
             // 5 COMPREHENSION QUESTIONS SECTION
             if (questions.isNotEmpty()) {
+                val isDone = isAlreadyCompleted || (userAnswers.size >= questions.size && questions.isNotEmpty())
+                val activeIndices = activeMistakeFilterIndices ?: questions.indices.toList()
+
                 item(key = "questions_header", contentType = "questions_header") {
-                    Text(
-                        text = "Comprehension Questions (${questions.size})",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
-                        modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp, bottom = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val isAr = com.example.ui.theme.AppLanguageState.isArabic
+                        Text(
+                            text = if (activeMistakeFilterIndices != null) {
+                                if (isAr) "إعادة الأسئلة الخاطئة (${activeIndices.size})"
+                                else "Retrying Mistakes (${activeIndices.size})"
+                            } else {
+                                if (isAr) "أسئلة الفهم والاستيعاب (${questions.size})"
+                                else "Comprehension Questions (${questions.size})"
+                            },
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        if (isAlreadyCompleted) {
+                            Surface(
+                                color = EmeraldAccent.copy(alpha = 0.15f),
+                                border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.4f)),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = if (isAr) "مكتمل ✓" else "Completed ✓",
+                                    color = EmeraldAccent,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // QUIZ RESULT BANNER (Shown when completed or finished)
+                if (isDone) {
+                    item(key = "quiz_result_banner", contentType = "quiz_result_banner") {
+                        val currentScore = if (userAnswers.isNotEmpty()) {
+                            questions.indices.count { idx -> userAnswers[idx] == questions[idx].answerIndex }
+                        } else {
+                            progress?.bestScore ?: 0
+                        }
+                        val bestScore = maxOf(progress?.bestScore ?: 0, currentScore)
+                        QuizCompletionCard(
+                            score = bestScore,
+                            total = questions.size,
+                            onRetryMistakes = {
+                                val mistakeIndices = questions.indices.filter { idx ->
+                                    val ans = userAnswers[idx]
+                                    ans != questions[idx].answerIndex
+                                }.ifEmpty {
+                                    questions.indices.toList().takeLast((questions.size - bestScore).coerceAtLeast(1))
+                                }
+                                mistakeIndices.forEach { userAnswers.remove(it) }
+                                activeMistakeFilterIndices = mistakeIndices
+                                isReviewMode = false
+                            },
+                            onRetake = {
+                                userAnswers.clear()
+                                firstAttemptCorrect.clear()
+                                activeMistakeFilterIndices = null
+                                isReviewMode = false
+                            },
+                            onReviewQuestions = {
+                                isReviewMode = true
+                                activeMistakeFilterIndices = null
+                            }
+                        )
+                    }
                 }
 
                 itemsIndexed(
-                    items = questions,
-                    key = { qIndex, q -> "q_${qIndex}_${q.prompt.hashCode()}" },
+                    items = activeIndices,
+                    key = { _, qIndex -> "q_${qIndex}_${questions[qIndex].prompt.hashCode()}" },
                     contentType = { _, _ -> "quiz_question" }
-                ) { qIndex, question ->
-                    val selectedOption = userAnswers[qIndex]
+                ) { _, qIndex ->
+                    val question = questions[qIndex]
+                    val selectedOption = if (isReviewMode && userAnswers.isEmpty()) question.answerIndex else userAnswers[qIndex]
                     ReadingQuestionCard(
                         index = qIndex,
                         question = question,
@@ -1789,40 +1864,45 @@ fun ReadingDetailScreen(
                         onSelectOption = { optIdx ->
                             if (userAnswers[qIndex] == null) {
                                 userAnswers[qIndex] = optIdx
+                                val isCorrect = optIdx == question.answerIndex
+                                if (qIndex !in firstAttemptCorrect) {
+                                    firstAttemptCorrect[qIndex] = isCorrect
+                                    if (!isCorrect) {
+                                        onSaveCorrectionSentence?.invoke(
+                                            text.id,
+                                            text.id,
+                                            text.titleEn,
+                                            question.prompt,
+                                            question.options.getOrNull(question.answerIndex).orEmpty(),
+                                            question.explanationAr,
+                                            "",
+                                            "not_checked"
+                                        )
+                                    }
+                                }
                                 // Calculate score and save progress
                                 val completedCount = userAnswers.size
                                 val correctCount = questions.indices.count { idx ->
                                     userAnswers[idx] == questions[idx].answerIndex
                                 }
-                                val isDone = completedCount >= questions.size
+                                val isDoneSaving = completedCount >= questions.size
                                 val elapsedMs = System.currentTimeMillis() - quizStartTimeMillis
                                 onSaveProgress(
                                     completedCount,
                                     questions.size,
                                     correctCount,
-                                    isDone,
+                                    isDoneSaving,
                                     elapsedMs
                                 )
                             }
+                        },
+                        onTryAgain = {
+                            userAnswers.remove(qIndex)
                         }
                     )
                 }
 
-                // QUIZ RESULT BANNER
-                if (userAnswers.size == questions.size) {
-                    item(key = "quiz_result_banner", contentType = "quiz_result_banner") {
-                        val score = questions.indices.count { idx ->
-                            userAnswers[idx] == questions[idx].answerIndex
-                        }
-                        QuizCompletionCard(
-                            score = score,
-                            total = questions.size,
-                            onRetake = {
-                                userAnswers.clear()
-                            }
-                        )
-                    }
-
+                if (isDone) {
                     // YOUR TURN SECTION (Grammar application)
                     item(key = "your_turn_grammar", contentType = "your_turn_grammar") {
                         YourTurnGrammarCard(
@@ -3598,6 +3678,7 @@ fun ReadingQuestionCard(
     question: ReadingQuestionItem,
     selectedOptionIndex: Int?,
     onSelectOption: (Int) -> Unit,
+    onTryAgain: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val isAnswered = selectedOptionIndex != null
@@ -3741,7 +3822,7 @@ fun ReadingQuestionCard(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (isCorrect) Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
+                        containerColor = if (isCorrect) Color(0xFF1B5E20).copy(alpha = 0.15f) else Color(0xFFE65100).copy(alpha = 0.15f)
                     ),
                     shape = RoundedCornerShape(8.dp)
                 ) {
@@ -3752,15 +3833,37 @@ fun ReadingQuestionCard(
                         Icon(
                             imageVector = Icons.Default.Lightbulb,
                             contentDescription = null,
-                            tint = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFE65100),
+                            tint = if (isCorrect) EmeraldAccent else Color(0xFFFFA726),
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(Modifier.width(8.dp))
                         BidiText(
                             text = question.explanationAr,
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (isCorrect) Color(0xFF1B5E20) else Color(0xFFE65100)
+                            color = if (isCorrect) EmeraldAccent else Color(0xFFFFCC80)
                         )
+                    }
+                }
+            }
+
+            // Instant Try Again button on incorrect answer
+            if (isAnswered && !isCorrect && onTryAgain != null) {
+                val isAr = com.example.ui.theme.AppLanguageState.isArabic
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    OutlinedButton(
+                        onClick = onTryAgain,
+                        border = BorderStroke(1.dp, CoralAccent),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.testTag("reading_try_again_$index")
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = null, tint = CoralAccent, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(if (isAr) "حاول مجدداً" else "Try Again", color = CoralAccent, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -3777,54 +3880,90 @@ fun QuizCompletionCard(
     score: Int,
     total: Int,
     onRetake: () -> Unit,
+    onRetryMistakes: (() -> Unit)? = null,
+    onReviewQuestions: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val isAr = com.example.ui.theme.AppLanguageState.isArabic
     Card(
         modifier = modifier
             .fillMaxWidth()
             .testTag("reading_quiz_completion_card"),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
+            containerColor = SurfaceDark
         ),
+        border = BorderStroke(1.dp, EmeraldAccent),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.CheckCircle,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(48.dp)
+                tint = EmeraldAccent,
+                modifier = Modifier.size(40.dp)
             )
-            Spacer(Modifier.height(8.dp))
             Text(
-                text = "Quiz Completed! / اكتمل الاختبار",
+                text = if (isAr) "اكتمل الاختبار بنجاح!" else "Quiz Completed!",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color = EmeraldAccent
             )
-            Spacer(Modifier.height(4.dp))
+            val percentage = if (total > 0) (score * 100) / total else 100
             Text(
-                text = "Score: $score / $total (${(score * 100) / total}%)",
+                text = if (isAr) "النتيجة: $score من $total ($percentage%)" else "Score: $score / $total ($percentage%)",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color = TextPrimary
             )
-            Spacer(Modifier.height(14.dp))
-            OutlinedButton(
-                onClick = onRetake,
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+            Text(
+                text = if (isAr) "تم حفظ تقدمك في قصة القراءة بنجاح." else "Your reading quiz progress has been saved.",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary
+            )
+            Spacer(Modifier.height(4.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Retake Quiz / إعادة الاختبار")
+                if (score < total && onRetryMistakes != null) {
+                    OutlinedButton(
+                        onClick = onRetryMistakes,
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = CoralAccent),
+                        border = BorderStroke(1.dp, CoralAccent),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = null, tint = CoralAccent, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(if (isAr) "إعادة الأخطاء" else "Retry Mistakes", fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                OutlinedButton(
+                    onClick = onRetake,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = GoldAccent),
+                    border = BorderStroke(1.dp, GoldAccent),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(if (isAr) "إعادة الاختبار" else "Retake Quiz", fontWeight = FontWeight.Bold)
+                }
+
+                if (onReviewQuestions != null) {
+                    Button(
+                        onClick = onReviewQuestions,
+                        colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = BackgroundDark),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(if (isAr) "مراجعة الأسئلة" else "Review Questions", fontWeight = FontWeight.Bold)
+                    }
+                }
             }
         }
     }
