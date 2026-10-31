@@ -3,6 +3,8 @@ package com.example.ui.navigation
 import com.example.data.importer.DataImportRepository
 import kotlinx.serialization.json.Json
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
@@ -81,6 +83,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.ui.components.ApiKeyDialog
 import com.example.ui.components.GoldBadge
+import com.example.ui.components.QafBrandSplashOverlay
 import com.example.ui.components.WordBooksBottomNavigation
 import com.example.ui.components.WordBooksNavigationRail
 import com.example.ui.components.WordBooksTopAppBar
@@ -148,6 +151,8 @@ fun WordBooksAppShell(
     val studyPlanProfile by wordBooksViewModel.studyPlanProfile.collectAsStateWithLifecycle()
     val onboardingState by wordBooksViewModel.onboardingState.collectAsStateWithLifecycle()
     val placementQuizState by wordBooksViewModel.placementQuizState.collectAsStateWithLifecycle()
+    val isStartupSplashComplete by wordBooksViewModel.isStartupSplashComplete.collectAsStateWithLifecycle()
+    val isDashboardReady by wordBooksViewModel.isDashboardReady.collectAsStateWithLifecycle()
     val userLevel = studyPlanProfile?.level?.ifBlank { "B2" } ?: "B2"
     val activeQuizSession by wordBooksViewModel.activeQuizSession.collectAsStateWithLifecycle()
     var isQuizDictionaryRequested by remember { mutableStateOf(false) }
@@ -162,34 +167,43 @@ fun WordBooksAppShell(
 
     val resolvedOnboarding = onboardingState
     if (resolvedOnboarding != null && !resolvedOnboarding.onboardingCompleted) {
-        com.example.ui.screens.OnboardingScreen(
-            onboardingState = resolvedOnboarding,
-            importState = importState,
-            totalEntriesCount = totalEntriesCount,
-            placementQuizState = placementQuizState,
-            onCompleteStep1 = wordBooksViewModel::completeOnboardingStep1,
-            onSelectLevel = wordBooksViewModel::selectOnboardingLevel,
-            onCompleteStep2 = wordBooksViewModel::completeOnboardingStep2,
-            onStartPlacementQuiz = wordBooksViewModel::startPlacementQuiz,
-            onAnswerPlacementQuestion = wordBooksViewModel::answerPlacementQuizQuestion,
-            onRetakePlacementQuiz = wordBooksViewModel::retakePlacementQuiz,
-            onUpdateQuizEditableLevel = wordBooksViewModel::updateQuizEditableLevel,
-            onPlacementQuizBack = wordBooksViewModel::handlePlacementQuizBack,
-            onSelectGoal = wordBooksViewModel::selectOnboardingGoal,
-            onSelectMinutesPerDay = wordBooksViewModel::selectOnboardingMinutesPerDay,
-            onSelectStudyDaysPerWeek = wordBooksViewModel::selectOnboardingStudyDaysPerWeek,
-            onCompleteStep3 = { g, m, d -> wordBooksViewModel.completeOnboardingStep3(g, m, d) },
-            onCompleteStep3WithTopicsAndQuietMode = wordBooksViewModel::completeOnboardingStep3,
-            onStep3Back = wordBooksViewModel::navigateBackFromStep3,
-            onCompleteStep4 = wordBooksViewModel::completeOnboardingStep4,
-            onStep4Back = wordBooksViewModel::navigateBackFromStep4,
-            initialAllowAi = batchTranslateState.allowAi,
-            onCompleteStep5 = wordBooksViewModel::completeOnboardingStep5,
-            onStep5Back = wordBooksViewModel::navigateBackFromStep5,
-            onSkipOnboarding = wordBooksViewModel::skipOnboarding,
-            onRetryImport = wordBooksViewModel::retryDictionaryImportFromOnboarding,
-            modifier = modifier
-        )
+        Box(modifier = modifier.fillMaxSize()) {
+            com.example.ui.screens.OnboardingScreen(
+                onboardingState = resolvedOnboarding,
+                importState = importState,
+                totalEntriesCount = totalEntriesCount,
+                placementQuizState = placementQuizState,
+                onCompleteStep1 = wordBooksViewModel::completeOnboardingStep1,
+                onSelectLevel = wordBooksViewModel::selectOnboardingLevel,
+                onCompleteStep2 = wordBooksViewModel::completeOnboardingStep2,
+                onStartPlacementQuiz = wordBooksViewModel::startPlacementQuiz,
+                onAnswerPlacementQuestion = wordBooksViewModel::answerPlacementQuizQuestion,
+                onRetakePlacementQuiz = wordBooksViewModel::retakePlacementQuiz,
+                onUpdateQuizEditableLevel = wordBooksViewModel::updateQuizEditableLevel,
+                onPlacementQuizBack = wordBooksViewModel::handlePlacementQuizBack,
+                onSelectGoal = wordBooksViewModel::selectOnboardingGoal,
+                onSelectMinutesPerDay = wordBooksViewModel::selectOnboardingMinutesPerDay,
+                onSelectStudyDaysPerWeek = wordBooksViewModel::selectOnboardingStudyDaysPerWeek,
+                onCompleteStep3 = { g, m, d -> wordBooksViewModel.completeOnboardingStep3(g, m, d) },
+                onCompleteStep3WithTopicsAndQuietMode = wordBooksViewModel::completeOnboardingStep3,
+                onStep3Back = wordBooksViewModel::navigateBackFromStep3,
+                onCompleteStep4 = wordBooksViewModel::completeOnboardingStep4,
+                onStep4Back = wordBooksViewModel::navigateBackFromStep4,
+                initialAllowAi = batchTranslateState.allowAi,
+                onCompleteStep5 = wordBooksViewModel::completeOnboardingStep5,
+                onStep5Back = wordBooksViewModel::navigateBackFromStep5,
+                onSkipOnboarding = wordBooksViewModel::skipOnboarding,
+                onRetryImport = wordBooksViewModel::retryDictionaryImportFromOnboarding,
+                modifier = Modifier.fillMaxSize()
+            )
+            AnimatedVisibility(
+                visible = !isStartupSplashComplete,
+                enter = fadeIn(animationSpec = tween(200)),
+                exit = fadeOut(animationSpec = tween(400))
+            ) {
+                QafBrandSplashOverlay()
+            }
+        }
         return
     }
 
@@ -372,8 +386,9 @@ fun WordBooksAppShell(
         )
     }
 
+    Box(modifier = modifier.fillMaxSize()) {
     Scaffold(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .background(BackgroundDark),
         containerColor = BackgroundDark,
@@ -590,7 +605,8 @@ fun WordBooksAppShell(
                         onLearnExtraNewWords = { count ->
                             wordBooksViewModel.startFocusedNewWordsSession(count)
                             navController.navigate(AppRoute.Flashcards) { launchSingleTop = true }
-                        }
+                        },
+                        isDashboardReady = isDashboardReady
                     )
                 }
                 composable<AppRoute.WordBooks> {
@@ -1564,5 +1580,15 @@ fun WordBooksAppShell(
             },
             confirmButton = {}
         )
+    }
+
+    // Stage 1: Branded Qaf Splash Hold Overlay on Cold Start (~450ms) with smooth 400ms fade-out
+    AnimatedVisibility(
+        visible = !isStartupSplashComplete,
+        enter = fadeIn(animationSpec = tween(200)),
+        exit = fadeOut(animationSpec = tween(400))
+    ) {
+        QafBrandSplashOverlay()
+    }
     }
 }

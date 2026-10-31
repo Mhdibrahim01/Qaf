@@ -1,5 +1,8 @@
 package com.example
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -292,6 +295,56 @@ class UxAuditVerificationTest {
             .fetchSemanticsNode().boundsInRoot
 
         assertEquals(healthBounds.height, scienceBounds.height, 1.0f)
+    }
+
+    @Test
+    fun qafStartupAndSkeletonLoading_rendersSplashSkeletonAndCrossfadesToRealDashboard() {
+        var isReady by mutableStateOf(false)
+        var showSplash by mutableStateOf(true)
+
+        composeTestRule.setContent {
+            WordBooksTheme {
+                androidx.compose.foundation.layout.Box {
+                    HomeScreen(
+                        studyStreak = 5,
+                        isDashboardReady = isReady,
+                        learnerModelSnapshot = LearnerModelSnapshot()
+                    )
+                    if (showSplash) {
+                        com.example.ui.components.QafBrandSplashOverlay()
+                    }
+                }
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        // Stage 1: Verify Qaf Branded Splash Overlay renders
+        composeTestRule.onNodeWithTag("qaf_brand_splash_overlay", useUnmergedTree = true).assertExists()
+        composeTestRule.onNodeWithTag("qaf_splash_logo_box", useUnmergedTree = true).assertExists()
+        composeTestRule.onNodeWithText("Qaf • قاف", useUnmergedTree = true).assertExists()
+        composeTestRule.onNodeWithText("تعلّم الإنجليزية بلغتك", useUnmergedTree = true).assertExists()
+
+        // Transition from Stage 1 (Splash) to Stage 2 (Shimmer Skeleton)
+        showSplash = false
+        composeTestRule.waitForIdle()
+
+        // Stage 2: Verify HomeDashboardSkeleton renders Hero, 5 Task rows, and Mastery card
+        composeTestRule.onNodeWithTag("home_dashboard_skeleton", useUnmergedTree = true).assertExists()
+        composeTestRule.onNodeWithTag("skeleton_hero_card", useUnmergedTree = true).assertExists()
+        composeTestRule.onNodeWithTag("skeleton_study_plan_card", useUnmergedTree = true).assertExists()
+        composeTestRule.onNodeWithTag("skeleton_task_row_0", useUnmergedTree = true).assertExists()
+        composeTestRule.onNodeWithTag("skeleton_task_row_4", useUnmergedTree = true).assertExists()
+        composeTestRule.onNodeWithTag("skeleton_mastery_card", useUnmergedTree = true).assertExists()
+
+        // Transition from Stage 2 (Shimmer Skeleton) to Stage 3 (Real Populated Content via 400ms Crossfade)
+        isReady = true
+        composeTestRule.mainClock.advanceTimeBy(500L)
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("home_real_content_layer", useUnmergedTree = true).assertExists()
+        composeTestRule.onNodeWithTag("home_study_streak_badge", useUnmergedTree = true).assertExists()
+        composeTestRule.onNodeWithText("5 day streak", useUnmergedTree = true).assertExists()
+        composeTestRule.onNodeWithTag("home_today_plan_widget", useUnmergedTree = true).assertExists()
     }
 }
 
