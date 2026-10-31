@@ -532,6 +532,15 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     private val _activeBlitzQuestions = MutableStateFlow<List<com.example.data.blitz.BlitzQuestionItem>?>(null)
     val activeBlitzQuestions: StateFlow<List<com.example.data.blitz.BlitzQuestionItem>?> = _activeBlitzQuestions.asStateFlow()
 
+    private val _isBlitzSetupOpen = MutableStateFlow(false)
+    val isBlitzSetupOpen: StateFlow<Boolean> = _isBlitzSetupOpen.asStateFlow()
+
+    private val _blitzFilterConfig = MutableStateFlow(com.example.data.blitz.BlitzFilterConfig())
+    val blitzFilterConfig: StateFlow<com.example.data.blitz.BlitzFilterConfig> = _blitzFilterConfig.asStateFlow()
+
+    private val _blitzAvailableWordCount = MutableStateFlow(0)
+    val blitzAvailableWordCount: StateFlow<Int> = _blitzAvailableWordCount.asStateFlow()
+
     val blitzStats: StateFlow<com.example.data.blitz.VocabularyBlitzStats> = onboardingRepository.stateFlow
         .map { state ->
             com.example.data.blitz.VocabularyBlitzStats(
@@ -545,6 +554,45 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = com.example.data.blitz.VocabularyBlitzStats()
+        )
+
+    private val _activeSurvivalQuestions = MutableStateFlow<List<com.example.data.blitz.BlitzQuestionItem>?>(null)
+    val activeSurvivalQuestions: StateFlow<List<com.example.data.blitz.BlitzQuestionItem>?> = _activeSurvivalQuestions.asStateFlow()
+
+    private val _isSurvivalSetupOpen = MutableStateFlow(false)
+    val isSurvivalSetupOpen: StateFlow<Boolean> = _isSurvivalSetupOpen.asStateFlow()
+
+    val survivalBestStreak: StateFlow<Int> = onboardingRepository.stateFlow
+        .map { it.survivalBestStreak }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 0
+        )
+
+    private val _isMatchMadnessActive = MutableStateFlow(false)
+    val isMatchMadnessActive: StateFlow<Boolean> = _isMatchMadnessActive.asStateFlow()
+
+    private val _matchMadnessCandidates = MutableStateFlow<List<EntryEntity>>(emptyList())
+    val matchMadnessCandidates: StateFlow<List<EntryEntity>> = _matchMadnessCandidates.asStateFlow()
+
+    val matchMadnessBestTime: StateFlow<Int> = onboardingRepository.stateFlow
+        .map { it.matchMadnessBestTime }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 0
+        )
+
+    private val _isGrammarHunterActive = MutableStateFlow(false)
+    val isGrammarHunterActive: StateFlow<Boolean> = _isGrammarHunterActive.asStateFlow()
+
+    val grammarHunterBestScore: StateFlow<Int> = onboardingRepository.stateFlow
+        .map { it.grammarHunterBestScore }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 0
         )
 
     val quizHistory: StateFlow<List<QuizResultEntity>> = database.wordBooksDao().observeAllQuizResults().stateIn(
@@ -3313,15 +3361,154 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         com.example.data.ai.GeminiApiKeyManager.setEngineMode(getApplication(), mode)
     }
 
-    fun startVocabularyBlitz() {
+    fun openVocabularyBlitzSetup() {
         viewModelScope.launch(Dispatchers.IO) {
-            val candidates = database.wordBooksDao().getVocabularyBlitzCandidates(limit = 120)
+            val prefs = onboardingRepository.getSnapshot()
+            val savedDecks = try {
+                if (prefs.blitzFilterDecksJson.isNotBlank()) {
+                    kotlinx.serialization.json.Json.decodeFromString<List<String>>(prefs.blitzFilterDecksJson)
+                } else emptyList()
+            } catch (_: Exception) { emptyList() }
+
+            val savedLevels = try {
+                if (prefs.blitzFilterLevelsJson.isNotBlank()) {
+                    kotlinx.serialization.json.Json.decodeFromString<List<String>>(prefs.blitzFilterLevelsJson).toSet()
+                } else setOf("A1", "A2", "B1", "B2", "C1")
+            } catch (_: Exception) { setOf("A1", "A2", "B1", "B2", "C1") }
+
+            val config = com.example.data.blitz.BlitzFilterConfig(
+                selectedDecks = savedDecks,
+                allBooksSelected = prefs.blitzFilterAllBooks,
+                selectedLevels = savedLevels.ifEmpty { setOf("A1", "A2", "B1", "B2", "C1") },
+                studiedOnly = prefs.blitzFilterStudiedOnly
+            )
+            _blitzFilterConfig.value = config
+            recalculateBlitzWordCount(config)
+            _isBlitzSetupOpen.value = true
+        }
+    }
+
+    fun dismissVocabularyBlitzSetup() {
+        _isBlitzSetupOpen.value = false
+    }
+
+    fun updateBlitzFilterConfig(config: com.example.data.blitz.BlitzFilterConfig) {
+        _blitzFilterConfig.value = config
+        viewModelScope.launch(Dispatchers.IO) {
+            recalculateBlitzWordCount(config)
+        }
+    }
+
+    private suspend fun recalculateBlitzWordCount(config: com.example.data.blitz.BlitzFilterConfig) {
+        val safeDecks = config.selectedDecks.ifEmpty { listOf("__ALL__") }
+        val safeLevels = config.selectedLevels.toList().ifEmpty { listOf("__ALL__") }
+        val count = database.wordBooksDao().countVocabularyBlitzCandidatesFiltered(
+            decks = safeDecks,
+            allDecks = config.allBooksSelected || config.selectedDecks.isEmpty(),
+            levels = safeLevels,
+            allLevels = config.selectedLevels.size >= 5 || config.selectedLevels.isEmpty(),
+            studiedOnly = config.studiedOnly
+        )
+        _blitzAvailableWordCount.value = count
+    }
+
+    fun startFilteredVocabularyBlitz(config: com.example.data.blitz.BlitzFilterConfig) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val decksJson = kotlinx.serialization.json.Json.encodeToString(config.selectedDecks)
+            val levelsJson = kotlinx.serialization.json.Json.encodeToString(config.selectedLevels.toList())
+            onboardingRepository.saveBlitzFilters(
+                decksJson = decksJson,
+                allBooks = config.allBooksSelected,
+                levelsJson = levelsJson,
+                studiedOnly = config.studiedOnly
+            )
+
+            val safeDecks = config.selectedDecks.ifEmpty { listOf("__ALL__") }
+            val safeLevels = config.selectedLevels.toList().ifEmpty { listOf("__ALL__") }
+            val candidates = database.wordBooksDao().getVocabularyBlitzCandidatesFiltered(
+                decks = safeDecks,
+                allDecks = config.allBooksSelected || config.selectedDecks.isEmpty(),
+                levels = safeLevels,
+                allLevels = config.selectedLevels.size >= 5 || config.selectedLevels.isEmpty(),
+                studiedOnly = config.studiedOnly,
+                limit = 120
+            )
+
             val generated = com.example.data.blitz.VocabularyBlitzEngine.generateBlitzQuestions(
                 entries = candidates,
                 count = 60
             )
+            _isBlitzSetupOpen.value = false
             _activeBlitzQuestions.value = generated
         }
+    }
+
+    fun practiceBlitzMistakes(
+        missedItems: List<com.example.data.blitz.BlitzQuestionItem>,
+        launchFlashcardsNow: Boolean = false
+    ) {
+        if (missedItems.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val nowMillis = System.currentTimeMillis()
+            for (item in missedItems) {
+                val cleanWord = item.word.trim()
+                val cardKey = "${item.deck}:${cleanWord.lowercase()}"
+                val existing = database.wordBooksDao().getWordProgress(cardKey)
+                    ?: com.example.data.local.WordProgressEntity(
+                        cardKey = cardKey,
+                        deck = item.deck,
+                        text = cleanWord,
+                        firstLearnedTimestamp = nowMillis
+                    )
+                val updated = com.example.data.importer.Sm2Algorithm.applyRating(
+                    existing,
+                    com.example.data.importer.Sm2Rating.AGAIN,
+                    nowMillis
+                )
+                database.wordBooksDao().upsertWordProgress(updated.copy(dueTimestamp = nowMillis))
+            }
+            refreshDailyChecklist()
+
+            if (launchFlashcardsNow) {
+                val headwords = missedItems.map { it.word.lowercase().trim() }.distinct()
+                val entries = database.wordBooksDao().getEntriesByHeadwords(headwords)
+                val allProgress = database.wordBooksDao().getAllWordProgressList().associateBy { it.cardKey }
+                val groupedMap = LinkedHashMap<String, MutableList<EntryEntity>>()
+                for (entry in entries) {
+                    val key = "${entry.deck}:${entry.text.trim().lowercase()}"
+                    val list = groupedMap.getOrPut(key) { ArrayList(2) }
+                    list.add(entry)
+                }
+                val cards = groupedMap.map { (cardKey, variants) ->
+                    repository.buildGroupedCardFromEntries(variants, allProgress[cardKey])
+                }
+                if (cards.isNotEmpty()) {
+                    _activeBlitzQuestions.value = null
+                    _flashcardCards.value = cards
+                    _flashcardDeckId.value = DataImportRepository.DUE_TODAY_DECK_ID
+                    _flashcardIndex.value = 0
+                    _isCurrentCardFlipped.value = false
+                    _isFlashcardSessionCompleted.value = false
+                    sessionRatedCardKeys.clear()
+                    sessionFailedCards.clear()
+                    sessionMasteredCount = 0
+                    sessionNeedsReviewCount = 0
+                    sessionQualitySum = 0
+                    sessionInitialCards = cards
+                    _flashcardSessionType.value = FlashcardSessionType.REVIEW
+                    _flashcardSessionSummary.value = FlashcardSessionSummary(
+                        sessionType = FlashcardSessionType.REVIEW,
+                        deckName = "مراجعة أخطاء تحدي الـ 60 ثانية",
+                        totalCount = cards.size,
+                        initialCards = cards
+                    )
+                }
+            }
+        }
+    }
+
+    fun startVocabularyBlitz() {
+        openVocabularyBlitzSetup()
     }
 
     fun dismissVocabularyBlitz() {
@@ -3351,6 +3538,131 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                     )
                 )
             }
+        }
+    }
+
+    fun openSurvivalSetup() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val prefs = onboardingRepository.getSnapshot()
+            val savedDecks = try {
+                if (prefs.blitzFilterDecksJson.isNotBlank()) {
+                    kotlinx.serialization.json.Json.decodeFromString<List<String>>(prefs.blitzFilterDecksJson)
+                } else emptyList()
+            } catch (e: Exception) {
+                emptyList()
+            }
+            val savedLevels = try {
+                if (prefs.blitzFilterLevelsJson.isNotBlank()) {
+                    kotlinx.serialization.json.Json.decodeFromString<List<String>>(prefs.blitzFilterLevelsJson).toSet()
+                } else setOf("A1", "A2", "B1", "B2", "C1")
+            } catch (e: Exception) {
+                setOf("A1", "A2", "B1", "B2", "C1")
+            }
+            val config = com.example.data.blitz.BlitzFilterConfig(
+                selectedDecks = savedDecks,
+                allBooksSelected = prefs.blitzFilterAllBooks,
+                selectedLevels = savedLevels,
+                studiedOnly = prefs.blitzFilterStudiedOnly
+            )
+            _blitzFilterConfig.value = config
+            recalculateBlitzWordCount(config)
+            _isSurvivalSetupOpen.value = true
+        }
+    }
+
+    fun dismissSurvivalSetup() {
+        _isSurvivalSetupOpen.value = false
+    }
+
+    fun startFilteredSurvival(config: com.example.data.blitz.BlitzFilterConfig) {
+        viewModelScope.launch(Dispatchers.IO) {
+            onboardingRepository.saveBlitzFilters(
+                decksJson = kotlinx.serialization.json.Json.encodeToString(config.selectedDecks),
+                allBooks = config.allBooksSelected,
+                levelsJson = kotlinx.serialization.json.Json.encodeToString(config.selectedLevels.toList()),
+                studiedOnly = config.studiedOnly
+            )
+
+            val candidates = database.wordBooksDao().getVocabularyBlitzCandidatesFiltered(
+                decks = config.selectedDecks,
+                allDecks = config.allBooksSelected,
+                levels = config.selectedLevels.toList(),
+                allLevels = config.selectedLevels.size >= 5,
+                studiedOnly = config.studiedOnly,
+                limit = 120
+            )
+
+            val generated = com.example.data.blitz.VocabularyBlitzEngine.generateBlitzQuestions(
+                entries = candidates,
+                count = 80
+            )
+
+            _isSurvivalSetupOpen.value = false
+            _activeSurvivalQuestions.value = generated
+        }
+    }
+
+    fun dismissSurvival() {
+        _activeSurvivalQuestions.value = null
+    }
+
+    fun recordSurvivalResult(sessionState: com.example.data.blitz.SurvivalSessionState) {
+        viewModelScope.launch(Dispatchers.IO) {
+            onboardingRepository.saveSurvivalBestStreak(sessionState.bestStreakInSession)
+            if (sessionState.totalAnswered > 0) {
+                val now = System.currentTimeMillis()
+                val todayStr = studyPlanRepository.timeProvider.todayDateString()
+                database.wordBooksDao().insertQuizResult(
+                    QuizResultEntity(
+                        date = todayStr,
+                        quizType = "vocab_survival_3hearts",
+                        skill = "vocabulary",
+                        totalQuestions = sessionState.totalAnswered,
+                        correctAnswers = sessionState.correctCount,
+                        accuracyPercent = sessionState.accuracyPercent.toFloat(),
+                        timestamp = now
+                    )
+                )
+            }
+        }
+    }
+
+    fun startMatchMadness() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val candidates = database.wordBooksDao().getVocabularyBlitzCandidatesFiltered(
+                decks = emptyList(),
+                allDecks = true,
+                levels = emptyList(),
+                allLevels = true,
+                studiedOnly = false,
+                limit = 60
+            )
+            _matchMadnessCandidates.value = candidates
+            _isMatchMadnessActive.value = true
+        }
+    }
+
+    fun dismissMatchMadness() {
+        _isMatchMadnessActive.value = false
+    }
+
+    fun recordMatchMadnessResult(timeSeconds: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            onboardingRepository.saveMatchMadnessBestTime(timeSeconds)
+        }
+    }
+
+    fun startGrammarHunter() {
+        _isGrammarHunterActive.value = true
+    }
+
+    fun dismissGrammarHunter() {
+        _isGrammarHunterActive.value = false
+    }
+
+    fun recordGrammarHunterResult(score: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            onboardingRepository.saveGrammarHunterBestScore(score)
         }
     }
 

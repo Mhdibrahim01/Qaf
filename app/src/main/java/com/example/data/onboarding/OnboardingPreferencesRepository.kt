@@ -53,7 +53,14 @@ data class OnboardingPreferencesState(
     val blitzHighScore: Int = 0,
     val blitzBestStreak: Int = 0,
     val blitzBadgeWordSniper: Boolean = false,
-    val blitzBadgeAcademicLightning: Boolean = false
+    val blitzBadgeAcademicLightning: Boolean = false,
+    val blitzFilterDecksJson: String = "[]",
+    val blitzFilterAllBooks: Boolean = true,
+    val blitzFilterLevelsJson: String = "[\"A1\",\"A2\",\"B1\",\"B2\",\"C1\"]",
+    val blitzFilterStudiedOnly: Boolean = false,
+    val survivalBestStreak: Int = 0,
+    val matchMadnessBestTime: Int = 0,
+    val grammarHunterBestScore: Int = 0
 ) {
     /**
      * Returns the 1-indexed step (1..5) that should currently be shown when onboarding is active.
@@ -109,6 +116,13 @@ class OnboardingPreferencesRepository(
         val KEY_BLITZ_BEST_STREAK = intPreferencesKey("blitz_best_streak")
         val KEY_BLITZ_BADGE_WORD_SNIPER = booleanPreferencesKey("blitz_badge_word_sniper")
         val KEY_BLITZ_BADGE_ACADEMIC_LIGHTNING = booleanPreferencesKey("blitz_badge_academic_lightning")
+        val KEY_BLITZ_FILTER_DECKS = stringPreferencesKey("blitz_filter_decks_json")
+        val KEY_BLITZ_FILTER_ALL_BOOKS = booleanPreferencesKey("blitz_filter_all_books")
+        val KEY_BLITZ_FILTER_LEVELS = stringPreferencesKey("blitz_filter_levels_json")
+        val KEY_BLITZ_FILTER_STUDIED_ONLY = booleanPreferencesKey("blitz_filter_studied_only")
+        val KEY_SURVIVAL_BEST_STREAK = intPreferencesKey("survival_best_streak")
+        val KEY_MATCH_MADNESS_BEST_TIME = intPreferencesKey("match_madness_best_time")
+        val KEY_GRAMMAR_HUNTER_BEST_SCORE = intPreferencesKey("grammar_hunter_best_score")
 
         const val ENABLE_DAILY_REMINDER_PROMPT = true
     }
@@ -151,7 +165,14 @@ class OnboardingPreferencesRepository(
             blitzHighScore = prefs[KEY_BLITZ_HIGH_SCORE] ?: 0,
             blitzBestStreak = prefs[KEY_BLITZ_BEST_STREAK] ?: 0,
             blitzBadgeWordSniper = prefs[KEY_BLITZ_BADGE_WORD_SNIPER] ?: false,
-            blitzBadgeAcademicLightning = prefs[KEY_BLITZ_BADGE_ACADEMIC_LIGHTNING] ?: false
+            blitzBadgeAcademicLightning = prefs[KEY_BLITZ_BADGE_ACADEMIC_LIGHTNING] ?: false,
+            blitzFilterDecksJson = prefs[KEY_BLITZ_FILTER_DECKS] ?: "[]",
+            blitzFilterAllBooks = prefs[KEY_BLITZ_FILTER_ALL_BOOKS] ?: true,
+            blitzFilterLevelsJson = prefs[KEY_BLITZ_FILTER_LEVELS] ?: "[\"A1\",\"A2\",\"B1\",\"B2\",\"C1\"]",
+            blitzFilterStudiedOnly = prefs[KEY_BLITZ_FILTER_STUDIED_ONLY] ?: false,
+            survivalBestStreak = prefs[KEY_SURVIVAL_BEST_STREAK] ?: 0,
+            matchMadnessBestTime = prefs[KEY_MATCH_MADNESS_BEST_TIME] ?: 0,
+            grammarHunterBestScore = prefs[KEY_GRAMMAR_HUNTER_BEST_SCORE] ?: 0
         )
     }
 
@@ -380,6 +401,48 @@ class OnboardingPreferencesRepository(
             }
             if (unlockedAcademicLightning) {
                 prefs[KEY_BLITZ_BADGE_ACADEMIC_LIGHTNING] = true
+            }
+        }
+    }
+
+    suspend fun saveBlitzFilters(
+        decksJson: String,
+        allBooks: Boolean,
+        levelsJson: String,
+        studiedOnly: Boolean
+    ) {
+        dataStore.edit { prefs ->
+            prefs[KEY_BLITZ_FILTER_DECKS] = decksJson
+            prefs[KEY_BLITZ_FILTER_ALL_BOOKS] = allBooks
+            prefs[KEY_BLITZ_FILTER_LEVELS] = levelsJson
+            prefs[KEY_BLITZ_FILTER_STUDIED_ONLY] = studiedOnly
+        }
+    }
+
+    suspend fun saveSurvivalBestStreak(streak: Int) {
+        dataStore.edit { prefs ->
+            val prev = prefs[KEY_SURVIVAL_BEST_STREAK] ?: 0
+            if (streak > prev) {
+                prefs[KEY_SURVIVAL_BEST_STREAK] = streak
+            }
+        }
+    }
+
+    suspend fun saveMatchMadnessBestTime(timeSeconds: Int) {
+        if (timeSeconds <= 0) return
+        dataStore.edit { prefs ->
+            val prev = prefs[KEY_MATCH_MADNESS_BEST_TIME] ?: 0
+            if (prev == 0 || timeSeconds < prev) {
+                prefs[KEY_MATCH_MADNESS_BEST_TIME] = timeSeconds
+            }
+        }
+    }
+
+    suspend fun saveGrammarHunterBestScore(score: Int) {
+        dataStore.edit { prefs ->
+            val prev = prefs[KEY_GRAMMAR_HUNTER_BEST_SCORE] ?: 0
+            if (score > prev) {
+                prefs[KEY_GRAMMAR_HUNTER_BEST_SCORE] = score
             }
         }
     }

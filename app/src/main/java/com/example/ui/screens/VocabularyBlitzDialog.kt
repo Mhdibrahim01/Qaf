@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,10 +34,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -108,6 +113,8 @@ fun VocabularyBlitzDialog(
     enableTimerAutoTick: Boolean = true,
     onPlayPronunciation: (String) -> Unit = {},
     onFinishRound: (VocabularyBlitzSessionState) -> Unit = {},
+    onPracticeMistakes: (List<BlitzQuestionItem>) -> Unit = {},
+    onChangeFiltersRequest: () -> Unit = {},
     onPlayAgainRequest: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
@@ -233,6 +240,9 @@ fun VocabularyBlitzDialog(
                     BlitzSummaryContent(
                         state = sessionState,
                         savedStats = savedStats,
+                        onSpeakWord = onPlayPronunciation,
+                        onPracticeMistakes = onPracticeMistakes,
+                        onChangeFilters = onChangeFiltersRequest,
                         onPlayAgain = {
                             onPlayAgainRequest()
                             sessionState = VocabularyBlitzSessionState(
@@ -524,7 +534,8 @@ private fun ColumnScope.BlitzActiveGameContent(
                                     )
                                 }
                             }
-                            if (question.ipa.isNotBlank()) {
+                            val cleanIpa = question.ipa.trim().trim('/')
+                            if (cleanIpa.isNotBlank()) {
                                 Surface(
                                     color = SurfaceElevatedDark,
                                     shape = PillShape,
@@ -534,7 +545,7 @@ private fun ColumnScope.BlitzActiveGameContent(
                                         .clickable { onSpeakWord(question.word) }
                                 ) {
                                     Text(
-                                        text = question.ipa,
+                                        text = "/$cleanIpa/",
                                         style = MaterialTheme.typography.labelMedium,
                                         color = TextSecondary,
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
@@ -592,7 +603,8 @@ private fun ColumnScope.BlitzActiveGameContent(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 24.dp),
+                    .navigationBarsPadding()
+                    .padding(bottom = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 if (question.mode == BlitzQuestionMode.TRUE_FALSE) {
@@ -616,6 +628,12 @@ private fun ColumnScope.BlitzActiveGameContent(
                                 else -> baseAccent
                             }
 
+                            val displayLabel = if (idx == 0 || label.contains("صحيح")) {
+                                "✓ Correct • \u2066صحيح\u2069"
+                            } else if (idx == 1 || label.contains("خاطئ")) {
+                                "✗ False • \u2066خاطئ\u2069"
+                            } else label
+
                             Surface(
                                 modifier = Modifier
                                     .weight(1f)
@@ -634,7 +652,7 @@ private fun ColumnScope.BlitzActiveGameContent(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = label,
+                                        text = displayLabel,
                                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
                                         color = if (isTapped) TextPrimary else baseAccent,
                                         textAlign = TextAlign.Center
@@ -702,15 +720,23 @@ private fun ColumnScope.BlitzActiveGameContent(
 }
 
 @Composable
-private fun BlitzSummaryContent(
+internal fun BlitzSummaryContent(
     state: VocabularyBlitzSessionState,
     savedStats: VocabularyBlitzStats,
+    onSpeakWord: (String) -> Unit = {},
+    onPracticeMistakes: (List<BlitzQuestionItem>) -> Unit = {},
+    onChangeFilters: () -> Unit = {},
     onPlayAgain: () -> Unit,
     onDone: () -> Unit
 ) {
     val scrollState = rememberScrollState()
     val wordSniperEarned = state.unlockedWordSniperNow || savedStats.wordSniperUnlocked
     val academicLightningEarned = state.unlockedAcademicLightningNow || savedStats.academicLightningUnlocked
+    var hasPracticedMistakes by remember { mutableStateOf(false) }
+
+    val distinctMissedWords = remember(state.missedQuestions) {
+        state.missedQuestions.distinctBy { it.word.lowercase().trim() }
+    }
 
     Surface(
         modifier = Modifier
@@ -755,6 +781,23 @@ private fun BlitzSummaryContent(
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
                     )
                 }
+            } else {
+                Surface(
+                    color = SurfaceElevatedDark,
+                    shape = PillShape,
+                    border = BorderStroke(1.dp, BorderDark),
+                    modifier = Modifier.testTag("blitz_personal_best_info")
+                ) {
+                    Text(
+                        text = bi(
+                            "Personal Best: ${maxOf(savedStats.highScore, state.score)} pts",
+                            "أعلى نتيجة شخصية: ${maxOf(savedStats.highScore, state.score)} نقطة 🏆"
+                        ),
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = GoldAccent,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                    )
+                }
             }
 
             Text(
@@ -766,23 +809,212 @@ private fun BlitzSummaryContent(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 BlitzStatPill(
                     label = bi("Correct", "صحيحة"),
                     value = "${state.correctCount}",
-                    color = EmeraldAccent
+                    color = EmeraldAccent,
+                    modifier = Modifier.weight(1f)
                 )
                 BlitzStatPill(
-                    label = bi("Max Combo", "أعلى سلسلة"),
-                    value = "${state.maxComboStreak} 🔥",
-                    color = CoralAccent
+                    label = bi("Wrong", "خاطئة"),
+                    value = "${state.wrongCount}",
+                    color = CoralAccent,
+                    modifier = Modifier.weight(1f)
                 )
                 BlitzStatPill(
                     label = bi("Accuracy", "الدقة"),
                     value = "${state.accuracyPercent}%",
-                    color = SkyAccent
+                    color = SkyAccent,
+                    modifier = Modifier.weight(1f)
                 )
+                BlitzStatPill(
+                    label = bi("Max Combo", "السلسلة"),
+                    value = "${state.maxComboStreak} 🔥",
+                    color = AmberAccent,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // Missed Words Review Section
+            if (distinctMissedWords.isNotEmpty()) {
+                HorizontalDivider(color = BorderDark)
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("blitz_missed_words_section"),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ErrorOutline,
+                                contentDescription = null,
+                                tint = CoralAccent,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = bi(
+                                    "Missed Words Review (${distinctMissedWords.size})",
+                                    "مراجعة الكلمات الخاطئة (${distinctMissedWords.size})"
+                                ),
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = TextPrimary
+                            )
+                        }
+
+                        Surface(
+                            color = CoralAccent.copy(alpha = 0.15f),
+                            shape = PillShape
+                        ) {
+                            Text(
+                                text = "${distinctMissedWords.size} words",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = CoralAccent,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        distinctMissedWords.forEachIndexed { idx, item ->
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("blitz_missed_word_$idx"),
+                                color = SurfaceElevatedDark,
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, BorderDark)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Text(
+                                                text = item.word,
+                                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                                color = TextPrimary
+                                            )
+                                            if (item.pos.isNotBlank()) {
+                                                Surface(
+                                                    color = GoldAccentDim,
+                                                    shape = PillShape
+                                                ) {
+                                                    Text(
+                                                        text = item.pos,
+                                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                                        color = GoldAccent,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                            }
+                                            GoldBadge(text = item.level)
+                                        }
+
+                                        BidiText(
+                                            text = item.trueArabicMeaning,
+                                            style = ArabicTypography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                                            color = EmeraldAccent
+                                        )
+                                    }
+
+                                    IconButton(
+                                        onClick = { onSpeakWord(item.word) },
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .testTag("blitz_speak_missed_$idx")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                            contentDescription = "Listen to pronunciation",
+                                            tint = GoldAccent,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (!hasPracticedMistakes) {
+                        Button(
+                            onClick = {
+                                hasPracticedMistakes = true
+                                onPracticeMistakes(distinctMissedWords)
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = CoralAccent,
+                                contentColor = BackgroundDark
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("blitz_practice_mistakes_btn")
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = bi("Practice Mistakes (Update in SM-2)", "مراجعة الأخطاء وتحديث SM-2 🔄"),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    } else {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("blitz_mistakes_practiced_banner"),
+                            color = EmeraldAccent.copy(alpha = 0.16f),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.5f))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = EmeraldAccent,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = bi(
+                                        "✓ Queued in Spaced Repetition (SM-2) for tomorrow's review!",
+                                        "✓ تم تحديث خوارزمية SM-2 وجدولة الكلمات في مراجعة الغد!"
+                                    ),
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = EmeraldAccent
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             HorizontalDivider(color = BorderDark)
@@ -822,7 +1054,7 @@ private fun BlitzSummaryContent(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
                     onClick = onPlayAgain,
@@ -831,12 +1063,24 @@ private fun BlitzSummaryContent(
                         contentColor = BackgroundDark
                     ),
                     modifier = Modifier
-                        .weight(1f)
+                        .weight(1.3f)
                         .testTag("blitz_play_again_btn")
                 ) {
                     Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(bi("Play Again", "العب مجدداً"), fontWeight = FontWeight.Bold)
+                }
+
+                OutlinedButton(
+                    onClick = onChangeFilters,
+                    border = BorderStroke(1.dp, GoldAccentBorder),
+                    modifier = Modifier
+                        .weight(1.3f)
+                        .testTag("blitz_change_filters_btn")
+                ) {
+                    Icon(Icons.Default.Tune, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(bi("Filters", "تعديل الفلاتر"), color = GoldAccent)
                 }
 
                 OutlinedButton(
@@ -857,15 +1101,17 @@ private fun BlitzSummaryContent(
 private fun BlitzStatPill(
     label: String,
     value: String,
-    color: Color
+    color: Color,
+    modifier: Modifier = Modifier
 ) {
     Surface(
+        modifier = modifier,
         color = SurfaceElevatedDark,
         shape = RoundedCornerShape(12.dp),
         border = BorderStroke(1.dp, BorderDark)
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(

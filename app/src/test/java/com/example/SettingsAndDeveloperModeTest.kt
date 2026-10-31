@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -577,6 +578,11 @@ class SettingsAndDeveloperModeTest {
 
         try {
             val dao = db.wordBooksDao()
+            dao.upsertStudyPlanProfile(
+                StudyPlanProfileEntity(
+                    restDaysJson = "[]"
+                )
+            )
             val planRepo = com.example.data.plan.StudyPlanRepository(context, dao)
 
             val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US)
@@ -1055,5 +1061,186 @@ class SettingsAndDeveloperModeTest {
         composeTestRule.onNodeWithTag("blitz_score_badge").assertIsDisplayed()
         composeTestRule.onNodeWithTag("blitz_combo_badge").assertIsDisplayed()
         composeTestRule.onNodeWithTag("blitz_option_0").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun feature_speedChallengeEnhancements_setupFiltersAndAudioUpgrade(): Unit = runBlocking {
+        // 1. Audio upgrade: test sound player functions without exception
+        com.example.data.blitz.BlitzSoundPlayer.playCorrectChime(true)
+        com.example.data.blitz.BlitzSoundPlayer.playWrongBuzz(true)
+        com.example.data.blitz.BlitzSoundPlayer.playComboLevelUpChime(true)
+        com.example.data.blitz.BlitzSoundPlayer.playCountdownTick(true)
+        com.example.data.blitz.BlitzSoundPlayer.playCorrectChime(false)
+
+        // 2. Room DAO Filtered candidates and word count verification
+        val sampleEntries = listOf(
+            com.example.data.local.EntryEntity(id = "blitz_1", type = "word", deck = "oxford5000", text = "abandon", pos = "v.", level = "B2", effectiveLevel = "B2", definitionEn = "leave behind", noteEn = "", arabic = "يتخلى عن", examplesEn = "", examplesAr = "", definitionUrl = "", audioUrl = ""),
+            com.example.data.local.EntryEntity(id = "blitz_2", type = "word", deck = "oxford_opal", text = "abstract", pos = "adj.", level = "B2", effectiveLevel = "B2", definitionEn = "existing in thought", noteEn = "", arabic = "مجرد", examplesEn = "", examplesAr = "", definitionUrl = "", audioUrl = ""),
+            com.example.data.local.EntryEntity(id = "blitz_3", type = "word", deck = "oxford5000", text = "academic", pos = "adj.", level = "B1", effectiveLevel = "B1", definitionEn = "relating to education", noteEn = "", arabic = "أكاديمي", examplesEn = "", examplesAr = "", definitionUrl = "", audioUrl = ""),
+            com.example.data.local.EntryEntity(id = "blitz_4", type = "word", deck = "ielts_core", text = "accommodate", pos = "v.", level = "C1", effectiveLevel = "C1", definitionEn = "provide lodging", noteEn = "", arabic = "يستوعب", examplesEn = "", examplesAr = "", definitionUrl = "", audioUrl = ""),
+            com.example.data.local.EntryEntity(id = "blitz_5", type = "word", deck = "oxford5000", text = "accompany", pos = "v.", level = "A2", effectiveLevel = "A2", definitionEn = "go with", noteEn = "", arabic = "يرافق", examplesEn = "", examplesAr = "", definitionUrl = "", audioUrl = "")
+        )
+        val db = androidx.room.Room.inMemoryDatabaseBuilder(
+            context,
+            com.example.data.local.WordBooksDatabase::class.java
+        ).allowMainThreadQueries().build()
+
+        try {
+            db.wordBooksDao().insertEntriesBatchIgnore(sampleEntries)
+
+            // Mark blitz_1 as studied in word_progress
+            db.wordBooksDao().upsertWordProgress(
+                com.example.data.local.WordProgressEntity(
+                    cardKey = "oxford5000:abandon",
+                    deck = "oxford5000",
+                    text = "abandon",
+                    repetitions = 2,
+                    intervalDays = 5,
+                    firstLearnedTimestamp = System.currentTimeMillis()
+                )
+            )
+
+            // Count all words
+            val allCount = db.wordBooksDao().countVocabularyBlitzCandidatesFiltered(
+                decks = listOf("oxford5000", "oxford_opal", "ielts_core"),
+                allDecks = true,
+                levels = listOf("A1", "A2", "B1", "B2", "C1"),
+                allLevels = true,
+                studiedOnly = false
+            )
+            assertTrue("All words count should be at least 5", allCount >= 5)
+
+            // Count studied only
+            val studiedCount = db.wordBooksDao().countVocabularyBlitzCandidatesFiltered(
+                decks = listOf("oxford5000"),
+                allDecks = true,
+                levels = listOf("A1", "A2", "B1", "B2", "C1"),
+                allLevels = true,
+                studiedOnly = true
+            )
+            assertEquals(1, studiedCount)
+        } finally {
+            db.close()
+        }
+
+        // 3. Filter persistence test
+        onboardingRepo.saveBlitzFilters(
+            decksJson = "[\"oxford5000\",\"oxford_opal\"]",
+            allBooks = false,
+            levelsJson = "[\"B2\",\"C1\"]",
+            studiedOnly = true
+        )
+        val snap = onboardingRepo.getSnapshot()
+        assertEquals("[\"oxford5000\",\"oxford_opal\"]", snap.blitzFilterDecksJson)
+        assertFalse(snap.blitzFilterAllBooks)
+        assertEquals("[\"B2\",\"C1\"]", snap.blitzFilterLevelsJson)
+        assertTrue(snap.blitzFilterStudiedOnly)
+
+        // 4. Engine: missed questions tracking
+        val questions = com.example.data.blitz.VocabularyBlitzEngine.generateBlitzQuestions(
+            entries = sampleEntries,
+            count = 10,
+            seed = 42
+        )
+        var session = com.example.data.blitz.VocabularyBlitzSessionState(questions = questions)
+        // Submit wrong answer on first question
+        val wrongOption = if (questions[0].correctOptionIndex == 0) 1 else 0
+        session = com.example.data.blitz.VocabularyBlitzEngine.submitAnswer(
+            state = session,
+            selectedOptionIndex = wrongOption,
+            previousHighScore = 50
+        )
+        assertEquals(1, session.wrongCount)
+        assertEquals(0, session.correctCount)
+        assertEquals(1, session.missedQuestions.size)
+        assertEquals(questions[0].word, session.missedQuestions[0].word)
+
+        // 5. Test UI Rendering: VocabularyBlitzSetupDialog
+        val sampleDecks = listOf(
+            com.example.data.local.DeckEntity(id = "oxford5000", title = "Oxford 5000", arabicSubtitle = "أهم 5000 كلمة", category = "Core", coverColorHex = "#1E293B", accentColorHex = "#F5C542", rowCount = 5000, uniqueWordCount = 5000, masteredCount = 0, favoriteCount = 0, displayOrder = 1),
+            com.example.data.local.DeckEntity(id = "oxford_opal", title = "Oxford OPAL", arabicSubtitle = "أكاديمي", category = "Academic", coverColorHex = "#1E293B", accentColorHex = "#F5C542", rowCount = 1200, uniqueWordCount = 1200, masteredCount = 0, favoriteCount = 0, displayOrder = 2)
+        )
+        composeTestRule.setContent {
+            WordBooksTheme {
+                com.example.ui.screens.VocabularyBlitzSetupDialog(
+                    initialConfig = com.example.data.blitz.BlitzFilterConfig(
+                        selectedDecks = listOf("oxford5000"),
+                        allBooksSelected = true,
+                        selectedLevels = setOf("A1", "A2", "B1", "B2", "C1"),
+                        studiedOnly = false
+                    ),
+                    availableDecks = sampleDecks,
+                    userCurrentLevel = "B2",
+                    highScore = 240,
+                    availableWordCount = 5, // Below 10 -> start button disabled
+                    onFilterConfigChanged = {},
+                    onStartChallenge = {},
+                    onDismiss = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("blitz_setup_dialog").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("blitz_setup_high_score_badge").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("blitz_book_all_chip").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("blitz_my_level_btn").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("blitz_stage_studied_only").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("blitz_stage_all_words").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("blitz_available_words_card").performScrollTo().assertIsDisplayed()
+        // Verify start button is disabled when available word count < 10
+        composeTestRule.onNodeWithTag("blitz_setup_start_btn").assertIsNotEnabled()
+    }
+
+    @Test
+    fun feature_speedChallengeEnhancements_mistakeReviewAndSm2Practice(): Unit = runBlocking {
+        val sampleEntries = listOf(
+            com.example.data.local.EntryEntity(id = "blitz_1", type = "word", deck = "oxford5000", text = "abandon", pos = "v.", level = "B2", effectiveLevel = "B2", definitionEn = "leave behind", noteEn = "", arabic = "يتخلى عن", examplesEn = "", examplesAr = "", definitionUrl = "", audioUrl = ""),
+            com.example.data.local.EntryEntity(id = "blitz_2", type = "word", deck = "oxford_opal", text = "abstract", pos = "adj.", level = "B2", effectiveLevel = "B2", definitionEn = "existing in thought", noteEn = "", arabic = "مجرد", examplesEn = "", examplesAr = "", definitionUrl = "", audioUrl = "")
+        )
+
+        // Engine: missed questions tracking
+        val questions = com.example.data.blitz.VocabularyBlitzEngine.generateBlitzQuestions(
+            entries = sampleEntries,
+            count = 4,
+            seed = 42
+        )
+        var session = com.example.data.blitz.VocabularyBlitzSessionState(questions = questions)
+        val wrongOption = if (questions[0].correctOptionIndex == 0) 1 else 0
+        session = com.example.data.blitz.VocabularyBlitzEngine.submitAnswer(
+            state = session,
+            selectedOptionIndex = wrongOption,
+            previousHighScore = 50
+        )
+        assertEquals(1, session.wrongCount)
+        assertEquals(0, session.correctCount)
+        assertEquals(1, session.missedQuestions.size)
+        assertEquals(questions[0].word, session.missedQuestions[0].word)
+
+        // Test UI Rendering: BlitzSummaryContent with Missed Words & SM-2 practice
+        val finishedState = session.copy(
+            isFinished = true,
+            score = 120,
+            correctCount = 8,
+            wrongCount = 2,
+            missedQuestions = listOf(questions[0])
+        )
+        var practiceCalled = false
+        composeTestRule.setContent {
+            WordBooksTheme {
+                com.example.ui.screens.BlitzSummaryContent(
+                    state = finishedState,
+                    savedStats = com.example.data.blitz.VocabularyBlitzStats(highScore = 200),
+                    onPracticeMistakes = { practiceCalled = true },
+                    onPlayAgain = {},
+                    onDone = {}
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag("blitz_summary_card").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("blitz_final_score").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("blitz_missed_words_section").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("blitz_practice_mistakes_btn").performScrollTo().assertIsDisplayed().performClick()
+        assertTrue("Practice mistakes callback should be called", practiceCalled)
+        composeTestRule.onNodeWithTag("blitz_mistakes_practiced_banner").performScrollTo().assertIsDisplayed()
     }
 }
