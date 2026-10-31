@@ -572,3 +572,48 @@ fun cleanGrammarArabicTitle(rawTitleAr: String): String {
         }
     }
 }
+
+private val CJK_UNICODE_REGEX = Regex("[\\u3400-\\u4DBF\\u4E00-\\u9FFF\\uF900-\\uFAFF]+")
+private val GLOSS_SEPARATOR_REGEX = Regex("\\s*[؛;•]+\\s*")
+private val MULTI_WHITESPACE_REGEX = Regex("\\s+")
+
+private val KNOWN_CJK_ARABIC_REPLACEMENTS = listOf(
+    "按照" to "حسب",
+    "尽管" to "رغم",
+    "属于" to "خاص بـ",
+    "理解" to "فهم",
+    "创造" to "ابتكار",
+    "提议" to "مقترح",
+    "推翻" to "إسقاط",
+    "通过使用" to "باستخدام",
+    "撒哈拉" to "الصحراء الكبرى",
+    "但未" to "ولكن لم يتم",
+    "或缺陷" to "",
+    "或缺" to "",
+    "特别" to ""
+)
+
+/**
+ * Sanitizes Arabic glosses, phrases, meanings, and definitions by:
+ * 1. Replacing known corrupted CJK tokens (e.g. "按照" -> "حسب") and stripping all remaining
+ *    CJK/Chinese Unicode characters ([\u4E00-\u9FFF]+).
+ * 2. Normalizing spaced semicolons ('؛' or ';') into clean bullet separators (" • ") so
+ *    corrupted strings like "بالتقليد ؛ 按照 العادة" render cleanly as "بالتقليد • حسب العادة".
+ */
+fun cleanArabicGloss(text: String): String {
+    if (text.isBlank()) return ""
+    var cleaned = text
+    for ((cjk, arabicReplacement) in KNOWN_CJK_ARABIC_REPLACEMENTS) {
+        if (cleaned.contains(cjk)) {
+            cleaned = cleaned.replace(cjk, arabicReplacement)
+        }
+    }
+    cleaned = CJK_UNICODE_REGEX.replace(cleaned, "")
+    val segments = cleaned
+        .split(GLOSS_SEPARATOR_REGEX)
+        .map { MULTI_WHITESPACE_REGEX.replace(it, " ").trim() }
+        .filter { it.isNotBlank() }
+        .distinct()
+    return segments.joinToString(" • ")
+}
+

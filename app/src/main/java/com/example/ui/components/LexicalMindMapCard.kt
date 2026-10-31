@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -42,14 +45,19 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import android.content.Context
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -58,9 +66,11 @@ import com.example.data.ai.AiWordDetailJson
 import com.example.data.importer.PosSenseVariant
 import com.example.ui.theme.AmberAccent
 import com.example.ui.theme.ArabicTypography
+import com.example.ui.theme.BorderDark
 import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.GoldAccent
 import com.example.ui.theme.GoldAccentBorder
+import com.example.ui.theme.InterFontFamily
 import com.example.ui.theme.SkyAccent
 import com.example.ui.theme.SurfaceDark
 import com.example.ui.theme.SurfaceElevatedDark
@@ -85,9 +95,9 @@ enum class MindMapBranchType(
     val labelEn: String,
     val labelAr: String
 ) {
-    COLLOCATION("Collocation", "متلازمة لفظية"),
-    PREPOSITION("Preposition", "حرف جر / تركيب"),
-    SYNONYM("Related / Meaning", "مرادف / معنى")
+    COLLOCATION("Collocation", "متلازمة"),
+    PREPOSITION("Preposition", "حرف جر"),
+    SYNONYM("Related", "مشتقات")
 }
 
 data class MindMapBranchNode(
@@ -95,7 +105,16 @@ data class MindMapBranchNode(
     val labelAr: String,
     val type: MindMapBranchType,
     val pillLabelEn: String = labelEn
-)
+) {
+    fun expandedLabelEn(headword: String): String {
+        val cleanLabel = labelEn.trim()
+        return if (cleanLabel.isNotBlank() && !cleanLabel.contains("+") && !cleanLabel.contains("~")) {
+            cleanLabel
+        } else {
+            LexicalMindMapExtractor.expandRawNodeLabel(headword, pillLabelEn.ifBlank { cleanLabel })
+        }
+    }
+}
 
 object LexicalMindMapExtractor {
 
@@ -185,7 +204,25 @@ object LexicalMindMapExtractor {
         "organized" to ("structured" to "منظم / مرتب"),
         "origin" to ("source" to "أصل / مصدر"),
         "original" to ("authentic" to "أصلي / مبتكر"),
-        "originally" to ("initially" to "في الأصل / مبدئياً")
+        "originally" to ("initially" to "في الأصل / مبدئياً"),
+        "entrepreneur" to ("entrepreneurial" to "ريادي / مقاولاتي")
+    )
+
+    private val CURATED_RELATED_PAIRS_MAP = mapOf(
+        "entrepreneur" to listOf(
+            "entrepreneurial" to "ريادي / مقاولاتي",
+            "founder" to "مؤسس / رائد أعمال"
+        )
+    )
+
+    private val FALSE_PREFIX_BLACKLIST = mapOf(
+        "entrepreneur" to setOf("entrenched", "entrench"),
+        "weaver" to setOf("flee"),
+        "wallaby" to setOf("wallet"),
+        "whisky" to setOf("whisker"),
+        "windmill" to setOf("window"),
+        "windowsill" to setOf("windy"),
+        "zipper" to setOf("cloud")
     )
 
     /**
@@ -320,6 +357,135 @@ object LexicalMindMapExtractor {
         }
 
         return cleanPhrase
+    }
+
+    /**
+     * Expands dictionary shorthand placeholders ('+' and '~') with the full headword so canvas
+     * nodes and TTS never expose cryptic symbols like "make a +", "break with +", or "in ~ with".
+     */
+    fun expandRawNodeLabel(headword: String, rawLabel: String): String {
+        val cleanHead = headword.trim()
+        val raw = rawLabel.trim()
+        if (raw.isEmpty()) return cleanHead
+        if (cleanHead.isEmpty()) return raw
+
+        // Handle "<headword> + <prep>" (e.g. "depend + on" -> "depend on") without duplicating headword
+        val explicitPrepMatch = Regex("(?i)^${Regex.escape(cleanHead)}\\s*\\+\\s*(.+)$").find(raw)
+        if (explicitPrepMatch != null) {
+            return "$cleanHead ${explicitPrepMatch.groupValues[1].trim()}".replace(Regex("\\s+"), " ").trim()
+        }
+
+        val expanded = raw
+            .replace(Regex("(?<!\\S)[+~](?!\\S)"), cleanHead)
+            .replace("+", cleanHead)
+            .replace("~", cleanHead)
+            .replace(Regex("\\s+"), " ")
+            .trim()
+        return if (expanded.isNotBlank()) expanded else cleanHead
+    }
+
+    /**
+     * Splits long multi-word node phrases (e.g. "successful entrepreneur", "aspiring entrepreneur",
+     * "entrepreneurial spirit") at the space closest to the midpoint into 2 balanced lines so side
+     * pills remain compact and never overflow the canvas edges.
+     */
+    fun formatBalancedTwoLineLabel(
+        text: String,
+        maxSingleLineChars: Int = 14
+    ): String {
+        val clean = text.trim().replace(Regex("\\s+"), " ")
+        if (clean.length <= maxSingleLineChars || !clean.contains(" ")) return clean
+        val midpoint = clean.length / 2
+        var bestSpaceIdx = -1
+        var bestDist = Int.MAX_VALUE
+        for (i in clean.indices) {
+            if (clean[i] == ' ') {
+                val dist = abs(i - midpoint)
+                if (dist < bestDist) {
+                    bestDist = dist
+                    bestSpaceIdx = i
+                }
+            }
+        }
+        return if (bestSpaceIdx in 1 until clean.lastIndex) {
+            clean.substring(0, bestSpaceIdx) + "\n" + clean.substring(bestSpaceIdx + 1)
+        } else {
+            clean
+        }
+    }
+
+    /**
+     * Clamps a node's horizontal center coordinate `rawX` so the pill's left and right edges
+     * always stay at least `edgeMarginPx` inside `[0, canvasWidthPx]`.
+     */
+    fun clampHorizontalNodeOffset(
+        rawX: Float,
+        canvasWidthPx: Float,
+        pillWidthPx: Float,
+        edgeMarginPx: Float
+    ): Float {
+        if (canvasWidthPx <= 0f) return rawX
+        val halfW = (pillWidthPx / 2f).coerceAtLeast(0f)
+        val minX = edgeMarginPx + halfW
+        val maxX = (canvasWidthPx - edgeMarginPx - halfW).coerceAtLeast(minX)
+        return rawX.coerceIn(minX, maxX)
+    }
+
+    /**
+     * Formats Arabic Etymology text with strict Unicode BiDi isolation:
+     * - Ensures clean spacing between Arabic conjunctions/prepositions and quoted Latin words (e.g. "و'prendre'" -> "و 'prendre'").
+     * - Converts single/double quotes around Arabic glosses ('الابتعاد') into Arabic guillemets («الابتعاد»).
+     * - Strips single/double quotes around Latin/French/English roots ('differre' -> differre).
+     * - Normalizes ASCII commas immediately following Latin words into Arabic commas ('،').
+     * - Wraps every Latin root/word in LTR isolates (\u2066\u200E...\u200E\u2069) and styles it in bold Gold.
+     */
+    fun formatBidiEtymologyAnnotated(rawEtymology: String): AnnotatedString {
+        if (rawEtymology.isBlank()) return AnnotatedString("")
+
+        var normalized = cleanArabicGloss(rawEtymology)
+        // 0. Ensure a space between attached Arabic particles (like 'و') and a quoted/unquoted Latin word ("و'prendre'" -> "و 'prendre'")
+        normalized = Regex("([\\u0600-\\u06FF])(?=['\"’‘“”]?[A-Za-z])").replace(normalized, "$1 ")
+
+        // 1. Strip quotes wrapping Latin words/phrases FIRST ('differre' -> differre)
+        //    so a Latin root's closing quote never pairs with an Arabic gloss's opening quote.
+        val latinQuoteRegex = Regex("['\"’‘“”]([A-Za-z][A-Za-z0-9\\s\\-]*?[A-Za-z0-9]|[A-Za-z]+)['\"’‘“”]")
+        normalized = latinQuoteRegex.replace(normalized) { match ->
+            match.groupValues[1].trim()
+        }
+
+        // 2. Convert quotes wrapping Arabic words/phrases into Arabic guillemets «...»
+        val arabicQuoteRegex = Regex("['\"’‘“”]([^'\"’‘“”A-Za-z]*[\\u0600-\\u06FF][^'\"’‘“”A-Za-z]*)['\"’‘“”]")
+        normalized = arabicQuoteRegex.replace(normalized) { match ->
+            "«${match.groupValues[1].trim()}»"
+        }
+
+        // 3. Convert ASCII comma immediately after a Latin word into Arabic comma '،' so it doesn't flip in RTL
+        normalized = Regex("(?<=[A-Za-z0-9])\\s*,").replace(normalized, "،")
+
+        // 4. Wrap Latin words/phrases in LTR isolates (\u2066\u200E...\u200E\u2069) with bold gold styling
+        val latinRunRegex = Regex("[A-Za-z][A-Za-z0-9]*(?:[\\s\\-][A-Za-z][A-Za-z0-9]*)*")
+        return buildAnnotatedString {
+            var lastIdx = 0
+            for (match in latinRunRegex.findAll(normalized)) {
+                if (match.range.first > lastIdx) {
+                    append(normalized.substring(lastIdx, match.range.first))
+                }
+                val latinWord = match.value.trim()
+                withStyle(
+                    SpanStyle(
+                        color = GoldAccent,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = InterFontFamily
+                    )
+                ) {
+                    append("\u2066\u200E$latinWord\u200E\u2069")
+                }
+                lastIdx = match.range.last + 1
+            }
+            if (lastIdx < normalized.length) {
+                append(normalized.substring(lastIdx))
+            }
+        }
     }
 
     private fun buildHeadwordInflections(headword: String): Set<String> {
@@ -625,10 +791,23 @@ object LexicalMindMapExtractor {
         }
 
         // 3. Extract Verified Related Concepts / Synonyms with their OWN accurate Arabic translations
-        val verifiedPairs = buildList {
-            CURATED_SYNONYMS_MAP[headLower]?.let { add(it) }
-            offlineRelatedMap?.get(headLower)?.forEach { pair ->
+        val blacklistedForHead = FALSE_PREFIX_BLACKLIST[headLower].orEmpty()
+        val verifiedPairs = buildList<Pair<String, String>> {
+            CURATED_RELATED_PAIRS_MAP[headLower]?.forEach { pair ->
                 if (none { it.first.equals(pair.first, ignoreCase = true) }) {
+                    add(pair)
+                }
+            }
+            CURATED_SYNONYMS_MAP[headLower]?.let { pair ->
+                if (none { it.first.equals(pair.first, ignoreCase = true) }) {
+                    add(pair)
+                }
+            }
+            offlineRelatedMap?.get(headLower)?.forEach { pair ->
+                val candidateLower = pair.first.trim().lowercase()
+                if (candidateLower !in blacklistedForHead &&
+                    none { it.first.equals(pair.first, ignoreCase = true) }
+                ) {
                     add(pair)
                 }
             }
@@ -712,6 +891,28 @@ object LexicalMindMapExtractor {
      * Every tier is vertically separated from adjacent tiers, preventing both center-node collisions
      * and top/bottom neighbor collisions.
      */
+    /**
+     * Returns the center headword node coordinates:
+     * - For 1–2 branch nodes (compact 190.dp canvas), places the center headword at y = 72%
+     *   so the upper branch node(s) sit cleanly at y = 22%–24% with zero empty void below.
+     * - For 3+ branch nodes (standard 300.dp radial canvas), places the center headword at y = 50%.
+     */
+    fun computeHeadwordCenterOffset(
+        nodeCount: Int,
+        widthPx: Float,
+        heightPx: Float
+    ): Offset {
+        val centerX = widthPx / 2f
+        val centerY = if (nodeCount in 1..2) heightPx * 0.72f else heightPx / 2f
+        return Offset(x = centerX, y = centerY)
+    }
+
+    /**
+     * Computes non-overlapping radial/diagonal offsets for `1..6` branch nodes:
+     * - For `nodeCount == 1`: single node at `y = 0.22 * H`, `x = centerX` (above headword at `y = 0.72 * H`).
+     * - For `nodeCount == 2`: two upper nodes at `y = 0.24 * H`, `x = centerX ± 0.26 * W` (above headword at `y = 0.72 * H`).
+     * - For `nodeCount >= 3`: 5-tier radial/diagonal layout around `(centerX, centerY)`.
+     */
     fun computeRadialNodeOffsets(
         nodeCount: Int,
         widthPx: Float,
@@ -721,9 +922,18 @@ object LexicalMindMapExtractor {
         val centerX = widthPx / 2f
         val centerY = heightPx / 2f
 
+        if (nodeCount == 1) {
+            return listOf(Offset(x = centerX, y = heightPx * 0.22f))
+        }
+        if (nodeCount == 2) {
+            val dx = (widthPx * 0.26f).coerceAtLeast(68f)
+            return listOf(
+                Offset(x = centerX - dx, y = heightPx * 0.24f),
+                Offset(x = centerX + dx, y = heightPx * 0.24f)
+            )
+        }
+
         val anglesDeg: List<Double> = when (nodeCount) {
-            1 -> listOf(-90.0)
-            2 -> listOf(-90.0, 90.0)
             3 -> listOf(-90.0, 42.0, 138.0)
             4 -> listOf(-45.0, 45.0, 135.0, -135.0) // 4 Diagonal Quadrants (NE, SE, SW, NW)
             5 -> listOf(-90.0, -38.0, 90.0, 142.0, -142.0) // Top, NE, Bottom, SW, NW (balanced poles!)
@@ -758,6 +968,7 @@ object LexicalMindMapExtractor {
 private val CenterNodeContainerColor = Color(0xFF1E293B)
 private val CenterNodeTextColor = Color(0xFFF8FAFC)
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun VisualLexicalMindMapCard(
     headword: String,
@@ -777,6 +988,18 @@ fun VisualLexicalMindMapCard(
     var selectedNodeIndex by remember(headword, nodes) { mutableIntStateOf(0) }
     val safeSelectedIndex = selectedNodeIndex.coerceIn(0, nodes.size - 1)
     val selectedNode = nodes[safeSelectedIndex]
+    val measuredPillWidthsPx = remember(headword, nodes) { mutableStateMapOf<Int, Int>() }
+    val hasLongMultiWordNode = remember(headword, nodes) {
+        nodes.any { node ->
+            val exp = node.expandedLabelEn(headword)
+            exp.length > 14 && exp.contains(" ")
+        }
+    }
+    val adaptiveCanvasHeight = when {
+        nodes.size <= 2 -> 190.dp
+        hasLongMultiWordNode -> 312.dp
+        else -> 300.dp
+    }
 
     Surface(
         modifier = modifier
@@ -792,47 +1015,102 @@ fun VisualLexicalMindMapCard(
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header
-            Row(
+            // Bilingual Header: Lexical Mind-Map & Collocations • الخريطة الذهنية والمتلازمات
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Hub,
-                        contentDescription = null,
-                        tint = GoldAccent,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Column {
-                        Text(
-                            text = bi("Lexical Mind-Map & Collocations", "الشبكة البصرية للمترادفات والمتلازمات"),
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                            color = GoldAccent
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(7.dp),
+                        modifier = Modifier.weight(1f, fill = false)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Hub,
+                            contentDescription = null,
+                            tint = GoldAccent,
+                            modifier = Modifier.size(18.dp)
                         )
                         Text(
-                            text = bi("Tap any node to hear pronunciation & view meaning", "اضغط على أي فرع لسماع النطق وعرض المعنى"),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TextSecondary
+                            text = "Lexical Mind-Map & Collocations",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.5.sp
+                            ),
+                            color = GoldAccent
+                        )
+                    }
+                    Text(
+                        text = "الخريطة الذهنية والمتلازمات",
+                        style = ArabicTypography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.5.sp,
+                            textDirection = TextDirection.Rtl
+                        ),
+                        color = GoldAccent.copy(alpha = 0.9f)
+                    )
+                }
+                Text(
+                    text = bi(
+                        "Tap any node to hear pronunciation & view meaning",
+                        "اضغط على أي فرع لسماع النطق وعرض المعنى"
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextSecondary
+                )
+            }
+
+            // Bilingual 2x2 Legend Grid
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = SurfaceElevatedDark,
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(1.dp, BorderDark)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        MindMapLegendDot(
+                            color = SkyAccent,
+                            label = "Headword • الكلمة",
+                            modifier = Modifier.weight(1f)
+                        )
+                        MindMapLegendDot(
+                            color = EmeraldAccent,
+                            label = "Collocation • متلازمة",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        MindMapLegendDot(
+                            color = AmberAccent,
+                            label = "Preposition • حرف جر",
+                            modifier = Modifier.weight(1f)
+                        )
+                        MindMapLegendDot(
+                            color = VioletAccent,
+                            label = "Related • مشتقات",
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
-            }
-
-            // Legend Row (Disambiguated from Center Headword Node)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                MindMapLegendDot(color = SkyAccent, label = bi("Headword", "الكلمة"))
-                MindMapLegendDot(color = EmeraldAccent, label = bi("Collocation", "متلازمة"))
-                MindMapLegendDot(color = AmberAccent, label = bi("Preposition", "حرف جر"))
-                MindMapLegendDot(color = VioletAccent, label = bi("Related", "مرادف"))
             }
 
             // Radial Mind-Map Canvas + Interactive Node Chips (Locked to LTR for spatial geometry)
@@ -840,7 +1118,7 @@ fun VisualLexicalMindMapCard(
                 BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(254.dp)
+                        .height(adaptiveCanvasHeight)
                         .clip(RoundedCornerShape(14.dp))
                         .background(SurfaceElevatedDark)
                         .testTag("mind_map_canvas_container"),
@@ -849,15 +1127,47 @@ fun VisualLexicalMindMapCard(
                     val density = LocalDensity.current
                     val widthPx = with(density) { maxWidth.toPx() }
                     val heightPx = with(density) { maxHeight.toPx() }
+                    val edgeMarginPx = with(density) { 8.dp.toPx() }
+                    val approxCharWidthPx = with(density) { 6.5.dp.toPx() }
+                    val pillHorizPaddingPx = with(density) { 22.dp.toPx() }
                     val centerX = widthPx / 2f
                     val centerY = heightPx / 2f
 
-                    val nodeOffsets = remember(nodes.size, widthPx, heightPx) {
+                    val headwordOffset = remember(nodes.size, widthPx, heightPx) {
+                        LexicalMindMapExtractor.computeHeadwordCenterOffset(
+                            nodeCount = nodes.size,
+                            widthPx = widthPx,
+                            heightPx = heightPx
+                        )
+                    }
+
+                    val rawNodeOffsets = remember(nodes.size, widthPx, heightPx) {
                         LexicalMindMapExtractor.computeRadialNodeOffsets(
                             nodeCount = nodes.size,
                             widthPx = widthPx,
                             heightPx = heightPx
                         )
+                    }
+
+                    // Compute clamped node offsets so every pill stays >= 8.dp inside [0, widthPx]
+                    val clampedNodeOffsets = rawNodeOffsets.mapIndexed { idx, rawPos ->
+                        val node = nodes[idx]
+                        val isSideNode = abs(rawPos.x - centerX) > 10f
+                        val expandedText = node.expandedLabelEn(headword)
+                        val wrappedText = LexicalMindMapExtractor.formatBalancedTwoLineLabel(
+                            text = expandedText,
+                            maxSingleLineChars = if (isSideNode) 14 else 24
+                        )
+                        val longestLineChars = wrappedText.lines().maxOfOrNull { it.length } ?: expandedText.length
+                        val estimatedWidthPx = longestLineChars * approxCharWidthPx + pillHorizPaddingPx
+                        val pillWidthPx = measuredPillWidthsPx[idx]?.toFloat() ?: estimatedWidthPx
+                        val clampedX = LexicalMindMapExtractor.clampHorizontalNodeOffset(
+                            rawX = rawPos.x,
+                            canvasWidthPx = widthPx,
+                            pillWidthPx = pillWidthPx,
+                            edgeMarginPx = edgeMarginPx
+                        )
+                        Offset(x = clampedX, y = rawPos.y)
                     }
 
                     // Curved Bézier connector lines on Canvas
@@ -866,7 +1176,7 @@ fun VisualLexicalMindMapCard(
                             .fillMaxSize()
                             .testTag("mind_map_canvas")
                     ) {
-                        nodeOffsets.forEachIndexed { idx, target ->
+                        clampedNodeOffsets.forEachIndexed { idx, target ->
                             val node = nodes[idx]
                             val branchColor = when (node.type) {
                                 MindMapBranchType.COLLOCATION -> EmeraldAccent
@@ -875,8 +1185,8 @@ fun VisualLexicalMindMapCard(
                             }
                             val isSelected = idx == safeSelectedIndex
                             val path = Path().apply {
-                                moveTo(centerX, centerY)
-                                val controlX = centerX + (target.x - centerX) * 0.35f
+                                moveTo(headwordOffset.x, headwordOffset.y)
+                                val controlX = headwordOffset.x + (target.x - headwordOffset.x) * 0.35f
                                 val controlY = target.y
                                 quadraticTo(controlX, controlY, target.x, target.y)
                             }
@@ -891,9 +1201,9 @@ fun VisualLexicalMindMapCard(
                         }
                     }
 
-                    // Branch Nodes positioned on 5-tier radial spokes using opaque background so connector lines never bleed through
+                    // Branch Nodes positioned on radial spokes with 2-line wrapping and 8.dp edge clamping
                     val basePillSurface = SurfaceDark
-                    nodeOffsets.forEachIndexed { idx, pos ->
+                    clampedNodeOffsets.forEachIndexed { idx, pos ->
                         val node = nodes[idx]
                         val branchColor = when (node.type) {
                             MindMapBranchType.COLLOCATION -> EmeraldAccent
@@ -901,38 +1211,81 @@ fun VisualLexicalMindMapCard(
                             MindMapBranchType.SYNONYM -> VioletAccent
                         }
                         val isSelected = idx == safeSelectedIndex
+                        val rawPos = rawNodeOffsets[idx]
+                        val isSideNode = abs(rawPos.x - centerX) > 10f
                         val offsetX = (pos.x - centerX).roundToInt()
                         val offsetY = (pos.y - centerY).roundToInt()
-                        // 100% opaque surface fill prevents the underlying Canvas line from striking through the text
                         val pillContainerColor = if (isSelected) {
                             lerp(basePillSurface, branchColor, 0.24f)
                         } else {
                             basePillSurface
                         }
+                        val expandedNodeText = remember(headword, node) {
+                            node.expandedLabelEn(headword)
+                        }
+                        val displayNodeText = remember(expandedNodeText, isSideNode) {
+                            LexicalMindMapExtractor.formatBalancedTwoLineLabel(
+                                text = expandedNodeText,
+                                maxSingleLineChars = if (isSideNode) 14 else 24
+                            )
+                        }
+                        val isMultiLine = displayNodeText.contains("\n")
+                        val pillShape = if (isMultiLine) RoundedCornerShape(14.dp) else RoundedCornerShape(999.dp)
+                        val maxPillWidth = if (isSideNode) 136.dp else 220.dp
+
+                        val annotatedNodeText = remember(displayNodeText, isMultiLine, isSelected, node.type, branchColor) {
+                            buildAnnotatedString {
+                                if (isMultiLine && !isSelected && node.type == MindMapBranchType.COLLOCATION) {
+                                    val lines = displayNodeText.split("\n", limit = 2)
+                                    withStyle(SpanStyle(color = Color(0xFF6EE7B7), fontWeight = FontWeight.Bold)) {
+                                        append(lines[0])
+                                    }
+                                    if (lines.size > 1) {
+                                        append("\n")
+                                        withStyle(SpanStyle(color = TextPrimary, fontWeight = FontWeight.SemiBold)) {
+                                            append(lines[1])
+                                        }
+                                    }
+                                } else {
+                                    withStyle(
+                                        SpanStyle(
+                                            color = if (isSelected) branchColor else TextPrimary,
+                                            fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold
+                                        )
+                                    ) {
+                                        append(displayNodeText)
+                                    }
+                                }
+                            }
+                        }
 
                         Surface(
                             modifier = Modifier
                                 .offset { IntOffset(offsetX, offsetY) }
-                                .widthIn(max = 144.dp)
-                                .clip(RoundedCornerShape(999.dp))
+                                .widthIn(max = maxPillWidth)
+                                .onSizeChanged { size ->
+                                    if (size.width > 0 && measuredPillWidthsPx[idx] != size.width) {
+                                        measuredPillWidthsPx[idx] = size.width
+                                    }
+                                }
+                                .clip(pillShape)
                                 .clickable {
                                     selectedNodeIndex = idx
-                                    onSpeakText(node.labelEn.replace(" + ", " "))
+                                    onSpeakText(expandedNodeText)
                                 }
                                 .testTag("mind_map_node_$idx"),
                             color = pillContainerColor,
-                            shape = RoundedCornerShape(999.dp),
+                            shape = pillShape,
                             border = BorderStroke(if (isSelected) 1.8.dp else 1.2.dp, branchColor)
                         ) {
                             Text(
-                                text = node.pillLabelEn,
+                                text = annotatedNodeText,
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold,
                                     fontSize = 11.5.sp,
+                                    lineHeight = 14.sp,
                                     textDirection = TextDirection.Ltr
                                 ),
-                                color = if (isSelected) branchColor else TextPrimary,
-                                maxLines = 1,
+                                maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.padding(horizontal = 11.dp, vertical = 5.5.dp)
@@ -940,9 +1293,12 @@ fun VisualLexicalMindMapCard(
                         }
                     }
 
-                    // Center Headword Node (Neutral Slate-Indigo with Sky-Blue border to disambiguate from Amber Preposition)
+                    // Center Headword Node (Positioned at y=72% for 1-2 node words, y=50% for 3+ node words)
+                    val headwordOffsetX = (headwordOffset.x - centerX).roundToInt()
+                    val headwordOffsetY = (headwordOffset.y - centerY).roundToInt()
                     Surface(
                         modifier = Modifier
+                            .offset { IntOffset(headwordOffsetX, headwordOffsetY) }
                             .clip(RoundedCornerShape(999.dp))
                             .clickable { onSpeakText(headword) }
                             .testTag("mind_map_center_node"),
@@ -975,80 +1331,104 @@ fun VisualLexicalMindMapCard(
                 }
             }
 
-            // Selected Node Detail Bar (Shows full compound phrase + Arabic meaning)
+            // Selected Node Detail Bar (Stacked: Line 1 Badge -> Line 2 16sp Bold English -> Line 3 13.5sp RTL Arabic)
             val activeColor = when (selectedNode.type) {
                 MindMapBranchType.COLLOCATION -> EmeraldAccent
                 MindMapBranchType.PREPOSITION -> AmberAccent
                 MindMapBranchType.SYNONYM -> VioletAccent
             }
+            val selectedExpandedEn = remember(headword, selectedNode) {
+                selectedNode.expandedLabelEn(headword)
+            }
+            val selectedCleanAr = remember(selectedNode.labelAr) {
+                cleanArabicGloss(selectedNode.labelAr)
+            }
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("mind_map_selected_bar"),
-                color = SurfaceElevatedDark,
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, activeColor.copy(alpha = 0.55f))
+                color = lerp(SurfaceElevatedDark, activeColor, 0.10f),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.5.dp, activeColor.copy(alpha = 0.55f))
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                        horizontalAlignment = Alignment.Start
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        // Line 1: Concise Bilingual Badge
+                        Surface(
+                            color = activeColor.copy(alpha = 0.22f),
+                            shape = RoundedCornerShape(6.dp)
                         ) {
-                            Surface(
-                                color = activeColor.copy(alpha = 0.18f),
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
-                                Text(
-                                    text = bi(selectedNode.type.labelEn, selectedNode.type.labelAr),
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 10.sp
-                                    ),
-                                    color = activeColor,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
                             Text(
-                                text = selectedNode.labelEn.replace(" + ", " "),
-                                style = MaterialTheme.typography.bodyMedium.copy(
+                                text = "\u2066${selectedNode.type.labelEn} • \u2067${selectedNode.type.labelAr}\u2069\u2069",
+                                style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
                                     textDirection = TextDirection.Ltr
                                 ),
-                                color = TextPrimary
+                                color = lerp(activeColor, Color.White, 0.28f),
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 2.dp)
                             )
                         }
-                        if (selectedNode.labelAr.isNotBlank()) {
-                            BidiText(
-                                text = selectedNode.labelAr,
-                                style = ArabicTypography.bodySmall,
-                                color = TextSecondary,
-                                fillMaxWidth = true
-                            )
+
+                        // Line 2: Full English Phrase (16.sp, Bold)
+                        Text(
+                            text = selectedExpandedEn,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                textDirection = TextDirection.Ltr
+                            ),
+                            color = TextPrimary
+                        )
+
+                        // Line 3: Sanitized Arabic Meaning (13.5.sp, RTL)
+                        if (selectedCleanAr.isNotBlank()) {
+                            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                BidiText(
+                                    text = selectedCleanAr,
+                                    style = ArabicTypography.bodyMedium.copy(
+                                        fontSize = 13.5.sp,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    color = lerp(activeColor, Color.White, 0.35f),
+                                    fillMaxWidth = true,
+                                    textAlign = TextAlign.Right
+                                )
+                            }
                         }
                     }
 
-                    IconButton(
-                        onClick = { onSpeakText(selectedNode.labelEn.replace(" + ", " ")) },
-                        modifier = Modifier
-                            .size(34.dp)
-                            .testTag("mind_map_selected_speak_btn")
+                    Surface(
+                        color = activeColor.copy(alpha = 0.18f),
+                        shape = CircleShape,
+                        border = BorderStroke(1.dp, activeColor.copy(alpha = 0.55f)),
+                        modifier = Modifier.size(38.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                            contentDescription = "Speak selected branch",
-                            tint = activeColor,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        IconButton(
+                            onClick = { onSpeakText(selectedExpandedEn) },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag("mind_map_selected_speak_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                contentDescription = "Speak selected branch",
+                                tint = lerp(activeColor, Color.White, 0.28f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -1059,11 +1439,13 @@ fun VisualLexicalMindMapCard(
 @Composable
 private fun MindMapLegendDot(
     color: Color,
-    label: String
+    label: String,
+    modifier: Modifier = Modifier
 ) {
     Row(
+        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Box(
             modifier = Modifier
@@ -1073,8 +1455,13 @@ private fun MindMapLegendDot(
         )
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-            color = TextMuted
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
+            ),
+            color = TextSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

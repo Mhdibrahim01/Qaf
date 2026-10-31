@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
@@ -70,6 +71,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.VerticalDivider
@@ -77,7 +79,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.font.FontStyle
 import com.example.data.ai.AiWordDetailJson
 import com.example.ui.components.BidiText
+import com.example.ui.components.LexicalMindMapExtractor
 import com.example.ui.components.VisualLexicalMindMapCard
+import com.example.ui.components.cleanArabicGloss as cleanArabicGlossUtil
 import com.example.ui.components.isolateLatin
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Info
@@ -102,6 +106,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -115,6 +120,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -123,6 +129,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
@@ -2071,6 +2078,8 @@ private val ROW_SHAPE_FIRST = RoundedCornerShape(topStart = 16.dp, topEnd = 16.d
 private val ROW_SHAPE_LAST = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
 private val ROW_SHAPE_MIDDLE = RoundedCornerShape(0.dp)
 
+fun cleanArabicGloss(text: String): String = cleanArabicGlossUtil(text)
+
 fun parseArabicMeaningGroups(pos: String, arabic: String): List<Pair<String, String>> {
     val cleanArabic = arabic.trim()
     if (cleanArabic.isEmpty()) return emptyList()
@@ -2267,8 +2276,8 @@ fun WordBookEntryRow(
         }
     }
     val formattedArabic = remember(entry.arabic) {
-        entry.arabic
-            .split(ARABIC_MEANING_SPLIT_REGEX)
+        cleanArabicGloss(entry.arabic)
+            .split(Regex("\\s*[•؛;\\n]+\\s*"))
             .map { it.trim() }
             .filter { it.isNotEmpty() }
             .distinct()
@@ -2639,7 +2648,8 @@ fun AiDefinitionPanel(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 18.dp, vertical = 14.dp),
+                .navigationBarsPadding()
+                .padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 48.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Inline User Arabic Editing Field (accessible from 3-dots menu)
@@ -2972,46 +2982,94 @@ fun AiDefinitionPanel(
                 }
             }
 
-            // Section 4: Phrases Section (Trancy style with gold vertical bar on the left)
+            // Section 3: "| Phrases • العبارات والتراكيب" (Compact inner cards with sanitized Arabic glosses)
             val phrases = aiDetail?.phrases
             if (!phrases.isNullOrEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .width(3.dp)
+                                .width(3.5.dp)
                                 .height(18.dp)
-                                .background(GoldAccent, RoundedCornerShape(1.dp))
+                                .background(GoldAccent, RoundedCornerShape(2.dp))
                         )
                         Text(
                             text = "Phrases",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = TextPrimary
                         )
+                        Text(
+                            text = "•",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = TextSecondary
+                        )
+                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                            Text(
+                                text = "\u2067العبارات والتراكيب\u2069",
+                                style = ArabicTypography.bodySmall.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 13.5.sp,
+                                    textDirection = TextDirection.Rtl
+                                ),
+                                color = TextSecondary
+                            )
+                        }
                     }
 
-                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         phrases.forEach { phrase ->
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(
-                                    text = phrase.en,
-                                    style = MaterialTheme.typography.bodyLarge.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        textDirection = TextDirection.Ltr
-                                    ),
-                                    color = TextPrimary
-                                )
-                                if (phrase.ar.isNotEmpty()) {
-                                    BidiText(
-                                        text = phrase.ar.joinToString(" ؛ "),
-                                        style = ArabicTypography.bodyMedium.copy(letterSpacing = 0.sp),
-                                        color = TextSecondary,
-                                        fillMaxWidth = true,
-                                        textAlign = TextAlign.Right
+                            val cleanedPhraseAr = remember(phrase.ar) {
+                                cleanArabicGloss(phrase.ar.filter { it.isNotBlank() }.joinToString(" ؛ "))
+                            }
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .wrapContentHeight(),
+                                color = SurfaceElevatedDark,
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, BorderDark)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = phrase.en,
+                                        style = MaterialTheme.typography.bodyLarge.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.5.sp,
+                                            textDirection = TextDirection.Ltr,
+                                            textAlign = TextAlign.Left
+                                        ),
+                                        color = GoldAccent,
+                                        modifier = Modifier.fillMaxWidth()
                                     )
+                                    if (cleanedPhraseAr.isNotBlank()) {
+                                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                            BidiText(
+                                                text = cleanedPhraseAr,
+                                                style = ArabicTypography.bodyMedium.copy(
+                                                    fontSize = 13.5.sp,
+                                                    lineHeight = 20.sp,
+                                                    letterSpacing = 0.sp
+                                                ),
+                                                color = TextPrimary.copy(alpha = 0.88f),
+                                                fillMaxWidth = true,
+                                                textAlign = TextAlign.Right
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -3019,7 +3077,7 @@ fun AiDefinitionPanel(
                 }
             }
 
-            // Section 4b: Visual Lexical Mind-Map & Collocation Web (Feature 3C)
+            // Section 4: Visual Lexical Mind-Map & Collocation Web (Feature 3C)
             VisualLexicalMindMapCard(
                 headword = card.text,
                 aiDetail = aiDetail,
@@ -3027,53 +3085,100 @@ fun AiDefinitionPanel(
                 onSpeakText = onSpeakSentenceTts
             )
 
-            // Section 5: Optional Etymology
+            // Section 5: Etymology / أصل الكلمة (Unclipped wrapContentHeight + BiDi-safe LTR isolates)
             val etymology = aiDetail?.etymologyAr
             if (!etymology.isNullOrBlank()) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                val formattedEtymology = remember(etymology) {
+                    LexicalMindMapExtractor.formatBidiEtymologyAnnotated(etymology)
+                }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Text(
                         text = "Etymology / أصل الكلمة",
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                         color = GoldAccent
                     )
                     Surface(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .wrapContentHeight()
+                            .testTag("etymology_card"),
                         color = SurfaceElevatedDark,
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(12.dp),
                         border = BorderStroke(1.dp, BorderDark)
                     ) {
-                        Box(modifier = Modifier.padding(12.dp)) {
-                            BidiText(
-                                text = etymology,
-                                style = ArabicTypography.bodyMedium.copy(letterSpacing = 0.sp),
-                                color = TextSecondary,
-                                fillMaxWidth = true,
-                                textAlign = TextAlign.Right
+                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                            Text(
+                                text = formattedEtymology,
+                                style = ArabicTypography.bodyMedium.copy(
+                                    fontSize = 14.sp,
+                                    lineHeight = 25.sp,
+                                    letterSpacing = 0.sp,
+                                    textDirection = TextDirection.Rtl,
+                                    textAlign = TextAlign.Right
+                                ),
+                                color = TextPrimary,
+                                softWrap = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .wrapContentHeight()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp)
                             )
                         }
                     }
                 }
             }
 
-            // Section 5b: More Examples
+            // Section 6: More Examples / أمثلة إضافية
             val extraExamples = aiDetail?.examples
             if (!extraExamples.isNullOrEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "More Examples",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = GoldAccent
-                    )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "More Examples",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = GoldAccent
+                        )
+                        Text(
+                            text = "•",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = TextSecondary
+                        )
+                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                            Text(
+                                text = "\u2067أمثلة إضافية\u2069",
+                                style = ArabicTypography.bodySmall.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp,
+                                    textDirection = TextDirection.Rtl
+                                ),
+                                color = TextSecondary
+                            )
+                        }
+                    }
                     extraExamples.forEachIndexed { _, ex ->
+                        val cleanedExAr = remember(ex.ar) { cleanArabicGloss(ex.ar) }
                         Surface(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .wrapContentHeight(),
                             color = SurfaceElevatedDark,
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(12.dp),
                             border = BorderStroke(1.dp, BorderDark)
                         ) {
                             Column(
-                                modifier = Modifier.padding(10.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -3102,7 +3207,7 @@ fun AiDefinitionPanel(
                                         }
                                         val isSaved = ex.en.trim().lowercase() in savedSentenceKeys
                                         IconButton(
-                                            onClick = { onToggleSaveSentence(ex.en, ex.ar) },
+                                            onClick = { onToggleSaveSentence(ex.en, cleanedExAr) },
                                             modifier = Modifier.size(28.dp)
                                         ) {
                                             Icon(
@@ -3114,14 +3219,16 @@ fun AiDefinitionPanel(
                                         }
                                     }
                                 }
-                                if (ex.ar.isNotBlank()) {
-                                    BidiText(
-                                        text = ex.ar,
-                                        style = ArabicTypography.bodySmall.copy(letterSpacing = 0.sp),
-                                        color = TextSecondary,
-                                        fillMaxWidth = true,
-                                        textAlign = TextAlign.Right
-                                    )
+                                if (cleanedExAr.isNotBlank()) {
+                                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                        BidiText(
+                                            text = cleanedExAr,
+                                            style = ArabicTypography.bodySmall.copy(letterSpacing = 0.sp),
+                                            color = TextSecondary,
+                                            fillMaxWidth = true,
+                                            textAlign = TextAlign.Right
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -3133,9 +3240,8 @@ fun AiDefinitionPanel(
 }
 
 /**
- * Meaning Item View:
- * Fixes the layout bug by displaying Arabic text on its OWN full-width line, right-aligned, RTL,
- * with no letter-spacing and no per-character wrapping.
+ * Meaning Item View (Section 2: Primary Meaning, Definition & Core Example):
+ * Displays sanitized Arabic core glosses, English + Arabic definition, and core example with speaker.
  */
 @Composable
 private fun MeaningItemView(
@@ -3149,100 +3255,136 @@ private fun MeaningItemView(
     onSpeakSentence: (String) -> Unit,
     onToggleSaveSentence: (String, String) -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        // Arabic text on its OWN line, full width, RTL, right-aligned, bold, 18sp
-        val joinedArabic = arabicList.filter { it.isNotBlank() }.joinToString(" ؛ ")
-        if (joinedArabic.isNotBlank()) {
-            BidiText(
-                text = joinedArabic,
-                style = ArabicTypography.headlineMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    letterSpacing = 0.sp
-                ),
-                color = TextPrimary,
-                fillMaxWidth = true,
-                textAlign = TextAlign.Right
-            )
-        }
+    val joinedArabic = remember(arabicList) {
+        cleanArabicGloss(arabicList.filter { it.isNotBlank() }.joinToString(" ؛ "))
+    }
+    val cleanedDefAr = remember(definitionAr) {
+        cleanArabicGloss(definitionAr)
+    }
+    val cleanedExAr = remember(exampleAr) {
+        cleanArabicGloss(exampleAr)
+    }
 
-        // Short English definition in gray + Arabic definition right underneath
-        if (definitionEn.isNotBlank() || definitionAr.isNotBlank()) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                if (definitionEn.isNotBlank()) {
-                    Text(
-                        text = definitionEn,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 14.sp,
-                            textDirection = TextDirection.Ltr
-                        ),
-                        color = TextSecondary
-                    )
-                }
-                if (definitionAr.isNotBlank()) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight(),
+        color = SurfaceElevatedDark,
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, BorderDark)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // Arabic core meanings on their own full-width line, RTL, right-aligned, bold, 18sp
+            if (joinedArabic.isNotBlank()) {
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                     BidiText(
-                        text = definitionAr,
-                        style = ArabicTypography.bodyMedium.copy(
-                            fontSize = 14.sp,
-                            lineHeight = 20.sp,
+                        text = joinedArabic,
+                        style = ArabicTypography.headlineMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
                             letterSpacing = 0.sp
                         ),
-                        color = TextSecondary,
+                        color = TextPrimary,
                         fillMaxWidth = true,
                         textAlign = TextAlign.Right
                     )
                 }
             }
-        }
 
-        // One example with target word highlighted in gold, speaker icon, and Arabic translation
-        if (exampleEn.isNotBlank()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 2.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Row(
+            // English definition + sanitized Arabic definition right underneath
+            if (definitionEn.isNotBlank() || cleanedDefAr.isNotBlank()) {
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(
-                        text = highlightTargetWordInGold(exampleEn, cardText),
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            textDirection = TextDirection.Ltr,
-                            textAlign = TextAlign.Left
-                        ),
-                        color = TextPrimary,
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(
-                        onClick = { onSpeakSentence(exampleEn) },
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                            contentDescription = "Listen to example",
-                            tint = GoldAccent,
-                            modifier = Modifier.size(16.dp)
+                    if (definitionEn.isNotBlank()) {
+                        Text(
+                            text = definitionEn,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontSize = 14.5.sp,
+                                lineHeight = 20.sp,
+                                textDirection = TextDirection.Ltr
+                            ),
+                            color = TextPrimary.copy(alpha = 0.9f)
                         )
                     }
+                    if (cleanedDefAr.isNotBlank()) {
+                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                            BidiText(
+                                text = cleanedDefAr,
+                                style = ArabicTypography.bodyMedium.copy(
+                                    fontSize = 13.5.sp,
+                                    lineHeight = 21.sp,
+                                    letterSpacing = 0.sp
+                                ),
+                                color = TextSecondary,
+                                fillMaxWidth = true,
+                                textAlign = TextAlign.Right
+                            )
+                        }
+                    }
                 }
-                if (exampleAr.isNotBlank()) {
-                    BidiText(
-                        text = exampleAr,
-                        style = ArabicTypography.bodySmall.copy(letterSpacing = 0.sp),
-                        color = TextSecondary,
-                        fillMaxWidth = true,
-                        textAlign = TextAlign.Right
-                    )
+            }
+
+            // Primary example with target word highlighted in gold, speaker icon, and sanitized Arabic translation
+            if (exampleEn.isNotBlank()) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight(),
+                    color = SurfaceDark,
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, BorderDark)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = highlightTargetWordInGold(exampleEn, cardText),
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    textDirection = TextDirection.Ltr,
+                                    textAlign = TextAlign.Left
+                                ),
+                                color = TextPrimary,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(
+                                onClick = { onSpeakSentence(exampleEn) },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                    contentDescription = "Listen to example",
+                                    tint = GoldAccent,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        if (cleanedExAr.isNotBlank()) {
+                            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                BidiText(
+                                    text = cleanedExAr,
+                                    style = ArabicTypography.bodySmall.copy(letterSpacing = 0.sp),
+                                    color = TextSecondary,
+                                    fillMaxWidth = true,
+                                    textAlign = TextAlign.Right
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

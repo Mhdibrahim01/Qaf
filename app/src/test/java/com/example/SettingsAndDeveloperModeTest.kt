@@ -980,6 +980,32 @@ class SettingsAndDeveloperModeTest {
             radialOffsets4.all { kotlin.math.abs(it.y - 200f) >= 58f }
         )
 
+        // Verify raw dictionary symbol expansion (+ and ~) for mind-map node labels
+        assertEquals(
+            "make a jump",
+            com.example.ui.components.LexicalMindMapExtractor.expandRawNodeLabel("jump", "make a +")
+        )
+        assertEquals(
+            "price jump",
+            com.example.ui.components.LexicalMindMapExtractor.expandRawNodeLabel("jump", "price +")
+        )
+        assertEquals(
+            "jump back",
+            com.example.ui.components.LexicalMindMapExtractor.expandRawNodeLabel("jump", "+ back")
+        )
+        assertEquals(
+            "get the jump on",
+            com.example.ui.components.LexicalMindMapExtractor.expandRawNodeLabel("jump", "get the ~ on")
+        )
+
+        // Verify BiDi-safe Etymology formatter strips single quotes around Latin roots and converts Arabic quotes to guillemets
+        val formattedEtym = com.example.ui.components.LexicalMindMapExtractor.formatBidiEtymologyAnnotated(
+            "مشتق من الكلمة اللاتينية 'differre' التي تعني 'الابتعاد' أو 'الاختلاف'."
+        ).text
+        assertFalse("Single quotes around Latin root must be removed", formattedEtym.contains("'differre'"))
+        assertTrue("Latin root must be wrapped in LTR isolate", formattedEtym.contains("\u2066\u200Edifferre\u200E\u2069"))
+        assertTrue("Arabic gloss must use Arabic guillemets", formattedEtym.contains("«الابتعاد»"))
+
         var spokenText = ""
         composeTestRule.setContent {
             WordBooksTheme {
@@ -996,7 +1022,7 @@ class SettingsAndDeveloperModeTest {
         composeTestRule.onNodeWithTag("mind_map_canvas").assertIsDisplayed()
         composeTestRule.onNodeWithTag("mind_map_center_node").assertIsDisplayed()
         composeTestRule.onNodeWithTag("mind_map_node_1").performClick()
-        assertEquals(nodes[1].labelEn, spokenText)
+        assertEquals(nodes[1].expandedLabelEn("depend"), spokenText)
     }
 
     @Test
