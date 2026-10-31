@@ -19,6 +19,12 @@
 - **Helpful Audio / TTS Alerts**: If your device does not have an English Text-to-Speech voice installed, tapping a pronunciation button now displays a clear bilingual tip explaining how to enable **Google Speech Services** instead of failing silently.
 - **Specific Safe-Exit Dialog Buttons**: Replaced generic `"Cancel"` buttons in Backup Restore and Plan Reset confirmation dialogs with explicit labels (`"Keep Current Plan"`, `"Keep Current Data"`).
 
+### 4. Full Arabic RTL Experience, Adaptive Quiz Mastery & Speed Blitz (v4.0.0)
+- **Natural Arabic Reading Flow with Protected English Lexical Elements**: Comprehensive RTL layout mirroring with dedicated LTR guardrails for English phonetic IPA transcriptions, sample sentences, vocabulary definitions, and grammar examples.
+- **Adaptive Daily Mini-Quiz with 70% Mastery Threshold**: Tasks require >= 70% (7/10) to complete, remaining actionable with clear 'Needs Retry' indicators and one-tap retests, with missed questions immediately routed to SM-2 and Mistake Notebook.
+- **Integrated Speed Blitz & Lexical Association Webs**: Quick 60-second vocabulary sprint and radial mind-map explore word families with zero lag and offline fallbacks.
+- **In-App Direct Updates**: One-tap background download, SHA-256 verification, and immediate Android package installer launch.
+
 ---
 
 ## ملخص التحديثات باللغة العربية (سجل التغييرات للمستخدم — v3.1.0)
@@ -39,6 +45,12 @@
 - **احترام إعداد تقليل الحركة (Reduce Motion)**: عند تفعيل خيار إيقاف التأثيرات الحركية في جهازك، تنقلب البطاقات التعليمية فوراً بدون دوران ثلاثي الأبعاد.
 - **تنبيه واضح عند غياب محرك النطق (TTS)**: في حال عدم وجود صوت إنجليزي مثبّت على الجهاز، يظهر تنبيه ثنائي اللغة يوضح كيفية تفعيل **Google Speech Services** بدلاً من الصمت غير المفهوم.
 - **أزرار تأكيد أوضح في النوافذ الحوارية**: استبدال زر `"إلغاء"` العام بعبارات محددة ومطمئنة (`"الاحتفاظ بخطتي"` و `"إلغاء الاستعادة"`).
+
+### ٤. الواجهة العربية المتكاملة، اختبار الإتقان التكيفي وتحدي السرعة (v4.0.0)
+- **انسيابية الواجهة العربية مع حماية الكلمات والمقاطع الإنجليزية**: دعم اتجاه القراءة من اليمين لليار (RTL) لكامل شاشات التطبيق مع عزل وحماية اتجاه النصوص والرموز الصوتية الإنجليزية (IPA) وجمل الأمثلة لمنع أي انعكاس بصري غير مرغوب فيه.
+- **إعادة هندسة الاختبار اليومي القصير بنسبة نجاح 70%**: اشتراط تحقيق 7 من 10 على الأقل لاحتساب المهمة مع إتاحة إعادة المحاولة فوراً بأسئلة جديدة، وتحويل الكلمات المتعثرة إلى مراجعات الغد في SM-2 ودفتر التصحيحات.
+- **الخريطة الذهنية للمفردات وتحدي الـ 60 ثانية السريع**: إمكانية استكشاف المترادفات والمتلازمات وتحدي سرعة استدعاء الكلمات وممارسة الإملاء الصوتي.
+- **تحديث التطبيق المباشر بضغطة زر**: فحص الإصدارات الجديدة من داخل التطبيق وتحميلها وتثبيتها مباشرة مع فحص بصمة الأمان (SHA-256).
 
 ---
 

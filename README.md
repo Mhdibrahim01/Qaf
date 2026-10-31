@@ -10,16 +10,32 @@
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose%20%26%20Material%203-4285F4.svg?logo=jetpackcompose&logoColor=white)](#)
 [![Room Database](https://img.shields.io/badge/Database-Room%20SQLite%20(100%25%20Offline)-orange.svg)](#)
 [![Gemini AI](https://img.shields.io/badge/AI-Google%20Gemini%20API-blue.svg?logo=google&logoColor=white)](#)
-[![Latest Release](https://img.shields.io/github/v/release/Mhdibrahim01/Qaf?color=gold&label=Release%20v3.1.0)](https://github.com/Mhdibrahim01/Qaf/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/Mhdibrahim01/Qaf?color=gold&label=Release%20v4.0.0)](https://github.com/Mhdibrahim01/Qaf/releases/latest)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary%20%7C%20All%20Rights%20Reserved-red.svg)](LICENSE)
 
 <p align="center">
   <b>قاف (Qaf)</b> هو تطبيق أندرويد متكامل وشامل لتعلّم وإتقان اللغة الإنجليزية للمتحدثين بالعربية، يجمع بين قوة <b>محرك التعلّم التكيفي (Adaptive V2)</b>، وخوارزميات <b>التكرار المتباعد (SuperMemo SM-2)</b>، ومكتبة ضخمة تضم <b>27,435 بطاقة استذكار</b> موزعة على 13 حقيبة تخصصية، وقاموس أوفلاين فوري يضم <b>13,393 كلمة مشروحة تفصيلياً</b>، مع نصوص قراءة متدرجة وقواعد تفاعلية مدعومة بالذكاء الاصطناعي.
 </p>
 
-[📥 تحميل ملف الإصدار المباشر (Download APK v3.1.0)](https://github.com/Mhdibrahim01/Qaf/releases/latest) • [✨ مميزات الإصدار 3.1](#-أبرز-مميزات-الإصدار-31--adaptive-v2--ux-unification) • [📚 الحقائب المتوفرة](#-الحقائب-والمجموعات-المتوفرة-13-decks--27435-cards) • [🏗️ البنية المعمارية](#️-البنية-البرمجية-والمعمارية--architecture--tech-stack) • [🛠️ طريقة البناء](#-كيفية-بناء-التطبيق-وتشغيله-build--run) • [📋 سجل الإصدارات](CHANGELOG.md)
+[📥 تحميل ملف الإصدار المباشر (Download APK v4.0.0)](https://github.com/Mhdibrahim01/Qaf/releases/latest) • [✨ مميزات الإصدار 4.0](#-أبرز-مميزات-الإصدار-40--adaptive-quiz-arabic-ui--blitz) • [📚 الحقائب المتوفرة](#-الحقائب-والمجموعات-المتوفرة-13-decks--27435-cards) • [🏗️ البنية المعمارية](#️-البنية-البرمجية-والمعمارية--architecture--tech-stack) • [🛠️ طريقة البناء](#-كيفية-بناء-التطبيق-وتشغيله-build--run) • [📋 سجل الإصدارات](CHANGELOG.md)
 
 </div>
+
+---
+
+## 🌟 أبرز مميزات الإصدار 4.0 • Adaptive Quiz, Arabic UI & 60s Blitz
+
+### 0. 🌐 تعريب كامل للواجهة والتحديث التلقائي المباشر (v4.0.0 Arabic RTL & Self-Updater)
+- **الواجهة العربية الكاملة بنظام القراءة الطبيعي (RTL UI with LTR Guardrails)**:
+  - دعم كامل للغة العربية عبر جميع الشاشات مع حماية النصوص والرموز الصوتية الإنجليزية من الانعكاس، وإمكانية التبديل بين اللغتين في أي وقت.
+- **التحديث التلقائي المباشر من داخل التطبيق (In-App GitHub APK Self-Updater)**:
+  - فحص وتحميل وتثبيت التحديثات الجديدة مباشرة دون مغادرة التطبيق مع التحقق من سلامة البصمة المشفرة (SHA-256).
+- **إعادة هندسة الاختبار اليومي القصير والتكرار المتباعد (Adaptive Mini-Quiz & Mistake Feedback Loop)**:
+  - اشتراط نسبة نجاح 70% (7/10) لاحتساب المهمة مكتملة، مع إعادة محاولة ذكية عند الرسوب وإعادة توجيه الأخطاء تلقائياً لمراجعات الغد في خوارزمية SM-2 ودفتر التصحيحات.
+- **دقة اختيار المستويات واكتمال عدادات الإتقان (CEFR Level Honesty & Mastery Counter)**:
+  - استبعاد كلمات المستويات الأدنى في مهام الكلمات الجديدة وضمان وصول عداد اليوم إلى 15/15، وتحديث عداد إتقان المستوى (0/500) في مراحل التعلّم النشط.
+- **الخريطة الذهنية البصرية وتحدي الـ 60 ثانية (Mind-Map & 60s Blitz Challenge)**:
+  - استعراض شبكة المترادفات والمتلازمات اللفظية وتحدي سرعة حفظ الكلمات تحت ضغط الوقت مع الإملاء الصوتي التفاعلي ومنبه الدراسة الذكي.
 
 ---
 
