@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -81,6 +83,7 @@ import com.example.ui.components.AdaptiveInsightBannerCard
 import com.example.ui.components.BidiText
 import com.example.ui.components.CefrAndLifecycleCard
 import com.example.ui.components.ConqueredWordsTrophyShelf
+import com.example.ui.components.HomeDashboardSkeleton
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
@@ -175,6 +178,7 @@ fun HomeScreen(
     onStartEarlyReview: () -> Unit = {},
     onReviewTodayLearnedWords: () -> Unit = {},
     onLearnExtraNewWords: (Int) -> Unit = {},
+    isDashboardReady: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
@@ -202,50 +206,119 @@ fun HomeScreen(
         decks.filter { it.id != DataImportRepository.SAVED_WORDS_DECK_ID && it.rowCount > 0 }
     }
 
-    Box(
+    Crossfade(
+        targetState = isDashboardReady,
+        animationSpec = tween(durationMillis = 400),
+        label = "home_dashboard_skeleton_crossfade",
         modifier = modifier
             .fillMaxSize()
             .background(ProtoBgMain)
-            .testTag("screen_home"),
-        contentAlignment = Alignment.TopCenter
-    ) {
-        Column(
-            modifier = Modifier
-                .widthIn(max = if (isTablet) 1100.dp else 720.dp)
-                .fillMaxWidth()
-                .verticalScroll(scrollState)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // 1. Hero Card with Integrated 7-Day Weekly Strip
-            WelcomeSection(
-                studyStreak = studyStreak,
-                streakShieldStatus = streakShieldStatus,
-                studyPlanProfile = studyPlanProfile,
-                todayChecklist = todayChecklist,
-                weeklyChecklists = weeklyChecklists,
-                studiedTodayCount = studiedTodayCount
-            )
-
-            // 2. Compact Pace / Adaptive Insight Banner
-            learnerModelSnapshot.activeInsight?.let { insight ->
-                AdaptiveInsightBannerCard(
-                    insight = insight,
-                    onDismiss = onDismissInsight,
-                    onAcceptLevelUp = onAcceptLevelUp,
-                    onNavigateToRoute = { route -> onNavigateToTask(route, null) }
-                )
-            }
-
-            if (isTablet) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(20.dp)
+            .testTag("screen_home")
+    ) { ready ->
+        if (!ready) {
+            HomeDashboardSkeleton(modifier = Modifier.fillMaxSize())
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(ProtoBgMain)
+                    .testTag("home_real_content_layer"),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                Column(
+                    modifier = Modifier
+                        .widthIn(max = if (isTablet) 1100.dp else 720.dp)
+                        .fillMaxWidth()
+                        .verticalScroll(scrollState)
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
+                    // 1. Hero Card with Integrated 7-Day Weekly Strip
+                    WelcomeSection(
+                        studyStreak = studyStreak,
+                        streakShieldStatus = streakShieldStatus,
+                        studyPlanProfile = studyPlanProfile,
+                        todayChecklist = todayChecklist,
+                        weeklyChecklists = weeklyChecklists,
+                        studiedTodayCount = studiedTodayCount
+                    )
+
+                    // 2. Compact Pace / Adaptive Insight Banner
+                    learnerModelSnapshot.activeInsight?.let { insight ->
+                        AdaptiveInsightBannerCard(
+                            insight = insight,
+                            onDismiss = onDismissInsight,
+                            onAcceptLevelUp = onAcceptLevelUp,
+                            onNavigateToRoute = { route -> onNavigateToTask(route, null) }
+                        )
+                    }
+
+                    if (isTablet) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(20.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                TodayPlanCard(
+                                    todayChecklist = todayChecklist,
+                                    onOpenPlanScreen = onOpenPlanScreen,
+                                    onNavigateToTask = onNavigateToTask,
+                                    onToggleTaskCompleted = onToggleTaskCompleted,
+                                    onOpenNewWordsCompletedOptions = { count ->
+                                        completedWordsCount = count
+                                        showNewWordsCompletedDialog = true
+                                    },
+                                    newWordsLearnedTodayCount = newWordsLearnedTodayCount
+                                )
+
+                                CefrAndLifecycleCard(
+                                    readiness = learnerModelSnapshot.cefrReadiness,
+                                    funnel = learnerModelSnapshot.funnel,
+                                    onAcceptLevelUp = onAcceptLevelUp,
+                                    onLoadStageWords = onLoadStageWords,
+                                    onSpeakWord = onSpeakWord,
+                                    onOpenDictionaryForStage = onOpenDictionaryForStage,
+                                    onStartStudying = onStartStudying
+                                )
+
+                                if (learnerModelSnapshot.conqueredWords.isNotEmpty()) {
+                                    ConqueredWordsTrophyShelf(
+                                        conqueredWords = learnerModelSnapshot.conqueredWords
+                                    )
+                                }
+                            }
+
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                ReviewDueSection(
+                                    reviewDueNowCount = reviewDueNowCount,
+                                    waitingLaterTodayCount = waitingLaterTodayCount,
+                                    nextWaitingDueTimestamp = nextWaitingDueTimestamp,
+                                    continueDeckId = continueDeckId,
+                                    onOpenFlashcardsForDeck = onOpenFlashcardsForDeck,
+                                    onStartEarlyReview = onStartEarlyReview
+                                )
+
+                                ContinueLearningSection(
+                                    continueDeck = continueDeck,
+                                    continueCardPosition = continueCardPosition,
+                                    continueTotalCards = continueTotalCards,
+                                    continueDeckId = continueDeckId,
+                                    totalDecksCount = displayDecks.size.coerceAtLeast(13),
+                                    studyStateByDeck = studyStateByDeck,
+                                    onOpenDeck = onOpenDeck,
+                                    onOpenFlashcardsForDeck = onOpenFlashcardsForDeck
+                                )
+                            }
+                        }
+                    } else {
+                        // Single-column phone layout: Primary Daily Plan & Due Reviews first (above the fold on 360dp),
+                        // followed by CEFR Mastery & Collapsible Vocabulary Lifecycle Stages.
                         TodayPlanCard(
                             todayChecklist = todayChecklist,
                             onOpenPlanScreen = onOpenPlanScreen,
@@ -256,6 +329,15 @@ fun HomeScreen(
                                 showNewWordsCompletedDialog = true
                             },
                             newWordsLearnedTodayCount = newWordsLearnedTodayCount
+                        )
+
+                        ReviewDueSection(
+                            reviewDueNowCount = reviewDueNowCount,
+                            waitingLaterTodayCount = waitingLaterTodayCount,
+                            nextWaitingDueTimestamp = nextWaitingDueTimestamp,
+                            continueDeckId = continueDeckId,
+                            onOpenFlashcardsForDeck = onOpenFlashcardsForDeck,
+                            onStartEarlyReview = onStartEarlyReview
                         )
 
                         CefrAndLifecycleCard(
@@ -273,86 +355,22 @@ fun HomeScreen(
                                 conqueredWords = learnerModelSnapshot.conqueredWords
                             )
                         }
-                    }
-
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        ReviewDueSection(
-                            reviewDueNowCount = reviewDueNowCount,
-                            waitingLaterTodayCount = waitingLaterTodayCount,
-                            nextWaitingDueTimestamp = nextWaitingDueTimestamp,
-                            continueDeckId = continueDeckId,
-                            onOpenFlashcardsForDeck = onOpenFlashcardsForDeck,
-                            onStartEarlyReview = onStartEarlyReview
-                        )
 
                         ContinueLearningSection(
                             continueDeck = continueDeck,
                             continueCardPosition = continueCardPosition,
                             continueTotalCards = continueTotalCards,
                             continueDeckId = continueDeckId,
-                            totalDecksCount = displayDecks.size.coerceAtLeast(13),
+                            totalDecksCount = if (displayDecks.isNotEmpty()) displayDecks.size else 13,
                             studyStateByDeck = studyStateByDeck,
                             onOpenDeck = onOpenDeck,
                             onOpenFlashcardsForDeck = onOpenFlashcardsForDeck
                         )
                     }
+
+                    Spacer(modifier = Modifier.height(WordBooksSpacing.large))
                 }
-            } else {
-                // Single-column phone layout: Primary Daily Plan & Due Reviews first (above the fold on 360dp),
-                // followed by CEFR Mastery & Collapsible Vocabulary Lifecycle Stages.
-                TodayPlanCard(
-                    todayChecklist = todayChecklist,
-                    onOpenPlanScreen = onOpenPlanScreen,
-                    onNavigateToTask = onNavigateToTask,
-                    onToggleTaskCompleted = onToggleTaskCompleted,
-                    onOpenNewWordsCompletedOptions = { count ->
-                        completedWordsCount = count
-                        showNewWordsCompletedDialog = true
-                    },
-                    newWordsLearnedTodayCount = newWordsLearnedTodayCount
-                )
-
-                ReviewDueSection(
-                    reviewDueNowCount = reviewDueNowCount,
-                    waitingLaterTodayCount = waitingLaterTodayCount,
-                    nextWaitingDueTimestamp = nextWaitingDueTimestamp,
-                    continueDeckId = continueDeckId,
-                    onOpenFlashcardsForDeck = onOpenFlashcardsForDeck,
-                    onStartEarlyReview = onStartEarlyReview
-                )
-
-                CefrAndLifecycleCard(
-                    readiness = learnerModelSnapshot.cefrReadiness,
-                    funnel = learnerModelSnapshot.funnel,
-                    onAcceptLevelUp = onAcceptLevelUp,
-                    onLoadStageWords = onLoadStageWords,
-                    onSpeakWord = onSpeakWord,
-                    onOpenDictionaryForStage = onOpenDictionaryForStage,
-                    onStartStudying = onStartStudying
-                )
-
-                if (learnerModelSnapshot.conqueredWords.isNotEmpty()) {
-                    ConqueredWordsTrophyShelf(
-                        conqueredWords = learnerModelSnapshot.conqueredWords
-                    )
-                }
-
-                ContinueLearningSection(
-                    continueDeck = continueDeck,
-                    continueCardPosition = continueCardPosition,
-                    continueTotalCards = continueTotalCards,
-                    continueDeckId = continueDeckId,
-                    totalDecksCount = if (displayDecks.isNotEmpty()) displayDecks.size else 13,
-                    studyStateByDeck = studyStateByDeck,
-                    onOpenDeck = onOpenDeck,
-                    onOpenFlashcardsForDeck = onOpenFlashcardsForDeck
-                )
             }
-
-            Spacer(modifier = Modifier.height(WordBooksSpacing.large))
         }
     }
 

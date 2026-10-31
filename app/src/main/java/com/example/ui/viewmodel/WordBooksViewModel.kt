@@ -610,6 +610,12 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     private val _learnerModelSnapshot = MutableStateFlow(com.example.data.plan.LearnerModelSnapshot())
     val learnerModelSnapshot: StateFlow<com.example.data.plan.LearnerModelSnapshot> = _learnerModelSnapshot.asStateFlow()
 
+    private val _isStartupSplashComplete = MutableStateFlow(false)
+    val isStartupSplashComplete: StateFlow<Boolean> = _isStartupSplashComplete.asStateFlow()
+
+    private val _isDashboardReady = MutableStateFlow(false)
+    val isDashboardReady: StateFlow<Boolean> = _isDashboardReady.asStateFlow()
+
     val monthlyChecklists: StateFlow<List<DailyChecklistEntity>> = database.wordBooksDao().observeChecklistsForMonth(
         studyPlanRepository.timeProvider.currentMonthString()
     ).stateIn(
@@ -725,6 +731,7 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         startImportIfNeeded()
         // 1. Initial study plan load if profile already exists or onboarding already completed
         viewModelScope.launch {
+            val coldStartMark = System.currentTimeMillis()
             val existingProfile = database.wordBooksDao().getStudyPlanProfile()
             val onboardingSnap = onboardingRepository.getSnapshot()
             _isDeveloperModeEnabled.value = onboardingSnap.isDeveloperModeEnabled
@@ -745,6 +752,16 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 enabled = onboardingSnap.studyReminderEnabled,
                 reminderMinutesFromMidnight = onboardingSnap.studyReminderTimeMinutes
             )
+
+            // Stage 1: Hold Branded Splash Screen for at least ~450ms while preferences & onboarding state are read
+            val splashElapsed = System.currentTimeMillis() - coldStartMark
+            if (splashElapsed < 450L) {
+                kotlinx.coroutines.delay(450L - splashElapsed)
+            }
+            _isStartupSplashComplete.value = true
+
+            // Stage 2: Load Home Dashboard data & enforce minimum ~380ms shimmer smoothness window
+            val skeletonStartMark = System.currentTimeMillis()
             if (existingProfile != null || onboardingSnap.onboardingCompleted) {
                 val checklist = studyPlanRepository.getOrCreateDailyChecklist()
                 _todayChecklist.value = checklist
@@ -754,6 +771,11 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
                 _weakAreas.value = studyPlanRepository.getWeakAreas()
                 _learnerModelSnapshot.value = studyPlanRepository.learnerModelRepository.buildSnapshot(existingProfile)
             }
+            val skeletonElapsed = System.currentTimeMillis() - skeletonStartMark
+            if (skeletonElapsed < 380L) {
+                kotlinx.coroutines.delay(380L - skeletonElapsed)
+            }
+            _isDashboardReady.value = true
         }
 
         // 1b. Observe preference updates for developer mode, theme mode, and audio settings
@@ -1012,16 +1034,20 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     fun completeOnboardingStep5(allowAi: Boolean) {
         viewModelScope.launch {
             batchTranslateManager.setAllowAi(allowAi)
-            val existingProfile = database.wordBooksDao().getStudyPlanProfile()
-            if (existingProfile == null) {
-                val created = studyPlanRepository.getOrCreateProfile()
-                val plan = studyPlanRepository.loadDefaultPlanScaled(created)
-                _todayChecklist.value = studyPlanRepository.regenerateChecklistForUpdatedPlan(created, plan)
+            var profile = database.wordBooksDao().getStudyPlanProfile()
+            if (profile == null) {
+                profile = studyPlanRepository.getOrCreateProfile()
+                val plan = studyPlanRepository.loadDefaultPlanScaled(profile)
+                _todayChecklist.value = studyPlanRepository.regenerateChecklistForUpdatedPlan(profile, plan)
             } else if (_todayChecklist.value == null) {
                 _todayChecklist.value = studyPlanRepository.getOrCreateDailyChecklist()
             }
-            _studyStreak.value = studyPlanRepository.computeStreak()
+            val shieldStatus = studyPlanRepository.evaluateStreakAndShields(onboardingRepository)
+            _streakShieldStatus.value = shieldStatus
+            _studyStreak.value = shieldStatus.streak
             _weakAreas.value = studyPlanRepository.getWeakAreas()
+            _learnerModelSnapshot.value = studyPlanRepository.learnerModelRepository.buildSnapshot(profile)
+            _isDashboardReady.value = true
             onboardingRepository.markOnboardingCompleted()
         }
     }
@@ -1164,17 +1190,21 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
      */
     fun skipOnboarding() {
         viewModelScope.launch {
-            val existingProfile = database.wordBooksDao().getStudyPlanProfile()
-            if (existingProfile == null) {
-                val created = studyPlanRepository.getOrCreateProfile()
-                val plan = studyPlanRepository.loadDefaultPlanScaled(created)
-                _todayChecklist.value = studyPlanRepository.regenerateChecklistForUpdatedPlan(created, plan)
+            var profile = database.wordBooksDao().getStudyPlanProfile()
+            if (profile == null) {
+                profile = studyPlanRepository.getOrCreateProfile()
+                val plan = studyPlanRepository.loadDefaultPlanScaled(profile)
+                _todayChecklist.value = studyPlanRepository.regenerateChecklistForUpdatedPlan(profile, plan)
             } else if (_todayChecklist.value == null) {
                 _todayChecklist.value = studyPlanRepository.getOrCreateDailyChecklist()
             }
-            _studyStreak.value = studyPlanRepository.computeStreak()
+            val shieldStatus = studyPlanRepository.evaluateStreakAndShields(onboardingRepository)
+            _streakShieldStatus.value = shieldStatus
+            _studyStreak.value = shieldStatus.streak
             _weakAreas.value = studyPlanRepository.getWeakAreas()
+            _learnerModelSnapshot.value = studyPlanRepository.learnerModelRepository.buildSnapshot(profile)
             _placementQuizState.value = com.example.ui.screens.PlacementQuizUiState()
+            _isDashboardReady.value = true
             onboardingRepository.markOnboardingCompleted()
         }
     }
