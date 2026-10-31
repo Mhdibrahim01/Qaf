@@ -587,6 +587,7 @@ class MiniGamesHubTest {
 
         composeTestRule.onNodeWithTag("survival_dialog").assertIsDisplayed()
         composeTestRule.onNodeWithTag("survival_question_card").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("survival_tf_prompt_card").assertIsDisplayed()
         composeTestRule.onNodeWithTag("survival_option_0").assertIsDisplayed()
         composeTestRule.onNodeWithTag("survival_option_1").assertIsDisplayed()
     }

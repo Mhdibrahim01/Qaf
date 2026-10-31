@@ -171,7 +171,7 @@ fun VocabularyBlitzDialog(
                 modifier = Modifier
                     .widthIn(max = 680.dp)
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 44.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // Top Bar: Title + Sound Toggle + Close
@@ -777,11 +777,39 @@ internal fun BlitzSummaryContent(
                 modifier = Modifier.size(44.dp)
             )
 
-            Text(
-                text = bi("60 Seconds Up! \u2022 \u2067انتهى الوقت!\u2069", "انتهى تحدي الـ 60 ثانية! ⚡"),
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
-                color = TextPrimary
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
+            ) {
+                Text(
+                    text = "60 Seconds Up!",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 20.sp,
+                        textDirection = TextDirection.Ltr
+                    ),
+                    color = TextPrimary
+                )
+                Text(
+                    text = "•",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 20.sp
+                    ),
+                    color = TextSecondary
+                )
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                    Text(
+                        text = "\u2067\u200Fانتهى الوقت!\u200F\u2069",
+                        style = ArabicTypography.titleMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 19.sp,
+                            textDirection = TextDirection.Rtl
+                        ),
+                        color = TextPrimary
+                    )
+                }
+            }
 
             if (state.isNewHighScore) {
                 Surface(
@@ -1046,11 +1074,32 @@ internal fun BlitzSummaryContent(
             HorizontalDivider(color = BorderDark)
 
             // Achievement Badges Section (Word Sniper & Academic Lightning)
-            Text(
-                text = bi("Blitz Achievement Badges • شارات الإنجاز", "شارات تحدي السرعة"),
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = GoldAccent
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
+            ) {
+                Text(
+                    text = "Blitz Achievement Badges",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = GoldAccent
+                )
+                Text(
+                    text = "•",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = GoldAccent
+                )
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                    Text(
+                        text = "شارات الإنجاز",
+                        style = ArabicTypography.bodySmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.5.sp,
+                            textDirection = TextDirection.Rtl
+                        ),
+                        color = GoldAccent
+                    )
+                }
+            }
 
             BlitzAchievementBadgeRow(
                 emoji = "🥇",
@@ -1255,10 +1304,26 @@ private fun BlitzAchievementBadgeRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = "$titleEn • $titleAr",
+                        text = titleEn,
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         color = if (isUnlocked) accentColor else TextPrimary
                     )
+                    Text(
+                        text = "•",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                        color = TextSecondary
+                    )
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                        Text(
+                            text = titleAr,
+                            style = ArabicTypography.bodySmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp,
+                                textDirection = TextDirection.Rtl
+                            ),
+                            color = if (isUnlocked) accentColor else Color(0xFFD1D5DB)
+                        )
+                    }
                     if (isUnlocked) {
                         Surface(
                             color = EmeraldAccent.copy(alpha = 0.2f),
