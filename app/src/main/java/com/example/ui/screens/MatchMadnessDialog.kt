@@ -64,6 +64,7 @@ import com.example.data.blitz.MatchMadnessSessionState
 import com.example.data.blitz.MatchSelectionOutcome
 import com.example.data.local.EntryEntity
 import com.example.ui.theme.AmberAccent
+import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
 import com.example.ui.theme.CoralAccent
@@ -86,6 +87,7 @@ import kotlinx.coroutines.launch
 fun MatchMadnessDialog(
     initialEntries: List<EntryEntity>,
     bestTimeSeconds: Int = 0,
+    enableTimerAutoTick: Boolean = true,
     onFinish: (Int) -> Unit,
     onPlayPronunciation: (String) -> Unit = {},
     onDismiss: () -> Unit
@@ -100,7 +102,8 @@ fun MatchMadnessDialog(
     val coroutineScope = rememberCoroutineScope()
 
     // 1-second timer loop while game is active
-    LaunchedEffect(sessionState.isTimerRunning, sessionState.isFinished) {
+    LaunchedEffect(sessionState.isTimerRunning, sessionState.isFinished, enableTimerAutoTick) {
+        if (!enableTimerAutoTick) return@LaunchedEffect
         while (sessionState.isTimerRunning && !sessionState.isFinished) {
             delay(1000L)
             sessionState = MatchMadnessEngine.tickTimer(sessionState)
@@ -559,11 +562,11 @@ private fun MatchingCardView(
     onClick: () -> Unit
 ) {
     if (card.isMatched) {
-        // Matched cards dissolve / disabled
+        // Matched cards dissolve / disabled with identical fixed height so layout never jumps
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(54.dp),
+                .height(62.dp),
             color = Color.Transparent,
             shape = RoundedCornerShape(12.dp)
         ) {}
@@ -588,10 +591,27 @@ private fun MatchingCardView(
         label = "matchBorderColor"
     )
 
+    val fontSize = if (card.text.length > 16) 12.5.sp else 14.sp
+    val textStyle = if (!card.isEnglish) {
+        ArabicTypography.bodyMedium.copy(
+            fontSize = fontSize,
+            lineHeight = 16.sp,
+            fontWeight = if (card.isSelected) FontWeight.Bold else FontWeight.SemiBold,
+            textAlign = TextAlign.Center
+        )
+    } else {
+        MaterialTheme.typography.bodyMedium.copy(
+            fontSize = fontSize,
+            lineHeight = 16.sp,
+            fontWeight = if (card.isSelected) FontWeight.Bold else FontWeight.SemiBold,
+            textAlign = TextAlign.Center
+        )
+    }
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(54.dp)
+            .height(62.dp)
             .clip(RoundedCornerShape(12.dp))
             .clickable(enabled = isEnabled, onClick = onClick)
             .testTag(if (card.isEnglish) "match_card_en_${card.text}" else "match_card_ar_${card.id}"),
@@ -602,14 +622,12 @@ private fun MatchingCardView(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 10.dp, vertical = 6.dp),
+                .padding(horizontal = 8.dp, vertical = 6.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = card.text,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = if (card.isSelected) FontWeight.Bold else FontWeight.Medium
-                ),
+                style = textStyle,
                 color = when {
                     card.isError -> CoralAccent
                     card.isSelected -> GoldAccent

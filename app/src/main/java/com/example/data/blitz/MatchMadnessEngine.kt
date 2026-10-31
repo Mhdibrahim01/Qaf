@@ -90,11 +90,12 @@ object MatchMadnessEngine {
     const val TOTAL_PAIRS = PAIRS_PER_ROUND * TOTAL_ROUNDS // 18 words
 
     private fun cleanArabic(raw: String): String {
-        return raw
-            .split(Regex("[؛،,/\\n]"))
+        val singleLine = raw.replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
+        return singleLine
+            .split(Regex("[؛،,/]"))
             .map { it.trim() }
             .firstOrNull { it.isNotEmpty() }
-            ?: raw.trim()
+            ?: singleLine.trim()
     }
 
     fun createSession(
@@ -123,7 +124,7 @@ object MatchMadnessEngine {
         val allPairs = selectedEntries.mapIndexed { idx, e ->
             MatchPairItem(
                 id = "${e.id}_pair_$idx",
-                englishWord = e.text.trim(),
+                englishWord = e.text.trim().replace("\r\n", " ").replace("\n", " "),
                 arabicMeaning = cleanArabic(e.arabic),
                 pos = e.pos.trim(),
                 level = (e.effectiveLevel ?: e.level).trim().ifBlank { "B1" },
