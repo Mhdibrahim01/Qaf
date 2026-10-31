@@ -558,19 +558,27 @@ class LearnerModelRepository(
             ((completedStoriesAtLevel.toFloat() / storiesAtLevel.size.toFloat()) * 100f).roundToInt().coerceIn(0, 100)
         } else 0
 
-        // Vocab coverage at user level in selected decks
+        // Vocab coverage at user level or above up to C1
         val levelTargetWords = AdaptiveConfig.getCefrVocabTarget(userLevel)
-        val levelEntries = dao.getRecommendedWordsForLevel(userLevel, limit = 10000)
+        val eligibleLevels = AdaptiveConfig.getCefrLevelsAtOrAbove(userLevel)
+        val levelEntries = dao.getRecommendedWordsForLevels(eligibleLevels, limit = 20000)
         val levelHeadwords = levelEntries
-            .filter { selectedDecks.isEmpty() || it.deck in selectedDecks }
             .map { it.text.trim().lowercase() }
             .toSet()
         val familiarOrMatureTotal = if (levelHeadwords.isNotEmpty()) {
-            stageByHeadword.count { (word, stage) ->
-                word in levelHeadwords && (stage == WordStage.FAMILIAR || stage == WordStage.MATURE)
+            val allStudiedStageByHeadword = HashMap<String, WordStage>(allProgress.size * 2)
+            for (wp in allProgress) {
+                val stage = classifyWordStage(wp)
+                val currentBest = allStudiedStageByHeadword[wp.text.lowercase()]
+                if (currentBest == null || stage.ordinal > currentBest.ordinal) {
+                    allStudiedStageByHeadword[wp.text.lowercase()] = stage
+                }
+            }
+            allStudiedStageByHeadword.count { (word, stage) ->
+                word in levelHeadwords && stage in setOf(WordStage.LEARNING, WordStage.FAMILIAR, WordStage.MATURE)
             }
         } else {
-            familiarCount + matureCount
+            learningCount + familiarCount + matureCount
         }
         val vocabCoveragePct = ((familiarOrMatureTotal.toFloat() / levelTargetWords.toFloat()) * 100f)
             .roundToInt()
@@ -830,15 +838,7 @@ class LearnerModelRepository(
     }
 
     private fun compareCefrRank(level: String): Int {
-        return when (level.trim().uppercase()) {
-            "A1" -> 1
-            "A2" -> 2
-            "B1" -> 3
-            "B2" -> 4
-            "C1" -> 5
-            "C2" -> 6
-            else -> 3
-        }
+        return AdaptiveConfig.compareCefrRank(level)
     }
 
     private fun getBaselineKnownLevels(userLevel: String): List<String> {

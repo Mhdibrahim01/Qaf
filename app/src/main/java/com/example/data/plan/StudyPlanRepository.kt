@@ -15,6 +15,7 @@ import com.example.data.local.StudyPlanJson
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.local.WeakAreasState
 import com.example.data.local.WordBooksDao
+import com.example.data.local.WordProgressEntity
 import com.example.data.onboarding.OnboardingPreferencesRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.Json
@@ -957,6 +958,7 @@ class StudyPlanRepository(
         readabilityReport: StoryReadabilityReport?,
         selectedDecks: List<String>,
         stageByHeadword: Map<String, WordStage>,
+        userLevel: String = "",
         maxCount: Int
     ): List<EntryEntity> {
         if (maxCount <= 0) return emptyList()
@@ -983,9 +985,18 @@ class StudyPlanRepository(
         } else {
             deckMatches + dao.getEntriesByHeadwords(unstudiedFocus)
         }
+        val cleanUserLevel = userLevel.trim().uppercase(Locale.US)
+        val userRank = if (cleanUserLevel.isNotBlank()) AdaptiveConfig.compareCefrRank(cleanUserLevel) else 0
+
         val seenHeadwords = HashSet<String>()
         val result = mutableListOf<EntryEntity>()
         for (entry in allMatches) {
+            val entryLevel = (entry.effectiveLevel ?: entry.level).trim().uppercase(Locale.US)
+            val entryRank = AdaptiveConfig.compareCefrRank(entryLevel)
+            if (userRank > 0 && entryRank < userRank) {
+                // Never include words below the user's level in new words
+                continue
+            }
             val lower = entry.text.trim().lowercase(Locale.US)
             if (entry.arabic.isNotBlank() && seenHeadwords.add(lower)) {
                 result.add(entry)
@@ -1005,8 +1016,8 @@ class StudyPlanRepository(
         }
     }
 
-    private suspend fun getStudiedHeadwordStageMap(): Map<String, WordStage> {
-        val allWordProgress = dao.getAllWordProgressList()
+    private suspend fun getStudiedHeadwordStageMap(cachedProgress: List<WordProgressEntity>? = null): Map<String, WordStage> {
+        val allWordProgress = cachedProgress ?: dao.getAllWordProgressList()
         val stageByHeadword = HashMap<String, WordStage>(allWordProgress.size * 2)
         for (wp in allWordProgress) {
             val st = LearnerModelRepository.classifyWordStage(wp)
@@ -1075,11 +1086,13 @@ class StudyPlanRepository(
         targetCount: Int,
         date: String = timeProvider.todayDateString(),
         anchorStoryOverride: ReadingTextEntity? = null,
-        anchorStoryReadabilityOverride: StoryReadabilityReport? = null
+        anchorStoryReadabilityOverride: StoryReadabilityReport? = null,
+        cachedAllProgress: List<WordProgressEntity>? = null
     ): List<EntryEntity> {
         if (targetCount <= 0) return emptyList()
+        val allProgressList = cachedAllProgress ?: dao.getAllWordProgressList()
         val selectedDecks = decodeSelectedDecks(profile)
-        val stageByHeadword = getStudiedHeadwordStageMap()
+        val stageByHeadword = getStudiedHeadwordStageMap(allProgressList)
 
         // 1. Identify today's anchor story (if scheduled)
         val anchorStory = anchorStoryOverride ?: resolveAnchorStoryForDate(profile, date)
@@ -1090,12 +1103,13 @@ class StudyPlanRepository(
                 readabilityReport = readability,
                 selectedDecks = selectedDecks,
                 stageByHeadword = stageByHeadword,
+                userLevel = profile.level,
                 maxCount = minOf(4, targetCount / 2)
             )
         } else emptyList()
 
         // 2. Select profile-based words
-        val selectionResult = selectNewWordsForProfile(profile, targetCount)
+        val selectionResult = selectNewWordsForProfile(profile, targetCount, cachedAllProgress = allProgressList)
 
         // 3. Merge pre-taught words with profile words
         val merged = if (preTeachWords.isNotEmpty()) {
@@ -1107,7 +1121,7 @@ class StudyPlanRepository(
         }
 
         // Re-rank final list deterministically via (SEEN > Knuth Hash)
-        val lookedUpHeadwords = dao.getAllWordProgressList()
+        val lookedUpHeadwords = allProgressList
             .filter { it.lookupCount > 0 && it.firstLearnedTimestamp == 0L && it.lastReviewedTimestamp == 0L }
             .mapTo(HashSet()) { it.text.trim().lowercase(Locale.US) }
 
@@ -1249,10 +1263,44 @@ class StudyPlanRepository(
                     )
                 }
                 "quiz" -> {
-                    val isDone = task.isCompleted || quizResultsToday.isNotEmpty()
+                    val dailyMiniResults = quizResultsToday.filter { it.quizType == "daily_mini" }
+                    val overallResults = dailyMiniResults.filter { it.skill == "overall" }
+                    val (bestScore, totalQuestions, hasAttempted) = if (overallResults.isNotEmpty()) {
+                        val best = overallResults.maxByOrNull { it.accuracyPercent }!!
+                        Triple(best.correctAnswers, best.totalQuestions, true)
+                    } else if (dailyMiniResults.isNotEmpty()) {
+                        val grouped = dailyMiniResults.groupBy { it.timestamp }
+                        val bestGroup = grouped.values.maxByOrNull { list ->
+                            val tot = list.sumOf { it.totalQuestions }
+                            val cor = list.sumOf { it.correctAnswers }
+                            if (tot > 0) (cor.toFloat() / tot.toFloat()) else 0f
+                        }
+                        if (bestGroup != null) {
+                            val cor = bestGroup.sumOf { it.correctAnswers }
+                            val tot = bestGroup.sumOf { it.totalQuestions }
+                            Triple(cor, tot, true)
+                        } else {
+                            Triple(0, task.targetCount, false)
+                        }
+                    } else {
+                        Triple(0, task.targetCount, false)
+                    }
+
+                    val targetQ = if (totalQuestions > 0) totalQuestions else task.targetCount
+                    val accuracyPct = if (targetQ > 0) (bestScore.toFloat() / targetQ.toFloat()) * 100f else 0f
+                    val isPassed = hasAttempted && (accuracyPct >= 70f || bestScore >= 7)
+
+                    val updatedReason = if (hasAttempted) {
+                        "Score: $bestScore/$targetQ • ${if (isPassed) "Passed ✓" else "Needs Retry (Min 7/10)"}"
+                    } else {
+                        task.reason
+                    }
+
                     task.copy(
-                        completedCount = if (isDone) task.targetCount else 0,
-                        isCompleted = isDone
+                        completedCount = if (hasAttempted) bestScore else 0,
+                        targetCount = targetQ,
+                        isCompleted = isPassed,
+                        reason = updatedReason
                     )
                 }
                 else -> task
@@ -1588,10 +1636,10 @@ class StudyPlanRepository(
         }
         return when (clean) {
             "A1" -> listOf("A1", "A2")
-            "A2" -> listOf("A2", "B1", "A1")
-            "B1" -> listOf("B1", "B2", "A2")
-            "B2" -> listOf("B2", "C1", "B1")
-            "C1" -> listOf("C1", "B2")
+            "A2" -> listOf("A2", "B1", "B2")
+            "B1" -> listOf("B1", "B2", "C1")
+            "B2" -> listOf("B2", "C1")
+            "C1" -> listOf("C1")
             else -> listOf(clean)
         }
     }
@@ -1660,7 +1708,8 @@ class StudyPlanRepository(
     suspend fun selectNewWordsForProfile(
         profile: StudyPlanProfileEntity,
         targetCount: Int,
-        weightsConfig: DeckMixWeightsConfig = deckWeightsConfig
+        weightsConfig: DeckMixWeightsConfig = deckWeightsConfig,
+        cachedAllProgress: List<WordProgressEntity>? = null
     ): WordSelectionResult {
         if (targetCount <= 0) return WordSelectionResult(emptyList(), null)
 
@@ -1686,7 +1735,7 @@ class StudyPlanRepository(
         val ungradedSelectedDecks = selectedDecks.filter { it !in EntryEntity.GRADED_DECKS }
         val totalUngradedQuota = ungradedSelectedDecks.sumOf { deckQuotas[it] ?: 0 }
 
-        val lookedUpHeadwords = dao.getAllWordProgressList()
+        val lookedUpHeadwords = (cachedAllProgress ?: dao.getAllWordProgressList())
             .filter { it.lookupCount > 0 && it.firstLearnedTimestamp == 0L && it.lastReviewedTimestamp == 0L }
             .mapTo(HashSet()) { it.text.trim().lowercase(Locale.US) }
 

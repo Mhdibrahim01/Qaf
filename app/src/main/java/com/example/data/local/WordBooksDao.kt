@@ -2109,14 +2109,20 @@ interface WordBooksDao {
             OR (:level = '' AND :includeUnlevelled = 0)
           )
           AND TRIM(e.arabic) != ''
-          AND NOT EXISTS (
-              SELECT 1 FROM word_progress wp
-              LEFT JOIN entries e_studied ON wp.entry_id = e_studied.id
+          AND e.id NOT IN (
+              SELECT wp.entry_id FROM word_progress wp
               WHERE (wp.first_learned_timestamp > 0 OR wp.last_reviewed_timestamp > 0)
-                AND (
-                    wp.entry_id = e.id
-                    OR (e_studied.id IS NOT NULL AND LOWER(TRIM(e_studied.text)) = LOWER(TRIM(e.text)))
-                )
+                AND wp.entry_id IS NOT NULL
+          )
+          AND LOWER(TRIM(e.text)) NOT IN (
+              SELECT LOWER(TRIM(wp.text)) FROM word_progress wp
+              WHERE (wp.first_learned_timestamp > 0 OR wp.last_reviewed_timestamp > 0)
+                AND wp.text IS NOT NULL AND TRIM(wp.text) != ''
+              UNION
+              SELECT LOWER(TRIM(e_studied.text)) FROM word_progress wp
+              JOIN entries e_studied ON wp.entry_id = e_studied.id
+              WHERE (wp.first_learned_timestamp > 0 OR wp.last_reviewed_timestamp > 0)
+                AND e_studied.text IS NOT NULL AND TRIM(e_studied.text) != ''
           )
         ORDER BY ((CAST(e.id AS INTEGER) * 2654435761) % 4294967296) ASC, e.id ASC
         LIMIT :limit
@@ -2136,14 +2142,20 @@ interface WordBooksDao {
             OR (:includeNullLevel = 1 AND e.effective_level IS NULL)
           )
           AND TRIM(e.arabic) != ''
-          AND NOT EXISTS (
-              SELECT 1 FROM word_progress wp
-              LEFT JOIN entries e_studied ON wp.entry_id = e_studied.id
+          AND e.id NOT IN (
+              SELECT wp.entry_id FROM word_progress wp
               WHERE (wp.first_learned_timestamp > 0 OR wp.last_reviewed_timestamp > 0)
-                AND (
-                    wp.entry_id = e.id
-                    OR (e_studied.id IS NOT NULL AND LOWER(TRIM(e_studied.text)) = LOWER(TRIM(e.text)))
-                )
+                AND wp.entry_id IS NOT NULL
+          )
+          AND LOWER(TRIM(e.text)) NOT IN (
+              SELECT LOWER(TRIM(wp.text)) FROM word_progress wp
+              WHERE (wp.first_learned_timestamp > 0 OR wp.last_reviewed_timestamp > 0)
+                AND wp.text IS NOT NULL AND TRIM(wp.text) != ''
+              UNION
+              SELECT LOWER(TRIM(e_studied.text)) FROM word_progress wp
+              JOIN entries e_studied ON wp.entry_id = e_studied.id
+              WHERE (wp.first_learned_timestamp > 0 OR wp.last_reviewed_timestamp > 0)
+                AND e_studied.text IS NOT NULL AND TRIM(e_studied.text) != ''
           )
         ORDER BY ((CAST(e.id AS INTEGER) * 2654435761) % 4294967296) ASC, e.id ASC
     """)
@@ -2285,6 +2297,17 @@ interface WordBooksDao {
         """
     )
     suspend fun getRecommendedWordsForLevel(level: String, limit: Int = 5000): List<EntryEntity>
+
+    @Query(
+        """
+        SELECT * FROM entries
+        WHERE UPPER(TRIM(COALESCE(NULLIF(TRIM(effective_level), ''), level))) IN (:levels)
+          AND TRIM(text) != ''
+        ORDER BY LOWER(text) ASC, pos ASC
+        LIMIT :limit
+        """
+    )
+    suspend fun getRecommendedWordsForLevels(levels: List<String>, limit: Int = 20000): List<EntryEntity>
 
     @Query(
         """

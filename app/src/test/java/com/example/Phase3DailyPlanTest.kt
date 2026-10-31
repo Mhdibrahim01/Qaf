@@ -7,9 +7,13 @@ import com.example.data.importer.DataImportRepository
 import com.example.data.local.CorrectionNotebookEntity
 import com.example.data.local.DailyChecklistEntity
 import com.example.data.local.DailyTaskItem
+import com.example.data.local.QuizQuestionItem
+import com.example.data.local.QuizResultEntity
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.local.WordBooksDatabase
 import com.example.data.local.WordProgressEntity
+import com.example.data.plan.LearnerModelRepository
+import com.example.data.plan.LocalQuizEngine
 import com.example.data.plan.StudyPlanRepository
 import com.example.data.plan.TestTimeProvider
 import kotlinx.coroutines.runBlocking
@@ -47,6 +51,8 @@ class Phase3DailyPlanTest {
     private lateinit var db: WordBooksDatabase
     private lateinit var repo: DataImportRepository
     private lateinit var planRepo: StudyPlanRepository
+    private lateinit var learnerModelRepo: LearnerModelRepository
+    private lateinit var quizEngine: LocalQuizEngine
     private lateinit var timeProvider: TestTimeProvider
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -65,6 +71,8 @@ class Phase3DailyPlanTest {
         // 2026-11-02 12:00:00 UTC (Monday)
         timeProvider = TestTimeProvider(1793620800000L)
         planRepo = StudyPlanRepository(context, db.wordBooksDao(), timeProvider)
+        learnerModelRepo = LearnerModelRepository(context, db.wordBooksDao(), timeProvider)
+        quizEngine = LocalQuizEngine(db.wordBooksDao(), timeProvider, planRepo)
     }
 
     @After
@@ -556,5 +564,514 @@ class Phase3DailyPlanTest {
         // Career and interview should be prioritized to index 0
         assertEquals("story_2", sortedRecommended[0].id)
         assertEquals("story_1", sortedRecommended[1].id)
+    }
+
+    @Test
+    fun testDailyMiniQuizOnlyCompletedByDailyMiniQuiz() = runBlocking {
+        val today = timeProvider.todayDateString()
+        val profile = StudyPlanProfileEntity(
+            id = 1,
+            level = "B2",
+            goal = "general_fluency",
+            minutesPerDay = 30,
+            studyDaysPerWeek = 6,
+            startDate = today,
+            selectedDecksJson = "[\"oxford5000\"]",
+            restDaysJson = "[]",
+            updatedAt = timeProvider.currentTimeMillis()
+        )
+        db.wordBooksDao().upsertStudyPlanProfile(profile)
+
+        val checklist = planRepo.getOrCreateDailyChecklist(today)
+        val tasks = json.decodeFromString<List<DailyTaskItem>>(checklist.tasksJson)
+        val quizTask = tasks.first { it.id == "task_daily_quiz" }
+        assertFalse("Daily quiz task must start uncompleted", quizTask.isCompleted)
+        assertEquals(0, quizTask.completedCount)
+
+        // 1. Completing 60s speed challenge (vocab_blitz_60s) must NOT complete daily mini quiz
+        db.wordBooksDao().insertQuizResult(
+            com.example.data.local.QuizResultEntity(
+                date = today,
+                quizType = "vocab_blitz_60s",
+                skill = "vocabulary",
+                totalQuestions = 15,
+                correctAnswers = 14,
+                accuracyPercent = 93.3f,
+                timestamp = timeProvider.currentTimeMillis()
+            )
+        )
+        val afterBlitz = planRepo.refreshChecklistCompletion(checklist)
+        val afterBlitzTasks = json.decodeFromString<List<DailyTaskItem>>(afterBlitz.tasksJson)
+        val afterBlitzQuizTask = afterBlitzTasks.first { it.id == "task_daily_quiz" }
+        assertFalse("Daily quiz must NOT be completed by 60s speed challenge", afterBlitzQuizTask.isCompleted)
+        assertEquals(0, afterBlitzQuizTask.completedCount)
+
+        // 2. Completing weekly or weak areas quiz must NOT complete daily mini quiz
+        db.wordBooksDao().insertQuizResult(
+            com.example.data.local.QuizResultEntity(
+                date = today,
+                quizType = "weekly",
+                skill = "vocabulary",
+                totalQuestions = 20,
+                correctAnswers = 18,
+                accuracyPercent = 90f,
+                timestamp = timeProvider.currentTimeMillis()
+            )
+        )
+        val afterWeekly = planRepo.refreshChecklistCompletion(afterBlitz)
+        val afterWeeklyTasks = json.decodeFromString<List<DailyTaskItem>>(afterWeekly.tasksJson)
+        val afterWeeklyQuizTask = afterWeeklyTasks.first { it.id == "task_daily_quiz" }
+        assertFalse("Daily quiz must NOT be completed by weekly quiz", afterWeeklyQuizTask.isCompleted)
+        assertEquals(0, afterWeeklyQuizTask.completedCount)
+
+        // 3. Completing daily mini quiz (daily_mini) DOES complete daily mini quiz
+        db.wordBooksDao().insertQuizResult(
+            com.example.data.local.QuizResultEntity(
+                date = today,
+                quizType = "daily_mini",
+                skill = "vocabulary",
+                totalQuestions = 5,
+                correctAnswers = 5,
+                accuracyPercent = 100f,
+                timestamp = timeProvider.currentTimeMillis()
+            )
+        )
+        val afterDaily = planRepo.refreshChecklistCompletion(afterWeekly)
+        val afterDailyTasks = json.decodeFromString<List<DailyTaskItem>>(afterDaily.tasksJson)
+        val afterDailyQuizTask = afterDailyTasks.first { it.id == "task_daily_quiz" }
+        assertTrue("Daily quiz MUST be completed when daily_mini result exists", afterDailyQuizTask.isCompleted)
+        assertEquals(afterDailyQuizTask.targetCount, afterDailyQuizTask.completedCount)
+    }
+
+    @Test
+    fun testLevelsByClosenessExcludesLowerLevelsWhenStartAtUserLevel() {
+        // B1 user must ONLY get B1, B2, C1 (strictly no A1 or A2)
+        val b1Levels = planRepo.levelsByCloseness("B1", startAtUserLevel = true)
+        assertEquals(listOf("B1", "B2", "C1"), b1Levels)
+        assertFalse("B1 should never contain A1", b1Levels.contains("A1"))
+        assertFalse("B1 should never contain A2", b1Levels.contains("A2"))
+
+        // B2 user must ONLY get B2, C1 (strictly no B1, A2, A1)
+        val b2Levels = planRepo.levelsByCloseness("B2", startAtUserLevel = true)
+        assertEquals(listOf("B2", "C1"), b2Levels)
+
+        // C1 user must ONLY get C1 (peak level in Qaf)
+        val c1Levels = planRepo.levelsByCloseness("C1", startAtUserLevel = true)
+        assertEquals(listOf("C1"), c1Levels)
+
+        // A2 user must get A2, B1, B2 (no A1)
+        val a2Levels = planRepo.levelsByCloseness("A2", startAtUserLevel = true)
+        assertEquals(listOf("A2", "B1", "B2"), a2Levels)
+        assertFalse("A2 should never contain A1", a2Levels.contains("A1"))
+
+        // A1 user gets A1, A2
+        val a1Levels = planRepo.levelsByCloseness("A1", startAtUserLevel = true)
+        assertEquals(listOf("A1", "A2"), a1Levels)
+    }
+
+    @Test
+    fun testStoryPreTeachWordSelectionExcludesWordsBelowUserLevel() = runBlocking {
+        val today = timeProvider.todayDateString()
+        val profile = StudyPlanProfileEntity(
+            id = 1,
+            level = "B1",
+            goal = "general_fluency",
+            minutesPerDay = 30,
+            studyDaysPerWeek = 6,
+            startDate = today,
+            selectedDecksJson = "[\"oxford5000\"]",
+            restDaysJson = "[]",
+            startAtUserLevel = true,
+            updatedAt = timeProvider.currentTimeMillis()
+        )
+        db.wordBooksDao().upsertStudyPlanProfile(profile)
+
+        // Insert mock entries for A1, A2, B1, B2
+        val entries = listOf(
+            com.example.data.local.EntryEntity(
+                id = "pre_a1",
+                type = "word",
+                deck = "oxford5000",
+                text = "simpleword",
+                pos = "noun",
+                level = "A1",
+                definitionEn = "very easy",
+                noteEn = "",
+                examplesEn = "a simple word",
+                definitionUrl = "",
+                audioUrl = "",
+                arabic = "كلمة بسيطة",
+                effectiveLevel = "A1"
+            ),
+            com.example.data.local.EntryEntity(
+                id = "pre_a2",
+                type = "word",
+                deck = "oxford5000",
+                text = "basicword",
+                pos = "noun",
+                level = "A2",
+                definitionEn = "basic word",
+                noteEn = "",
+                examplesEn = "a basic word",
+                definitionUrl = "",
+                audioUrl = "",
+                arabic = "كلمة أساسية",
+                effectiveLevel = "A2"
+            ),
+            com.example.data.local.EntryEntity(
+                id = "pre_b1",
+                type = "word",
+                deck = "oxford5000",
+                text = "connectword",
+                pos = "verb",
+                level = "B1",
+                definitionEn = "to connect",
+                noteEn = "",
+                examplesEn = "connect words together",
+                definitionUrl = "",
+                audioUrl = "",
+                arabic = "يربط",
+                effectiveLevel = "B1"
+            ),
+            com.example.data.local.EntryEntity(
+                id = "pre_b2",
+                type = "word",
+                deck = "oxford5000",
+                text = "expandword",
+                pos = "verb",
+                level = "B2",
+                definitionEn = "to expand",
+                noteEn = "",
+                examplesEn = "expand knowledge",
+                definitionUrl = "",
+                audioUrl = "",
+                arabic = "يوسّع",
+                effectiveLevel = "B2"
+            )
+        )
+        db.wordBooksDao().insertEntriesBatchIgnore(entries)
+
+        val story = com.example.data.local.ReadingTextEntity(
+            id = "story_preteach_test",
+            titleEn = "Building Strong Connections",
+            titleAr = "بناء علاقات قوية",
+            level = "B1",
+            topic = "daily_life",
+            sentencesJson = "[]",
+            targetWordsJson = "[\"simpleword\", \"basicword\", \"connectword\", \"expandword\"]",
+            questionsJson = "[]"
+        )
+        db.wordBooksDao().upsertReadingText(story)
+
+        val selectedWords = planRepo.getTodayTargetNewWords(
+            profile = profile,
+            targetCount = 4,
+            date = today,
+            anchorStoryOverride = story
+        )
+
+        val selectedTexts = selectedWords.map { it.text.lowercase() }
+        assertFalse("A1 simpleword must NOT be selected for B1 user", selectedTexts.contains("simpleword"))
+        assertFalse("A2 basicword must NOT be selected for B1 user", selectedTexts.contains("basicword"))
+        assertTrue("B1 connectword should be selected", selectedTexts.contains("connectword"))
+        assertTrue("B2 expandword should be selected", selectedTexts.contains("expandword"))
+    }
+
+    @Test
+    fun testCefrB1ToB2MasteryIncludesLearningFamiliarMatureAtOrAboveUserLevel() = runBlocking {
+        val today = timeProvider.todayDateString()
+        val now = timeProvider.currentTimeMillis()
+        val profile = StudyPlanProfileEntity(
+            id = 1,
+            level = "B1",
+            goal = "general_fluency",
+            minutesPerDay = 30,
+            studyDaysPerWeek = 6,
+            startDate = today,
+            selectedDecksJson = "[\"oxford5000\"]",
+            restDaysJson = "[]",
+            startAtUserLevel = true,
+            updatedAt = now
+        )
+        db.wordBooksDao().upsertStudyPlanProfile(profile)
+
+        // Insert entries with different levels
+        val entries = listOf(
+            com.example.data.local.EntryEntity(
+                id = "m_a1",
+                type = "word",
+                deck = "oxford5000",
+                text = "apple",
+                pos = "noun",
+                level = "A1",
+                definitionEn = "fruit",
+                noteEn = "",
+                examplesEn = "an apple",
+                definitionUrl = "",
+                audioUrl = "",
+                arabic = "تفاحة",
+                effectiveLevel = "A1"
+            ),
+            com.example.data.local.EntryEntity(
+                id = "m_a2",
+                type = "word",
+                deck = "oxford5000",
+                text = "travel",
+                pos = "verb",
+                level = "A2",
+                definitionEn = "to go places",
+                noteEn = "",
+                examplesEn = "travel abroad",
+                definitionUrl = "",
+                audioUrl = "",
+                arabic = "يسافر",
+                effectiveLevel = "A2"
+            ),
+            com.example.data.local.EntryEntity(
+                id = "m_b1",
+                type = "word",
+                deck = "oxford5000",
+                text = "achieve",
+                pos = "verb",
+                level = "B1",
+                definitionEn = "to accomplish",
+                noteEn = "",
+                examplesEn = "achieve goals",
+                definitionUrl = "",
+                audioUrl = "",
+                arabic = "يحقق",
+                effectiveLevel = "B1"
+            ),
+            com.example.data.local.EntryEntity(
+                id = "m_b2",
+                type = "word",
+                deck = "oxford5000",
+                text = "collaborate",
+                pos = "verb",
+                level = "B2",
+                definitionEn = "work together",
+                noteEn = "",
+                examplesEn = "collaborate on task",
+                definitionUrl = "",
+                audioUrl = "",
+                arabic = "يتعاون",
+                effectiveLevel = "B2"
+            ),
+            com.example.data.local.EntryEntity(
+                id = "m_c1",
+                type = "word",
+                deck = "oxford5000",
+                text = "sophisticated",
+                pos = "adj",
+                level = "C1",
+                definitionEn = "complex or refined",
+                noteEn = "",
+                examplesEn = "sophisticated method",
+                definitionUrl = "",
+                audioUrl = "",
+                arabic = "متطور ومتقن",
+                effectiveLevel = "C1"
+            )
+        )
+        db.wordBooksDao().insertEntriesBatchIgnore(entries)
+
+        // Progress:
+        // "apple" (A1): mature (reps=5, interval=30, isMastered=true) -> should NOT count for B1->B2 Mastery
+        // "travel" (A2): learning (reps=1, interval=1) -> should NOT count for B1->B2 Mastery
+        // "achieve" (B1): learning (reps=1, interval=1) -> MUST count immediately!
+        // "collaborate" (B2): familiar (reps=3, interval=10) -> MUST count!
+        // "sophisticated" (C1): mature (reps=5, interval=30, isMastered=true) -> MUST count!
+        db.wordBooksDao().upsertWordProgressBatch(
+            listOf(
+                WordProgressEntity(
+                    cardKey = "oxford5000:apple",
+                    deck = "oxford5000",
+                    text = "apple",
+                    repetitions = 5,
+                    intervalDays = 30,
+                    isMastered = true,
+                    firstLearnedTimestamp = now - 100000L,
+                    lastReviewedTimestamp = now
+                ),
+                WordProgressEntity(
+                    cardKey = "oxford5000:travel",
+                    deck = "oxford5000",
+                    text = "travel",
+                    repetitions = 1,
+                    intervalDays = 1,
+                    firstLearnedTimestamp = now - 50000L,
+                    lastReviewedTimestamp = now
+                ),
+                WordProgressEntity(
+                    cardKey = "oxford5000:achieve",
+                    deck = "oxford5000",
+                    text = "achieve",
+                    repetitions = 1,
+                    intervalDays = 1,
+                    firstLearnedTimestamp = now,
+                    lastReviewedTimestamp = now
+                ),
+                WordProgressEntity(
+                    cardKey = "oxford5000:collaborate",
+                    deck = "oxford5000",
+                    text = "collaborate",
+                    repetitions = 3,
+                    intervalDays = 10,
+                    firstLearnedTimestamp = now - 200000L,
+                    lastReviewedTimestamp = now
+                ),
+                WordProgressEntity(
+                    cardKey = "oxford5000:sophisticated",
+                    deck = "oxford5000",
+                    text = "sophisticated",
+                    repetitions = 5,
+                    intervalDays = 30,
+                    isMastered = true,
+                    firstLearnedTimestamp = now - 300000L,
+                    lastReviewedTimestamp = now
+                )
+            )
+        )
+
+        val summary = learnerModelRepo.buildSnapshot(profile)
+        val readiness = summary.cefrReadiness
+
+        assertEquals("B1", readiness.currentLevel)
+        assertEquals("B2", readiness.nextLevel)
+        assertEquals(500, readiness.vocabTargetCount)
+
+        // Must count achieve (B1), collaborate (B2), sophisticated (C1) = exactly 3
+        // Must exclude apple (A1) and travel (A2)
+        assertEquals("B1 Vocab count must include B1, B2, C1 words and exclude A1, A2", 3, readiness.vocabFamiliarOrMatureCount)
+    }
+
+    @Test
+    fun testDailyMiniQuizPassingThresholdAndRetryState() = runBlocking {
+        val today = timeProvider.todayDateString()
+        val now = timeProvider.currentTimeMillis()
+        val profile = StudyPlanProfileEntity(
+            id = 1,
+            level = "B1",
+            goal = "general_fluency",
+            minutesPerDay = 30,
+            studyDaysPerWeek = 6,
+            startDate = today,
+            selectedDecksJson = "[\"oxford5000\"]",
+            restDaysJson = "[]",
+            startAtUserLevel = true,
+            updatedAt = now
+        )
+        db.wordBooksDao().upsertStudyPlanProfile(profile)
+
+        val checklist = planRepo.getOrCreateDailyChecklist(today)
+
+        // 1. First attempt: Failed with 4/10 (40% < 70%)
+        db.wordBooksDao().insertQuizResult(
+            QuizResultEntity(
+                date = today,
+                quizType = "daily_mini",
+                skill = "overall",
+                totalQuestions = 10,
+                correctAnswers = 4,
+                accuracyPercent = 40f,
+                timestamp = now
+            )
+        )
+
+        val afterFail = planRepo.refreshChecklistCompletion(checklist)
+        val afterFailTasks = json.decodeFromString<List<DailyTaskItem>>(afterFail.tasksJson)
+        val failedQuizTask = afterFailTasks.first { it.id == "task_daily_quiz" }
+
+        assertFalse("Quiz task must NOT be completed when scoring < 70%", failedQuizTask.isCompleted)
+        assertEquals(4, failedQuizTask.completedCount)
+        assertEquals(10, failedQuizTask.targetCount)
+        assertTrue("Reason should indicate Needs Retry", failedQuizTask.reason.contains("Needs Retry"))
+
+        // 2. Second attempt: Passed with 8/10 (80% >= 70%)
+        db.wordBooksDao().insertQuizResult(
+            QuizResultEntity(
+                date = today,
+                quizType = "daily_mini",
+                skill = "overall",
+                totalQuestions = 10,
+                correctAnswers = 8,
+                accuracyPercent = 80f,
+                timestamp = now + 60000L
+            )
+        )
+
+        val afterPass = planRepo.refreshChecklistCompletion(afterFail)
+        val afterPassTasks = json.decodeFromString<List<DailyTaskItem>>(afterPass.tasksJson)
+        val passedQuizTask = afterPassTasks.first { it.id == "task_daily_quiz" }
+
+        assertTrue("Quiz task MUST be completed when scoring >= 70%", passedQuizTask.isCompleted)
+        assertEquals(8, passedQuizTask.completedCount)
+        assertEquals(10, passedQuizTask.targetCount)
+        assertTrue("Reason should indicate Passed", passedQuizTask.reason.contains("Passed"))
+    }
+
+    @Test
+    fun testQuizMistakesTriggerSm2AgainAndCorrectionNotebook() = runBlocking {
+        val today = timeProvider.todayDateString()
+        val now = timeProvider.currentTimeMillis()
+
+        // Insert initial word progress for "challenge"
+        db.wordBooksDao().upsertWordProgress(
+            WordProgressEntity(
+                cardKey = "oxford5000:challenge",
+                deck = "oxford5000",
+                text = "challenge",
+                repetitions = 3,
+                intervalDays = 6,
+                easeFactor = 2.5f,
+                dueTimestamp = now + 86400000L,
+                againCount = 0
+            )
+        )
+
+        val questions = listOf(
+            QuizQuestionItem(
+                id = "vocab|oxford5000|challenge|q1",
+                skill = "vocabulary",
+                questionType = "mcq_en_ar",
+                promptEn = "Meaning of challenge",
+                options = listOf("تحدي", "سهل"),
+                answerIndex = 0,
+                correctText = "تحدي"
+            ),
+            QuizQuestionItem(
+                id = "grammar|present_simple_1|q2",
+                skill = "grammar",
+                questionType = "grammar_mcq",
+                promptEn = "He ___ to school.",
+                options = listOf("goes", "go"),
+                answerIndex = 0,
+                correctText = "goes",
+                explanationAr = "مع He نضع s"
+            )
+        )
+
+        // User answers both questions WRONGLY (userAnswers = option 1 instead of answerIndex 0)
+        val userAnswers = mapOf(
+            "vocab|oxford5000|challenge|q1" to 1,
+            "grammar|present_simple_1|q2" to 1
+        )
+
+        quizEngine.recordQuizSubmission("daily_mini", questions, userAnswers, today)
+
+        // 1. Verify SM-2 Again applied to "challenge"
+        val updatedWordProgress = db.wordBooksDao().getWordProgress("oxford5000:challenge")
+        assertNotNull(updatedWordProgress)
+        assertEquals("Repetitions must reset to 0 on mistake", 0, updatedWordProgress!!.repetitions)
+        assertEquals("Interval must reset to 0 on mistake", 0, updatedWordProgress.intervalDays)
+        assertEquals("againCount must increment by 1", 1, updatedWordProgress.againCount)
+        assertTrue("dueTimestamp must be due now", updatedWordProgress.dueTimestamp <= now + 1000L)
+
+        // 2. Verify Correction Notebook entry created for grammar mistake
+        val corrections = db.wordBooksDao().getAllCorrectionEntriesList()
+        assertTrue("Correction entry must be created for grammar error", corrections.isNotEmpty())
+        val grammarCorrection = corrections.first { it.grammarLessonId == "present_simple_1" }
+        assertEquals("He ___ to school.", grammarCorrection.originalSentence)
+        assertEquals("goes", grammarCorrection.correctedSentence)
     }
 }
