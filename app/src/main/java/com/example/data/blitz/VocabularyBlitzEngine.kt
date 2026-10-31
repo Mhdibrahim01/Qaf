@@ -344,9 +344,45 @@ object VocabularyBlitzEngine {
 }
 
 /**
+ * Selectable sound styles for wrong-answer audio feedback across Mini-Games & Quizzes.
+ */
+enum class WrongSoundStyle(
+    val id: String,
+    val labelEn: String,
+    val subtitleEn: String,
+    val labelAr: String
+) {
+    MARIMBA_DROP(
+        id = "marimba_drop",
+        labelEn = "Marimba",
+        subtitleEn = "Wood Drop",
+        labelAr = "ماريمبا خشبية"
+    ),
+    DUO_DESCENDING(
+        id = "duo_descending",
+        labelEn = "Duo Chime",
+        subtitleEn = "Two-Tone",
+        labelAr = "نغمة مزدوجة هابطة"
+    ),
+    ARCADE_BUZZ(
+        id = "arcade_buzz",
+        labelEn = "Buzz",
+        subtitleEn = "Classic",
+        labelAr = "جرس كلاسيكي"
+    ),
+    GENTLE_THUD(
+        id = "gentle_thud",
+        labelEn = "Soft Tap",
+        subtitleEn = "Subtle",
+        labelAr = "نقرة هادئة"
+    )
+}
+
+/**
  * Modern, low-latency, warm harmonic sound synthesizer for quiz & speed blitz interactions.
- * Synthesizes soft acoustic-style waveforms (warm bell ding, muted wooden thud)
- * directly via [AudioTrack] in static memory buffers:
+ * Synthesizes a matching acoustic marimba pair directly via [AudioTrack] in static memory buffers:
+ * - Right Answer: Cheerful ascending wooden marimba arpeggio (E5 -> G5 -> C6).
+ * - Wrong Answer: Warm descending wooden marimba drop (G4 -> C4).
  * - Zero external assets or file I/O overhead.
  * - Single-track retriggering: cutting off previous audio to eliminate overlapping noise on rapid clicks.
  * - Fallback safety for Robolectric / headless environments.
@@ -356,12 +392,23 @@ object BlitzSoundPlayer {
     private val lock = Any()
     private var activeTrack: AudioTrack? = null
 
+    @Volatile
+    var currentWrongSoundStyle: WrongSoundStyle = WrongSoundStyle.MARIMBA_DROP
+        private set
+
     // Lazy pre-synthesized PCM buffers
-    private val correctPcm: ByteArray by lazy { generateCorrectChimePcm() }
-    private val wrongPcm: ByteArray by lazy { generateWrongThudPcm() }
+    private val correctPcm: ByteArray by lazy { generateCorrectMarimbaPcm() }
+    private val wrongPcm: ByteArray by lazy { generateWrongMarimbaDropPcm() }
     private val comboPcm: ByteArray by lazy { generateComboChimePcm() }
     private val tickPcm: ByteArray by lazy { generateTickPcm() }
 
+    fun setWrongSoundStyle(style: WrongSoundStyle) {
+        currentWrongSoundStyle = style
+    }
+
+    /**
+     * Plays the matching acoustic marimba right-answer ascending chime (E5 -> G5 -> C6).
+     */
     fun playCorrectChime(enabled: Boolean = true) {
         if (!enabled) return
         playPcmSafe(correctPcm)
@@ -373,11 +420,19 @@ object BlitzSoundPlayer {
     }
 
     /**
-     * Replaces the harsh telecom buzzer with a soft, muted wooden thud / gentle double-tap.
+     * Plays the warm acoustic marimba descending drop (G4 -> C4).
      */
-    fun playWrongBuzz(enabled: Boolean = true) {
+    fun playWrongBuzz(
+        enabled: Boolean = true,
+        style: WrongSoundStyle = currentWrongSoundStyle
+    ) {
         if (!enabled) return
-        playPcmSafe(wrongPcm)
+        val pcm = if (style == WrongSoundStyle.MARIMBA_DROP || style == currentWrongSoundStyle) {
+            wrongPcm
+        } else {
+            generateWrongMarimbaDropPcm()
+        }
+        playPcmSafe(pcm)
     }
 
     fun playCountdownTick(enabled: Boolean = true) {
@@ -422,51 +477,99 @@ object BlitzSoundPlayer {
     }
 
     /**
-     * Soft, warm bell chime: Dual harmonious frequencies (880 Hz A5 + 1046.5 Hz C6)
-     * with an 8ms anti-click attack and exponential decay over 240ms.
+     * Cheerful ascending acoustic marimba arpeggio (E5 -> G5 -> C6):
+     * Harmonious ("ملائم") companion to the descending marimba wrong answer drop.
+     * Note 1 (0..75ms): E5 (659.25 Hz)
+     * Note 2 (75..150ms): G5 (783.99 Hz)
+     * Note 3 (150..280ms): C6 (1046.50 Hz) with warm marimba resonator decay.
      */
-    private fun generateCorrectChimePcm(): ByteArray {
-        val durationMs = 240
+    private fun generateCorrectMarimbaPcm(): ByteArray {
+        val note1Ms = 75
+        val note2Ms = 75
+        val note3Ms = 130
+        val durationMs = note1Ms + note2Ms + note3Ms
         val totalSamples = (SAMPLE_RATE * durationMs) / 1000
+        val note1Samples = (SAMPLE_RATE * note1Ms) / 1000
+        val note2Samples = (SAMPLE_RATE * note2Ms) / 1000
         val buffer = ByteBuffer.allocate(totalSamples * 2).order(ByteOrder.LITTLE_ENDIAN)
-        val attackSamples = (SAMPLE_RATE * 0.008).toInt()
+        val attackSamples = (SAMPLE_RATE * 0.004).toInt()
 
         for (i in 0 until totalSamples) {
-            val t = i.toDouble() / SAMPLE_RATE
-            val envelope = when {
-                i < attackSamples -> i.toDouble() / attackSamples.toDouble()
-                else -> exp(-(t - 0.008) / 0.08)
+            val (noteIdx, localSample) = when {
+                i < note1Samples -> 0 to i
+                i < (note1Samples + note2Samples) -> 1 to (i - note1Samples)
+                else -> 2 to (i - note1Samples - note2Samples)
             }
-            val sampleVal = (sin(2.0 * PI * 880.0 * t) * 0.65 + sin(2.0 * PI * 1046.5 * t) * 0.35) * envelope * 0.35
-            val pcmShort = (sampleVal * Short.MAX_VALUE).toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+
+            val tLocal = localSample.toDouble() / SAMPLE_RATE
+            val freq = when (noteIdx) {
+                0 -> 659.25 // E5
+                1 -> 783.99 // G5
+                else -> 1046.50 // C6
+            }
+
+            val decayTau = when (noteIdx) {
+                0 -> 0.055
+                1 -> 0.055
+                else -> 0.095
+            }
+
+            val envelope = when {
+                localSample < attackSamples -> localSample.toDouble() / attackSamples.toDouble()
+                else -> exp(-(tLocal - 0.004) / decayTau)
+            }
+
+            // Marimba fundamental + 4x resonator overtone tick for organic wooden mallet timbre
+            val overtoneEnv = exp(-tLocal / 0.020)
+            val wave = sin(2.0 * PI * freq * tLocal) * 0.74 +
+                sin(2.0 * PI * (freq * 4.0) * tLocal) * 0.26 * overtoneEnv
+
+            val sampleVal = wave * envelope * 0.42
+            val pcmShort = (sampleVal * Short.MAX_VALUE).toInt()
+                .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+                .toShort()
             buffer.putShort(pcmShort)
         }
         return buffer.array()
     }
 
     /**
-     * Soft low wooden thud: Low acoustic frequency sliding from 170 Hz down to 110 Hz
-     * with rapid decay (110ms) mimicking a warm muted marimba/wood tap.
+     * Warm acoustic marimba two-step drop: G4 (392.0 Hz) -> C4 (261.63 Hz)
+     * with classic 4x marimba resonator overtone.
      */
-    private fun generateWrongThudPcm(): ByteArray {
-        val durationMs = 110
+    private fun generateWrongMarimbaDropPcm(): ByteArray {
+        val note1Ms = 95
+        val note2Ms = 145
+        val durationMs = note1Ms + note2Ms
         val totalSamples = (SAMPLE_RATE * durationMs) / 1000
+        val note1Samples = (SAMPLE_RATE * note1Ms) / 1000
         val buffer = ByteBuffer.allocate(totalSamples * 2).order(ByteOrder.LITTLE_ENDIAN)
         val attackSamples = (SAMPLE_RATE * 0.004).toInt()
 
         for (i in 0 until totalSamples) {
-            val t = i.toDouble() / SAMPLE_RATE
+            val isFirstNote = i < note1Samples
+            val localSample = if (isFirstNote) i else (i - note1Samples)
+            val tLocal = localSample.toDouble() / SAMPLE_RATE
+            val freq = if (isFirstNote) 392.00 else 261.63 // G4 -> C4
+
             val envelope = when {
-                i < attackSamples -> i.toDouble() / attackSamples.toDouble()
-                else -> exp(-(t - 0.004) / 0.035)
+                localSample < attackSamples -> localSample.toDouble() / attackSamples.toDouble()
+                else -> exp(-(tLocal - 0.004) / 0.065)
             }
-            val freq = 170.0 - (60.0 * (i.toDouble() / totalSamples))
-            val sampleVal = sin(2.0 * PI * freq * t) * envelope * 0.30
-            val pcmShort = (sampleVal * Short.MAX_VALUE).toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+            val overtoneEnv = exp(-tLocal / 0.022)
+            val wave = sin(2.0 * PI * freq * tLocal) * 0.72 +
+                sin(2.0 * PI * (freq * 4.0) * tLocal) * 0.28 * overtoneEnv
+
+            val sampleVal = wave * envelope * 0.40
+            val pcmShort = (sampleVal * Short.MAX_VALUE).toInt()
+                .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+                .toShort()
             buffer.putShort(pcmShort)
         }
         return buffer.array()
     }
+
+
 
     /**
      * Sparkling ascending combo chime: 3 harmonious notes in rapid succession (D5 -> G5 -> D6).

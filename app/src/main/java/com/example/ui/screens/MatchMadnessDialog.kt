@@ -2,6 +2,10 @@ package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -51,9 +55,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -70,6 +78,13 @@ import com.example.data.blitz.MatchMadnessSessionState
 import com.example.data.blitz.MatchSelectionOutcome
 import com.example.data.local.EntryEntity
 import com.example.ui.components.BidiText
+import com.example.ui.components.FloatingFeedbackBadge
+import com.example.ui.components.GameFeedbackColors
+import com.example.ui.components.GameFeedbackController
+import com.example.ui.components.GameFeedbackState
+import com.example.ui.components.gameFeedbackMotion
+import com.example.ui.components.performGameFeedback
+import com.example.ui.components.rememberGameFeedbackController
 import com.example.ui.theme.AmberAccent
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
@@ -105,7 +120,10 @@ fun MatchMadnessDialog(
     var soundEnabled by remember { mutableStateOf(true) }
     var roundTransitionMessage by remember { mutableStateOf<String?>(null) }
     var isHandlingMismatch by remember { mutableStateOf(false) }
+    var recentlyMatchedPairId by remember { mutableStateOf<String?>(null) }
 
+    val feedbackController = rememberGameFeedbackController()
+    val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
     val isFullHeightScreen = screenHeightDp >= 640
@@ -309,100 +327,126 @@ fun MatchMadnessDialog(
                             shape = RoundedCornerShape(22.dp),
                             border = BorderStroke(1.dp, BorderDark)
                         ) {
-                            Column(
+                            Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .then(if (isFullHeightScreen) Modifier.fillMaxSize() else Modifier)
-                                    .padding(16.dp),
-                                verticalArrangement = Arrangement.SpaceBetween,
-                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Row(
+                                Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .then(if (isFullHeightScreen) Modifier.weight(1f) else Modifier),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        .then(if (isFullHeightScreen) Modifier.fillMaxSize() else Modifier)
+                                        .padding(16.dp),
+                                    verticalArrangement = Arrangement.SpaceBetween,
+                                    horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    // Left Column: English Words
-                                    Column(
+                                    Row(
                                         modifier = Modifier
-                                            .weight(1f)
-                                            .then(if (isFullHeightScreen) Modifier.fillMaxHeight() else Modifier),
-                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                            .fillMaxWidth()
+                                            .then(if (isFullHeightScreen) Modifier.weight(1f) else Modifier),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
-                                        currentRound.leftCards.forEach { card ->
-                                            MatchingCardView(
-                                                card = card,
-                                                isEnabled = !isHandlingMismatch && !card.isMatched,
-                                                modifier = if (isFullHeightScreen) {
-                                                    Modifier.weight(1f).fillMaxWidth()
-                                                } else {
-                                                    Modifier.height(68.dp).fillMaxWidth()
-                                                },
-                                                onClick = {
-                                                    handleCardClick(
-                                                        cardId = card.id,
-                                                        sessionState = sessionState,
-                                                        bestTimeSeconds = bestTimeSeconds,
-                                                        soundEnabled = soundEnabled,
-                                                        onUpdateState = { sessionState = it },
-                                                        onFinish = onFinish,
-                                                        onSetTransitionMessage = { roundTransitionMessage = it },
-                                                        onSetHandlingMismatch = { isHandlingMismatch = it },
-                                                        coroutineScope = coroutineScope
-                                                    )
-                                                }
-                                            )
+                                        // Left Column: English Words
+                                        Column(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .then(if (isFullHeightScreen) Modifier.fillMaxHeight() else Modifier),
+                                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            currentRound.leftCards.forEach { card ->
+                                                MatchingCardView(
+                                                    card = card,
+                                                    isJustMatchedFlash = recentlyMatchedPairId == card.pairId,
+                                                    feedbackTriggerCount = feedbackController.triggerCounter,
+                                                    isEnabled = !isHandlingMismatch && !card.isMatched,
+                                                    modifier = if (isFullHeightScreen) {
+                                                        Modifier.weight(1f).fillMaxWidth()
+                                                    } else {
+                                                        Modifier.height(68.dp).fillMaxWidth()
+                                                    },
+                                                    onClick = {
+                                                        handleCardClick(
+                                                            cardId = card.id,
+                                                            sessionState = sessionState,
+                                                            bestTimeSeconds = bestTimeSeconds,
+                                                            soundEnabled = soundEnabled,
+                                                            haptic = haptic,
+                                                            feedbackController = feedbackController,
+                                                            onSetRecentlyMatchedPair = { recentlyMatchedPairId = it },
+                                                            onUpdateState = { sessionState = it },
+                                                            onFinish = onFinish,
+                                                            onSetTransitionMessage = { roundTransitionMessage = it },
+                                                            onSetHandlingMismatch = { isHandlingMismatch = it },
+                                                            coroutineScope = coroutineScope
+                                                        )
+                                                    }
+                                                )
+                                            }
+                                        }
+
+                                        // Right Column: Arabic Meanings
+                                        Column(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .then(if (isFullHeightScreen) Modifier.fillMaxHeight() else Modifier),
+                                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            currentRound.rightCards.forEach { card ->
+                                                MatchingCardView(
+                                                    card = card,
+                                                    isJustMatchedFlash = recentlyMatchedPairId == card.pairId,
+                                                    feedbackTriggerCount = feedbackController.triggerCounter,
+                                                    isEnabled = !isHandlingMismatch && !card.isMatched,
+                                                    modifier = if (isFullHeightScreen) {
+                                                        Modifier.weight(1f).fillMaxWidth()
+                                                    } else {
+                                                        Modifier.height(68.dp).fillMaxWidth()
+                                                    },
+                                                    onClick = {
+                                                        handleCardClick(
+                                                            cardId = card.id,
+                                                            sessionState = sessionState,
+                                                            bestTimeSeconds = bestTimeSeconds,
+                                                            soundEnabled = soundEnabled,
+                                                            haptic = haptic,
+                                                            feedbackController = feedbackController,
+                                                            onSetRecentlyMatchedPair = { recentlyMatchedPairId = it },
+                                                            onUpdateState = { sessionState = it },
+                                                            onFinish = onFinish,
+                                                            onSetTransitionMessage = { roundTransitionMessage = it },
+                                                            onSetHandlingMismatch = { isHandlingMismatch = it },
+                                                            coroutineScope = coroutineScope
+                                                        )
+                                                    }
+                                                )
+                                            }
                                         }
                                     }
 
-                                    // Right Column: Arabic Meanings
-                                    Column(
+                                    // Subtle bilingual footer hint
+                                    BidiText(
+                                        text = bi(
+                                            "Tap matching pairs to clear the board • صل كل كلمة بمعناها الصحيح",
+                                            "صل كل كلمة بمعناها الصحيح • Tap matching pairs to clear the board"
+                                        ),
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                                        color = TextMuted,
+                                        fillMaxWidth = true,
+                                        textAlign = TextAlign.Center,
                                         modifier = Modifier
-                                            .weight(1f)
-                                            .then(if (isFullHeightScreen) Modifier.fillMaxHeight() else Modifier),
-                                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        currentRound.rightCards.forEach { card ->
-                                            MatchingCardView(
-                                                card = card,
-                                                isEnabled = !isHandlingMismatch && !card.isMatched,
-                                                modifier = if (isFullHeightScreen) {
-                                                    Modifier.weight(1f).fillMaxWidth()
-                                                } else {
-                                                    Modifier.height(68.dp).fillMaxWidth()
-                                                },
-                                                onClick = {
-                                                    handleCardClick(
-                                                        cardId = card.id,
-                                                        sessionState = sessionState,
-                                                        bestTimeSeconds = bestTimeSeconds,
-                                                        soundEnabled = soundEnabled,
-                                                        onUpdateState = { sessionState = it },
-                                                        onFinish = onFinish,
-                                                        onSetTransitionMessage = { roundTransitionMessage = it },
-                                                        onSetHandlingMismatch = { isHandlingMismatch = it },
-                                                        coroutineScope = coroutineScope
-                                                    )
-                                                }
-                                            )
-                                        }
-                                    }
+                                            .padding(top = 12.dp)
+                                            .testTag("match_board_footer_hint")
+                                    )
                                 }
 
-                                // Subtle bilingual footer hint
-                                BidiText(
-                                    text = bi(
-                                        "Tap matching pairs to clear the board • صل كل كلمة بمعناها الصحيح",
-                                        "صل كل كلمة بمعناها الصحيح • Tap matching pairs to clear the board"
-                                    ),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
-                                    color = TextMuted,
-                                    fillMaxWidth = true,
-                                    textAlign = TextAlign.Center,
+                                // Floating Feedback Toast (✓ تطابق صحيح! +10 / ✗ غير متطابق! حاول مجدداً)
+                                FloatingFeedbackBadge(
+                                    visible = feedbackController.toastVisible,
+                                    feedbackState = feedbackController.state,
+                                    text = feedbackController.toastMessage,
                                     modifier = Modifier
-                                        .padding(top = 12.dp)
-                                        .testTag("match_board_footer_hint")
+                                        .align(Alignment.TopCenter)
+                                        .padding(top = 24.dp)
                                 )
                             }
                         }
@@ -576,6 +620,9 @@ fun MatchMadnessDialog(
 
                                 Button(
                                     onClick = {
+                                        recentlyMatchedPairId = null
+                                        feedbackController.hideToast()
+                                        feedbackController.resetCardState()
                                         sessionState = MatchMadnessEngine.createSession(initialEntries.shuffled())
                                     },
                                     colors = ButtonDefaults.buttonColors(
@@ -603,42 +650,75 @@ fun MatchMadnessDialog(
 @Composable
 private fun MatchingCardView(
     card: MatchCardItem,
+    isJustMatchedFlash: Boolean = false,
+    feedbackTriggerCount: Int = 0,
     isEnabled: Boolean,
     modifier: Modifier = Modifier
         .fillMaxWidth()
         .height(68.dp),
     onClick: () -> Unit
 ) {
-    if (card.isMatched) {
-        // Matched cards dissolve / disabled with identical height so layout never jumps
-        Surface(
-            modifier = modifier,
-            color = Color.Transparent,
-            shape = RoundedCornerShape(14.dp)
-        ) {}
-        return
+    // Spec:
+    // - Correct Pair: Flash both tiles Emerald Green (#34D399), pop scale to 1.06f,
+    //   then smoothly animate to matched/cleared state (alpha = 0.28f, scale = 0.94f, with small ✓ checkmark).
+    // - Wrong Pair: Flash both tiles Rose Red (#FB7185) and shake horizontally for 360ms before deselecting.
+    val tileFeedbackState = when {
+        card.isError -> GameFeedbackState.WRONG
+        isJustMatchedFlash -> GameFeedbackState.CORRECT
+        else -> GameFeedbackState.IDLE
     }
+
+    val settledClearState = card.isMatched && !isJustMatchedFlash
+
+    val targetAlpha = if (settledClearState) 0.28f else 1.0f
+    val animatedAlpha by animateFloatAsState(
+        targetValue = targetAlpha,
+        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        label = "matchTileAlpha"
+    )
+
+    val targetBaseScale = when {
+        settledClearState -> 0.94f
+        card.isSelected && !card.isError -> 1.03f
+        else -> 1.0f
+    }
+    val animatedBaseScale by animateFloatAsState(
+        targetValue = targetBaseScale,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "matchTileScale"
+    )
 
     val cardColor by animateColorAsState(
         targetValue = when {
-            card.isError -> CoralAccent.copy(alpha = 0.25f)
-            card.isSelected -> GoldAccent.copy(alpha = 0.22f)
+            card.isError -> GameFeedbackColors.RoseTint
+            isJustMatchedFlash -> GameFeedbackColors.EmeraldTint
+            settledClearState -> Color(0xFF181B24)
+            card.isSelected -> SkyAccent.copy(alpha = 0.16f)
             else -> Color(0xFF181B24)
         },
+        animationSpec = tween(durationMillis = 200),
         label = "matchCardColor"
     )
 
     val borderColor by animateColorAsState(
         targetValue = when {
-            card.isError -> CoralAccent
-            card.isSelected -> GoldAccent
+            card.isError -> GameFeedbackColors.RoseBorder
+            isJustMatchedFlash -> GameFeedbackColors.EmeraldBorder
+            settledClearState -> GameFeedbackColors.EmeraldBorder.copy(alpha = 0.65f)
+            card.isSelected -> SkyAccent
             else -> BorderDark
         },
+        animationSpec = tween(durationMillis = 200),
         label = "matchBorderColor"
     )
 
+    val displayText = if (card.isMatched) "✓ ${card.text}" else card.text
+
     val fontSize = when {
-        card.text.length > 18 -> 13.sp
+        displayText.length > 18 -> 13.sp
         !card.isEnglish -> 15.5.sp
         else -> 14.5.sp
     }
@@ -646,7 +726,7 @@ private fun MatchingCardView(
         ArabicTypography.bodyMedium.copy(
             fontSize = fontSize,
             lineHeight = 18.sp,
-            fontWeight = if (card.isSelected) FontWeight.Bold else FontWeight.SemiBold,
+            fontWeight = if (card.isSelected || card.isMatched) FontWeight.Bold else FontWeight.SemiBold,
             textAlign = TextAlign.Center,
             textDirection = TextDirection.Rtl
         )
@@ -654,20 +734,33 @@ private fun MatchingCardView(
         MaterialTheme.typography.bodyMedium.copy(
             fontSize = fontSize,
             lineHeight = 18.sp,
-            fontWeight = if (card.isSelected) FontWeight.Bold else FontWeight.SemiBold,
+            fontWeight = if (card.isSelected || card.isMatched) FontWeight.Bold else FontWeight.SemiBold,
             textAlign = TextAlign.Center,
             textDirection = TextDirection.Ltr
         )
     }
 
+    val borderWidth = when {
+        card.isError || isJustMatchedFlash -> 2.dp
+        card.isSelected -> 1.8.dp
+        else -> 1.5.dp
+    }
+
     Surface(
         modifier = modifier
+            .gameFeedbackMotion(
+                feedbackState = tileFeedbackState,
+                triggerKey = feedbackTriggerCount,
+                correctPeakScale = 1.06f
+            )
+            .scale(animatedBaseScale)
+            .alpha(animatedAlpha)
             .clip(RoundedCornerShape(14.dp))
             .clickable(enabled = isEnabled, onClick = onClick)
             .testTag(if (card.isEnglish) "match_card_en_${card.text}" else "match_card_ar_${card.id}"),
         color = cardColor,
         shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(if (card.isSelected || card.isError) 1.8.dp else 1.5.dp, borderColor)
+        border = BorderStroke(borderWidth, borderColor)
     ) {
         Box(
             modifier = Modifier
@@ -676,11 +769,12 @@ private fun MatchingCardView(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = card.text,
+                text = displayText,
                 style = textStyle,
                 color = when {
-                    card.isError -> CoralAccent
-                    card.isSelected -> GoldAccent
+                    card.isError -> GameFeedbackColors.RoseToastText
+                    isJustMatchedFlash || card.isMatched -> GameFeedbackColors.EmeraldBorder
+                    card.isSelected -> SkyAccent
                     else -> TextPrimary
                 },
                 textAlign = TextAlign.Center,
@@ -696,6 +790,9 @@ private fun handleCardClick(
     sessionState: MatchMadnessSessionState,
     bestTimeSeconds: Int,
     soundEnabled: Boolean,
+    haptic: HapticFeedback,
+    feedbackController: GameFeedbackController,
+    onSetRecentlyMatchedPair: (String?) -> Unit,
     onUpdateState: (MatchMadnessSessionState) -> Unit,
     onFinish: (Int) -> Unit,
     onSetTransitionMessage: (String?) -> Unit,
@@ -704,11 +801,23 @@ private fun handleCardClick(
 ) {
     when (val outcome = MatchMadnessEngine.selectCard(sessionState, cardId, bestTimeSeconds)) {
         is MatchSelectionOutcome.CardSelected -> {
+            haptic.performGameFeedback(true)
             onUpdateState(outcome.state)
         }
         is MatchSelectionOutcome.MatchSuccess -> {
+            haptic.performGameFeedback(true)
             BlitzSoundPlayer.playCorrectChime(soundEnabled)
+            onSetRecentlyMatchedPair(outcome.pairId)
+            feedbackController.triggerCorrect("✓ Match! +10 pts • تطابق صحيح!")
             onUpdateState(outcome.state)
+
+            coroutineScope.launch {
+                delay(320L)
+                onSetRecentlyMatchedPair(null)
+                feedbackController.resetCardState()
+                delay(240L)
+                feedbackController.hideToast()
+            }
 
             if (outcome.gameJustCompleted) {
                 BlitzSoundPlayer.playComboLevelUpChime(soundEnabled)
@@ -717,21 +826,28 @@ private fun handleCardClick(
                 BlitzSoundPlayer.playComboLevelUpChime(soundEnabled)
                 coroutineScope.launch {
                     onSetTransitionMessage("Round ${outcome.state.currentRoundIndex + 1} Complete! 🌟")
-                    delay(800L)
+                    delay(750L)
                     onSetTransitionMessage(null)
+                    onSetRecentlyMatchedPair(null)
                     onUpdateState(MatchMadnessEngine.advanceRound(outcome.state))
                 }
             }
         }
         is MatchSelectionOutcome.MatchMismatch -> {
+            haptic.performGameFeedback(false)
             BlitzSoundPlayer.playWrongBuzz(soundEnabled)
+            feedbackController.triggerWrong("✗ Mismatch! • غير متطابق!")
             onUpdateState(outcome.state)
             onSetHandlingMismatch(true)
 
             coroutineScope.launch {
-                delay(600L)
+                // Fast, non-blocking 360ms horizontal shake before automatically deselecting
+                delay(360L)
                 onUpdateState(MatchMadnessEngine.clearSelectionsAndErrors(outcome.state))
                 onSetHandlingMismatch(false)
+                feedbackController.resetCardState()
+                delay(200L)
+                feedbackController.hideToast()
             }
         }
     }
