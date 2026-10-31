@@ -1014,8 +1014,13 @@ private fun formatCompactTaskMeta(task: DailyTaskItem): String {
             }
         }
         "quiz" -> {
-            if (rawSub.isNotBlank()) stripDurationSuffix(rawSub)
-            else "5 Vocab • 3 Grammar • 2 Reading"
+            if (rawReason.contains("Score:", ignoreCase = true)) {
+                rawReason
+            } else if (rawSub.isNotBlank()) {
+                stripDurationSuffix(rawSub)
+            } else {
+                "5 Vocab • 3 Grammar • 2 Reading"
+            }
         }
         else -> {
             if (rawSub.isNotBlank()) stripDurationSuffix(rawSub)
@@ -1038,6 +1043,7 @@ private fun TaskCheckRow(
     onToggleComplete: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val isArMode = AppLanguageState.isArabic
     val isZeroDueFlashcards = (task.type == "flashcards" && task.targetCount == 0 && task.isCompleted)
 
     Surface(
@@ -1098,7 +1104,6 @@ private fun TaskCheckRow(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     // Line 1: Primary Title (Arabic in Arabic UI mode, English in English UI mode) + inline duration & progress pills
-                    val isArMode = AppLanguageState.isArabic
                     val primaryTitle = if (isArMode && task.titleAr.isNotBlank()) task.titleAr else task.titleEn
                     val secondaryTitle = if (isArMode && task.titleAr.isNotBlank()) task.titleEn else task.titleAr
                     FlowRow(
@@ -1137,18 +1142,35 @@ private fun TaskCheckRow(
                         }
 
                         if (task.targetCount > 1) {
+                            val isQuizNeedsRetry = (task.type == "quiz" && !task.isCompleted && task.reason.contains("Needs Retry", ignoreCase = true))
+                            val badgeColor = when {
+                                task.isCompleted -> EmeraldAccent.copy(alpha = 0.15f)
+                                isQuizNeedsRetry -> CoralAccent.copy(alpha = 0.15f)
+                                else -> ProtoGoldDim
+                            }
+                            val badgeTextColor = when {
+                                task.isCompleted -> EmeraldAccent
+                                isQuizNeedsRetry -> CoralAccent
+                                else -> ProtoGold
+                            }
+                            val badgeText = if (isQuizNeedsRetry) {
+                                "${task.completedCount}/${task.targetCount} (Needs 7/10)"
+                            } else {
+                                "${task.completedCount}/${task.targetCount}"
+                            }
+
                             Surface(
-                                color = if (task.isCompleted) EmeraldAccent.copy(alpha = 0.15f) else ProtoGoldDim,
+                                color = badgeColor,
                                 shape = RoundedCornerShape(5.dp),
                                 modifier = Modifier.align(Alignment.CenterVertically)
                             ) {
                                 Text(
-                                    text = "${task.completedCount}/${task.targetCount}",
+                                    text = badgeText,
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontWeight = FontWeight.SemiBold,
                                         fontSize = 10.5.sp
                                     ),
-                                    color = if (task.isCompleted) EmeraldAccent else ProtoGold,
+                                    color = badgeTextColor,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.5.dp)
                                 )
                             }
@@ -1181,10 +1203,15 @@ private fun TaskCheckRow(
             }
 
             // High-Contrast Gold Action Button
+            val isQuizNeedsRetry = (task.type == "quiz" && !task.isCompleted && task.reason.contains("Needs Retry", ignoreCase = true))
             val actionLabel = when {
                 isZeroDueFlashcards -> "مكتملة ✓"
                 isCompletedNewWords -> "مكتملة ✓"
-                task.type == "quiz" -> if (task.isCompleted) "Retake" else "Quiz"
+                task.type == "quiz" -> when {
+                    task.isCompleted -> if (isArMode) "إعادة" else "Retake"
+                    isQuizNeedsRetry -> if (isArMode) "إعادة الاختبار" else "Retry Quiz"
+                    else -> if (isArMode) "اختبار" else "Quiz"
+                }
                 task.type == "flashcards" -> if (task.isCompleted) "Review" else "Start"
                 task.type == "new_words" -> if (task.isCompleted) "Words" else "Learn"
                 task.type == "grammar" -> if (task.isCompleted) "Lesson" else "Study"

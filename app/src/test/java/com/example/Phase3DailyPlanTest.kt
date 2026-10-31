@@ -7,10 +7,13 @@ import com.example.data.importer.DataImportRepository
 import com.example.data.local.CorrectionNotebookEntity
 import com.example.data.local.DailyChecklistEntity
 import com.example.data.local.DailyTaskItem
+import com.example.data.local.QuizQuestionItem
+import com.example.data.local.QuizResultEntity
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.local.WordBooksDatabase
 import com.example.data.local.WordProgressEntity
 import com.example.data.plan.LearnerModelRepository
+import com.example.data.plan.LocalQuizEngine
 import com.example.data.plan.StudyPlanRepository
 import com.example.data.plan.TestTimeProvider
 import kotlinx.coroutines.runBlocking
@@ -49,6 +52,7 @@ class Phase3DailyPlanTest {
     private lateinit var repo: DataImportRepository
     private lateinit var planRepo: StudyPlanRepository
     private lateinit var learnerModelRepo: LearnerModelRepository
+    private lateinit var quizEngine: LocalQuizEngine
     private lateinit var timeProvider: TestTimeProvider
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -68,6 +72,7 @@ class Phase3DailyPlanTest {
         timeProvider = TestTimeProvider(1793620800000L)
         planRepo = StudyPlanRepository(context, db.wordBooksDao(), timeProvider)
         learnerModelRepo = LearnerModelRepository(context, db.wordBooksDao(), timeProvider)
+        quizEngine = LocalQuizEngine(db.wordBooksDao(), timeProvider, planRepo)
     }
 
     @After
@@ -938,5 +943,135 @@ class Phase3DailyPlanTest {
         // Must count achieve (B1), collaborate (B2), sophisticated (C1) = exactly 3
         // Must exclude apple (A1) and travel (A2)
         assertEquals("B1 Vocab count must include B1, B2, C1 words and exclude A1, A2", 3, readiness.vocabFamiliarOrMatureCount)
+    }
+
+    @Test
+    fun testDailyMiniQuizPassingThresholdAndRetryState() = runBlocking {
+        val today = timeProvider.todayDateString()
+        val now = timeProvider.currentTimeMillis()
+        val profile = StudyPlanProfileEntity(
+            id = 1,
+            level = "B1",
+            goal = "general_fluency",
+            minutesPerDay = 30,
+            studyDaysPerWeek = 6,
+            startDate = today,
+            selectedDecksJson = "[\"oxford5000\"]",
+            restDaysJson = "[]",
+            startAtUserLevel = true,
+            updatedAt = now
+        )
+        db.wordBooksDao().upsertStudyPlanProfile(profile)
+
+        val checklist = planRepo.getOrCreateDailyChecklist(today)
+
+        // 1. First attempt: Failed with 4/10 (40% < 70%)
+        db.wordBooksDao().insertQuizResult(
+            QuizResultEntity(
+                date = today,
+                quizType = "daily_mini",
+                skill = "overall",
+                totalQuestions = 10,
+                correctAnswers = 4,
+                accuracyPercent = 40f,
+                timestamp = now
+            )
+        )
+
+        val afterFail = planRepo.refreshChecklistCompletion(checklist)
+        val afterFailTasks = json.decodeFromString<List<DailyTaskItem>>(afterFail.tasksJson)
+        val failedQuizTask = afterFailTasks.first { it.id == "task_daily_quiz" }
+
+        assertFalse("Quiz task must NOT be completed when scoring < 70%", failedQuizTask.isCompleted)
+        assertEquals(4, failedQuizTask.completedCount)
+        assertEquals(10, failedQuizTask.targetCount)
+        assertTrue("Reason should indicate Needs Retry", failedQuizTask.reason.contains("Needs Retry"))
+
+        // 2. Second attempt: Passed with 8/10 (80% >= 70%)
+        db.wordBooksDao().insertQuizResult(
+            QuizResultEntity(
+                date = today,
+                quizType = "daily_mini",
+                skill = "overall",
+                totalQuestions = 10,
+                correctAnswers = 8,
+                accuracyPercent = 80f,
+                timestamp = now + 60000L
+            )
+        )
+
+        val afterPass = planRepo.refreshChecklistCompletion(afterFail)
+        val afterPassTasks = json.decodeFromString<List<DailyTaskItem>>(afterPass.tasksJson)
+        val passedQuizTask = afterPassTasks.first { it.id == "task_daily_quiz" }
+
+        assertTrue("Quiz task MUST be completed when scoring >= 70%", passedQuizTask.isCompleted)
+        assertEquals(8, passedQuizTask.completedCount)
+        assertEquals(10, passedQuizTask.targetCount)
+        assertTrue("Reason should indicate Passed", passedQuizTask.reason.contains("Passed"))
+    }
+
+    @Test
+    fun testQuizMistakesTriggerSm2AgainAndCorrectionNotebook() = runBlocking {
+        val today = timeProvider.todayDateString()
+        val now = timeProvider.currentTimeMillis()
+
+        // Insert initial word progress for "challenge"
+        db.wordBooksDao().upsertWordProgress(
+            WordProgressEntity(
+                cardKey = "oxford5000:challenge",
+                deck = "oxford5000",
+                text = "challenge",
+                repetitions = 3,
+                intervalDays = 6,
+                easeFactor = 2.5f,
+                dueTimestamp = now + 86400000L,
+                againCount = 0
+            )
+        )
+
+        val questions = listOf(
+            QuizQuestionItem(
+                id = "vocab|oxford5000|challenge|q1",
+                skill = "vocabulary",
+                questionType = "mcq_en_ar",
+                promptEn = "Meaning of challenge",
+                options = listOf("تحدي", "سهل"),
+                answerIndex = 0,
+                correctText = "تحدي"
+            ),
+            QuizQuestionItem(
+                id = "grammar|present_simple_1|q2",
+                skill = "grammar",
+                questionType = "grammar_mcq",
+                promptEn = "He ___ to school.",
+                options = listOf("goes", "go"),
+                answerIndex = 0,
+                correctText = "goes",
+                explanationAr = "مع He نضع s"
+            )
+        )
+
+        // User answers both questions WRONGLY (userAnswers = option 1 instead of answerIndex 0)
+        val userAnswers = mapOf(
+            "vocab|oxford5000|challenge|q1" to 1,
+            "grammar|present_simple_1|q2" to 1
+        )
+
+        quizEngine.recordQuizSubmission("daily_mini", questions, userAnswers, today)
+
+        // 1. Verify SM-2 Again applied to "challenge"
+        val updatedWordProgress = db.wordBooksDao().getWordProgress("oxford5000:challenge")
+        assertNotNull(updatedWordProgress)
+        assertEquals("Repetitions must reset to 0 on mistake", 0, updatedWordProgress!!.repetitions)
+        assertEquals("Interval must reset to 0 on mistake", 0, updatedWordProgress.intervalDays)
+        assertEquals("againCount must increment by 1", 1, updatedWordProgress.againCount)
+        assertTrue("dueTimestamp must be due now", updatedWordProgress.dueTimestamp <= now + 1000L)
+
+        // 2. Verify Correction Notebook entry created for grammar mistake
+        val corrections = db.wordBooksDao().getAllCorrectionEntriesList()
+        assertTrue("Correction entry must be created for grammar error", corrections.isNotEmpty())
+        val grammarCorrection = corrections.first { it.grammarLessonId == "present_simple_1" }
+        assertEquals("He ___ to school.", grammarCorrection.originalSentence)
+        assertEquals("goes", grammarCorrection.correctedSentence)
     }
 }

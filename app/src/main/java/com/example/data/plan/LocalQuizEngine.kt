@@ -1,6 +1,9 @@
 package com.example.data.plan
 
+import com.example.data.importer.Sm2Algorithm
+import com.example.data.importer.Sm2Rating
 import com.example.data.local.AttemptEntity
+import com.example.data.local.CorrectionNotebookEntity
 import com.example.data.local.DailyChecklistEntity
 import com.example.data.local.DailyTaskItem
 import com.example.data.local.EntryEntity
@@ -12,6 +15,7 @@ import com.example.data.local.ReadingQuestionItem
 import com.example.data.local.ReadingTextEntity
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.local.WordBooksDao
+import com.example.data.local.WordProgressEntity
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.util.Locale
@@ -188,7 +192,7 @@ class LocalQuizEngine(
                     val options = (listOf(target.arabic) + otherWords.map { it.arabic }).shuffled()
                     questions.add(
                         QuizQuestionItem(
-                            id = UUID.randomUUID().toString(),
+                            id = "vocab|${target.deck}|${target.text.trim().lowercase(Locale.US)}|${UUID.randomUUID()}",
                             skill = "vocabulary",
                             questionType = "mcq_en_ar",
                             promptEn = "What is the correct Arabic meaning of \"${target.text}\"${if (target.pos.isNotBlank()) " (${target.pos})" else ""}?",
@@ -206,7 +210,7 @@ class LocalQuizEngine(
                     val options = (listOf(target.text) + otherWords.map { it.text }).shuffled()
                     questions.add(
                         QuizQuestionItem(
-                            id = UUID.randomUUID().toString(),
+                            id = "vocab|${target.deck}|${target.text.trim().lowercase(Locale.US)}|${UUID.randomUUID()}",
                             skill = "vocabulary",
                             questionType = "mcq_ar_en",
                             promptEn = "Which English word matches: \"${target.arabic}\"?",
@@ -224,7 +228,7 @@ class LocalQuizEngine(
                         val options = (listOf(target.text) + otherWords.map { it.text }).shuffled()
                         questions.add(
                             QuizQuestionItem(
-                                id = UUID.randomUUID().toString(),
+                                id = "vocab|${target.deck}|${target.text.trim().lowercase(Locale.US)}|${UUID.randomUUID()}",
                                 skill = "vocabulary",
                                 questionType = "listening",
                                 promptEn = "Listen to today's assigned word and select the correct match:",
@@ -240,7 +244,7 @@ class LocalQuizEngine(
                         val options = (listOf(target.arabic) + otherWords.map { it.arabic }).shuffled()
                         questions.add(
                             QuizQuestionItem(
-                                id = UUID.randomUUID().toString(),
+                                id = "vocab|${target.deck}|${target.text.trim().lowercase(Locale.US)}|${UUID.randomUUID()}",
                                 skill = "vocabulary",
                                 questionType = "mcq_en_ar",
                                 promptEn = "Today's Vocabulary: Meaning of \"${target.text}\"",
@@ -264,7 +268,7 @@ class LocalQuizEngine(
                 val opts = (listOf(fallbackTarget.arabic) + distractorPool.filter { it.id != fallbackTarget.id }.take(3).map { it.arabic }).shuffled()
                 questions.add(
                     QuizQuestionItem(
-                        id = UUID.randomUUID().toString(),
+                        id = "vocab|${fallbackTarget.deck}|${fallbackTarget.text.trim().lowercase(Locale.US)}|${UUID.randomUUID()}",
                         skill = "vocabulary",
                         questionType = "mcq_en_ar",
                         promptEn = "Vocabulary Review: What is the Arabic meaning of \"${fallbackTarget.text}\"?",
@@ -311,7 +315,7 @@ class LocalQuizEngine(
                     }
                     questions.add(
                         QuizQuestionItem(
-                            id = UUID.randomUUID().toString(),
+                            id = "grammar|${assignedGrammarLesson.id}|${UUID.randomUUID()}",
                             skill = "grammar",
                             questionType = "grammar_reorder",
                             promptEn = ex.prompt,
@@ -335,7 +339,7 @@ class LocalQuizEngine(
                     }
                     questions.add(
                         QuizQuestionItem(
-                            id = UUID.randomUUID().toString(),
+                            id = "grammar|${assignedGrammarLesson.id}|${UUID.randomUUID()}",
                             skill = "grammar",
                             questionType = "grammar_mcq",
                             promptEn = ex.prompt,
@@ -354,7 +358,8 @@ class LocalQuizEngine(
         while (questions.count { it.skill == "grammar" } < 3) {
             val fallbackQ = buildGrammarQuestion(if (assignedGrammarLesson != null) listOf(assignedGrammarLesson) else dao.getAllGrammarLessons())
             if (fallbackQ != null) {
-                questions.add(fallbackQ.copy(id = UUID.randomUUID().toString()))
+                val gId = assignedGrammarLesson?.id.orEmpty()
+                questions.add(fallbackQ.copy(id = "grammar|$gId|${UUID.randomUUID()}"))
             } else {
                 break
             }
@@ -383,7 +388,7 @@ class LocalQuizEngine(
             targetReadingQuestions.forEach { q ->
                 questions.add(
                     QuizQuestionItem(
-                        id = UUID.randomUUID().toString(),
+                        id = "reading|${assignedReadingText.id}|${UUID.randomUUID()}",
                         skill = "reading",
                         questionType = "reading_context",
                         promptEn = "[Reading: ${assignedReadingText.titleEn}] ${q.prompt}",
@@ -405,7 +410,8 @@ class LocalQuizEngine(
                 buildReadingContextQuestion()
             }
             if (fallbackQ != null) {
-                questions.add(fallbackQ.copy(id = UUID.randomUUID().toString()))
+                val rId = assignedReadingText?.id.orEmpty()
+                questions.add(fallbackQ.copy(id = "reading|$rId|${UUID.randomUUID()}"))
             } else {
                 break
             }
@@ -726,6 +732,8 @@ class LocalQuizEngine(
         val now = timeProvider.currentTimeMillis()
         val resultsToInsert = mutableListOf<QuizResultEntity>()
         val attemptsToInsert = mutableListOf<AttemptEntity>()
+        val progressUpdates = mutableListOf<WordProgressEntity>()
+        val correctionUpdates = mutableListOf<CorrectionNotebookEntity>()
 
         for (q in questions) {
             val userIdx = userAnswers[q.id]
@@ -735,12 +743,48 @@ class LocalQuizEngine(
                     activityType = "quiz_question",
                     itemId = "${quizType}:${q.skill}:${q.id}",
                     timestamp = now,
-                    sm2Rating = null,
+                    sm2Rating = if (isCorrect) 4 else 1,
                     isCorrect = isCorrect,
                     score = if (isCorrect) 100f else 0f,
                     deck = null
                 )
             )
+
+            if (!isCorrect) {
+                val parts = q.id.split("|")
+                if (parts.getOrNull(0) == "vocab" && parts.size >= 3) {
+                    val deck = parts[1]
+                    val wordText = parts[2]
+                    val cardKey = "$deck:$wordText"
+                    val existing = dao.getWordProgress(cardKey)
+                        ?: WordProgressEntity(
+                            cardKey = cardKey,
+                            deck = deck,
+                            text = wordText,
+                            firstLearnedTimestamp = now
+                        )
+                    // Apply SM-2 AGAIN (reps = 0, interval = 0, againCount++)
+                    val lapsed = Sm2Algorithm.applyRating(existing, Sm2Rating.AGAIN, now)
+                    // Ensure it is due now/tomorrow so it appears in flashcard review
+                    progressUpdates.add(lapsed.copy(dueTimestamp = now))
+                } else if (parts.getOrNull(0) == "grammar" && parts.size >= 2) {
+                    val lessonId = parts[1]
+                    val lesson = dao.getGrammarLessonById(lessonId)
+                    correctionUpdates.add(
+                        CorrectionNotebookEntity(
+                            grammarLessonId = lessonId,
+                            grammarLessonTitle = lesson?.titleEn.orEmpty(),
+                            originalSentence = q.promptEn,
+                            correctedSentence = q.correctText,
+                            explanationAr = q.explanationAr,
+                            status = "not_checked",
+                            nextReviewTimestamp = now,
+                            createdAt = now,
+                            updatedAt = now
+                        )
+                    )
+                }
+            }
         }
 
         for (skill in skills) {
@@ -768,7 +812,35 @@ class LocalQuizEngine(
             }
         }
 
+        // Overall session result
+        val totalQuestions = questions.size
+        val totalCorrect = questions.count { q ->
+            val userIdx = userAnswers[q.id]
+            userIdx != null && userIdx == q.answerIndex
+        }
+        val totalAccuracy = if (totalQuestions > 0) (totalCorrect.toFloat() / totalQuestions.toFloat()) * 100f else 0f
+        skillAccuracy["overall"] = totalAccuracy
+
+        resultsToInsert.add(
+            QuizResultEntity(
+                date = date,
+                quizType = quizType,
+                skill = "overall",
+                totalQuestions = totalQuestions,
+                correctAnswers = totalCorrect,
+                accuracyPercent = totalAccuracy,
+                detailsJson = json.encodeToString(questions.map { it.id }),
+                timestamp = now
+            )
+        )
+
         dao.insertQuizResultsWithAttempts(resultsToInsert, attemptsToInsert)
+        if (progressUpdates.isNotEmpty()) {
+            dao.upsertWordProgressBatch(progressUpdates)
+        }
+        if (correctionUpdates.isNotEmpty()) {
+            dao.upsertCorrectionEntriesBatch(correctionUpdates)
+        }
         return skillAccuracy
     }
 }

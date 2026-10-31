@@ -538,18 +538,33 @@ fun QuizDialog(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    val isPassed = scorePercent >= 70
                     Text(
                         text = "$scorePercent%",
                         style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.ExtraBold),
-                        color = if (scorePercent >= 70) EmeraldAccent else GoldAccent
+                        color = if (isPassed) EmeraldAccent else CoralAccent
                     )
                     Text(
                         text = "Score: $correct of $total correct",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = TextPrimary
                     )
+                    Surface(
+                        color = if (isPassed) EmeraldAccent.copy(alpha = 0.15f) else CoralAccent.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = if (isPassed) bi("Passed ✓ (Minimum 70% achieved)", "ناجح ✓ (تم اجتياز نسبة 70% على الأقل)")
+                            else bi("Needs Retry (Minimum 70% required to pass)", "يحتاج إعادة محاولة (مطلوب 70% أو 7/10 للنجاح)"),
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = if (isPassed) EmeraldAccent else CoralAccent,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
                     Text(
-                        text = if (scorePercent >= 80) "ممتاز! أداء رائع واستيعاب متقدم للمهارات." else "عمل جيد! استمر في المراجعة لتقوية الجوانب الضعيفة.",
+                        text = if (scorePercent >= 80) "ممتاز! أداء رائع واستيعاب متقدم للمهارات."
+                        else if (isPassed) "عمل جيد! اجتزت الاختبار بنجاح."
+                        else "لم تبلغ درجة النجاح (70%) بعد. يُنصح بإعادة المحاولة لترسيخ التعلم.",
                         style = ArabicTypography.bodySmall,
                         color = TextSecondary
                     )

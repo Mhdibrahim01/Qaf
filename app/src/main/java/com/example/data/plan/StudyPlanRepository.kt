@@ -1263,11 +1263,44 @@ class StudyPlanRepository(
                     )
                 }
                 "quiz" -> {
-                    val hasCompletedDailyQuiz = quizResultsToday.any { it.quizType == "daily_mini" }
-                    val isDone = hasCompletedDailyQuiz
+                    val dailyMiniResults = quizResultsToday.filter { it.quizType == "daily_mini" }
+                    val overallResults = dailyMiniResults.filter { it.skill == "overall" }
+                    val (bestScore, totalQuestions, hasAttempted) = if (overallResults.isNotEmpty()) {
+                        val best = overallResults.maxByOrNull { it.accuracyPercent }!!
+                        Triple(best.correctAnswers, best.totalQuestions, true)
+                    } else if (dailyMiniResults.isNotEmpty()) {
+                        val grouped = dailyMiniResults.groupBy { it.timestamp }
+                        val bestGroup = grouped.values.maxByOrNull { list ->
+                            val tot = list.sumOf { it.totalQuestions }
+                            val cor = list.sumOf { it.correctAnswers }
+                            if (tot > 0) (cor.toFloat() / tot.toFloat()) else 0f
+                        }
+                        if (bestGroup != null) {
+                            val cor = bestGroup.sumOf { it.correctAnswers }
+                            val tot = bestGroup.sumOf { it.totalQuestions }
+                            Triple(cor, tot, true)
+                        } else {
+                            Triple(0, task.targetCount, false)
+                        }
+                    } else {
+                        Triple(0, task.targetCount, false)
+                    }
+
+                    val targetQ = if (totalQuestions > 0) totalQuestions else task.targetCount
+                    val accuracyPct = if (targetQ > 0) (bestScore.toFloat() / targetQ.toFloat()) * 100f else 0f
+                    val isPassed = hasAttempted && (accuracyPct >= 70f || bestScore >= 7)
+
+                    val updatedReason = if (hasAttempted) {
+                        "Score: $bestScore/$targetQ • ${if (isPassed) "Passed ✓" else "Needs Retry (Min 7/10)"}"
+                    } else {
+                        task.reason
+                    }
+
                     task.copy(
-                        completedCount = if (isDone) task.targetCount else 0,
-                        isCompleted = isDone
+                        completedCount = if (hasAttempted) bestScore else 0,
+                        targetCount = targetQ,
+                        isCompleted = isPassed,
+                        reason = updatedReason
                     )
                 }
                 else -> task
