@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.ai.AiWordDetailJson
@@ -726,10 +727,18 @@ class SettingsAndDeveloperModeTest {
         composeTestRule.onNodeWithTag("flashcard_counter").assertIsDisplayed()
         assertTrue("Before enabling Dictation Mode, no audio should be auto-played", autoPlayedWords.isEmpty())
 
-        // Enable Dictation Mode -> immediately pronounces "word3"
+        // Enable Dictation Mode -> immediately pronounces "word3" and displays inline interactive letter slots
         composeTestRule.onNodeWithTag("flashcard_dictation_toggle").performClick()
         composeTestRule.waitForIdle()
         assertEquals(listOf("word3"), autoPlayedWords)
+        composeTestRule.onNodeWithTag("flashcard_dictation_slots_row", useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onNodeWithTag("flashcard_dictation_slot_0", useUnmergedTree = true).assertIsDisplayed()
+
+        // Type a 5-letter misspelled attempt ("wordx") into the inline slots -> auto-verifies when last slot is filled
+        composeTestRule.onNodeWithTag("flashcard_dictation_input", useUnmergedTree = true).performTextInput("wordx")
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("flashcard_dictation_feedback", useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onNodeWithTag("flashcard_dictation_retry", useUnmergedTree = true).assertIsDisplayed()
 
         // Advance to next card ("4 / 10") while Dictation Mode is active -> auto-pronounces "word4"
         composeTestRule.onNodeWithTag("flashcard_next_button").performClick()

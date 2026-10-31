@@ -2609,102 +2609,113 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
             _isFlashcardsLoading.value = true
             try {
                 val checklist = _todayChecklist.value
-                val dailyGoalTarget = run {
-                    if (checklist != null && checklist.tasksJson.isNotBlank()) {
-                        val tasks = try {
-                            kotlinx.serialization.json.Json.decodeFromString<List<DailyTaskItem>>(checklist.tasksJson)
-                        } catch (_: Exception) { emptyList() }
-                        val newWordsTask = tasks.find { it.type == "new_words" }
-                        newWordsTask?.targetCount?.takeIf { it > 0 }
-                    } else null
-                } ?: 10
-
-                val userLevel = studyPlanProfile.value?.level?.ifBlank { "B2" }?.uppercase() ?: "B2"
+                val activeProfile = studyPlanProfile.value ?: studyPlanRepository.getOrCreateProfile()
+                val userLevel = activeProfile.level.ifBlank { "B2" }.uppercase()
                 val selectedDecks = try {
-                    studyPlanProfile.value?.selectedDecksJson?.let {
-                        if (it.isNotBlank()) {
-                            kotlinx.serialization.json.Json.decodeFromString<List<String>>(it)
-                        } else emptyList()
-                    } ?: listOf("oxford5000", "oxford_opal")
+                    if (activeProfile.selectedDecksJson.isNotBlank()) {
+                        kotlinx.serialization.json.Json.decodeFromString<List<String>>(activeProfile.selectedDecksJson)
+                    } else listOf("oxford5000", "oxford_opal")
                 } catch (_: Exception) {
                     listOf("oxford5000", "oxford_opal")
                 }
 
-                val activeProfile = studyPlanProfile.value ?: studyPlanRepository.getOrCreateProfile()
-                val allProgress = database.wordBooksDao().getAllWordProgressList().associateBy { it.cardKey }
+                val sessionSetup = withContext(Dispatchers.IO) {
+                    val dailyGoalTarget = run {
+                        if (checklist != null && checklist.tasksJson.isNotBlank()) {
+                            val tasks = try {
+                                kotlinx.serialization.json.Json.decodeFromString<List<DailyTaskItem>>(checklist.tasksJson)
+                            } catch (_: Exception) { emptyList() }
+                            val newWordsTask = tasks.find { it.type == "new_words" }
+                            newWordsTask?.targetCount?.takeIf { it > 0 }
+                        } else null
+                    } ?: 10
 
-                // Reconstruct words already learned today in chronological order (1st learned -> index 0, 2nd -> index 1)
-                val nowMillis = studyPlanRepository.timeProvider.currentTimeMillis()
-                val startOfDay = DataImportRepository.computeStartOfTodayMillis(nowMillis)
-                val learnedTodayEntries = database.wordBooksDao().getEntriesLearnedToday(startOfDay)
-                val learnedGroupedMap = LinkedHashMap<String, MutableList<EntryEntity>>()
-                for (entry in learnedTodayEntries) {
-                    val key = "${entry.deck}:${entry.text.trim().lowercase()}"
-                    learnedGroupedMap.getOrPut(key) { ArrayList(2) }.add(entry)
-                }
-                val learnedTodayCards = learnedGroupedMap.map { (cardKey, variants) ->
-                    repository.buildGroupedCardFromEntries(variants, allProgress[cardKey])
-                }.sortedBy { card ->
-                    val p = allProgress[card.cardKey]
-                    p?.firstLearnedTimestamp?.takeIf { it > 0L } ?: p?.lastReviewedTimestamp ?: 0L
-                }
+                    val allProgressList = database.wordBooksDao().getAllWordProgressList()
+                    val allProgress = allProgressList.associateBy { it.cardKey }
 
-                val isResumingDailyGoal = targetCountOverride == null && learnedTodayCards.size < dailyGoalTarget
-                val remainingNeeded = if (isResumingDailyGoal) {
-                    (dailyGoalTarget - learnedTodayCards.size).coerceAtLeast(1)
-                } else {
-                    (targetCountOverride ?: 5).coerceAtLeast(1)
-                }
+                    // Reconstruct words already learned today in chronological order (1st learned -> index 0, 2nd -> index 1)
+                    val nowMillis = studyPlanRepository.timeProvider.currentTimeMillis()
+                    val startOfDay = DataImportRepository.computeStartOfTodayMillis(nowMillis)
+                    val learnedTodayEntries = database.wordBooksDao().getEntriesLearnedToday(startOfDay)
+                    val learnedGroupedMap = LinkedHashMap<String, MutableList<EntryEntity>>()
+                    for (entry in learnedTodayEntries) {
+                        val key = "${entry.deck}:${entry.text.trim().lowercase()}"
+                        learnedGroupedMap.getOrPut(key) { ArrayList(2) }.add(entry)
+                    }
+                    val learnedTodayCards = learnedGroupedMap.map { (cardKey, variants) ->
+                        repository.buildGroupedCardFromEntries(variants, allProgress[cardKey])
+                    }.sortedBy { card ->
+                        val p = allProgress[card.cardKey]
+                        p?.firstLearnedTimestamp?.takeIf { it > 0L } ?: p?.lastReviewedTimestamp ?: 0L
+                    }
 
-                val learnedKeys = learnedTodayCards.mapTo(HashSet()) { it.cardKey }
-                val newEntries = studyPlanRepository.getTodayTargetNewWords(
-                    profile = activeProfile,
-                    targetCount = remainingNeeded + learnedTodayCards.size
-                ).ifEmpty {
-                    database.wordBooksDao().getPlacementVocabularyCandidatesForLevel(
-                        userLevel,
-                        limit = remainingNeeded + learnedTodayCards.size
-                    )
-                }
+                    val isResumingDailyGoal = targetCountOverride == null && learnedTodayCards.size < dailyGoalTarget
+                    val remainingNeeded = if (isResumingDailyGoal) {
+                        (dailyGoalTarget - learnedTodayCards.size).coerceAtLeast(1)
+                    } else {
+                        (targetCountOverride ?: 5).coerceAtLeast(1)
+                    }
 
-                val groupedMap = LinkedHashMap<String, MutableList<EntryEntity>>()
-                for (entry in newEntries) {
-                    val key = "${entry.deck}:${entry.text.trim().lowercase()}"
-                    if (isResumingDailyGoal && key in learnedKeys) continue
-                    val list = groupedMap.getOrPut(key) { ArrayList(2) }
-                    list.add(entry)
-                    if (groupedMap.size >= remainingNeeded) break
-                }
+                    val learnedKeys = learnedTodayCards.mapTo(HashSet()) { it.cardKey }
+                    val newEntries = studyPlanRepository.getTodayTargetNewWords(
+                        profile = activeProfile,
+                        targetCount = remainingNeeded + learnedTodayCards.size,
+                        cachedAllProgress = allProgressList
+                    ).ifEmpty {
+                        database.wordBooksDao().getPlacementVocabularyCandidatesForLevel(
+                            userLevel,
+                            limit = remainingNeeded + learnedTodayCards.size
+                        )
+                    }
 
-                val remainingNewCards: List<GroupedWordCard> = groupedMap.map { (cardKey, variants) ->
-                    repository.buildGroupedCardFromEntries(variants, allProgress[cardKey])
-                }.take(remainingNeeded)
+                    val groupedMap = LinkedHashMap<String, MutableList<EntryEntity>>()
+                    for (entry in newEntries) {
+                        val key = "${entry.deck}:${entry.text.trim().lowercase()}"
+                        if (isResumingDailyGoal && key in learnedKeys) continue
+                        val list = groupedMap.getOrPut(key) { ArrayList(2) }
+                        list.add(entry)
+                        if (groupedMap.size >= remainingNeeded) break
+                    }
 
-                val cards: List<GroupedWordCard> = if (isResumingDailyGoal) {
-                    (learnedTodayCards + remainingNewCards).take(dailyGoalTarget)
-                } else {
-                    remainingNewCards
-                }
+                    val remainingNewCards: List<GroupedWordCard> = groupedMap.map { (cardKey, variants) ->
+                        repository.buildGroupedCardFromEntries(variants, allProgress[cardKey])
+                    }.take(remainingNeeded)
 
-                if (cards.isNotEmpty()) {
+                    val cards: List<GroupedWordCard> = if (isResumingDailyGoal) {
+                        (learnedTodayCards + remainingNewCards).take(dailyGoalTarget)
+                    } else {
+                        remainingNewCards
+                    }
+
                     val initialIndex = if (isResumingDailyGoal) {
                         learnedTodayCards.size.coerceIn(0, (cards.size - 1).coerceAtLeast(0))
                     } else {
                         0
                     }
 
+                    NewWordsSessionResult(
+                        cards = cards,
+                        initialIndex = initialIndex,
+                        isResumingDailyGoal = isResumingDailyGoal,
+                        learnedTodayCards = learnedTodayCards,
+                        allProgress = allProgress
+                    )
+                }
+
+                val cards = sessionSetup.cards
+                if (cards.isNotEmpty()) {
                     _flashcardCards.value = cards
                     _flashcardDeckId.value = selectedDecks.firstOrNull() ?: "oxford5000"
-                    _flashcardIndex.value = initialIndex
+                    _flashcardIndex.value = sessionSetup.initialIndex
                     _isCurrentCardFlipped.value = false
 
                     sessionRatedCardKeys.clear()
                     sessionFailedCards.clear()
-                    if (isResumingDailyGoal && learnedTodayCards.isNotEmpty()) {
-                        learnedTodayCards.forEach { sessionRatedCardKeys.add(it.cardKey) }
-                        sessionMasteredCount = learnedTodayCards.count { (allProgress[it.cardKey]?.againCount ?: 0) == 0 }
-                        sessionNeedsReviewCount = learnedTodayCards.size - sessionMasteredCount
-                        sessionQualitySum = learnedTodayCards.size * 3
+                    if (sessionSetup.isResumingDailyGoal && sessionSetup.learnedTodayCards.isNotEmpty()) {
+                        sessionSetup.learnedTodayCards.forEach { sessionRatedCardKeys.add(it.cardKey) }
+                        sessionMasteredCount = sessionSetup.learnedTodayCards.count { (sessionSetup.allProgress[it.cardKey]?.againCount ?: 0) == 0 }
+                        sessionNeedsReviewCount = sessionSetup.learnedTodayCards.size - sessionMasteredCount
+                        sessionQualitySum = sessionSetup.learnedTodayCards.size * 3
                     } else {
                         sessionMasteredCount = 0
                         sessionNeedsReviewCount = 0
@@ -3215,10 +3226,6 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
     suspend fun submitActiveQuiz(answers: Map<String, Int>): Map<String, Float> {
         val session = _activeQuizSession.value ?: return emptyMap()
         val result = localQuizEngine.recordQuizSubmission(session.quizType, session.questions, answers)
-        if (session.quizType == "daily_mini") {
-            val today = studyPlanRepository.timeProvider.todayDateString()
-            studyPlanRepository.markTaskCompletedManually(today, "task_daily_quiz")
-        }
         refreshDailyChecklist()
         return result
     }
@@ -3244,10 +3251,6 @@ class WordBooksViewModel(application: Application) : AndroidViewModel(applicatio
         answers: Map<String, Int>
     ): Map<String, Float> {
         val result = localQuizEngine.recordQuizSubmission(quizType, questions, answers)
-        if (quizType == "daily_mini") {
-            val today = studyPlanRepository.timeProvider.todayDateString()
-            studyPlanRepository.markTaskCompletedManually(today, "task_daily_quiz")
-        }
         refreshDailyChecklist()
         return result
     }
@@ -3410,4 +3413,12 @@ data class ActiveQuizSession(
     val quizType: String,
     val questions: List<QuizQuestionItem>,
     val scopeInfo: com.example.data.plan.DailyQuizScopeInfo? = null
+)
+
+private data class NewWordsSessionResult(
+    val cards: List<GroupedWordCard>,
+    val initialIndex: Int,
+    val isResumingDailyGoal: Boolean,
+    val learnedTodayCards: List<GroupedWordCard>,
+    val allProgress: Map<String, WordProgressEntity>
 )

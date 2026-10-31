@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
@@ -43,6 +44,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -103,22 +107,31 @@ import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.LayoutDirection
@@ -1360,114 +1373,263 @@ private fun FlashcardFrontFace(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             if (isDictationMode) {
+                val targetWord = remember(card.text) { card.text.trim() }
+                val targetSlotCount = remember(targetWord) { targetWord.length.coerceAtLeast(1) }
+                val focusRequester = remember { FocusRequester() }
+                val keyboardController = LocalSoftwareKeyboardController.current
+                val focusManager = LocalFocusManager.current
+                val dictationScrollState = rememberScrollState()
+
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
+                        .verticalScroll(dictationScrollState)
+                        .imePadding()
                         .testTag("flashcard_dictation_front_panel")
                 ) {
-                    Text(
-                        text = "_ ".repeat(card.text.length.coerceIn(3, 12)).trim(),
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = 2.sp
-                        ),
-                        color = GoldAccent
-                    )
-
                     if (variantsWithArabic.isNotEmpty()) {
                         ArabicText(
                             text = variantsWithArabic.first().arabicMeaning,
-                            style = ArabicTypography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = TextSecondary,
-                            maxLines = 1
+                            style = ArabicTypography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+                            color = TextPrimary,
+                            maxLines = 2
                         )
                     }
 
-                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            OutlinedTextField(
-                                value = dictationInput,
-                                onValueChange = {
-                                    dictationInput = it
-                                    dictationChecked = false
-                                },
-                                placeholder = { Text("Type word you heard...", color = TextMuted) },
-                                singleLine = true,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .testTag("flashcard_dictation_input"),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = GoldAccent,
-                                    unfocusedBorderColor = BorderDark,
-                                    focusedContainerColor = SurfaceElevatedDark,
-                                    unfocusedContainerColor = SurfaceElevatedDark,
-                                    focusedTextColor = TextPrimary,
-                                    unfocusedTextColor = TextPrimary
-                                )
-                            )
+                    Text(
+                        text = if (com.example.ui.theme.AppLanguageState.isArabic) {
+                            "اضغط على الخانات واكتب الكلمة التي سمعتها"
+                        } else {
+                            "Tap the letter slots to spell the word you heard"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary
+                    )
 
-                            Button(
-                                onClick = { dictationChecked = true },
-                                enabled = dictationInput.isNotBlank(),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = GoldAccent,
-                                    contentColor = BackgroundDark
-                                ),
-                                modifier = Modifier.testTag("flashcard_dictation_check")
-                            ) {
-                                Text("Check", fontWeight = FontWeight.Bold)
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        val cleanTyped = dictationInput.trim()
+                        val isExact = dictationChecked && cleanTyped.equals(targetWord, ignoreCase = true)
+                        val isError = dictationChecked && !isExact
+
+                        // Transparent BasicTextField backing the inline interactive letter slots
+                        BasicTextField(
+                            value = dictationInput,
+                            onValueChange = { raw ->
+                                val filtered = raw.take(targetSlotCount)
+                                dictationInput = filtered
+                                if (filtered.length >= targetSlotCount) {
+                                    dictationChecked = true
+                                    keyboardController?.hide()
+                                    focusManager.clearFocus()
+                                } else {
+                                    dictationChecked = false
+                                }
+                            },
+                            singleLine = true,
+                            cursorBrush = SolidColor(Color.Transparent),
+                            keyboardOptions = KeyboardOptions(
+                                capitalization = KeyboardCapitalization.None,
+                                autoCorrectEnabled = false,
+                                keyboardType = KeyboardType.Ascii,
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    if (dictationInput.isNotBlank()) {
+                                        dictationChecked = true
+                                        keyboardController?.hide()
+                                        focusManager.clearFocus()
+                                    }
+                                }
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequester)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) {
+                                    focusRequester.requestFocus()
+                                    keyboardController?.show()
+                                }
+                                .testTag("flashcard_dictation_input"),
+                            decorationBox = { innerTextField ->
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("flashcard_dictation_slots_row")
+                                ) {
+                                    // Keep innerTextField in the layout tree with zero visual footprint
+                                    Box(modifier = Modifier.size(1.dp)) {
+                                        innerTextField()
+                                    }
+
+                                    val slotWidth = when {
+                                        targetSlotCount >= 12 -> 24.dp
+                                        targetSlotCount >= 9 -> 28.dp
+                                        else -> 34.dp
+                                    }
+                                    val slotSpacing = if (targetSlotCount >= 10) 4.dp else 6.dp
+
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(slotSpacing, Alignment.CenterHorizontally),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .horizontalScroll(rememberScrollState())
+                                            .padding(vertical = 4.dp, horizontal = 4.dp)
+                                    ) {
+                                        for (slotIndex in 0 until targetSlotCount) {
+                                            val typedChar = dictationInput.getOrNull(slotIndex)
+                                            val expectedChar = targetWord.getOrNull(slotIndex)
+                                            val isCurrentSlot = !dictationChecked && slotIndex == dictationInput.length
+                                            val isCharCorrect = dictationChecked &&
+                                                typedChar != null &&
+                                                expectedChar != null &&
+                                                typedChar.equals(expectedChar, ignoreCase = true)
+
+                                            val slotBorderColor = when {
+                                                isExact -> EmeraldAccent
+                                                isError -> if (isCharCorrect) EmeraldAccent.copy(alpha = 0.7f) else CoralAccent
+                                                isCurrentSlot -> GoldAccent
+                                                typedChar != null -> GoldAccentBorder
+                                                else -> BorderDark
+                                            }
+                                            val slotBgColor = when {
+                                                isExact -> EmeraldAccent.copy(alpha = 0.16f)
+                                                isError -> if (isCharCorrect) EmeraldAccent.copy(alpha = 0.10f) else CoralAccent.copy(alpha = 0.16f)
+                                                isCurrentSlot -> GoldAccentDim
+                                                else -> SurfaceElevatedDark
+                                            }
+                                            val charTextColor = when {
+                                                isExact -> EmeraldAccent
+                                                isError -> if (isCharCorrect) EmeraldAccent else CoralAccent
+                                                else -> TextPrimary
+                                            }
+
+                                            Surface(
+                                                color = slotBgColor,
+                                                shape = RoundedCornerShape(10.dp),
+                                                border = BorderStroke(
+                                                    width = if (isCurrentSlot || dictationChecked) 1.8.dp else 1.dp,
+                                                    color = slotBorderColor
+                                                ),
+                                                modifier = Modifier
+                                                    .width(slotWidth)
+                                                    .height(44.dp)
+                                                    .testTag("flashcard_dictation_slot_$slotIndex")
+                                            ) {
+                                                Column(
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.Center
+                                                ) {
+                                                    Text(
+                                                        text = typedChar?.toString() ?: "",
+                                                        style = MaterialTheme.typography.titleMedium.copy(
+                                                            fontWeight = FontWeight.ExtraBold,
+                                                            fontFamily = FontFamily.Monospace
+                                                        ),
+                                                        color = charTextColor,
+                                                        textAlign = TextAlign.Center
+                                                    )
+                                                    if (typedChar == null) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .padding(top = 10.dp)
+                                                                .width(slotWidth * 0.55f)
+                                                                .height(2.dp)
+                                                                .background(
+                                                                    color = if (isCurrentSlot) GoldAccent else TextMuted.copy(alpha = 0.6f),
+                                                                    shape = RoundedCornerShape(1.dp)
+                                                                )
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
-                        }
+                        )
 
                         if (dictationChecked) {
-                            val cleanTyped = dictationInput.trim()
-                            val isExact = cleanTyped.equals(card.text.trim(), ignoreCase = true)
-                            val charSpans = SentencePracticeUtils.computeCharDiffSpans(cleanTyped, card.text.trim())
                             Surface(
-                                color = if (isExact) EmeraldAccent.copy(alpha = 0.16f) else AmberAccent.copy(alpha = 0.16f),
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, if (isExact) EmeraldAccent else AmberAccent),
+                                color = if (isExact) EmeraldAccent.copy(alpha = 0.16f) else CoralAccent.copy(alpha = 0.14f),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, if (isExact) EmeraldAccent else CoralAccent),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .testTag("flashcard_dictation_feedback")
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     if (isExact) {
                                         Text(
-                                            text = "✓ Correct: ${card.text}",
-                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                            text = "✓ Correct: $targetWord",
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
                                             color = EmeraldAccent
                                         )
                                     } else {
-                                        val diffAnnotated = buildAnnotatedString {
-                                            charSpans.forEach { span ->
-                                                withStyle(
-                                                    SpanStyle(
-                                                        color = if (span.isMatch) EmeraldAccent else CoralAccent,
-                                                        fontWeight = FontWeight.Bold
-                                                    )
-                                                ) {
-                                                    append(span.char)
-                                                }
+                                        val correctionAnnotated = buildAnnotatedString {
+                                            withStyle(
+                                                SpanStyle(
+                                                    color = CoralAccent,
+                                                    fontWeight = FontWeight.Bold,
+                                                    textDecoration = TextDecoration.LineThrough
+                                                )
+                                            ) {
+                                                append(cleanTyped.ifBlank { "—" })
                                             }
-                                            withStyle(SpanStyle(color = GoldAccent, fontWeight = FontWeight.ExtraBold)) {
-                                                append(" → ${card.text}")
+                                            withStyle(
+                                                SpanStyle(
+                                                    color = TextSecondary,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            ) {
+                                                append("  →  ")
+                                            }
+                                            withStyle(
+                                                SpanStyle(
+                                                    color = EmeraldAccent,
+                                                    fontWeight = FontWeight.ExtraBold
+                                                )
+                                            ) {
+                                                append(targetWord)
                                             }
                                         }
                                         Text(
-                                            text = diffAnnotated,
-                                            style = MaterialTheme.typography.bodyMedium
+                                            text = correctionAnnotated,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            modifier = Modifier.weight(1f)
                                         )
+                                        Surface(
+                                            color = SurfaceElevatedDark,
+                                            shape = RoundedCornerShape(8.dp),
+                                            border = BorderStroke(1.dp, GoldAccentBorder),
+                                            modifier = Modifier
+                                                .padding(start = 8.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .clickable {
+                                                    dictationInput = ""
+                                                    dictationChecked = false
+                                                    focusRequester.requestFocus()
+                                                    keyboardController?.show()
+                                                }
+                                                .testTag("flashcard_dictation_retry")
+                                        ) {
+                                            Text(
+                                                text = if (com.example.ui.theme.AppLanguageState.isArabic) "إعادة" else "Retry",
+                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                                color = GoldAccent,
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }

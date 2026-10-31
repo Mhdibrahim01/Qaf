@@ -557,4 +557,81 @@ class Phase3DailyPlanTest {
         assertEquals("story_2", sortedRecommended[0].id)
         assertEquals("story_1", sortedRecommended[1].id)
     }
+
+    @Test
+    fun testDailyMiniQuizOnlyCompletedByDailyMiniQuiz() = runBlocking {
+        val today = timeProvider.todayDateString()
+        val profile = StudyPlanProfileEntity(
+            id = 1,
+            level = "B2",
+            goal = "general_fluency",
+            minutesPerDay = 30,
+            studyDaysPerWeek = 6,
+            startDate = today,
+            selectedDecksJson = "[\"oxford5000\"]",
+            restDaysJson = "[]",
+            updatedAt = timeProvider.currentTimeMillis()
+        )
+        db.wordBooksDao().upsertStudyPlanProfile(profile)
+
+        val checklist = planRepo.getOrCreateDailyChecklist(today)
+        val tasks = json.decodeFromString<List<DailyTaskItem>>(checklist.tasksJson)
+        val quizTask = tasks.first { it.id == "task_daily_quiz" }
+        assertFalse("Daily quiz task must start uncompleted", quizTask.isCompleted)
+        assertEquals(0, quizTask.completedCount)
+
+        // 1. Completing 60s speed challenge (vocab_blitz_60s) must NOT complete daily mini quiz
+        db.wordBooksDao().insertQuizResult(
+            com.example.data.local.QuizResultEntity(
+                date = today,
+                quizType = "vocab_blitz_60s",
+                skill = "vocabulary",
+                totalQuestions = 15,
+                correctAnswers = 14,
+                accuracyPercent = 93.3f,
+                timestamp = timeProvider.currentTimeMillis()
+            )
+        )
+        val afterBlitz = planRepo.refreshChecklistCompletion(checklist)
+        val afterBlitzTasks = json.decodeFromString<List<DailyTaskItem>>(afterBlitz.tasksJson)
+        val afterBlitzQuizTask = afterBlitzTasks.first { it.id == "task_daily_quiz" }
+        assertFalse("Daily quiz must NOT be completed by 60s speed challenge", afterBlitzQuizTask.isCompleted)
+        assertEquals(0, afterBlitzQuizTask.completedCount)
+
+        // 2. Completing weekly or weak areas quiz must NOT complete daily mini quiz
+        db.wordBooksDao().insertQuizResult(
+            com.example.data.local.QuizResultEntity(
+                date = today,
+                quizType = "weekly",
+                skill = "vocabulary",
+                totalQuestions = 20,
+                correctAnswers = 18,
+                accuracyPercent = 90f,
+                timestamp = timeProvider.currentTimeMillis()
+            )
+        )
+        val afterWeekly = planRepo.refreshChecklistCompletion(afterBlitz)
+        val afterWeeklyTasks = json.decodeFromString<List<DailyTaskItem>>(afterWeekly.tasksJson)
+        val afterWeeklyQuizTask = afterWeeklyTasks.first { it.id == "task_daily_quiz" }
+        assertFalse("Daily quiz must NOT be completed by weekly quiz", afterWeeklyQuizTask.isCompleted)
+        assertEquals(0, afterWeeklyQuizTask.completedCount)
+
+        // 3. Completing daily mini quiz (daily_mini) DOES complete daily mini quiz
+        db.wordBooksDao().insertQuizResult(
+            com.example.data.local.QuizResultEntity(
+                date = today,
+                quizType = "daily_mini",
+                skill = "vocabulary",
+                totalQuestions = 5,
+                correctAnswers = 5,
+                accuracyPercent = 100f,
+                timestamp = timeProvider.currentTimeMillis()
+            )
+        )
+        val afterDaily = planRepo.refreshChecklistCompletion(afterWeekly)
+        val afterDailyTasks = json.decodeFromString<List<DailyTaskItem>>(afterDaily.tasksJson)
+        val afterDailyQuizTask = afterDailyTasks.first { it.id == "task_daily_quiz" }
+        assertTrue("Daily quiz MUST be completed when daily_mini result exists", afterDailyQuizTask.isCompleted)
+        assertEquals(afterDailyQuizTask.targetCount, afterDailyQuizTask.completedCount)
+    }
 }

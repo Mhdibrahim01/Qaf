@@ -15,6 +15,7 @@ import com.example.data.local.StudyPlanJson
 import com.example.data.local.StudyPlanProfileEntity
 import com.example.data.local.WeakAreasState
 import com.example.data.local.WordBooksDao
+import com.example.data.local.WordProgressEntity
 import com.example.data.onboarding.OnboardingPreferencesRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.Json
@@ -1005,8 +1006,8 @@ class StudyPlanRepository(
         }
     }
 
-    private suspend fun getStudiedHeadwordStageMap(): Map<String, WordStage> {
-        val allWordProgress = dao.getAllWordProgressList()
+    private suspend fun getStudiedHeadwordStageMap(cachedProgress: List<WordProgressEntity>? = null): Map<String, WordStage> {
+        val allWordProgress = cachedProgress ?: dao.getAllWordProgressList()
         val stageByHeadword = HashMap<String, WordStage>(allWordProgress.size * 2)
         for (wp in allWordProgress) {
             val st = LearnerModelRepository.classifyWordStage(wp)
@@ -1075,11 +1076,13 @@ class StudyPlanRepository(
         targetCount: Int,
         date: String = timeProvider.todayDateString(),
         anchorStoryOverride: ReadingTextEntity? = null,
-        anchorStoryReadabilityOverride: StoryReadabilityReport? = null
+        anchorStoryReadabilityOverride: StoryReadabilityReport? = null,
+        cachedAllProgress: List<WordProgressEntity>? = null
     ): List<EntryEntity> {
         if (targetCount <= 0) return emptyList()
+        val allProgressList = cachedAllProgress ?: dao.getAllWordProgressList()
         val selectedDecks = decodeSelectedDecks(profile)
-        val stageByHeadword = getStudiedHeadwordStageMap()
+        val stageByHeadword = getStudiedHeadwordStageMap(allProgressList)
 
         // 1. Identify today's anchor story (if scheduled)
         val anchorStory = anchorStoryOverride ?: resolveAnchorStoryForDate(profile, date)
@@ -1095,7 +1098,7 @@ class StudyPlanRepository(
         } else emptyList()
 
         // 2. Select profile-based words
-        val selectionResult = selectNewWordsForProfile(profile, targetCount)
+        val selectionResult = selectNewWordsForProfile(profile, targetCount, cachedAllProgress = allProgressList)
 
         // 3. Merge pre-taught words with profile words
         val merged = if (preTeachWords.isNotEmpty()) {
@@ -1107,7 +1110,7 @@ class StudyPlanRepository(
         }
 
         // Re-rank final list deterministically via (SEEN > Knuth Hash)
-        val lookedUpHeadwords = dao.getAllWordProgressList()
+        val lookedUpHeadwords = allProgressList
             .filter { it.lookupCount > 0 && it.firstLearnedTimestamp == 0L && it.lastReviewedTimestamp == 0L }
             .mapTo(HashSet()) { it.text.trim().lowercase(Locale.US) }
 
@@ -1249,7 +1252,8 @@ class StudyPlanRepository(
                     )
                 }
                 "quiz" -> {
-                    val isDone = task.isCompleted || quizResultsToday.isNotEmpty()
+                    val hasCompletedDailyQuiz = quizResultsToday.any { it.quizType == "daily_mini" }
+                    val isDone = hasCompletedDailyQuiz
                     task.copy(
                         completedCount = if (isDone) task.targetCount else 0,
                         isCompleted = isDone
@@ -1660,7 +1664,8 @@ class StudyPlanRepository(
     suspend fun selectNewWordsForProfile(
         profile: StudyPlanProfileEntity,
         targetCount: Int,
-        weightsConfig: DeckMixWeightsConfig = deckWeightsConfig
+        weightsConfig: DeckMixWeightsConfig = deckWeightsConfig,
+        cachedAllProgress: List<WordProgressEntity>? = null
     ): WordSelectionResult {
         if (targetCount <= 0) return WordSelectionResult(emptyList(), null)
 
@@ -1686,7 +1691,7 @@ class StudyPlanRepository(
         val ungradedSelectedDecks = selectedDecks.filter { it !in EntryEntity.GRADED_DECKS }
         val totalUngradedQuota = ungradedSelectedDecks.sumOf { deckQuotas[it] ?: 0 }
 
-        val lookedUpHeadwords = dao.getAllWordProgressList()
+        val lookedUpHeadwords = (cachedAllProgress ?: dao.getAllWordProgressList())
             .filter { it.lookupCount > 0 && it.firstLearnedTimestamp == 0L && it.lastReviewedTimestamp == 0L }
             .mapTo(HashSet()) { it.text.trim().lowercase(Locale.US) }
 
