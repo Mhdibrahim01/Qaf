@@ -2301,6 +2301,17 @@ interface WordBooksDao {
     @Query(
         """
         SELECT * FROM entries
+        WHERE UPPER(TRIM(COALESCE(NULLIF(TRIM(effective_level), ''), level))) IN (:levels)
+          AND TRIM(text) != ''
+        ORDER BY LOWER(text) ASC, pos ASC
+        LIMIT :limit
+        """
+    )
+    suspend fun getRecommendedWordsForLevels(levels: List<String>, limit: Int = 20000): List<EntryEntity>
+
+    @Query(
+        """
+        SELECT * FROM entries
         WHERE (:deckId = '' OR deck = :deckId)
           AND (UPPER(TRIM(COALESCE(NULLIF(TRIM(effective_level), ''), level))) = UPPER(TRIM(:level)) OR :level = '')
           AND TRIM(text) != ''

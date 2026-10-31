@@ -62,6 +62,24 @@ object AdaptiveConfig {
         else -> 400
     }
 
+    fun compareCefrRank(level: String): Int = when (level.trim().uppercase()) {
+        "A1" -> 1
+        "A2" -> 2
+        "B1" -> 3
+        "B2" -> 4
+        "C1" -> 5
+        else -> 3
+    }
+
+    fun getCefrLevelsAtOrAbove(level: String): List<String> = when (level.trim().uppercase()) {
+        "A1" -> listOf("A1", "A2", "B1", "B2", "C1")
+        "A2" -> listOf("A2", "B1", "B2", "C1")
+        "B1" -> listOf("B1", "B2", "C1")
+        "B2" -> listOf("B2", "C1")
+        "C1" -> listOf("C1")
+        else -> listOf("B1", "B2", "C1")
+    }
+
     data class MacroTopic(
         val id: String,
         val titleEn: String,

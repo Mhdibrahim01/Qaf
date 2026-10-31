@@ -314,6 +314,6 @@ class LearningPathPrioritizationTest {
         assertTrue(tasks.any { it.type == "quiz" })
 
         val newWordsTask = tasks.first { it.type == "new_words" }
-        assertEquals("word_books", newWordsTask.linkedRoute)
+        assertEquals("new_words", newWordsTask.linkedRoute)
     }
 }

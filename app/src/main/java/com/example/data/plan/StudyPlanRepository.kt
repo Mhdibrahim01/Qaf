@@ -958,6 +958,7 @@ class StudyPlanRepository(
         readabilityReport: StoryReadabilityReport?,
         selectedDecks: List<String>,
         stageByHeadword: Map<String, WordStage>,
+        userLevel: String = "",
         maxCount: Int
     ): List<EntryEntity> {
         if (maxCount <= 0) return emptyList()
@@ -984,9 +985,18 @@ class StudyPlanRepository(
         } else {
             deckMatches + dao.getEntriesByHeadwords(unstudiedFocus)
         }
+        val cleanUserLevel = userLevel.trim().uppercase(Locale.US)
+        val userRank = if (cleanUserLevel.isNotBlank()) AdaptiveConfig.compareCefrRank(cleanUserLevel) else 0
+
         val seenHeadwords = HashSet<String>()
         val result = mutableListOf<EntryEntity>()
         for (entry in allMatches) {
+            val entryLevel = (entry.effectiveLevel ?: entry.level).trim().uppercase(Locale.US)
+            val entryRank = AdaptiveConfig.compareCefrRank(entryLevel)
+            if (userRank > 0 && entryRank < userRank) {
+                // Never include words below the user's level in new words
+                continue
+            }
             val lower = entry.text.trim().lowercase(Locale.US)
             if (entry.arabic.isNotBlank() && seenHeadwords.add(lower)) {
                 result.add(entry)
@@ -1093,6 +1103,7 @@ class StudyPlanRepository(
                 readabilityReport = readability,
                 selectedDecks = selectedDecks,
                 stageByHeadword = stageByHeadword,
+                userLevel = profile.level,
                 maxCount = minOf(4, targetCount / 2)
             )
         } else emptyList()
@@ -1592,10 +1603,10 @@ class StudyPlanRepository(
         }
         return when (clean) {
             "A1" -> listOf("A1", "A2")
-            "A2" -> listOf("A2", "B1", "A1")
-            "B1" -> listOf("B1", "B2", "A2")
-            "B2" -> listOf("B2", "C1", "B1")
-            "C1" -> listOf("C1", "B2")
+            "A2" -> listOf("A2", "B1", "B2")
+            "B1" -> listOf("B1", "B2", "C1")
+            "B2" -> listOf("B2", "C1")
+            "C1" -> listOf("C1")
             else -> listOf(clean)
         }
     }
