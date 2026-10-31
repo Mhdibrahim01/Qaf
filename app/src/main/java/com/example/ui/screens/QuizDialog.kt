@@ -830,12 +830,24 @@ fun QuizDialog(
                         onClick = {
                             if (isReorderQuestion) {
                                 if (arrangedWordIndices.isNotEmpty()) {
-                                    userAnswers[currentQuestion.id] = if (isReorderAnswerCorrect) currentQuestion.answerIndex else -1
+                                    val isCorrect = isReorderAnswerCorrect
+                                    userAnswers[currentQuestion.id] = if (isCorrect) currentQuestion.answerIndex else -1
                                     isSubmitted = true
+                                    if (isCorrect) {
+                                        com.example.data.blitz.BlitzSoundPlayer.playCorrectChime(true)
+                                    } else {
+                                        com.example.data.blitz.BlitzSoundPlayer.playWrongBuzz(true)
+                                    }
                                 }
                             } else if (selectedOptionIndex != null) {
+                                val isCorrect = selectedOptionIndex == currentQuestion.answerIndex
                                 userAnswers[currentQuestion.id] = selectedOptionIndex!!
                                 isSubmitted = true
+                                if (isCorrect) {
+                                    com.example.data.blitz.BlitzSoundPlayer.playCorrectChime(true)
+                                } else {
+                                    com.example.data.blitz.BlitzSoundPlayer.playWrongBuzz(true)
+                                }
                             }
                         },
                         enabled = canSubmit,

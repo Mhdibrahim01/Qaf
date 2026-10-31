@@ -64,6 +64,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -79,7 +80,18 @@ import com.example.data.blitz.BlitzQuestionMode
 import com.example.data.blitz.BlitzSoundPlayer
 import com.example.data.blitz.SurvivalSessionState
 import com.example.data.blitz.VocabularyBlitzEngine
+import com.example.ui.components.AnimatedSurvivalHeartIcon
 import com.example.ui.components.BidiText
+import com.example.ui.components.FloatingFeedbackBadge
+import com.example.ui.components.GameFeedbackColors
+import com.example.ui.components.GameFeedbackState
+import com.example.ui.components.SmoothQuestionSlideContent
+import com.example.ui.components.gameFeedbackMotion
+import com.example.ui.components.performGameFeedback
+import com.example.ui.components.rememberFeedbackBackgroundColor
+import com.example.ui.components.rememberFeedbackBorderColor
+import com.example.ui.components.rememberGameFeedbackController
+import com.example.ui.components.streakBumpScale
 import com.example.ui.theme.AmberAccent
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
@@ -120,9 +132,16 @@ fun SurvivalChallengeDialog(
     var tappedOptionIndex by remember { mutableStateOf<Int?>(null) }
     var isEvaluatingAnswer by remember { mutableStateOf(false) }
 
+    val feedbackController = rememberGameFeedbackController()
+    val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
-    val bottomSafePadding = if (screenHeightDp >= 640) 44.dp else 20.dp
+    val isCompactScreen = screenHeightDp < 540
+    val bottomSafePadding = when {
+        screenHeightDp >= 640 -> 44.dp
+        screenHeightDp >= 540 -> 20.dp
+        else -> 8.dp
+    }
 
     Dialog(
         onDismissRequest = {
@@ -142,8 +161,13 @@ fun SurvivalChallengeDialog(
                     .widthIn(max = 680.dp)
                     .fillMaxSize()
                     .navigationBarsPadding()
-                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = bottomSafePadding),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = if (isCompactScreen) 8.dp else 12.dp,
+                        bottom = bottomSafePadding
+                    ),
+                verticalArrangement = Arrangement.spacedBy(if (isCompactScreen) 8.dp else 12.dp)
             ) {
                 // Top Action Bar
                 Row(
@@ -230,7 +254,7 @@ fun SurvivalChallengeDialog(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Hearts Display
+                            // Hearts Display with Heart Break Animation on life lost
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -238,23 +262,53 @@ fun SurvivalChallengeDialog(
                             ) {
                                 for (i in 0 until sessionState.maxHearts) {
                                     val isAlive = i < sessionState.hearts
-                                    Icon(
-                                        imageVector = if (isAlive) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                        contentDescription = null,
-                                        tint = if (isAlive) CoralAccent else TextMuted,
-                                        modifier = Modifier
-                                            .size(26.dp)
-                                            .scale(if (isAlive) 1.0f else 0.85f)
+                                    val isBreakingThisHeart =
+                                        feedbackController.state == GameFeedbackState.WRONG && i == (sessionState.hearts - 1)
+                                    AnimatedSurvivalHeartIcon(
+                                        isAlive = isAlive,
+                                        isBreakingNow = isBreakingThisHeart,
+                                        size = 22.dp
                                     )
                                 }
                             }
 
-                            // Current Streak
+                            // Current Streak Pill with Scale Bump & Emerald Flash on Correct
+                            val isStreakBump = feedbackController.state == GameFeedbackState.CORRECT
+                            val streakPillBg by animateColorAsState(
+                                targetValue = when {
+                                    isStreakBump -> GameFeedbackColors.EmeraldTint
+                                    sessionState.currentStreak > 0 -> CoralAccent.copy(alpha = 0.16f)
+                                    else -> SurfaceElevatedDark
+                                },
+                                animationSpec = tween(200),
+                                label = "survivalStreakBg"
+                            )
+                            val streakPillBorder by animateColorAsState(
+                                targetValue = when {
+                                    isStreakBump -> GameFeedbackColors.EmeraldBorder
+                                    sessionState.currentStreak > 0 -> CoralAccent
+                                    else -> BorderDark
+                                },
+                                animationSpec = tween(200),
+                                label = "survivalStreakBorder"
+                            )
+                            val streakContentColor by animateColorAsState(
+                                targetValue = when {
+                                    isStreakBump -> GameFeedbackColors.EmeraldBorder
+                                    sessionState.currentStreak > 0 -> CoralAccent
+                                    else -> TextPrimary
+                                },
+                                animationSpec = tween(200),
+                                label = "survivalStreakText"
+                            )
+
                             Surface(
-                                color = if (sessionState.currentStreak > 0) CoralAccent.copy(alpha = 0.16f) else SurfaceElevatedDark,
+                                color = streakPillBg,
                                 shape = PillShape,
-                                border = BorderStroke(1.dp, if (sessionState.currentStreak > 0) CoralAccent else BorderDark),
-                                modifier = Modifier.testTag("survival_streak_pill")
+                                border = BorderStroke(1.dp, streakPillBorder),
+                                modifier = Modifier
+                                    .streakBumpScale(activeBump = isStreakBump)
+                                    .testTag("survival_streak_pill")
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
@@ -264,13 +318,13 @@ fun SurvivalChallengeDialog(
                                     Icon(
                                         imageVector = Icons.Default.LocalFireDepartment,
                                         contentDescription = null,
-                                        tint = if (sessionState.currentStreak > 0) CoralAccent else TextMuted,
+                                        tint = if (sessionState.currentStreak > 0 || isStreakBump) streakContentColor else TextMuted,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Text(
                                         text = "${sessionState.currentStreak}",
                                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Black),
-                                        color = if (sessionState.currentStreak > 0) CoralAccent else TextPrimary
+                                        color = streakContentColor
                                     )
                                     Text(
                                         text = bi("Streak", "سلسلة"),
@@ -299,7 +353,7 @@ fun SurvivalChallengeDialog(
                                         color = TextMuted
                                     )
                                     Text(
-                                        text = "$bestStreak",
+                                        text = "${maxOf(bestStreak, sessionState.bestStreakInSession)}",
                                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
                                         color = GoldAccent
                                     )
@@ -311,380 +365,465 @@ fun SurvivalChallengeDialog(
                     // Active Question Area
                     val currentQ = sessionState.currentQuestion
                     if (currentQ != null) {
+                        val cardBorderColor = rememberFeedbackBorderColor(
+                            feedbackState = feedbackController.state,
+                            idleColor = GoldAccentBorder
+                        )
+                        val cardBorderWidth = if (feedbackController.state != GameFeedbackState.IDLE) 2.dp else 1.dp
+
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
+                                .gameFeedbackMotion(
+                                    feedbackState = feedbackController.state,
+                                    triggerKey = feedbackController.triggerCounter,
+                                    correctPeakScale = 1.03f
+                                )
                                 .testTag("survival_question_card"),
                             color = SurfaceDark,
                             shape = RoundedCornerShape(22.dp),
-                            border = BorderStroke(1.dp, GoldAccentBorder)
+                            border = BorderStroke(cardBorderWidth, cardBorderColor)
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .verticalScroll(rememberScrollState())
-                                    .padding(20.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                // Top Row: CEFR Level Pill + Speaker Icon Button
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Surface(
-                                        color = Color(0xFF231D12),
-                                        shape = PillShape,
-                                        border = BorderStroke(1.dp, GoldAccentBorder)
-                                    ) {
-                                        val levelLabel = if (currentQ.level.uppercase().startsWith("CEFR")) {
-                                            currentQ.level
-                                        } else {
-                                            "CEFR ${currentQ.level}"
-                                        }
-                                        Text(
-                                            text = levelLabel,
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 11.sp
-                                            ),
-                                            color = GoldAccent,
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                                        )
-                                    }
-
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = SurfaceElevatedDark,
-                                        border = BorderStroke(1.dp, BorderDark),
-                                        modifier = Modifier
-                                            .size(36.dp)
-                                            .clip(CircleShape)
-                                            .clickable { onPlayPronunciation(currentQ.word) }
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(
-                                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                                contentDescription = "Pronounce",
-                                                tint = GoldAccent,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        }
-                                    }
-                                }
-
-                                // Middle Center Group: Headword + Phonetic/POS Pills + Inner Prompt Card
+                            Box(modifier = Modifier.fillMaxSize()) {
                                 Column(
                                     modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 12.dp),
+                                        .fillMaxSize()
+                                        .verticalScroll(rememberScrollState())
+                                        .padding(16.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                                    verticalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                                        Column(
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    // Top Row: CEFR Level Pill + Speaker Icon Button
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Surface(
+                                            color = Color(0xFF231D12),
+                                            shape = PillShape,
+                                            border = BorderStroke(1.dp, GoldAccentBorder)
                                         ) {
+                                            val levelLabel = if (currentQ.level.uppercase().startsWith("CEFR")) {
+                                                currentQ.level
+                                            } else {
+                                                "CEFR ${currentQ.level}"
+                                            }
                                             Text(
-                                                text = currentQ.word,
-                                                style = MaterialTheme.typography.headlineLarge.copy(
-                                                    fontWeight = FontWeight.ExtraBold,
-                                                    fontSize = 34.sp,
-                                                    letterSpacing = (-0.5).sp,
-                                                    textDirection = TextDirection.Ltr
+                                                text = levelLabel,
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 11.sp
                                                 ),
-                                                color = TextPrimary,
-                                                textAlign = TextAlign.Center
+                                                color = GoldAccent,
+                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                                             )
+                                        }
 
-                                            val cleanIpa = currentQ.ipa.trim().trim('/')
-                                            if (currentQ.pos.isNotBlank() || cleanIpa.isNotBlank()) {
-                                                Row(
-                                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                                    verticalAlignment = Alignment.CenterVertically
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = SurfaceElevatedDark,
+                                            border = BorderStroke(1.dp, BorderDark),
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(CircleShape)
+                                                .clickable { onPlayPronunciation(currentQ.word) }
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(
+                                                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                                    contentDescription = "Pronounce",
+                                                    tint = GoldAccent,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    // Middle Center Group wrapped in snappy 180ms AnimatedContent slide transition
+                                    SmoothQuestionSlideContent(
+                                        targetState = currentQ,
+                                        contentKey = { "${sessionState.currentIndex}_${it.id}" },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) { animatedQ ->
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 4.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                                                Column(
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.spacedBy(6.dp)
                                                 ) {
-                                                    if (currentQ.pos.isNotBlank()) {
-                                                        Surface(
-                                                            color = Color(0xFF231D12),
-                                                            shape = PillShape,
-                                                            border = BorderStroke(1.dp, GoldAccentBorder)
+                                                    Text(
+                                                        text = animatedQ.word,
+                                                        style = MaterialTheme.typography.headlineLarge.copy(
+                                                            fontWeight = FontWeight.ExtraBold,
+                                                            fontSize = 32.sp,
+                                                            letterSpacing = (-0.5).sp,
+                                                            textDirection = TextDirection.Ltr
+                                                        ),
+                                                        color = TextPrimary,
+                                                        textAlign = TextAlign.Center
+                                                    )
+
+                                                    val cleanIpa = animatedQ.ipa.trim().trim('/')
+                                                    if (animatedQ.pos.isNotBlank() || cleanIpa.isNotBlank()) {
+                                                        Row(
+                                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                            verticalAlignment = Alignment.CenterVertically
                                                         ) {
-                                                            Text(
-                                                                text = currentQ.pos,
-                                                                style = MaterialTheme.typography.labelMedium.copy(
-                                                                    fontWeight = FontWeight.SemiBold,
-                                                                    fontSize = 12.sp
-                                                                ),
-                                                                color = GoldAccent,
-                                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                                                            )
-                                                        }
-                                                    }
-                                                    if (cleanIpa.isNotBlank()) {
-                                                        Surface(
-                                                            color = Color(0xFF181B24),
-                                                            shape = PillShape,
-                                                            border = BorderStroke(1.dp, BorderDark),
-                                                            modifier = Modifier
-                                                                .clip(PillShape)
-                                                                .clickable { onPlayPronunciation(currentQ.word) }
-                                                        ) {
-                                                            Text(
-                                                                text = "/$cleanIpa/",
-                                                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                                                                color = TextSecondary,
-                                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                                                            )
+                                                            if (animatedQ.pos.isNotBlank()) {
+                                                                Surface(
+                                                                    color = Color(0xFF231D12),
+                                                                    shape = PillShape,
+                                                                    border = BorderStroke(1.dp, GoldAccentBorder)
+                                                                ) {
+                                                                    Text(
+                                                                        text = animatedQ.pos,
+                                                                        style = MaterialTheme.typography.labelMedium.copy(
+                                                                            fontWeight = FontWeight.SemiBold,
+                                                                            fontSize = 12.sp
+                                                                        ),
+                                                                        color = GoldAccent,
+                                                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                                                    )
+                                                                }
+                                                            }
+                                                            if (cleanIpa.isNotBlank()) {
+                                                                Surface(
+                                                                    color = Color(0xFF181B24),
+                                                                    shape = PillShape,
+                                                                    border = BorderStroke(1.dp, BorderDark),
+                                                                    modifier = Modifier
+                                                                        .clip(PillShape)
+                                                                        .clickable { onPlayPronunciation(animatedQ.word) }
+                                                                ) {
+                                                                    Text(
+                                                                        text = "/$cleanIpa/",
+                                                                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                                                                        color = TextSecondary,
+                                                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                                                    )
+                                                                }
+                                                            }
                                                         }
                                                     }
                                                 }
+                                            }
+
+                                            if (animatedQ.mode == BlitzQuestionMode.TRUE_FALSE) {
+                                                val promptBorderColor = rememberFeedbackBorderColor(
+                                                    feedbackState = feedbackController.state,
+                                                    idleColor = Color(0x45F5B82E)
+                                                )
+                                                val promptBgColor = rememberFeedbackBackgroundColor(
+                                                    feedbackState = feedbackController.state,
+                                                    idleColor = Color(0xFF181B24)
+                                                )
+
+                                                // Structured Inner Prompt Card with Emerald/Rose flash
+                                                Surface(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .gameFeedbackMotion(
+                                                            feedbackState = feedbackController.state,
+                                                            triggerKey = feedbackController.triggerCounter,
+                                                            correctPeakScale = 1.05f
+                                                        )
+                                                        .testTag("survival_tf_prompt_card"),
+                                                    color = promptBgColor,
+                                                    shape = RoundedCornerShape(16.dp),
+                                                    border = BorderStroke(
+                                                        if (feedbackController.state != GameFeedbackState.IDLE) 2.dp else 1.5.dp,
+                                                        promptBorderColor
+                                                    )
+                                                ) {
+                                                    Column(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(
+                                                                vertical = if (isCompactScreen) 10.dp else 16.dp,
+                                                                horizontal = 16.dp
+                                                            ),
+                                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                                                    ) {
+                                                        BidiText(
+                                                            text = "Does this mean? • هل تعني هذه الكلمة؟",
+                                                            style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp),
+                                                            color = TextSecondary,
+                                                            fillMaxWidth = true,
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                        BidiText(
+                                                            text = "« ${animatedQ.promptArabic} »",
+                                                            style = ArabicTypography.headlineMedium.copy(
+                                                                fontWeight = FontWeight.Bold,
+                                                                fontSize = if (isCompactScreen) 22.sp else 26.sp
+                                                            ),
+                                                            color = GoldAccent,
+                                                            fillMaxWidth = true,
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                    }
+                                                }
+                                            } else {
+                                                BidiText(
+                                                    text = bi("Select the exact Arabic translation:", "اختر الترجمة العربية الصحيحة:"),
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    color = TextSecondary,
+                                                    fillMaxWidth = true,
+                                                    textAlign = TextAlign.Center
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    // Answer Options Zone
+                                    val survivalCorrectToast = bi("+1 Streak 🔥 أحسنت!", "+1 سلسلة 🔥 أحسنت!")
+                                    val survivalWrongToast = bi("✗ Wrong! -1 ❤️", "✗ خطأ! -1 ❤️")
+                                    val onAnswerSelected: (Int) -> Unit = { idx ->
+                                        tappedOptionIndex = idx
+                                        isEvaluatingAnswer = true
+
+                                        val isCorrect = idx == currentQ.correctOptionIndex
+                                        haptic.performGameFeedback(isCorrect)
+
+                                        if (isCorrect) {
+                                            BlitzSoundPlayer.playCorrectChime(soundEnabled)
+                                            feedbackController.triggerCorrect(survivalCorrectToast)
+                                        } else {
+                                            BlitzSoundPlayer.playWrongBuzz(soundEnabled)
+                                            feedbackController.triggerWrong(survivalWrongToast)
+                                        }
+
+                                        coroutineScope.launch {
+                                            val delayMs = if (isCorrect) 280L else 350L
+                                            delay(delayMs)
+
+                                            val newState = VocabularyBlitzEngine.submitSurvivalAnswer(
+                                                state = sessionState,
+                                                selectedOptionIndex = idx,
+                                                previousBestStreak = bestStreak
+                                            )
+                                            if (newState.heartRecoveredThisTurn) {
+                                                BlitzSoundPlayer.playComboLevelUpChime(soundEnabled)
+                                            }
+                                            sessionState = newState
+                                            tappedOptionIndex = null
+                                            isEvaluatingAnswer = false
+                                            feedbackController.resetCardState()
+
+                                            if (newState.isFinished) {
+                                                feedbackController.hideToast()
+                                                onFinish(newState)
+                                            } else {
+                                                delay(240L)
+                                                feedbackController.hideToast()
                                             }
                                         }
                                     }
 
                                     if (currentQ.mode == BlitzQuestionMode.TRUE_FALSE) {
-                                        // Structured Inner Prompt Card eliminating the hollow black void
-                                        Surface(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .testTag("survival_tf_prompt_card"),
-                                            color = Color(0xFF181B24),
-                                            shape = RoundedCornerShape(16.dp),
-                                            border = BorderStroke(1.dp, Color(0x45F5B82E))
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                                         ) {
-                                            Column(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(vertical = 22.dp, horizontal = 16.dp),
-                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                                            ) {
-                                                BidiText(
-                                                    text = bi("Does this mean? • هل تعني هذه الكلمة؟", "هل تعني هذه الكلمة؟ • Does this mean?"),
-                                                    style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp),
-                                                    color = TextSecondary,
-                                                    fillMaxWidth = true,
-                                                    textAlign = TextAlign.Center
+                                            currentQ.optionsArabic.forEachIndexed { idx, _ ->
+                                                val isSelected = tappedOptionIndex == idx
+                                                val isCorrectOption = idx == currentQ.correctOptionIndex
+                                                val isFirst = idx == 0
+                                                val baseAccent = if (isFirst) GameFeedbackColors.EmeraldBorder else GameFeedbackColors.RoseBorder
+
+                                                val optionFeedbackState = when {
+                                                    isEvaluatingAnswer && isSelected && isCorrectOption -> GameFeedbackState.CORRECT
+                                                    isEvaluatingAnswer && isSelected && !isCorrectOption -> GameFeedbackState.WRONG
+                                                    else -> GameFeedbackState.IDLE
+                                                }
+
+                                                val targetCardColor = when {
+                                                    isEvaluatingAnswer && isSelected && isCorrectOption -> GameFeedbackColors.EmeraldTint
+                                                    isEvaluatingAnswer && isSelected && !isCorrectOption -> GameFeedbackColors.RoseTint
+                                                    isEvaluatingAnswer && isCorrectOption -> GameFeedbackColors.EmeraldTint
+                                                    isSelected -> baseAccent.copy(alpha = 0.22f)
+                                                    else -> baseAccent.copy(alpha = 0.12f)
+                                                }
+                                                val cardColor by animateColorAsState(
+                                                    targetValue = targetCardColor,
+                                                    animationSpec = tween(200),
+                                                    label = "survivalTfCardColor"
                                                 )
-                                                BidiText(
-                                                    text = "« ${currentQ.promptArabic} »",
-                                                    style = ArabicTypography.headlineMedium.copy(
-                                                        fontWeight = FontWeight.Bold,
-                                                        fontSize = 26.sp
-                                                    ),
-                                                    color = GoldAccent,
-                                                    fillMaxWidth = true,
-                                                    textAlign = TextAlign.Center
+
+                                                val targetBorderColor = when {
+                                                    isEvaluatingAnswer && isCorrectOption -> GameFeedbackColors.EmeraldBorder
+                                                    isEvaluatingAnswer && isSelected && !isCorrectOption -> GameFeedbackColors.RoseBorder
+                                                    isSelected -> baseAccent
+                                                    else -> baseAccent.copy(alpha = 0.55f)
+                                                }
+                                                val borderColor by animateColorAsState(
+                                                    targetValue = targetBorderColor,
+                                                    animationSpec = tween(200),
+                                                    label = "survivalTfBorderColor"
                                                 )
+
+                                                val topLabel = if (isFirst) "✓ Correct" else "✗ False"
+                                                val bottomLabel = if (isFirst) "صحيح" else "خاطئ"
+
+                                                Surface(
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .height(64.dp)
+                                                        .gameFeedbackMotion(
+                                                            feedbackState = optionFeedbackState,
+                                                            triggerKey = feedbackController.triggerCounter,
+                                                            correctPeakScale = 1.05f
+                                                        )
+                                                        .clip(RoundedCornerShape(16.dp))
+                                                        .clickable(enabled = !isEvaluatingAnswer) {
+                                                            onAnswerSelected(idx)
+                                                        }
+                                                        .testTag("survival_option_$idx"),
+                                                    color = cardColor,
+                                                    shape = RoundedCornerShape(16.dp),
+                                                    border = BorderStroke(
+                                                        if (isSelected && isEvaluatingAnswer) 2.dp else 1.5.dp,
+                                                        borderColor
+                                                    )
+                                                ) {
+                                                    Column(
+                                                        modifier = Modifier
+                                                            .fillMaxSize()
+                                                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                                        verticalArrangement = Arrangement.Center
+                                                    ) {
+                                                        val textColor = when {
+                                                            isEvaluatingAnswer && isCorrectOption -> GameFeedbackColors.EmeraldBorder
+                                                            isEvaluatingAnswer && isSelected && !isCorrectOption -> GameFeedbackColors.RoseBorder
+                                                            else -> baseAccent
+                                                        }
+                                                        Text(
+                                                            text = topLabel,
+                                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                                fontWeight = FontWeight.Bold,
+                                                                fontSize = 15.sp
+                                                            ),
+                                                            color = textColor,
+                                                            textAlign = TextAlign.Center,
+                                                            maxLines = 1
+                                                        )
+                                                        Text(
+                                                            text = bottomLabel,
+                                                            style = ArabicTypography.bodyMedium.copy(
+                                                                fontWeight = FontWeight.Bold,
+                                                                fontSize = 13.sp
+                                                            ),
+                                                            color = textColor,
+                                                            textAlign = TextAlign.Center,
+                                                            maxLines = 1
+                                                        )
+                                                    }
+                                                }
                                             }
                                         }
                                     } else {
-                                        BidiText(
-                                            text = bi("Select the exact Arabic translation:", "اختر الترجمة العربية الصحيحة:"),
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = TextSecondary,
-                                            fillMaxWidth = true,
-                                            textAlign = TextAlign.Center
-                                        )
-                                    }
-                                }
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            currentQ.optionsArabic.forEachIndexed { idx, optionText ->
+                                                val isSelected = tappedOptionIndex == idx
+                                                val isCorrectOption = idx == currentQ.correctOptionIndex
 
-                                // Answer Options Zone
-                                if (currentQ.mode == BlitzQuestionMode.TRUE_FALSE) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        currentQ.optionsArabic.forEachIndexed { idx, _ ->
-                                            val isSelected = tappedOptionIndex == idx
-                                            val isCorrectOption = idx == currentQ.correctOptionIndex
-                                            val isFirst = idx == 0
-                                            val baseAccent = if (isFirst) Color(0xFF34D399) else Color(0xFFFB7185)
-
-                                            val cardColor = when {
-                                                isEvaluatingAnswer && isCorrectOption -> Color(0xFF34D399).copy(alpha = 0.28f)
-                                                isEvaluatingAnswer && isSelected && !isCorrectOption -> Color(0xFFFB7185).copy(alpha = 0.28f)
-                                                isSelected -> baseAccent.copy(alpha = 0.22f)
-                                                else -> baseAccent.copy(alpha = 0.12f)
-                                            }
-
-                                            val borderColor = when {
-                                                isEvaluatingAnswer && isCorrectOption -> Color(0xFF34D399)
-                                                isEvaluatingAnswer && isSelected && !isCorrectOption -> Color(0xFFFB7185)
-                                                isSelected -> baseAccent
-                                                else -> baseAccent.copy(alpha = 0.55f)
-                                            }
-
-                                            val topLabel = if (isFirst) "✓ Correct" else "✗ False"
-                                            val bottomLabel = if (isFirst) "صحيح" else "خاطئ"
-
-                                            Surface(
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .height(64.dp)
-                                                    .clip(RoundedCornerShape(16.dp))
-                                                    .clickable(enabled = !isEvaluatingAnswer) {
-                                                        tappedOptionIndex = idx
-                                                        isEvaluatingAnswer = true
-
-                                                        val isCorrect = idx == currentQ.correctOptionIndex
-                                                        if (isCorrect) {
-                                                            BlitzSoundPlayer.playCorrectChime(soundEnabled)
-                                                        } else {
-                                                            BlitzSoundPlayer.playWrongBuzz(soundEnabled)
-                                                        }
-
-                                                        coroutineScope.launch {
-                                                            val delayMs = if (isCorrect) 200L else 900L
-                                                            delay(delayMs)
-
-                                                            val newState = VocabularyBlitzEngine.submitSurvivalAnswer(
-                                                                state = sessionState,
-                                                                selectedOptionIndex = idx,
-                                                                previousBestStreak = bestStreak
-                                                            )
-                                                            if (newState.heartRecoveredThisTurn) {
-                                                                BlitzSoundPlayer.playComboLevelUpChime(soundEnabled)
-                                                            }
-                                                            sessionState = newState
-                                                            tappedOptionIndex = null
-                                                            isEvaluatingAnswer = false
-
-                                                            if (newState.isFinished) {
-                                                                onFinish(newState)
-                                                            }
-                                                        }
-                                                    }
-                                                    .testTag("survival_option_$idx"),
-                                                color = cardColor,
-                                                shape = RoundedCornerShape(16.dp),
-                                                border = BorderStroke(1.5.dp, borderColor)
-                                            ) {
-                                                Column(
-                                                    modifier = Modifier
-                                                        .fillMaxSize()
-                                                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                                    verticalArrangement = Arrangement.Center
-                                                ) {
-                                                    val textColor = when {
-                                                        isEvaluatingAnswer && isCorrectOption -> Color(0xFF34D399)
-                                                        isEvaluatingAnswer && isSelected && !isCorrectOption -> Color(0xFFFB7185)
-                                                        else -> baseAccent
-                                                    }
-                                                    Text(
-                                                        text = topLabel,
-                                                        style = MaterialTheme.typography.titleMedium.copy(
-                                                            fontWeight = FontWeight.Bold,
-                                                            fontSize = 15.sp
-                                                        ),
-                                                        color = textColor,
-                                                        textAlign = TextAlign.Center,
-                                                        maxLines = 1
-                                                    )
-                                                    Text(
-                                                        text = bottomLabel,
-                                                        style = ArabicTypography.bodyMedium.copy(
-                                                            fontWeight = FontWeight.Bold,
-                                                            fontSize = 13.sp
-                                                        ),
-                                                        color = textColor,
-                                                        textAlign = TextAlign.Center,
-                                                        maxLines = 1
-                                                    )
+                                                val optionFeedbackState = when {
+                                                    isEvaluatingAnswer && isSelected && isCorrectOption -> GameFeedbackState.CORRECT
+                                                    isEvaluatingAnswer && isSelected && !isCorrectOption -> GameFeedbackState.WRONG
+                                                    else -> GameFeedbackState.IDLE
                                                 }
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                                    ) {
-                                        currentQ.optionsArabic.forEachIndexed { idx, optionText ->
-                                            val isSelected = tappedOptionIndex == idx
-                                            val isCorrectOption = idx == currentQ.correctOptionIndex
 
-                                            val cardColor = when {
-                                                isEvaluatingAnswer && isCorrectOption -> EmeraldAccent.copy(alpha = 0.22f)
-                                                isEvaluatingAnswer && isSelected && !isCorrectOption -> CoralAccent.copy(alpha = 0.22f)
-                                                isSelected -> GoldAccent.copy(alpha = 0.16f)
-                                                else -> SurfaceElevatedDark
-                                            }
+                                                val targetCardColor = when {
+                                                    isEvaluatingAnswer && isSelected && isCorrectOption -> GameFeedbackColors.EmeraldTint
+                                                    isEvaluatingAnswer && isSelected && !isCorrectOption -> GameFeedbackColors.RoseTint
+                                                    isEvaluatingAnswer && isCorrectOption -> GameFeedbackColors.EmeraldTint
+                                                    isSelected -> GoldAccent.copy(alpha = 0.16f)
+                                                    else -> SurfaceElevatedDark
+                                                }
+                                                val cardColor by animateColorAsState(
+                                                    targetValue = targetCardColor,
+                                                    animationSpec = tween(200),
+                                                    label = "survivalMcqCardColor"
+                                                )
 
-                                            val borderColor = when {
-                                                isEvaluatingAnswer && isCorrectOption -> EmeraldAccent
-                                                isEvaluatingAnswer && isSelected && !isCorrectOption -> CoralAccent
-                                                isSelected -> GoldAccent
-                                                else -> BorderDark
-                                            }
+                                                val targetBorderColor = when {
+                                                    isEvaluatingAnswer && isCorrectOption -> GameFeedbackColors.EmeraldBorder
+                                                    isEvaluatingAnswer && isSelected && !isCorrectOption -> GameFeedbackColors.RoseBorder
+                                                    isSelected -> GoldAccent
+                                                    else -> BorderDark
+                                                }
+                                                val borderColor by animateColorAsState(
+                                                    targetValue = targetBorderColor,
+                                                    animationSpec = tween(200),
+                                                    label = "survivalMcqBorderColor"
+                                                )
 
-                                            Surface(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .clip(RoundedCornerShape(14.dp))
-                                                    .clickable(enabled = !isEvaluatingAnswer) {
-                                                        tappedOptionIndex = idx
-                                                        isEvaluatingAnswer = true
-
-                                                        val isCorrect = idx == currentQ.correctOptionIndex
-                                                        if (isCorrect) {
-                                                            BlitzSoundPlayer.playCorrectChime(soundEnabled)
-                                                        } else {
-                                                            BlitzSoundPlayer.playWrongBuzz(soundEnabled)
-                                                        }
-
-                                                        coroutineScope.launch {
-                                                            val delayMs = if (isCorrect) 200L else 900L
-                                                            delay(delayMs)
-
-                                                            val newState = VocabularyBlitzEngine.submitSurvivalAnswer(
-                                                                state = sessionState,
-                                                                selectedOptionIndex = idx,
-                                                                previousBestStreak = bestStreak
-                                                            )
-                                                            if (newState.heartRecoveredThisTurn) {
-                                                                BlitzSoundPlayer.playComboLevelUpChime(soundEnabled)
-                                                            }
-                                                            sessionState = newState
-                                                            tappedOptionIndex = null
-                                                            isEvaluatingAnswer = false
-
-                                                            if (newState.isFinished) {
-                                                                onFinish(newState)
-                                                            }
-                                                        }
-                                                    }
-                                                    .testTag("survival_option_$idx"),
-                                                color = cardColor,
-                                                shape = RoundedCornerShape(14.dp),
-                                                border = BorderStroke(1.5.dp, borderColor)
-                                            ) {
-                                                Row(
+                                                Surface(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
-                                                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                                                    horizontalArrangement = Arrangement.Center,
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Text(
-                                                        text = optionText,
-                                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                                        color = when {
-                                                            isEvaluatingAnswer && isCorrectOption -> EmeraldAccent
-                                                            isEvaluatingAnswer && isSelected && !isCorrectOption -> CoralAccent
-                                                            else -> TextPrimary
-                                                        },
-                                                        textAlign = TextAlign.Center
+                                                        .gameFeedbackMotion(
+                                                            feedbackState = optionFeedbackState,
+                                                            triggerKey = feedbackController.triggerCounter,
+                                                            correctPeakScale = 1.05f
+                                                        )
+                                                        .clip(RoundedCornerShape(14.dp))
+                                                        .clickable(enabled = !isEvaluatingAnswer) {
+                                                            onAnswerSelected(idx)
+                                                        }
+                                                        .testTag("survival_option_$idx"),
+                                                    color = cardColor,
+                                                    shape = RoundedCornerShape(14.dp),
+                                                    border = BorderStroke(
+                                                        if (isSelected && isEvaluatingAnswer) 2.dp else 1.5.dp,
+                                                        borderColor
                                                     )
+                                                ) {
+                                                    Row(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                                                        horizontalArrangement = Arrangement.Center,
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Text(
+                                                            text = optionText,
+                                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                                            color = when {
+                                                                isEvaluatingAnswer && isCorrectOption -> GameFeedbackColors.EmeraldBorder
+                                                                isEvaluatingAnswer && isSelected && !isCorrectOption -> GameFeedbackColors.RoseBorder
+                                                                else -> TextPrimary
+                                                            },
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
                                     }
                                 }
+
+                                // Floating Feedback Badge (+1 Streak 🔥 أحسنت! / ✗ خطأ! -1 ❤️)
+                                FloatingFeedbackBadge(
+                                    visible = feedbackController.toastVisible,
+                                    feedbackState = feedbackController.state,
+                                    text = feedbackController.toastMessage,
+                                    modifier = Modifier
+                                        .align(Alignment.TopCenter)
+                                        .padding(top = 56.dp)
+                                )
                             }
                         }
                     }

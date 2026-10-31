@@ -87,7 +87,17 @@ import com.example.data.blitz.VocabularyBlitzEngine
 import com.example.data.blitz.VocabularyBlitzSessionState
 import com.example.data.blitz.VocabularyBlitzStats
 import com.example.ui.components.BidiText
+import com.example.ui.components.FloatingFeedbackBadge
+import com.example.ui.components.GameFeedbackColors
+import com.example.ui.components.GameFeedbackState
 import com.example.ui.components.GoldBadge
+import com.example.ui.components.SmoothQuestionSlideContent
+import com.example.ui.components.gameFeedbackMotion
+import com.example.ui.components.performGameFeedback
+import com.example.ui.components.rememberFeedbackBackgroundColor
+import com.example.ui.components.rememberFeedbackBorderColor
+import com.example.ui.components.rememberGameFeedbackController
+import com.example.ui.components.streakBumpScale
 import com.example.ui.theme.AmberAccent
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
@@ -260,24 +270,15 @@ fun VocabularyBlitzDialog(
                 } else {
                     BlitzActiveGameContent(
                         state = sessionState,
+                        soundEffectsEnabled = soundEffectsEnabled,
                         enableFlashDelay = enableTimerAutoTick,
                         onSpeakWord = onPlayPronunciation,
                         onSelectOption = { selectedIdx ->
-                            val prevMultiplier = sessionState.comboMultiplier
                             val updated = VocabularyBlitzEngine.submitAnswer(
                                 state = sessionState,
                                 selectedOptionIndex = selectedIdx,
                                 previousHighScore = savedStats.highScore
                             )
-                            if (updated.lastAnswerCorrect == true) {
-                                if (updated.comboMultiplier > prevMultiplier) {
-                                    BlitzSoundPlayer.playComboLevelUpChime(soundEffectsEnabled)
-                                } else {
-                                    BlitzSoundPlayer.playCorrectChime(soundEffectsEnabled)
-                                }
-                            } else {
-                                BlitzSoundPlayer.playWrongBuzz(soundEffectsEnabled)
-                            }
                             sessionState = updated
                         }
                     )
@@ -290,6 +291,7 @@ fun VocabularyBlitzDialog(
 @Composable
 private fun ColumnScope.BlitzActiveGameContent(
     state: VocabularyBlitzSessionState,
+    soundEffectsEnabled: Boolean = true,
     enableFlashDelay: Boolean = true,
     onSpeakWord: (String) -> Unit,
     onSelectOption: (Int) -> Unit
@@ -297,19 +299,49 @@ private fun ColumnScope.BlitzActiveGameContent(
     val question = state.currentQuestion ?: return
     val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
+    val feedbackController = rememberGameFeedbackController()
     var tappedOptionIndex by remember(question.id, state.currentIndex) { mutableStateOf<Int?>(null) }
+
+    val earnedPoints = 10 * state.comboMultiplier
+    val blitzCorrectToast = bi("+$earnedPoints pts • أحسنت! 🔥", "+$earnedPoints نقطة • أحسنت! 🔥")
+    val blitzWrongToast = bi("✗ Wrong! • خطأ!", "✗ خطأ! تصفير السلسلة")
 
     val handleOptionTap: (Int) -> Unit = { idx ->
         if (tappedOptionIndex == null) {
             tappedOptionIndex = idx
-            runCatching { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
+            val isCorrect = idx == question.correctOptionIndex
+            haptic.performGameFeedback(isCorrect)
+
+            if (isCorrect) {
+                val nextStreak = state.currentStreak + 1
+                val nextMultiplier = when {
+                    nextStreak >= 6 -> 3
+                    nextStreak >= 3 -> 2
+                    else -> 1
+                }
+                if (nextMultiplier > state.comboMultiplier) {
+                    BlitzSoundPlayer.playComboLevelUpChime(soundEffectsEnabled)
+                } else {
+                    BlitzSoundPlayer.playCorrectChime(soundEffectsEnabled)
+                }
+                feedbackController.triggerCorrect(blitzCorrectToast)
+            } else {
+                BlitzSoundPlayer.playWrongBuzz(soundEffectsEnabled)
+                feedbackController.triggerWrong(blitzWrongToast)
+            }
+
             if (enableFlashDelay) {
                 coroutineScope.launch {
-                    delay(150L)
+                    val delayMs = if (isCorrect) 260L else 330L
+                    delay(delayMs)
                     onSelectOption(idx)
+                    feedbackController.resetCardState()
+                    delay(200L)
+                    feedbackController.hideToast()
                 }
             } else {
                 onSelectOption(idx)
+                feedbackController.resetCardState()
             }
         }
     }
@@ -344,6 +376,8 @@ private fun ColumnScope.BlitzActiveGameContent(
     } else {
         1f
     }
+
+    val isCorrectBump = feedbackController.state == GameFeedbackState.CORRECT
 
     // TOP ZONE: Fixed HUD Row (Circular Fiery Timer + Live Score + Combo Multiplier)
     Surface(
@@ -382,10 +416,12 @@ private fun ColumnScope.BlitzActiveGameContent(
                 )
             }
 
-            // Live Score Counter
+            // Live Score Counter with Scale Bump on Correct
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.testTag("blitz_score_badge")
+                modifier = Modifier
+                    .streakBumpScale(activeBump = isCorrectBump)
+                    .testTag("blitz_score_badge")
             ) {
                 Text(
                     text = bi("SCORE", "النقاط"),
@@ -395,19 +431,37 @@ private fun ColumnScope.BlitzActiveGameContent(
                 Text(
                     text = "${state.score}",
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                    color = GoldAccent
+                    color = if (isCorrectBump) GameFeedbackColors.EmeraldBorder else GoldAccent
                 )
             }
 
-            // Combo Multiplier Pill
+            // Combo Multiplier Pill with Emerald Flash on Correct
+            val comboPillBg by animateColorAsState(
+                targetValue = when {
+                    isCorrectBump -> GameFeedbackColors.EmeraldTint
+                    state.comboMultiplier > 1 -> CoralAccent.copy(alpha = 0.18f)
+                    else -> SurfaceElevatedDark
+                },
+                animationSpec = tween(200),
+                label = "blitzComboBg"
+            )
+            val comboPillBorder by animateColorAsState(
+                targetValue = when {
+                    isCorrectBump -> GameFeedbackColors.EmeraldBorder
+                    state.comboMultiplier > 1 -> CoralAccent
+                    else -> BorderDark
+                },
+                animationSpec = tween(200),
+                label = "blitzComboBorder"
+            )
+
             Surface(
-                color = if (state.comboMultiplier > 1) CoralAccent.copy(alpha = 0.18f) else SurfaceElevatedDark,
+                color = comboPillBg,
                 shape = PillShape,
-                border = BorderStroke(
-                    1.dp,
-                    if (state.comboMultiplier > 1) CoralAccent else BorderDark
-                ),
-                modifier = Modifier.testTag("blitz_combo_badge")
+                border = BorderStroke(1.dp, comboPillBorder),
+                modifier = Modifier
+                    .streakBumpScale(activeBump = isCorrectBump)
+                    .testTag("blitz_combo_badge")
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -417,14 +471,22 @@ private fun ColumnScope.BlitzActiveGameContent(
                     Icon(
                         imageVector = Icons.Default.LocalFireDepartment,
                         contentDescription = null,
-                        tint = if (state.comboMultiplier > 1) CoralAccent else GoldAccent,
+                        tint = when {
+                            isCorrectBump -> GameFeedbackColors.EmeraldBorder
+                            state.comboMultiplier > 1 -> CoralAccent
+                            else -> GoldAccent
+                        },
                         modifier = Modifier.size(18.dp)
                     )
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "${state.comboMultiplier}x COMBO",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
-                            color = if (state.comboMultiplier > 1) CoralAccent else TextPrimary
+                            color = when {
+                                isCorrectBump -> GameFeedbackColors.EmeraldBorder
+                                state.comboMultiplier > 1 -> CoralAccent
+                                else -> TextPrimary
+                            }
                         )
                         Text(
                             text = "Streak: ${state.currentStreak}",
@@ -438,299 +500,395 @@ private fun ColumnScope.BlitzActiveGameContent(
     }
 
     // Active Question Card (Balanced 3-Zone Layout: Top Meta, Vertically Centered Prompt, Bottom Thumb Action Zone)
+    val cardBorderColor = rememberFeedbackBorderColor(
+        feedbackState = feedbackController.state,
+        idleColor = GoldAccentBorder
+    )
+    val cardBorderWidth = if (feedbackController.state != GameFeedbackState.IDLE) 2.dp else 1.dp
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .weight(1f)
+            .gameFeedbackMotion(
+                feedbackState = feedbackController.state,
+                triggerKey = feedbackController.triggerCounter,
+                correctPeakScale = 1.03f
+            )
             .testTag("blitz_question_card"),
         color = SurfaceDark,
         shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, GoldAccentBorder)
+        border = BorderStroke(cardBorderWidth, cardBorderColor)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 18.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Zone 1: Card Top Meta Row (CEFR Level + Academic Badge + Audio Button)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Zone 1: Card Top Meta Row (CEFR Level + Academic Badge + Audio Button)
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    GoldBadge(text = "CEFR ${question.level}")
-                    if (question.isAcademicOrIelts) {
-                        Surface(
-                            color = SkyAccent.copy(alpha = 0.16f),
-                            shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(1.dp, SkyAccent.copy(alpha = 0.5f))
-                        ) {
-                            Text(
-                                text = "⚡ IELTS / Academic",
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                color = SkyAccent,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                            )
-                        }
-                    }
-                }
-
-                IconButton(
-                    onClick = { onSpeakWord(question.word) },
-                    modifier = Modifier.testTag("blitz_speak_word_btn")
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                        contentDescription = "Listen to word",
-                        tint = GoldAccent
-                    )
-                }
-            }
-
-            // Zone 2: Vertically Centered Word Prompt + Phonetics + Meaning Prompt Card
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically)
-            ) {
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = question.word,
-                            style = MaterialTheme.typography.displayMedium.copy(
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 36.sp,
-                                textDirection = TextDirection.Ltr
-                            ),
-                            color = TextPrimary,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.testTag("blitz_target_word")
-                        )
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (question.pos.isNotBlank()) {
-                                Surface(
-                                    color = GoldAccentDim,
-                                    shape = PillShape,
-                                    border = BorderStroke(1.dp, GoldAccentBorder)
-                                ) {
-                                    Text(
-                                        text = question.pos,
-                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = GoldAccent,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-                            val cleanIpa = question.ipa.trim().trim('/')
-                            if (cleanIpa.isNotBlank()) {
-                                Surface(
-                                    color = SurfaceElevatedDark,
-                                    shape = PillShape,
-                                    border = BorderStroke(1.dp, BorderDark),
-                                    modifier = Modifier
-                                        .clip(PillShape)
-                                        .clickable { onSpeakWord(question.word) }
-                                ) {
-                                    Text(
-                                        text = "/$cleanIpa/",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = TextSecondary,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (question.mode == BlitzQuestionMode.TRUE_FALSE) {
-                    Surface(
-                        color = SurfaceElevatedDark,
-                        shape = RoundedCornerShape(18.dp),
-                        border = BorderStroke(1.2.dp, GoldAccentBorder),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 6.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Text(
-                                text = bi("Does this word mean:", "هل معنى هذه الكلمة هو:"),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = TextSecondary
-                            )
-                            BidiText(
-                                text = question.promptArabic,
-                                style = ArabicTypography.headlineMedium.copy(
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 28.sp
-                                ),
-                                color = GoldAccent,
-                                fillMaxWidth = true,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                } else {
-                    Text(
-                        text = bi("Select the exact Arabic translation:", "اختر الترجمة العربية الصحيحة بأسرع وقت:"),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = TextSecondary,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            }
-
-            // Zone 3: Bottom Thumb-Reach Action Zone
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(bottom = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                if (question.mode == BlitzQuestionMode.TRUE_FALSE) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        question.optionsArabic.forEachIndexed { idx, label ->
-                            val isTapped = tappedOptionIndex == idx
-                            val isCorrectOption = idx == question.correctOptionIndex
-                            val baseAccent = if (idx == 0) EmeraldAccent else CoralAccent
-
-                            val bgColor = when {
-                                isTapped && isCorrectOption -> EmeraldAccent.copy(alpha = 0.36f)
-                                isTapped && !isCorrectOption -> CoralAccent.copy(alpha = 0.36f)
-                                else -> baseAccent.copy(alpha = 0.16f)
-                            }
-                            val borderColor = when {
-                                isTapped && isCorrectOption -> EmeraldAccent
-                                isTapped && !isCorrectOption -> CoralAccent
-                                else -> baseAccent
-                            }
-
-                            val topLabel = if (idx == 0 || label.contains("صحيح")) "✓ Correct" else "✗ False"
-                            val bottomLabel = if (idx == 0 || label.contains("صحيح")) "صحيح" else "خاطئ"
-
+                        GoldBadge(text = "CEFR ${question.level}")
+                        if (question.isAcademicOrIelts) {
                             Surface(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(62.dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .clickable { handleOptionTap(idx) }
-                                    .testTag("blitz_option_$idx"),
-                                color = bgColor,
-                                shape = RoundedCornerShape(16.dp),
-                                border = BorderStroke(if (isTapped) 2.2.dp else 1.5.dp, borderColor)
+                                color = SkyAccent.copy(alpha = 0.16f),
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, SkyAccent.copy(alpha = 0.5f))
                             ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
-                                ) {
-                                    val textColor = if (isTapped) TextPrimary else baseAccent
-                                    Text(
-                                        text = topLabel,
-                                        style = MaterialTheme.typography.titleMedium.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 15.sp
-                                        ),
-                                        color = textColor,
-                                        textAlign = TextAlign.Center,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        text = bottomLabel,
-                                        style = ArabicTypography.bodyMedium.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 13.sp
-                                        ),
-                                        color = textColor,
-                                        textAlign = TextAlign.Center,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    question.optionsArabic.forEachIndexed { idx, optionAr ->
-                        val isTapped = tappedOptionIndex == idx
-                        val isCorrectOption = idx == question.correctOptionIndex
-                        val showCorrectHighlight = tappedOptionIndex != null && isCorrectOption
-
-                        val optionBgColor = when {
-                            isTapped && isCorrectOption -> EmeraldAccent.copy(alpha = 0.28f)
-                            isTapped && !isCorrectOption -> CoralAccent.copy(alpha = 0.28f)
-                            showCorrectHighlight -> EmeraldAccent.copy(alpha = 0.18f)
-                            else -> SurfaceElevatedDark
-                        }
-                        val optionBorderColor = when {
-                            isTapped && isCorrectOption -> EmeraldAccent
-                            isTapped && !isCorrectOption -> CoralAccent
-                            showCorrectHighlight -> EmeraldAccent
-                            else -> GoldAccentBorder
-                        }
-                        val optionTextColor = when {
-                            isTapped && isCorrectOption -> EmeraldAccent
-                            isTapped && !isCorrectOption -> CoralAccent
-                            showCorrectHighlight -> EmeraldAccent
-                            else -> TextPrimary
-                        }
-
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 58.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .clickable { handleOptionTap(idx) }
-                                .testTag("blitz_option_$idx"),
-                            color = optionBgColor,
-                            shape = RoundedCornerShape(14.dp),
-                            border = BorderStroke(if (isTapped || showCorrectHighlight) 1.8.dp else 1.dp, optionBorderColor)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 15.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                BidiText(
-                                    text = optionAr,
-                                    style = ArabicTypography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = optionTextColor,
-                                    fillMaxWidth = true,
-                                    textAlign = TextAlign.Center
+                                Text(
+                                    text = "⚡ IELTS / Academic",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = SkyAccent,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                 )
                             }
                         }
                     }
+
+                    IconButton(
+                        onClick = { onSpeakWord(question.word) },
+                        modifier = Modifier.testTag("blitz_speak_word_btn")
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = "Listen to word",
+                            tint = GoldAccent
+                        )
+                    }
+                }
+
+                // Zone 2: Vertically Centered Word Prompt + Phonetics + Meaning Prompt Card wrapped in 180ms Smooth Slide Transition
+                SmoothQuestionSlideContent(
+                    targetState = question,
+                    contentKey = { "${state.currentIndex}_${it.id}" },
+                    modifier = Modifier.fillMaxWidth()
+                ) { animatedQuestion ->
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically)
+                    ) {
+                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = animatedQuestion.word,
+                                    style = MaterialTheme.typography.displayMedium.copy(
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 36.sp,
+                                        textDirection = TextDirection.Ltr
+                                    ),
+                                    color = TextPrimary,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.testTag("blitz_target_word")
+                                )
+
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (animatedQuestion.pos.isNotBlank()) {
+                                        Surface(
+                                            color = GoldAccentDim,
+                                            shape = PillShape,
+                                            border = BorderStroke(1.dp, GoldAccentBorder)
+                                        ) {
+                                            Text(
+                                                text = animatedQuestion.pos,
+                                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                                color = GoldAccent,
+                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                            )
+                                        }
+                                    }
+                                    val cleanIpa = animatedQuestion.ipa.trim().trim('/')
+                                    if (cleanIpa.isNotBlank()) {
+                                        Surface(
+                                            color = SurfaceElevatedDark,
+                                            shape = PillShape,
+                                            border = BorderStroke(1.dp, BorderDark),
+                                            modifier = Modifier
+                                                .clip(PillShape)
+                                                .clickable { onSpeakWord(animatedQuestion.word) }
+                                        ) {
+                                            Text(
+                                                text = "/$cleanIpa/",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = TextSecondary,
+                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (animatedQuestion.mode == BlitzQuestionMode.TRUE_FALSE) {
+                            val promptBorderColor = rememberFeedbackBorderColor(
+                                feedbackState = feedbackController.state,
+                                idleColor = GoldAccentBorder
+                            )
+                            val promptBgColor = rememberFeedbackBackgroundColor(
+                                feedbackState = feedbackController.state,
+                                idleColor = SurfaceElevatedDark
+                            )
+
+                            Surface(
+                                color = promptBgColor,
+                                shape = RoundedCornerShape(18.dp),
+                                border = BorderStroke(
+                                    if (feedbackController.state != GameFeedbackState.IDLE) 2.dp else 1.2.dp,
+                                    promptBorderColor
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 6.dp)
+                                    .gameFeedbackMotion(
+                                        feedbackState = feedbackController.state,
+                                        triggerKey = feedbackController.triggerCounter,
+                                        correctPeakScale = 1.05f
+                                    )
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 20.dp, vertical = 24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Text(
+                                        text = bi("Does this word mean:", "هل معنى هذه الكلمة هو:"),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = TextSecondary
+                                    )
+                                    BidiText(
+                                        text = animatedQuestion.promptArabic,
+                                        style = ArabicTypography.headlineMedium.copy(
+                                            fontWeight = FontWeight.ExtraBold,
+                                            fontSize = 28.sp
+                                        ),
+                                        color = GoldAccent,
+                                        fillMaxWidth = true,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        } else {
+                            Text(
+                                text = bi("Select the exact Arabic translation:", "اختر الترجمة العربية الصحيحة بأسرع وقت:"),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = TextSecondary,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Zone 3: Bottom Thumb-Reach Action Zone
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(bottom = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (question.mode == BlitzQuestionMode.TRUE_FALSE) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            question.optionsArabic.forEachIndexed { idx, label ->
+                                val isTapped = tappedOptionIndex == idx
+                                val isCorrectOption = idx == question.correctOptionIndex
+                                val baseAccent = if (idx == 0) GameFeedbackColors.EmeraldBorder else GameFeedbackColors.RoseBorder
+
+                                val optionFeedbackState = when {
+                                    isTapped && isCorrectOption -> GameFeedbackState.CORRECT
+                                    isTapped && !isCorrectOption -> GameFeedbackState.WRONG
+                                    else -> GameFeedbackState.IDLE
+                                }
+
+                                val targetBgColor = when {
+                                    isTapped && isCorrectOption -> GameFeedbackColors.EmeraldTint
+                                    isTapped && !isCorrectOption -> GameFeedbackColors.RoseTint
+                                    else -> baseAccent.copy(alpha = 0.16f)
+                                }
+                                val bgColor by animateColorAsState(
+                                    targetValue = targetBgColor,
+                                    animationSpec = tween(200),
+                                    label = "blitzTfBgColor"
+                                )
+
+                                val targetBorderColor = when {
+                                    isTapped && isCorrectOption -> GameFeedbackColors.EmeraldBorder
+                                    isTapped && !isCorrectOption -> GameFeedbackColors.RoseBorder
+                                    else -> baseAccent
+                                }
+                                val borderColor by animateColorAsState(
+                                    targetValue = targetBorderColor,
+                                    animationSpec = tween(200),
+                                    label = "blitzTfBorderColor"
+                                )
+
+                                val topLabel = if (idx == 0 || label.contains("صحيح")) "✓ Correct" else "✗ False"
+                                val bottomLabel = if (idx == 0 || label.contains("صحيح")) "صحيح" else "خاطئ"
+
+                                Surface(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(62.dp)
+                                        .gameFeedbackMotion(
+                                            feedbackState = optionFeedbackState,
+                                            triggerKey = feedbackController.triggerCounter,
+                                            correctPeakScale = 1.05f
+                                        )
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .clickable { handleOptionTap(idx) }
+                                        .testTag("blitz_option_$idx"),
+                                    color = bgColor,
+                                    shape = RoundedCornerShape(16.dp),
+                                    border = BorderStroke(if (isTapped) 2.dp else 1.5.dp, borderColor)
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        val textColor = when {
+                                            isTapped && isCorrectOption -> GameFeedbackColors.EmeraldBorder
+                                            isTapped && !isCorrectOption -> GameFeedbackColors.RoseBorder
+                                            else -> baseAccent
+                                        }
+                                        Text(
+                                            text = topLabel,
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 15.sp
+                                            ),
+                                            color = textColor,
+                                            textAlign = TextAlign.Center,
+                                            maxLines = 1
+                                        )
+                                        Text(
+                                            text = bottomLabel,
+                                            style = ArabicTypography.bodyMedium.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp
+                                            ),
+                                            color = textColor,
+                                            textAlign = TextAlign.Center,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        question.optionsArabic.forEachIndexed { idx, optionAr ->
+                            val isTapped = tappedOptionIndex == idx
+                            val isCorrectOption = idx == question.correctOptionIndex
+                            val showCorrectHighlight = tappedOptionIndex != null && isCorrectOption
+
+                            val optionFeedbackState = when {
+                                isTapped && isCorrectOption -> GameFeedbackState.CORRECT
+                                isTapped && !isCorrectOption -> GameFeedbackState.WRONG
+                                else -> GameFeedbackState.IDLE
+                            }
+
+                            val targetBgColor = when {
+                                isTapped && isCorrectOption -> GameFeedbackColors.EmeraldTint
+                                isTapped && !isCorrectOption -> GameFeedbackColors.RoseTint
+                                showCorrectHighlight -> GameFeedbackColors.EmeraldTint
+                                else -> SurfaceElevatedDark
+                            }
+                            val optionBgColor by animateColorAsState(
+                                targetValue = targetBgColor,
+                                animationSpec = tween(200),
+                                label = "blitzMcqBgColor"
+                            )
+
+                            val targetBorderColor = when {
+                                isTapped && isCorrectOption -> GameFeedbackColors.EmeraldBorder
+                                isTapped && !isCorrectOption -> GameFeedbackColors.RoseBorder
+                                showCorrectHighlight -> GameFeedbackColors.EmeraldBorder
+                                else -> GoldAccentBorder
+                            }
+                            val optionBorderColor by animateColorAsState(
+                                targetValue = targetBorderColor,
+                                animationSpec = tween(200),
+                                label = "blitzMcqBorderColor"
+                            )
+
+                            val optionTextColor = when {
+                                isTapped && isCorrectOption -> GameFeedbackColors.EmeraldBorder
+                                isTapped && !isCorrectOption -> GameFeedbackColors.RoseBorder
+                                showCorrectHighlight -> GameFeedbackColors.EmeraldBorder
+                                else -> TextPrimary
+                            }
+
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 58.dp)
+                                    .gameFeedbackMotion(
+                                        feedbackState = optionFeedbackState,
+                                        triggerKey = feedbackController.triggerCounter,
+                                        correctPeakScale = 1.05f
+                                    )
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .clickable { handleOptionTap(idx) }
+                                    .testTag("blitz_option_$idx"),
+                                color = optionBgColor,
+                                shape = RoundedCornerShape(14.dp),
+                                border = BorderStroke(
+                                    if (isTapped || showCorrectHighlight) 2.dp else 1.dp,
+                                    optionBorderColor
+                                )
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 15.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    BidiText(
+                                        text = optionAr,
+                                        style = ArabicTypography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = optionTextColor,
+                                        fillMaxWidth = true,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
+
+            // Floating Feedback Badge (+10 pts • أحسنت! 🔥 / ✗ خطأ! تصفير السلسلة)
+            FloatingFeedbackBadge(
+                visible = feedbackController.toastVisible,
+                feedbackState = feedbackController.state,
+                text = feedbackController.toastMessage,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 56.dp)
+            )
         }
     }
 }

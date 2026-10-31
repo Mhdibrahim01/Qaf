@@ -50,11 +50,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -70,6 +72,16 @@ import com.example.data.grammar.GrammarHunterSessionState
 import com.example.data.grammar.HunterStep
 import com.example.data.local.GrammarLessonEntity
 import com.example.ui.components.BiDiParsedText
+import com.example.ui.components.FloatingFeedbackBadge
+import com.example.ui.components.GameFeedbackColors
+import com.example.ui.components.GameFeedbackState
+import com.example.ui.components.SmoothQuestionSlideContent
+import com.example.ui.components.gameFeedbackMotion
+import com.example.ui.components.performGameFeedback
+import com.example.ui.components.rememberFeedbackBackgroundColor
+import com.example.ui.components.rememberFeedbackBorderColor
+import com.example.ui.components.rememberGameFeedbackController
+import com.example.ui.components.streakBumpScale
 import com.example.ui.theme.AmberAccent
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
@@ -87,6 +99,8 @@ import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.bi
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -101,6 +115,26 @@ fun GrammarErrorHunterDialog(
         mutableStateOf(GrammarErrorHunterEngine.createSession(lessons, userLevel))
     }
     var soundEnabled by remember { mutableStateOf(true) }
+    var lastTappedOptionText by remember { mutableStateOf<String?>(null) }
+
+    val feedbackController = rememberGameFeedbackController()
+    val haptic = LocalHapticFeedback.current
+    val coroutineScope = rememberCoroutineScope()
+
+    val triggerFeedbackBanner: (Boolean, String) -> Unit = { isCorrect, msg ->
+        haptic.performGameFeedback(isCorrect)
+        if (isCorrect) {
+            feedbackController.triggerCorrect(msg)
+        } else {
+            feedbackController.triggerWrong(msg)
+        }
+        coroutineScope.launch {
+            delay(340L)
+            feedbackController.resetCardState()
+            delay(260L)
+            feedbackController.hideToast()
+        }
+    }
 
     Dialog(
         onDismissRequest = {
@@ -196,6 +230,8 @@ fun GrammarErrorHunterDialog(
                 if (!sessionState.isFinished) {
                     // HUD Progress Row
                     val currentItem = sessionState.currentItem
+                    val isScoreBump = feedbackController.state == GameFeedbackState.CORRECT
+
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         color = SurfaceDark,
@@ -255,9 +291,13 @@ fun GrammarErrorHunterDialog(
 
                             // Score pill (Enforces softWrap = false and maxLines = 1 so it never wraps vertically)
                             Surface(
-                                color = EmeraldAccent.copy(alpha = 0.12f),
+                                color = if (isScoreBump) GameFeedbackColors.EmeraldTint else EmeraldAccent.copy(alpha = 0.12f),
                                 shape = PillShape,
-                                border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.4f))
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isScoreBump) GameFeedbackColors.EmeraldBorder else EmeraldAccent.copy(alpha = 0.4f)
+                                ),
+                                modifier = Modifier.streakBumpScale(activeBump = isScoreBump)
                             ) {
                                 Text(
                                     text = "✓ ${sessionState.score}/${sessionState.currentIndex}",
@@ -265,7 +305,7 @@ fun GrammarErrorHunterDialog(
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 12.5.sp
                                     ),
-                                    color = EmeraldAccent,
+                                    color = GameFeedbackColors.EmeraldBorder,
                                     softWrap = false,
                                     maxLines = 1,
                                     modifier = Modifier
@@ -278,346 +318,443 @@ fun GrammarErrorHunterDialog(
 
                     // Main Interactive Card (Wraps content cleanly without excessive empty black void)
                     if (currentItem != null) {
+                        val mainCardBorderColor = rememberFeedbackBorderColor(
+                            feedbackState = feedbackController.state,
+                            idleColor = GoldAccentBorder
+                        )
+                        val mainCardBorderWidth = if (feedbackController.state != GameFeedbackState.IDLE) 2.dp else 1.dp
+
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .wrapContentHeight()
+                                .gameFeedbackMotion(
+                                    feedbackState = feedbackController.state,
+                                    triggerKey = feedbackController.triggerCounter,
+                                    correctPeakScale = 1.03f
+                                )
                                 .testTag("hunter_main_card"),
                             color = SurfaceDark,
                             shape = RoundedCornerShape(20.dp),
-                            border = BorderStroke(1.dp, GoldAccentBorder)
+                            border = BorderStroke(mainCardBorderWidth, mainCardBorderColor)
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .wrapContentHeight()
-                                    .padding(horizontal = 16.dp, vertical = 18.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                // Step Instructions
-                                val instructionText = when (sessionState.currentStep) {
-                                    HunterStep.STEP_1_SPOT_ERROR -> bi(
-                                        "Step 1: Tap the faulty word in the sentence (or 'No Error')",
-                                        "الخطوة الأولى: المس الكلمة الخاطئة في الجملة (أو زر 'الجملة صحيحة')"
-                                    )
-                                    HunterStep.STEP_2_CHOOSE_CORRECTION -> bi(
-                                        "Step 2: Choose the correct grammar replacement below",
-                                        "الخطوة الثانية: اختر التصحيح القواعدي المناسب من الخيارات أسفله"
-                                    )
-                                    HunterStep.REVEAL_EXPLANATION -> bi(
-                                        "Grammar Rule & Explanation",
-                                        "شرح القاعدة والتصحيح القواعدي 💡"
-                                    )
-                                }
-                                Text(
-                                    text = instructionText,
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = GoldAccent
-                                )
-
-                                // Interactive Clickable Word Tokens of the Sentence
-                                Surface(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    color = SurfaceElevatedDark,
-                                    shape = RoundedCornerShape(14.dp),
-                                    border = BorderStroke(1.dp, BorderDark)
+                            Box(modifier = Modifier.fillMaxWidth().wrapContentHeight()) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .wrapContentHeight()
+                                        .padding(horizontal = 16.dp, vertical = 18.dp),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
-                                    FlowRow(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(14.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        currentItem.tokens.forEachIndexed { tokenIdx, tokenText ->
-                                            val isSelectedToken = sessionState.selectedTokenIndex == tokenIdx
-                                            val isFaultyToken = tokenIdx == currentItem.errorTokenIndex
+                                    // Step Instructions
+                                    val instructionText = when (sessionState.currentStep) {
+                                        HunterStep.STEP_1_SPOT_ERROR -> bi(
+                                            "Step 1: Tap the faulty word in the sentence (or 'No Error')",
+                                            "الخطوة الأولى: المس الكلمة الخاطئة في الجملة (أو زر 'الجملة صحيحة')"
+                                        )
+                                        HunterStep.STEP_2_CHOOSE_CORRECTION -> bi(
+                                            "Step 2: Choose the correct grammar replacement below",
+                                            "الخطوة الثانية: اختر التصحيح القواعدي المناسب من الخيارات أسفله"
+                                        )
+                                        HunterStep.REVEAL_EXPLANATION -> bi(
+                                            "Grammar Rule & Explanation",
+                                            "شرح القاعدة والتصحيح القواعدي 💡"
+                                        )
+                                    }
+                                    Text(
+                                        text = instructionText,
+                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = GoldAccent
+                                    )
 
-                                            val tokenColor = when {
-                                                sessionState.currentStep == HunterStep.REVEAL_EXPLANATION && isFaultyToken -> {
-                                                    if (sessionState.step2Correct == true) EmeraldAccent else CoralAccent
-                                                }
-                                                sessionState.currentStep == HunterStep.STEP_2_CHOOSE_CORRECTION && isFaultyToken -> CoralAccent.copy(alpha = 0.2f)
-                                                isSelectedToken -> GoldAccent.copy(alpha = 0.2f)
-                                                else -> SurfaceDark
-                                            }
+                                    // Interactive Clickable Word Tokens of the Sentence wrapped in 180ms Smooth Slide Transition
+                                    SmoothQuestionSlideContent(
+                                        targetState = currentItem,
+                                        contentKey = { "${sessionState.currentIndex}_${it.lessonTopic}_${it.tokens.joinToString("_")}" },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) { animatedItem ->
+                                        val tokenBoxBorderColor = rememberFeedbackBorderColor(
+                                            feedbackState = feedbackController.state,
+                                            idleColor = BorderDark
+                                        )
+                                        val tokenBoxBgColor = rememberFeedbackBackgroundColor(
+                                            feedbackState = feedbackController.state,
+                                            idleColor = SurfaceElevatedDark
+                                        )
 
-                                            val borderColor = when {
-                                                sessionState.currentStep == HunterStep.REVEAL_EXPLANATION && isFaultyToken -> {
-                                                    if (sessionState.step2Correct == true) EmeraldAccent else CoralAccent
-                                                }
-                                                sessionState.currentStep == HunterStep.STEP_2_CHOOSE_CORRECTION && isFaultyToken -> CoralAccent
-                                                isSelectedToken -> GoldAccent
-                                                else -> BorderDark
-                                            }
-
-                                            // Text to show inside chip
-                                            val displayText = if (sessionState.currentStep == HunterStep.REVEAL_EXPLANATION && isFaultyToken && sessionState.step2Correct == true) {
-                                                currentItem.correctReplacement
-                                            } else {
-                                                tokenText
-                                            }
-
-                                            Surface(
+                                        Surface(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            color = tokenBoxBgColor,
+                                            shape = RoundedCornerShape(14.dp),
+                                            border = BorderStroke(
+                                                if (feedbackController.state != GameFeedbackState.IDLE) 2.dp else 1.dp,
+                                                tokenBoxBorderColor
+                                            )
+                                        ) {
+                                            FlowRow(
                                                 modifier = Modifier
-                                                    .clip(RoundedCornerShape(8.dp))
-                                                    .clickable(enabled = sessionState.currentStep == HunterStep.STEP_1_SPOT_ERROR) {
-                                                        val outcome = GrammarErrorHunterEngine.spotError(
-                                                            sessionState,
-                                                            tokenIndex = tokenIdx,
-                                                            noErrorTapped = false
-                                                        )
-                                                        if (outcome.step1Correct == true) {
-                                                            BlitzSoundPlayer.playCorrectChime(soundEnabled)
-                                                        } else {
-                                                            BlitzSoundPlayer.playWrongBuzz(soundEnabled)
-                                                        }
-                                                        sessionState = outcome
-                                                    }
-                                                    .testTag("hunter_token_$tokenIdx"),
-                                                color = tokenColor,
-                                                shape = RoundedCornerShape(8.dp),
-                                                border = BorderStroke(1.2.dp, borderColor)
+                                                    .fillMaxWidth()
+                                                    .padding(14.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
                                             ) {
-                                                Text(
-                                                    text = displayText,
-                                                    style = MaterialTheme.typography.titleMedium.copy(
-                                                        fontWeight = if (isFaultyToken || isSelectedToken) FontWeight.Black else FontWeight.Medium
-                                                    ),
-                                                    color = when {
-                                                        sessionState.currentStep == HunterStep.REVEAL_EXPLANATION && isFaultyToken && sessionState.step2Correct == true -> EmeraldAccent
-                                                        sessionState.currentStep == HunterStep.REVEAL_EXPLANATION && isFaultyToken && sessionState.step2Correct == false -> CoralAccent
+                                                animatedItem.tokens.forEachIndexed { tokenIdx, tokenText ->
+                                                    val isSelectedToken = sessionState.selectedTokenIndex == tokenIdx
+                                                    val isFaultyToken = tokenIdx == animatedItem.errorTokenIndex
+
+                                                    val tokenFeedbackState = when {
+                                                        isSelectedToken && feedbackController.state != GameFeedbackState.IDLE -> feedbackController.state
+                                                        else -> GameFeedbackState.IDLE
+                                                    }
+
+                                                    val tokenColor = when {
+                                                        sessionState.currentStep == HunterStep.REVEAL_EXPLANATION && isFaultyToken -> {
+                                                            if (sessionState.step2Correct == true) GameFeedbackColors.EmeraldTint else GameFeedbackColors.RoseTint
+                                                        }
+                                                        sessionState.currentStep == HunterStep.STEP_2_CHOOSE_CORRECTION && isFaultyToken -> GameFeedbackColors.EmeraldTint
+                                                        isSelectedToken -> GoldAccent.copy(alpha = 0.2f)
+                                                        else -> SurfaceDark
+                                                    }
+
+                                                    val borderColor = when {
+                                                        sessionState.currentStep == HunterStep.REVEAL_EXPLANATION && isFaultyToken -> {
+                                                            if (sessionState.step2Correct == true) GameFeedbackColors.EmeraldBorder else GameFeedbackColors.RoseBorder
+                                                        }
+                                                        sessionState.currentStep == HunterStep.STEP_2_CHOOSE_CORRECTION && isFaultyToken -> GameFeedbackColors.EmeraldBorder
                                                         isSelectedToken -> GoldAccent
-                                                        else -> TextPrimary
-                                                    },
-                                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                                )
+                                                        else -> BorderDark
+                                                    }
+
+                                                    // Text to show inside chip
+                                                    val displayText = if (sessionState.currentStep == HunterStep.REVEAL_EXPLANATION && isFaultyToken && sessionState.step2Correct == true) {
+                                                        animatedItem.correctReplacement
+                                                    } else {
+                                                        tokenText
+                                                    }
+
+                                                    val spotCorrectToast = bi("✓ Error Spotted! Pick correction", "✓ أصبت الخطأ! اختر التصحيح")
+                                                    val spotWrongToast = bi("✗ Not the faulty word!", "✗ لم تصب الكلمة الخاطئة!")
+
+                                                    Surface(
+                                                        modifier = Modifier
+                                                            .gameFeedbackMotion(
+                                                                feedbackState = tokenFeedbackState,
+                                                                triggerKey = feedbackController.triggerCounter,
+                                                                correctPeakScale = 1.06f
+                                                            )
+                                                            .clip(RoundedCornerShape(8.dp))
+                                                            .clickable(enabled = sessionState.currentStep == HunterStep.STEP_1_SPOT_ERROR) {
+                                                                val outcome = GrammarErrorHunterEngine.spotError(
+                                                                    sessionState,
+                                                                    tokenIndex = tokenIdx,
+                                                                    noErrorTapped = false
+                                                                )
+                                                                val isCorrect = outcome.step1Correct == true
+                                                                if (isCorrect) {
+                                                                    BlitzSoundPlayer.playCorrectChime(soundEnabled)
+                                                                    triggerFeedbackBanner(
+                                                                        true,
+                                                                        spotCorrectToast
+                                                                    )
+                                                                } else {
+                                                                    BlitzSoundPlayer.playWrongBuzz(soundEnabled)
+                                                                    triggerFeedbackBanner(
+                                                                        false,
+                                                                        spotWrongToast
+                                                                    )
+                                                                }
+                                                                sessionState = outcome
+                                                            }
+                                                            .testTag("hunter_token_$tokenIdx"),
+                                                        color = tokenColor,
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        border = BorderStroke(
+                                                            if (isFaultyToken || isSelectedToken) 1.6.dp else 1.2.dp,
+                                                            borderColor
+                                                        )
+                                                    ) {
+                                                        Text(
+                                                            text = displayText,
+                                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                                fontWeight = if (isFaultyToken || isSelectedToken) FontWeight.Black else FontWeight.Medium
+                                                            ),
+                                                            color = when {
+                                                                sessionState.currentStep == HunterStep.REVEAL_EXPLANATION && isFaultyToken && sessionState.step2Correct == true -> GameFeedbackColors.EmeraldBorder
+                                                                sessionState.currentStep == HunterStep.REVEAL_EXPLANATION && isFaultyToken && sessionState.step2Correct == false -> GameFeedbackColors.RoseBorder
+                                                                sessionState.currentStep == HunterStep.STEP_2_CHOOSE_CORRECTION && isFaultyToken -> GameFeedbackColors.EmeraldBorder
+                                                                isSelectedToken -> GoldAccent
+                                                                else -> TextPrimary
+                                                            },
+                                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                                        )
+                                                    }
+                                                }
                                             }
                                         }
                                     }
-                                }
 
-                                // Dedicated "No Error" Button (Available during Step 1)
-                                if (sessionState.currentStep == HunterStep.STEP_1_SPOT_ERROR) {
-                                    OutlinedButton(
-                                        onClick = {
-                                            val outcome = GrammarErrorHunterEngine.spotError(
-                                                sessionState,
-                                                tokenIndex = null,
-                                                noErrorTapped = true
+                                    // Dedicated "No Error" Button (Available during Step 1)
+                                    if (sessionState.currentStep == HunterStep.STEP_1_SPOT_ERROR) {
+                                        val noErrorCorrectToast = bi("+1 pt 🔥 Sentence is Correct! • أحسنت!", "+1 نقطة 🔥 الجملة صحيحة! أحسنت!")
+                                        val noErrorWrongToast = bi("✗ Has an error! Review rule", "✗ الجملة بها خطأ قواعدي!")
+                                        OutlinedButton(
+                                            onClick = {
+                                                val outcome = GrammarErrorHunterEngine.spotError(
+                                                    sessionState,
+                                                    tokenIndex = null,
+                                                    noErrorTapped = true
+                                                )
+                                                val isCorrect = outcome.step1Correct == true
+                                                if (isCorrect) {
+                                                    BlitzSoundPlayer.playCorrectChime(soundEnabled)
+                                                    triggerFeedbackBanner(
+                                                        true,
+                                                        noErrorCorrectToast
+                                                    )
+                                                } else {
+                                                    BlitzSoundPlayer.playWrongBuzz(soundEnabled)
+                                                    triggerFeedbackBanner(
+                                                        false,
+                                                        noErrorWrongToast
+                                                    )
+                                                }
+                                                sessionState = outcome
+                                            },
+                                            shape = RoundedCornerShape(12.dp),
+                                            border = BorderStroke(1.2.dp, EmeraldAccent),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = EmeraldAccent),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .testTag("hunter_no_error_btn")
+                                        ) {
+                                            Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = bi("No Error • Sentence is Correct", "الجملة صحيحة قواعدياً (خالية من الأخطاء) ✓"),
+                                                fontWeight = FontWeight.Bold
                                             )
-                                            if (outcome.step1Correct == true) {
-                                                BlitzSoundPlayer.playCorrectChime(soundEnabled)
-                                            } else {
-                                                BlitzSoundPlayer.playWrongBuzz(soundEnabled)
-                                            }
-                                            sessionState = outcome
-                                        },
-                                        shape = RoundedCornerShape(12.dp),
-                                        border = BorderStroke(1.2.dp, EmeraldAccent),
-                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = EmeraldAccent),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .testTag("hunter_no_error_btn")
-                                    ) {
-                                        Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = bi("No Error • Sentence is Correct", "الجملة صحيحة قواعدياً (خالية من الأخطاء) ✓"),
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                        }
                                     }
-                                }
 
-                                // Step 2 Area: Correction Options (Full-Width Stack -> Zero Mid-Word Wrapping!)
-                                if (sessionState.currentStep == HunterStep.STEP_2_CHOOSE_CORRECTION) {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                                    ) {
-                                        Text(
-                                            text = bi("Select the correct replacement:", "اختر التصحيح القواعدي المناسب:"),
-                                            style = MaterialTheme.typography.bodyMedium.copy(
-                                                fontWeight = FontWeight.SemiBold,
-                                                fontSize = 13.sp
-                                            ),
-                                            color = TextSecondary
-                                        )
-
+                                    // Step 2 Area: Correction Options (Full-Width Stack -> Zero Mid-Word Wrapping!)
+                                    if (sessionState.currentStep == HunterStep.STEP_2_CHOOSE_CORRECTION) {
+                                        val step2CorrectToast = bi("+1 pt 🔥 أحسنت! تصحيح سليم", "+1 نقطة 🔥 أحسنت! تصحيح سليم")
+                                        val step2WrongToast = bi("✗ Wrong replacement! • تصحيح خاطئ!", "✗ تصحيح خاطئ! راجع القاعدة")
                                         Column(
                                             modifier = Modifier.fillMaxWidth(),
                                             verticalArrangement = Arrangement.spacedBy(10.dp)
                                         ) {
-                                            currentItem.correctionOptions.forEachIndexed { optIdx, optionText ->
-                                                val letter = ('A'.code + optIdx).toChar().toString()
-                                                Surface(
-                                                    onClick = {
-                                                        val outcome = GrammarErrorHunterEngine.submitCorrection(
-                                                            sessionState,
-                                                            chosenCorrection = optionText,
-                                                            previousBestScore = bestScore
-                                                        )
-                                                        if (outcome.step2Correct == true) {
-                                                            BlitzSoundPlayer.playCorrectChime(soundEnabled)
-                                                        } else {
-                                                            BlitzSoundPlayer.playWrongBuzz(soundEnabled)
-                                                        }
-                                                        sessionState = outcome
-                                                    },
-                                                    color = SurfaceElevatedDark,
-                                                    shape = RoundedCornerShape(13.dp),
-                                                    border = BorderStroke(1.dp, GoldAccentBorder),
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .testTag("hunter_correction_opt_$optIdx")
-                                                ) {
-                                                    Row(
+                                            Text(
+                                                text = bi("Select the correct replacement:", "اختر التصحيح القواعدي المناسب:"),
+                                                style = MaterialTheme.typography.bodyMedium.copy(
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontSize = 13.sp
+                                                ),
+                                                color = TextSecondary
+                                            )
+
+                                            Column(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                                            ) {
+                                                currentItem.correctionOptions.forEachIndexed { optIdx, optionText ->
+                                                    val letter = ('A'.code + optIdx).toChar().toString()
+                                                    val isTappedOption = lastTappedOptionText == optionText
+                                                    Surface(
+                                                        onClick = {
+                                                            lastTappedOptionText = optionText
+                                                            val outcome = GrammarErrorHunterEngine.submitCorrection(
+                                                                sessionState,
+                                                                chosenCorrection = optionText,
+                                                                previousBestScore = bestScore
+                                                            )
+                                                            val isCorrect = outcome.step2Correct == true
+                                                            if (isCorrect) {
+                                                                BlitzSoundPlayer.playCorrectChime(soundEnabled)
+                                                                triggerFeedbackBanner(
+                                                                    true,
+                                                                    step2CorrectToast
+                                                                )
+                                                            } else {
+                                                                BlitzSoundPlayer.playWrongBuzz(soundEnabled)
+                                                                triggerFeedbackBanner(
+                                                                    false,
+                                                                    step2WrongToast
+                                                                )
+                                                            }
+                                                            sessionState = outcome
+                                                        },
+                                                        color = SurfaceElevatedDark,
+                                                        shape = RoundedCornerShape(13.dp),
+                                                        border = BorderStroke(
+                                                            if (isTappedOption) 2.dp else 1.dp,
+                                                            GoldAccentBorder
+                                                        ),
                                                         modifier = Modifier
                                                             .fillMaxWidth()
-                                                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                                                        verticalAlignment = Alignment.CenterVertically,
-                                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                                            .testTag("hunter_correction_opt_$optIdx")
                                                     ) {
-                                                        Box(
+                                                        Row(
                                                             modifier = Modifier
-                                                                .size(28.dp)
-                                                                .clip(RoundedCornerShape(8.dp))
-                                                                .background(Color(0xFF251F13))
-                                                                .border(1.dp, GoldAccentBorder, RoundedCornerShape(8.dp)),
-                                                            contentAlignment = Alignment.Center
+                                                                .fillMaxWidth()
+                                                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                                                         ) {
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .size(28.dp)
+                                                                    .clip(RoundedCornerShape(8.dp))
+                                                                    .background(Color(0xFF251F13))
+                                                                    .border(1.dp, GoldAccentBorder, RoundedCornerShape(8.dp)),
+                                                                contentAlignment = Alignment.Center
+                                                            ) {
+                                                                Text(
+                                                                    text = letter,
+                                                                    style = MaterialTheme.typography.labelMedium.copy(
+                                                                        fontWeight = FontWeight.Bold,
+                                                                        fontSize = 12.5.sp
+                                                                    ),
+                                                                    color = GoldAccent
+                                                                )
+                                                            }
+
                                                             Text(
-                                                                text = letter,
-                                                                style = MaterialTheme.typography.labelMedium.copy(
-                                                                    fontWeight = FontWeight.Bold,
-                                                                    fontSize = 12.5.sp
+                                                                text = optionText,
+                                                                style = MaterialTheme.typography.bodyLarge.copy(
+                                                                    fontWeight = FontWeight.SemiBold,
+                                                                    fontSize = 15.sp
                                                                 ),
-                                                                color = GoldAccent
+                                                                color = TextPrimary,
+                                                                maxLines = 1,
+                                                                softWrap = false,
+                                                                overflow = TextOverflow.Ellipsis
                                                             )
                                                         }
-
-                                                        Text(
-                                                            text = optionText,
-                                                            style = MaterialTheme.typography.bodyLarge.copy(
-                                                                fontWeight = FontWeight.SemiBold,
-                                                                fontSize = 15.sp
-                                                            ),
-                                                            color = TextPrimary,
-                                                            maxLines = 1,
-                                                            softWrap = false,
-                                                            overflow = TextOverflow.Ellipsis
-                                                        )
                                                     }
                                                 }
                                             }
                                         }
                                     }
-                                }
 
-                                // Reveal Explanation Card (BiDi-Safe RTL Explanation & Isolates!)
-                                if (sessionState.currentStep == HunterStep.REVEAL_EXPLANATION) {
-                                    Surface(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        color = if (sessionState.step1Correct == true && sessionState.step2Correct == true) {
-                                            EmeraldAccent.copy(alpha = 0.10f)
-                                        } else {
-                                            CoralAccent.copy(alpha = 0.12f)
-                                        },
-                                        shape = RoundedCornerShape(16.dp),
-                                        border = BorderStroke(
-                                            1.dp,
-                                            if (sessionState.step1Correct == true && sessionState.step2Correct == true) {
-                                                EmeraldAccent.copy(alpha = 0.4f)
+                                    // Reveal Explanation Card (BiDi-Safe RTL Explanation & Isolates!)
+                                    if (sessionState.currentStep == HunterStep.REVEAL_EXPLANATION) {
+                                        Surface(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            color = if (sessionState.step1Correct == true && sessionState.step2Correct == true) {
+                                                GameFeedbackColors.EmeraldTint
                                             } else {
-                                                CoralAccent.copy(alpha = 0.55f)
+                                                GameFeedbackColors.RoseTint
+                                            },
+                                            shape = RoundedCornerShape(16.dp),
+                                            border = BorderStroke(
+                                                1.5.dp,
+                                                if (sessionState.step1Correct == true && sessionState.step2Correct == true) {
+                                                    GameFeedbackColors.EmeraldBorder
+                                                } else {
+                                                    GameFeedbackColors.RoseBorder
+                                                }
+                                            )
+                                        ) {
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(14.dp),
+                                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                                            ) {
+                                                // LTR Header Row
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = if (sessionState.step1Correct == true && sessionState.step2Correct == true) {
+                                                            Icons.Default.CheckCircle
+                                                        } else Icons.AutoMirrored.Filled.HelpOutline,
+                                                        contentDescription = null,
+                                                        tint = if (sessionState.step1Correct == true && sessionState.step2Correct == true) GameFeedbackColors.EmeraldBorder else GameFeedbackColors.RoseBorder,
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                    Text(
+                                                        text = if (sessionState.step1Correct == true && sessionState.step2Correct == true) {
+                                                            bi("Correct! +1 point", "إجابة صحيحة! +١ نقطة ✓")
+                                                        } else {
+                                                            bi("Needs Review", "تحتاج لمراجعة 💡")
+                                                        },
+                                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                                        color = if (sessionState.step1Correct == true && sessionState.step2Correct == true) GameFeedbackColors.EmeraldBorder else GameFeedbackColors.RoseBorder
+                                                    )
+                                                }
+
+                                                // Arabic Explanation with BiDi Isolates and RTL Layout Direction
+                                                BiDiParsedText(
+                                                    text = currentItem.explanationAr,
+                                                    style = ArabicTypography.bodyMedium.copy(
+                                                        fontSize = 14.sp,
+                                                        lineHeight = 23.sp
+                                                    ),
+                                                    color = TextPrimary,
+                                                    isMistakeTheme = !(sessionState.step1Correct == true && sessionState.step2Correct == true)
+                                                )
                                             }
-                                        )
-                                    ) {
-                                        Column(
+                                        }
+
+                                        Spacer(modifier = Modifier.height(2.dp))
+
+                                        // High-Contrast Gold Next Button (Dark Navy Text on Gold)
+                                        Button(
+                                            onClick = {
+                                                lastTappedOptionText = null
+                                                feedbackController.resetCardState()
+                                                feedbackController.hideToast()
+                                                val next = GrammarErrorHunterEngine.advanceNext(sessionState, bestScore)
+                                                sessionState = next
+                                                if (next.isFinished) {
+                                                    onFinish(next.score)
+                                                }
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = GoldAccent,
+                                                contentColor = Color(0xFF0B0D12)
+                                            ),
+                                            shape = RoundedCornerShape(14.dp),
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .padding(14.dp),
-                                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                                                .height(50.dp)
+                                                .testTag("hunter_next_btn")
                                         ) {
-                                            // LTR Header Row
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                                             ) {
+                                                Text(
+                                                    text = bi("Next Sentence", "الجملة التالية"),
+                                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 15.sp,
+                                                        color = Color(0xFF0B0D12)
+                                                    )
+                                                )
                                                 Icon(
-                                                    imageVector = if (sessionState.step1Correct == true && sessionState.step2Correct == true) {
-                                                        Icons.Default.CheckCircle
-                                                    } else Icons.AutoMirrored.Filled.HelpOutline,
+                                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                                     contentDescription = null,
-                                                    tint = if (sessionState.step1Correct == true && sessionState.step2Correct == true) EmeraldAccent else CoralAccent,
+                                                    tint = Color(0xFF0B0D12),
                                                     modifier = Modifier.size(18.dp)
                                                 )
-                                                Text(
-                                                    text = if (sessionState.step1Correct == true && sessionState.step2Correct == true) {
-                                                        bi("Correct! +1 point", "إجابة صحيحة! +١ نقطة ✓")
-                                                    } else {
-                                                        bi("Needs Review", "تحتاج لمراجعة 💡")
-                                                    },
-                                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                                    color = if (sessionState.step1Correct == true && sessionState.step2Correct == true) EmeraldAccent else CoralAccent
-                                                )
                                             }
-
-                                            // Arabic Explanation with BiDi Isolates and RTL Layout Direction
-                                            BiDiParsedText(
-                                                text = currentItem.explanationAr,
-                                                style = ArabicTypography.bodyMedium.copy(
-                                                    fontSize = 14.sp,
-                                                    lineHeight = 23.sp
-                                                ),
-                                                color = TextPrimary,
-                                                isMistakeTheme = !(sessionState.step1Correct == true && sessionState.step2Correct == true)
-                                            )
-                                        }
-                                    }
-
-                                    Spacer(modifier = Modifier.height(2.dp))
-
-                                    // High-Contrast Gold Next Button (Dark Navy Text on Gold)
-                                    Button(
-                                        onClick = {
-                                            val next = GrammarErrorHunterEngine.advanceNext(sessionState, bestScore)
-                                            sessionState = next
-                                            if (next.isFinished) {
-                                                onFinish(next.score)
-                                            }
-                                        },
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = GoldAccent,
-                                            contentColor = Color(0xFF0B0D12)
-                                        ),
-                                        shape = RoundedCornerShape(14.dp),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(50.dp)
-                                            .testTag("hunter_next_btn")
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                        ) {
-                                            Text(
-                                                text = bi("Next Sentence", "الجملة التالية"),
-                                                style = MaterialTheme.typography.bodyLarge.copy(
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = 15.sp,
-                                                    color = Color(0xFF0B0D12)
-                                                )
-                                            )
-                                            Icon(
-                                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                                contentDescription = null,
-                                                tint = Color(0xFF0B0D12),
-                                                modifier = Modifier.size(18.dp)
-                                            )
                                         }
                                     }
                                 }
+
+                                // Floating Feedback Badge (+1 pt 🔥 أحسنت! / ✗ خطأ! راجع القاعدة)
+                                FloatingFeedbackBadge(
+                                    visible = feedbackController.toastVisible,
+                                    feedbackState = feedbackController.state,
+                                    text = feedbackController.toastMessage,
+                                    modifier = Modifier
+                                        .align(Alignment.TopCenter)
+                                        .padding(top = 12.dp)
+                                )
                             }
                         }
                     }
