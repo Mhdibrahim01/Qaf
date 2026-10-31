@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -137,6 +138,7 @@ fun VocabularyBlitzSetupDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .statusBarsPadding()
                         .padding(horizontal = 18.dp, vertical = 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
@@ -514,77 +516,75 @@ fun VocabularyBlitzSetupDialog(
                     color = SurfaceDark,
                     border = BorderStroke(1.dp, BorderDark)
                 ) {
-                    Column(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .navigationBarsPadding()
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            border = BorderStroke(1.dp, BorderDark),
+                            modifier = Modifier
+                                .weight(0.35f)
+                                .height(52.dp)
+                                .testTag("blitz_setup_cancel_btn")
                         ) {
-                            OutlinedButton(
-                                onClick = onDismiss,
-                                border = BorderStroke(1.dp, BorderDark),
-                                modifier = Modifier
-                                    .weight(0.35f)
-                                    .height(50.dp)
-                                    .testTag("blitz_setup_cancel_btn")
-                            ) {
-                                Text(
-                                    text = bi("Cancel", "إلغاء"),
-                                    color = TextPrimary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                            Text(
+                                text = bi("Cancel", "إلغاء"),
+                                color = TextPrimary,
+                                fontSize = 14.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        val buttonBgColor = if (isSurvivalMode) CoralAccent else GoldAccent
+                        val darkTextColor = Color(0xFF0B0D12)
+
+                        Button(
+                            onClick = {
+                                val finalConfig = BlitzFilterConfig(
+                                    selectedDecks = selectedDecks,
+                                    allBooksSelected = allBooksSelected,
+                                    selectedLevels = selectedLevels,
+                                    studiedOnly = studiedOnly
                                 )
-                            }
-
-                            val buttonBgColor = if (isSurvivalMode) CoralAccent else GoldAccent
-                            val darkTextColor = Color(0xFF0B0D12)
-
-                            Button(
-                                onClick = {
-                                    val finalConfig = BlitzFilterConfig(
-                                        selectedDecks = selectedDecks,
-                                        allBooksSelected = allBooksSelected,
-                                        selectedLevels = selectedLevels,
-                                        studiedOnly = studiedOnly
-                                    )
-                                    onStartChallenge(finalConfig)
+                                onStartChallenge(finalConfig)
+                            },
+                            enabled = isStartEnabled,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = buttonBgColor,
+                                contentColor = darkTextColor,
+                                disabledContainerColor = SurfaceElevatedDark,
+                                disabledContentColor = TextMuted
+                            ),
+                            modifier = Modifier
+                                .weight(0.65f)
+                                .height(52.dp)
+                                .testTag("blitz_setup_start_btn")
+                        ) {
+                            Icon(
+                                imageVector = if (isSurvivalMode) Icons.Default.Favorite else Icons.Default.Bolt,
+                                contentDescription = null,
+                                tint = if (isStartEnabled) darkTextColor else TextMuted,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (isSurvivalMode) {
+                                    bi("Start Survival ❤️", "بدء النجاة ❤️")
+                                } else {
+                                    bi("⚡ Start 60s Challenge", "⚡ بدء التحدي (60 ثانية)")
                                 },
-                                enabled = isStartEnabled,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = buttonBgColor,
-                                    contentColor = darkTextColor,
-                                    disabledContainerColor = SurfaceElevatedDark,
-                                    disabledContentColor = TextMuted
-                                ),
-                                modifier = Modifier
-                                    .weight(0.65f)
-                                    .height(50.dp)
-                                    .testTag("blitz_setup_start_btn")
-                            ) {
-                                Icon(
-                                    imageVector = if (isSurvivalMode) Icons.Default.Favorite else Icons.Default.Bolt,
-                                    contentDescription = null,
-                                    tint = if (isStartEnabled) darkTextColor else TextMuted,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = if (isSurvivalMode) {
-                                        bi("Start Survival Challenge ❤️", "بدء تحدي النجاة (3 قلوب) ❤️")
-                                    } else {
-                                        bi("Start 60s Challenge ⚡", "بدء التحدي (60 ثانية) ⚡")
-                                    },
-                                    color = if (isStartEnabled) darkTextColor else TextMuted,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
+                                color = if (isStartEnabled) darkTextColor else TextMuted,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                 }
@@ -676,14 +676,15 @@ private fun DeckSelectionCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             Text(
                 text = deck.title,
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp
+                    fontSize = 12.sp,
+                    lineHeight = 15.sp
                 ),
                 color = if (isSelected) GoldAccent else TextPrimary,
                 maxLines = 1,
@@ -693,12 +694,13 @@ private fun DeckSelectionCard(
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                     Text(
                         text = deck.arabicSubtitle,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontSize = 11.5.sp,
+                        style = ArabicTypography.bodySmall.copy(
+                            fontSize = 11.sp,
+                            lineHeight = 14.sp,
                             textDirection = TextDirection.Rtl
                         ),
                         color = if (isSelected) GoldAccent.copy(alpha = 0.85f) else TextSecondary,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
                 }

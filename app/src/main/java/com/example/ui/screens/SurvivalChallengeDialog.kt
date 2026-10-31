@@ -73,6 +73,7 @@ import com.example.data.blitz.BlitzSoundPlayer
 import com.example.data.blitz.SurvivalSessionState
 import com.example.data.blitz.VocabularyBlitzEngine
 import com.example.ui.theme.AmberAccent
+import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BorderDark
 import com.example.ui.theme.CoralAccent
@@ -428,11 +429,13 @@ fun SurvivalChallengeDialog(
                                                 else -> baseAccent.copy(alpha = 0.50f)
                                             }
 
-                                            val displayLabel = if (isFirst) "✓ Correct • \u2066صحيح\u2069" else "✗ False • \u2066خاطئ\u2069"
+                                            val topLabel = if (isFirst) "✓ Correct" else "✗ False"
+                                            val bottomLabel = if (isFirst) "صحيح" else "خاطئ"
 
                                             Surface(
                                                 modifier = Modifier
                                                     .weight(1f)
+                                                    .height(62.dp)
                                                     .clip(RoundedCornerShape(14.dp))
                                                     .clickable(enabled = !isEvaluatingAnswer) {
                                                         tappedOptionIndex = idx
@@ -471,22 +474,37 @@ fun SurvivalChallengeDialog(
                                                 shape = RoundedCornerShape(14.dp),
                                                 border = BorderStroke(1.5.dp, borderColor)
                                             ) {
-                                                Row(
+                                                Column(
                                                     modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .padding(horizontal = 12.dp, vertical = 14.dp),
-                                                    horizontalArrangement = Arrangement.Center,
-                                                    verticalAlignment = Alignment.CenterVertically
+                                                        .fillMaxSize()
+                                                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.Center
                                                 ) {
+                                                    val textColor = when {
+                                                        isEvaluatingAnswer && isCorrectOption -> Color(0xFF34D399)
+                                                        isEvaluatingAnswer && isSelected && !isCorrectOption -> Color(0xFFFB7185)
+                                                        else -> baseAccent
+                                                    }
                                                     Text(
-                                                        text = displayLabel,
-                                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                                        color = when {
-                                                            isEvaluatingAnswer && isCorrectOption -> Color(0xFF34D399)
-                                                            isEvaluatingAnswer && isSelected && !isCorrectOption -> Color(0xFFFB7185)
-                                                            else -> baseAccent
-                                                        },
-                                                        textAlign = TextAlign.Center
+                                                        text = topLabel,
+                                                        style = MaterialTheme.typography.titleMedium.copy(
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontSize = 15.sp
+                                                        ),
+                                                        color = textColor,
+                                                        textAlign = TextAlign.Center,
+                                                        maxLines = 1
+                                                    )
+                                                    Text(
+                                                        text = bottomLabel,
+                                                        style = ArabicTypography.bodyMedium.copy(
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontSize = 13.sp
+                                                        ),
+                                                        color = textColor,
+                                                        textAlign = TextAlign.Center,
+                                                        maxLines = 1
                                                     )
                                                 }
                                             }

@@ -628,11 +628,8 @@ private fun ColumnScope.BlitzActiveGameContent(
                                 else -> baseAccent
                             }
 
-                            val displayLabel = if (idx == 0 || label.contains("صحيح")) {
-                                "✓ Correct • \u2066صحيح\u2069"
-                            } else if (idx == 1 || label.contains("خاطئ")) {
-                                "✗ False • \u2066خاطئ\u2069"
-                            } else label
+                            val topLabel = if (idx == 0 || label.contains("صحيح")) "✓ Correct" else "✗ False"
+                            val bottomLabel = if (idx == 0 || label.contains("صحيح")) "صحيح" else "خاطئ"
 
                             Surface(
                                 modifier = Modifier
@@ -645,17 +642,33 @@ private fun ColumnScope.BlitzActiveGameContent(
                                 shape = RoundedCornerShape(16.dp),
                                 border = BorderStroke(if (isTapped) 2.2.dp else 1.5.dp, borderColor)
                             ) {
-                                Box(
+                                Column(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .padding(horizontal = 10.dp),
-                                    contentAlignment = Alignment.Center
+                                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
                                 ) {
+                                    val textColor = if (isTapped) TextPrimary else baseAccent
                                     Text(
-                                        text = displayLabel,
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                                        color = if (isTapped) TextPrimary else baseAccent,
-                                        textAlign = TextAlign.Center
+                                        text = topLabel,
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 15.sp
+                                        ),
+                                        color = textColor,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = bottomLabel,
+                                        style = ArabicTypography.bodyMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp
+                                        ),
+                                        color = textColor,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 1
                                     )
                                 }
                             }
