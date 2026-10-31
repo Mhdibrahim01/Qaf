@@ -381,4 +381,102 @@ class WordDetailsAndTrancyTest {
 
         db.close()
     }
+
+    @Test
+    fun verifyCleanArabicGlossAndWordProfilePolishes() {
+        // 1. Verify CJK character stripping and semicolon normalization on "tradition"
+        assertEquals(
+            "بالتقليد • حسب العادة",
+            com.example.ui.screens.cleanArabicGloss("بالتقليد ؛ 按照 العادة")
+        )
+        assertEquals(
+            "تقليد • عرف • عادة متوارثة",
+            com.example.ui.screens.cleanArabicGloss("تقليد ؛ عرف ؛ عادة متوارثة")
+        )
+
+        // 2. Verify + and ~ placeholder expansion for mind-map nodes
+        assertEquals(
+            "break with tradition",
+            com.example.ui.components.LexicalMindMapExtractor.expandRawNodeLabel("tradition", "break with +")
+        )
+        assertEquals(
+            "in tradition with",
+            com.example.ui.components.LexicalMindMapExtractor.expandRawNodeLabel("tradition", "in ~ with")
+        )
+        assertEquals(
+            "young entrepreneur",
+            com.example.ui.components.LexicalMindMapExtractor.expandRawNodeLabel("entrepreneur", "young +")
+        )
+
+        // 3. Verify 1-node adaptive placement (node at y=22%, headword at y=72%)
+        val singleNodeOffsets = com.example.ui.components.LexicalMindMapExtractor.computeRadialNodeOffsets(
+            nodeCount = 1,
+            widthPx = 400f,
+            heightPx = 190f
+        )
+        val singleHeadwordOffset = com.example.ui.components.LexicalMindMapExtractor.computeHeadwordCenterOffset(
+            nodeCount = 1,
+            widthPx = 400f,
+            heightPx = 190f
+        )
+        assertEquals(1, singleNodeOffsets.size)
+        assertEquals(190f * 0.22f, singleNodeOffsets[0].y, 0.5f)
+        assertEquals(190f * 0.72f, singleHeadwordOffset.y, 0.5f)
+
+        // 4. Verify BiDi etymology formatting on entrepreneur and tradition (including attached و'prendre')
+        val entrepreneurEtym = com.example.ui.components.LexicalMindMapExtractor.formatBidiEtymologyAnnotated(
+            "كلمة فرنسية مأخوذة من الفعل 'entreprendre' (يتعهد بـ أو يقوم بـ)، وتتكون من 'entre' (بين) و'prendre' (يأخذ)."
+        ).text
+        assertTrue(entrepreneurEtym.contains("\u2066\u200Eentreprendre\u200E\u2069"))
+        assertTrue(entrepreneurEtym.contains("\u2066\u200Eentre\u200E\u2069"))
+        assertTrue(entrepreneurEtym.contains("و \u2066\u200Eprendre\u200E\u2069"))
+
+        // 5. Verify 2-line balanced pill wrapping and horizontal clamping for long headwords
+        assertEquals(
+            "successful\nentrepreneur",
+            com.example.ui.components.LexicalMindMapExtractor.formatBalancedTwoLineLabel(
+                "successful entrepreneur",
+                maxSingleLineChars = 14
+            )
+        )
+        assertEquals(
+            "aspiring\nentrepreneur",
+            com.example.ui.components.LexicalMindMapExtractor.formatBalancedTwoLineLabel(
+                "aspiring entrepreneur",
+                maxSingleLineChars = 14
+            )
+        )
+        assertEquals(
+            "young entrepreneur",
+            com.example.ui.components.LexicalMindMapExtractor.formatBalancedTwoLineLabel(
+                "young entrepreneur",
+                maxSingleLineChars = 24
+            )
+        )
+        val clampedRight = com.example.ui.components.LexicalMindMapExtractor.clampHorizontalNodeOffset(
+            rawX = 310f,
+            canvasWidthPx = 330f,
+            pillWidthPx = 110f,
+            edgeMarginPx = 8f
+        )
+        assertEquals(330f - 55f - 8f, clampedRight, 0.01f)
+
+        // 6. Verify false-prefix "entrenched" is excluded for "entrepreneur" and curated related nodes are present
+        val entrepreneurNodes = com.example.ui.components.LexicalMindMapExtractor.extractNodes(
+            headword = "entrepreneur",
+            aiDetail = AiWordDetailJson(
+                phrases = listOf(
+                    AiPhraseItem(en = "young +", ar = listOf("رائد أعمال شاب")),
+                    AiPhraseItem(en = "successful +", ar = listOf("رائد أعمال ناجح")),
+                    AiPhraseItem(en = "entrepreneurial spirit", ar = listOf("روح المبادرة")),
+                    AiPhraseItem(en = "aspiring +", ar = listOf("رائد أعمال طموح"))
+                )
+            ),
+            posVariants = emptyList()
+        )
+        assertFalse(entrepreneurNodes.any { it.pillLabelEn.equals("entrenched", ignoreCase = true) })
+        assertTrue(entrepreneurNodes.any { it.pillLabelEn.equals("entrepreneurial", ignoreCase = true) })
+        assertTrue(entrepreneurNodes.any { it.pillLabelEn.equals("founder", ignoreCase = true) })
+    }
 }
+
