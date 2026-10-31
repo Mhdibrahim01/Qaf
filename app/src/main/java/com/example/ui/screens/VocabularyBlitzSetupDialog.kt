@@ -57,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -70,6 +71,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.data.blitz.BlitzFilterConfig
 import com.example.data.local.DeckEntity
+import com.example.ui.components.BidiText
 import com.example.ui.theme.AmberAccent
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
@@ -140,27 +142,26 @@ fun VocabularyBlitzSetupDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 18.dp, vertical = 14.dp),
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Surface(
                             shape = CircleShape,
                             color = if (isSurvivalMode) CoralAccent.copy(alpha = 0.2f) else GoldAccentDim,
-                            border = BorderStroke(1.dp, if (isSurvivalMode) CoralAccent else GoldAccentBorder),
-                            modifier = Modifier.size(38.dp)
+                            border = BorderStroke(1.5.dp, if (isSurvivalMode) CoralAccent else GoldAccentBorder),
+                            modifier = Modifier.size(40.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = if (isSurvivalMode) Icons.Default.Favorite else Icons.Default.Bolt,
                                     contentDescription = null,
                                     tint = if (isSurvivalMode) CoralAccent else GoldAccent,
-                                    modifier = Modifier.size(22.dp)
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                         }
@@ -179,7 +180,7 @@ fun VocabularyBlitzSetupDialog(
                                 text = if (isSurvivalMode) {
                                     bi("Untimed • 3 Hearts Survival", "تحدي مفتوح بدون وقت مع 3 قلوب")
                                 } else {
-                                    bi("Pre-Challenge Setup • إعدادات التحدي", "خصص الكلمات والمستوى قبل الانطلاق")
+                                    bi("Pre-Challenge Setup • \u2067\u200Fإعدادات التحدي\u200F\u2069", "خصص الكلمات والمستوى قبل الانطلاق")
                                 },
                                 style = MaterialTheme.typography.labelSmall,
                                 color = TextSecondary
@@ -204,9 +205,9 @@ fun VocabularyBlitzSetupDialog(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .padding(horizontal = 18.dp)
+                        .padding(horizontal = 16.dp)
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     // Header Stats Banner: Fixed Duration (60s) + Personal Best High Score
                     Surface(
@@ -310,8 +311,6 @@ fun VocabularyBlitzSetupDialog(
                                 testTag = "blitz_book_all_chip"
                             )
                         }
-
-                        Spacer(modifier = Modifier.height(8.dp))
 
                         // Individual Book 2-Column Equal-Width Grid (without character slicing)
                         val filteredDecks = availableDecks.filter { it.id != "saved_words" }
@@ -521,84 +520,94 @@ fun VocabularyBlitzSetupDialog(
                     Spacer(modifier = Modifier.height(10.dp))
                 }
 
-                // Sticky Footer: Bottom Action Buttons with navigationBarsPadding and high contrast
+                // Sticky Footer: Bottom Action Buttons with safe bottom clearance for Dialog window overhang + gesture bar
+                val screenHeightDp = LocalConfiguration.current.screenHeightDp
+                val footerBottomPadding = if (screenHeightDp >= 640) 48.dp else 12.dp
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    color = SurfaceDark,
-                    border = BorderStroke(1.dp, BorderDark)
+                    color = BackgroundDark
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .navigationBarsPadding()
-                            .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedButton(
-                            onClick = onDismiss,
-                            border = BorderStroke(1.dp, BorderDark),
-                            shape = RoundedCornerShape(14.dp),
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        HorizontalDivider(color = BorderDark)
+                        Row(
                             modifier = Modifier
-                                .weight(0.36f)
-                                .height(50.dp)
-                                .testTag("blitz_setup_cancel_btn")
+                                .fillMaxWidth()
+                                .navigationBarsPadding()
+                                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = footerBottomPadding),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = bi("Cancel", "إلغاء"),
-                                color = TextPrimary,
-                                fontSize = 14.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        val buttonBgColor = if (isSurvivalMode) CoralAccent else GoldAccent
-                        val darkTextColor = Color(0xFF0B0D12)
-
-                        Button(
-                            onClick = {
-                                val finalConfig = BlitzFilterConfig(
-                                    selectedDecks = selectedDecks,
-                                    allBooksSelected = allBooksSelected,
-                                    selectedLevels = selectedLevels,
-                                    studiedOnly = studiedOnly
+                            OutlinedButton(
+                                onClick = onDismiss,
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = SurfaceDark,
+                                    contentColor = TextPrimary
+                                ),
+                                border = BorderStroke(1.dp, BorderDark),
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier
+                                    .weight(0.36f)
+                                    .height(50.dp)
+                                    .testTag("blitz_setup_cancel_btn")
+                            ) {
+                                Text(
+                                    text = bi("Cancel", "إلغاء"),
+                                    color = TextPrimary,
+                                    fontSize = 14.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
                                 )
-                                onStartChallenge(finalConfig)
-                            },
-                            enabled = isStartEnabled,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = buttonBgColor,
-                                contentColor = darkTextColor,
-                                disabledContainerColor = SurfaceElevatedDark,
-                                disabledContentColor = TextMuted
-                            ),
-                            shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier
-                                .weight(0.64f)
-                                .height(50.dp)
-                                .testTag("blitz_setup_start_btn")
-                        ) {
-                            Icon(
-                                imageVector = if (isSurvivalMode) Icons.Default.Favorite else Icons.Default.Bolt,
-                                contentDescription = null,
-                                tint = if (isStartEnabled) darkTextColor else TextMuted,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (isSurvivalMode) {
-                                    bi("Start Survival ❤️", "بدء النجاة ❤️")
-                                } else {
-                                    bi("⚡ Start 60s Challenge", "⚡ بدء التحدي (60 ثانية)")
+                            }
+
+                            val buttonBgColor = if (isSurvivalMode) CoralAccent else GoldAccent
+                            val darkTextColor = Color(0xFF0B0D12)
+
+                            Button(
+                                onClick = {
+                                    val finalConfig = BlitzFilterConfig(
+                                        selectedDecks = selectedDecks,
+                                        allBooksSelected = allBooksSelected,
+                                        selectedLevels = selectedLevels,
+                                        studiedOnly = studiedOnly
+                                    )
+                                    onStartChallenge(finalConfig)
                                 },
-                                color = if (isStartEnabled) darkTextColor else TextMuted,
-                                fontSize = 14.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                                enabled = isStartEnabled,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = buttonBgColor,
+                                    contentColor = darkTextColor,
+                                    disabledContainerColor = SurfaceElevatedDark,
+                                    disabledContentColor = TextMuted
+                                ),
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier
+                                    .weight(0.64f)
+                                    .height(50.dp)
+                                    .testTag("blitz_setup_start_btn")
+                            ) {
+                                Icon(
+                                    imageVector = if (isSurvivalMode) Icons.Default.Favorite else Icons.Default.Bolt,
+                                    contentDescription = null,
+                                    tint = if (isStartEnabled) darkTextColor else TextMuted,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (isSurvivalMode) {
+                                        bi("Start Survival", "بدء النجاة")
+                                    } else {
+                                        bi("Start 60s Challenge", "بدء التحدي (60 ثانية)")
+                                    },
+                                    color = if (isStartEnabled) darkTextColor else TextMuted,
+                                    fontSize = 14.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
                 }
@@ -706,19 +715,18 @@ private fun DeckSelectionCard(
             )
             if (deck.arabicSubtitle.isNotBlank()) {
                 Spacer(modifier = Modifier.height(3.dp))
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    Text(
-                        text = deck.arabicSubtitle,
-                        style = ArabicTypography.bodySmall.copy(
-                            fontSize = 11.sp,
-                            lineHeight = 14.sp,
-                            textDirection = TextDirection.Rtl
-                        ),
-                        color = if (isSelected) GoldAccent.copy(alpha = 0.85f) else TextSecondary,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                BidiText(
+                    text = deck.arabicSubtitle,
+                    style = ArabicTypography.bodySmall.copy(
+                        fontSize = 11.sp,
+                        lineHeight = 14.sp
+                    ),
+                    color = if (isSelected) Color(0xFFFDE08D) else TextSecondary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Left,
+                    fillMaxWidth = true
+                )
             }
         }
     }
@@ -808,15 +816,25 @@ private fun LifecycleRadioCard(
                 }
             }
 
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                BidiText(
                     text = "$titleEn • $titleAr",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.5.sp,
+                        lineHeight = 18.sp
+                    ),
                     color = if (isSelected) GoldAccent else TextPrimary
                 )
-                Text(
+                BidiText(
                     text = "$subtitleEn • $subtitleAr",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 11.5.sp,
+                        lineHeight = 16.sp
+                    ),
                     color = TextSecondary
                 )
             }

@@ -16,9 +16,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -48,6 +50,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,10 +62,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -72,6 +79,7 @@ import com.example.data.blitz.BlitzQuestionMode
 import com.example.data.blitz.BlitzSoundPlayer
 import com.example.data.blitz.SurvivalSessionState
 import com.example.data.blitz.VocabularyBlitzEngine
+import com.example.ui.components.BidiText
 import com.example.ui.theme.AmberAccent
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
@@ -113,6 +121,8 @@ fun SurvivalChallengeDialog(
     var isEvaluatingAnswer by remember { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
+    val screenHeightDp = LocalConfiguration.current.screenHeightDp
+    val bottomSafePadding = if (screenHeightDp >= 640) 44.dp else 20.dp
 
     Dialog(
         onDismissRequest = {
@@ -132,7 +142,7 @@ fun SurvivalChallengeDialog(
                     .widthIn(max = 680.dp)
                     .fillMaxSize()
                     .navigationBarsPadding()
-                    .padding(horizontal = 18.dp, vertical = 14.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = bottomSafePadding),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Top Action Bar
@@ -143,13 +153,13 @@ fun SurvivalChallengeDialog(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Surface(
                             shape = CircleShape,
                             color = CoralAccent.copy(alpha = 0.2f),
-                            border = BorderStroke(1.dp, CoralAccent),
-                            modifier = Modifier.size(36.dp)
+                            border = BorderStroke(1.5.dp, CoralAccent),
+                            modifier = Modifier.size(38.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
@@ -210,13 +220,13 @@ fun SurvivalChallengeDialog(
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         color = SurfaceDark,
-                        shape = RoundedCornerShape(18.dp),
+                        shape = RoundedCornerShape(16.dp),
                         border = BorderStroke(1.dp, BorderDark)
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -233,7 +243,7 @@ fun SurvivalChallengeDialog(
                                         contentDescription = null,
                                         tint = if (isAlive) CoralAccent else TextMuted,
                                         modifier = Modifier
-                                            .size(28.dp)
+                                            .size(26.dp)
                                             .scale(if (isAlive) 1.0f else 0.85f)
                                     )
                                 }
@@ -247,20 +257,20 @@ fun SurvivalChallengeDialog(
                                 modifier = Modifier.testTag("survival_streak_pill")
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.LocalFireDepartment,
                                         contentDescription = null,
                                         tint = if (sessionState.currentStreak > 0) CoralAccent else TextMuted,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(16.dp)
                                     )
                                     Text(
                                         text = "${sessionState.currentStreak}",
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
-                                        color = if (sessionState.currentStreak > 0) CoralAccent else TextSecondary
+                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Black),
+                                        color = if (sessionState.currentStreak > 0) CoralAccent else TextPrimary
                                     )
                                     Text(
                                         text = bi("Streak", "سلسلة"),
@@ -273,7 +283,7 @@ fun SurvivalChallengeDialog(
                             // Personal Best Streak
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 modifier = Modifier.testTag("survival_best_streak_pill")
                             ) {
                                 Icon(
@@ -282,15 +292,15 @@ fun SurvivalChallengeDialog(
                                     tint = GoldAccent,
                                     modifier = Modifier.size(18.dp)
                                 )
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Column(horizontalAlignment = Alignment.End) {
                                     Text(
                                         text = bi("BEST", "الأعلى"),
-                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                        color = TextSecondary
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Bold),
+                                        color = TextMuted
                                     )
                                     Text(
                                         text = "$bestStreak",
-                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
                                         color = GoldAccent
                                     )
                                 }
@@ -307,98 +317,177 @@ fun SurvivalChallengeDialog(
                                 .weight(1f)
                                 .testTag("survival_question_card"),
                             color = SurfaceDark,
-                            shape = RoundedCornerShape(20.dp),
+                            shape = RoundedCornerShape(22.dp),
                             border = BorderStroke(1.dp, GoldAccentBorder)
                         ) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .verticalScroll(rememberScrollState())
-                                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                                    .padding(20.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.SpaceBetween
                             ) {
-                                // Question Header (Level, Pos, Pronunciation)
+                                // Top Row: CEFR Level Pill + Speaker Icon Button
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    Surface(
+                                        color = Color(0xFF231D12),
+                                        shape = PillShape,
+                                        border = BorderStroke(1.dp, GoldAccentBorder)
                                     ) {
-                                        Surface(
-                                            color = GoldAccentDim,
-                                            shape = PillShape,
-                                            border = BorderStroke(1.dp, GoldAccentBorder)
-                                        ) {
-                                            Text(
-                                                text = currentQ.level,
-                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
-                                                color = GoldAccent,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                            )
+                                        val levelLabel = if (currentQ.level.uppercase().startsWith("CEFR")) {
+                                            currentQ.level
+                                        } else {
+                                            "CEFR ${currentQ.level}"
                                         }
-                                        if (currentQ.pos.isNotBlank()) {
-                                            Text(
-                                                text = currentQ.pos,
-                                                style = MaterialTheme.typography.labelMedium,
-                                                color = TextSecondary
-                                            )
-                                        }
+                                        Text(
+                                            text = levelLabel,
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 11.sp
+                                            ),
+                                            color = GoldAccent,
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                        )
                                     }
 
-                                    IconButton(
-                                        onClick = { onPlayPronunciation(currentQ.word) },
-                                        modifier = Modifier.size(36.dp)
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = SurfaceElevatedDark,
+                                        border = BorderStroke(1.dp, BorderDark),
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .clickable { onPlayPronunciation(currentQ.word) }
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                            contentDescription = "Pronounce",
-                                            tint = GoldAccent,
-                                            modifier = Modifier.size(20.dp)
-                                        )
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                                contentDescription = "Pronounce",
+                                                tint = GoldAccent,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
                                     }
                                 }
 
-                                // English Word in Large Typography (tightened spacing)
+                                // Middle Center Group: Headword + Phonetic/POS Pills + Inner Prompt Card
                                 Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 12.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.padding(vertical = 12.dp)
+                                    verticalArrangement = Arrangement.spacedBy(20.dp)
                                 ) {
-                                    Text(
-                                        text = currentQ.word,
-                                        style = MaterialTheme.typography.headlineLarge.copy(
-                                            fontWeight = FontWeight.Black,
-                                            letterSpacing = 0.5.sp
-                                        ),
-                                        color = TextPrimary,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    val cleanIpa = currentQ.ipa.trim().trim('/')
-                                    if (cleanIpa.isNotBlank()) {
-                                        Text(
-                                            text = "/$cleanIpa/",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = TextSecondary,
-                                            modifier = Modifier.padding(top = 4.dp)
-                                        )
+                                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Text(
+                                                text = currentQ.word,
+                                                style = MaterialTheme.typography.headlineLarge.copy(
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    fontSize = 34.sp,
+                                                    letterSpacing = (-0.5).sp,
+                                                    textDirection = TextDirection.Ltr
+                                                ),
+                                                color = TextPrimary,
+                                                textAlign = TextAlign.Center
+                                            )
+
+                                            val cleanIpa = currentQ.ipa.trim().trim('/')
+                                            if (currentQ.pos.isNotBlank() || cleanIpa.isNotBlank()) {
+                                                Row(
+                                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    if (currentQ.pos.isNotBlank()) {
+                                                        Surface(
+                                                            color = Color(0xFF231D12),
+                                                            shape = PillShape,
+                                                            border = BorderStroke(1.dp, GoldAccentBorder)
+                                                        ) {
+                                                            Text(
+                                                                text = currentQ.pos,
+                                                                style = MaterialTheme.typography.labelMedium.copy(
+                                                                    fontWeight = FontWeight.SemiBold,
+                                                                    fontSize = 12.sp
+                                                                ),
+                                                                color = GoldAccent,
+                                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                    if (cleanIpa.isNotBlank()) {
+                                                        Surface(
+                                                            color = Color(0xFF181B24),
+                                                            shape = PillShape,
+                                                            border = BorderStroke(1.dp, BorderDark),
+                                                            modifier = Modifier
+                                                                .clip(PillShape)
+                                                                .clickable { onPlayPronunciation(currentQ.word) }
+                                                        ) {
+                                                            Text(
+                                                                text = "/$cleanIpa/",
+                                                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                                                                color = TextSecondary,
+                                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
 
                                     if (currentQ.mode == BlitzQuestionMode.TRUE_FALSE) {
-                                        Spacer(modifier = Modifier.height(10.dp))
-                                        Text(
-                                            text = bi("Does this mean?", "هل تعني بالعربية:"),
+                                        // Structured Inner Prompt Card eliminating the hollow black void
+                                        Surface(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .testTag("survival_tf_prompt_card"),
+                                            color = Color(0xFF181B24),
+                                            shape = RoundedCornerShape(16.dp),
+                                            border = BorderStroke(1.dp, Color(0x45F5B82E))
+                                        ) {
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(vertical = 22.dp, horizontal = 16.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                                            ) {
+                                                BidiText(
+                                                    text = bi("Does this mean? • هل تعني هذه الكلمة؟", "هل تعني هذه الكلمة؟ • Does this mean?"),
+                                                    style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp),
+                                                    color = TextSecondary,
+                                                    fillMaxWidth = true,
+                                                    textAlign = TextAlign.Center
+                                                )
+                                                BidiText(
+                                                    text = "« ${currentQ.promptArabic} »",
+                                                    style = ArabicTypography.headlineMedium.copy(
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 26.sp
+                                                    ),
+                                                    color = GoldAccent,
+                                                    fillMaxWidth = true,
+                                                    textAlign = TextAlign.Center
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        BidiText(
+                                            text = bi("Select the exact Arabic translation:", "اختر الترجمة العربية الصحيحة:"),
                                             style = MaterialTheme.typography.labelMedium,
-                                            color = TextSecondary
-                                        )
-                                        Text(
-                                            text = "« ${currentQ.promptArabic} »",
-                                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                            color = AmberAccent,
-                                            textAlign = TextAlign.Center,
-                                            modifier = Modifier.padding(top = 4.dp)
+                                            color = TextSecondary,
+                                            fillMaxWidth = true,
+                                            textAlign = TextAlign.Center
                                         )
                                     }
                                 }
@@ -407,9 +496,9 @@ fun SurvivalChallengeDialog(
                                 if (currentQ.mode == BlitzQuestionMode.TRUE_FALSE) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
-                                        currentQ.optionsArabic.forEachIndexed { idx, optionText ->
+                                        currentQ.optionsArabic.forEachIndexed { idx, _ ->
                                             val isSelected = tappedOptionIndex == idx
                                             val isCorrectOption = idx == currentQ.correctOptionIndex
                                             val isFirst = idx == 0
@@ -419,14 +508,14 @@ fun SurvivalChallengeDialog(
                                                 isEvaluatingAnswer && isCorrectOption -> Color(0xFF34D399).copy(alpha = 0.28f)
                                                 isEvaluatingAnswer && isSelected && !isCorrectOption -> Color(0xFFFB7185).copy(alpha = 0.28f)
                                                 isSelected -> baseAccent.copy(alpha = 0.22f)
-                                                else -> baseAccent.copy(alpha = 0.10f)
+                                                else -> baseAccent.copy(alpha = 0.12f)
                                             }
 
                                             val borderColor = when {
                                                 isEvaluatingAnswer && isCorrectOption -> Color(0xFF34D399)
                                                 isEvaluatingAnswer && isSelected && !isCorrectOption -> Color(0xFFFB7185)
                                                 isSelected -> baseAccent
-                                                else -> baseAccent.copy(alpha = 0.50f)
+                                                else -> baseAccent.copy(alpha = 0.55f)
                                             }
 
                                             val topLabel = if (isFirst) "✓ Correct" else "✗ False"
@@ -435,8 +524,8 @@ fun SurvivalChallengeDialog(
                                             Surface(
                                                 modifier = Modifier
                                                     .weight(1f)
-                                                    .height(62.dp)
-                                                    .clip(RoundedCornerShape(14.dp))
+                                                    .height(64.dp)
+                                                    .clip(RoundedCornerShape(16.dp))
                                                     .clickable(enabled = !isEvaluatingAnswer) {
                                                         tappedOptionIndex = idx
                                                         isEvaluatingAnswer = true
@@ -471,7 +560,7 @@ fun SurvivalChallengeDialog(
                                                     }
                                                     .testTag("survival_option_$idx"),
                                                 color = cardColor,
-                                                shape = RoundedCornerShape(14.dp),
+                                                shape = RoundedCornerShape(16.dp),
                                                 border = BorderStroke(1.5.dp, borderColor)
                                             ) {
                                                 Column(

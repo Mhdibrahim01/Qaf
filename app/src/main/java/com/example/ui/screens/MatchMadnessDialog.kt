@@ -11,9 +11,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -50,9 +53,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -63,6 +69,7 @@ import com.example.data.blitz.MatchMadnessEngine
 import com.example.data.blitz.MatchMadnessSessionState
 import com.example.data.blitz.MatchSelectionOutcome
 import com.example.data.local.EntryEntity
+import com.example.ui.components.BidiText
 import com.example.ui.theme.AmberAccent
 import com.example.ui.theme.ArabicTypography
 import com.example.ui.theme.BackgroundDark
@@ -100,6 +107,9 @@ fun MatchMadnessDialog(
     var isHandlingMismatch by remember { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
+    val screenHeightDp = LocalConfiguration.current.screenHeightDp
+    val isFullHeightScreen = screenHeightDp >= 640
+    val bottomSafePadding = if (isFullHeightScreen) 44.dp else 20.dp
 
     // 1-second timer loop while game is active
     LaunchedEffect(sessionState.isTimerRunning, sessionState.isFinished, enableTimerAutoTick) {
@@ -127,7 +137,8 @@ fun MatchMadnessDialog(
                 modifier = Modifier
                     .widthIn(max = 680.dp)
                     .fillMaxSize()
-                    .padding(horizontal = 18.dp, vertical = 14.dp),
+                    .navigationBarsPadding()
+                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = bottomSafePadding),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Top Header Bar
@@ -138,13 +149,13 @@ fun MatchMadnessDialog(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Surface(
                             shape = CircleShape,
                             color = SkyAccent.copy(alpha = 0.2f),
-                            border = BorderStroke(1.dp, SkyAccent),
-                            modifier = Modifier.size(36.dp)
+                            border = BorderStroke(1.5.dp, SkyAccent),
+                            modifier = Modifier.size(38.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
@@ -224,7 +235,7 @@ fun MatchMadnessDialog(
                                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                                     color = SkyAccent,
                                     modifier = Modifier
-                                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                                        .padding(horizontal = 12.dp, vertical = 4.dp)
                                         .testTag("match_round_indicator")
                                 )
                             }
@@ -287,78 +298,112 @@ fun MatchMadnessDialog(
                         }
                     }
 
-                    // 2-Column Matching Grid (6 English Left, 6 Arabic Right)
+                    // 2-Column Matching Grid (6 English Left, 6 Arabic Right) + Bilingual Footer Hint
                     if (currentRound != null) {
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1f)
+                                .then(if (isFullHeightScreen) Modifier.weight(1f) else Modifier)
                                 .testTag("match_grid_container"),
                             color = SurfaceDark,
-                            shape = RoundedCornerShape(18.dp),
+                            shape = RoundedCornerShape(22.dp),
                             border = BorderStroke(1.dp, BorderDark)
                         ) {
-                            Row(
+                            Column(
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    .fillMaxWidth()
+                                    .then(if (isFullHeightScreen) Modifier.fillMaxSize() else Modifier)
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.SpaceBetween,
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                // Left Column: English Words
-                                Column(
+                                Row(
                                     modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxSize(),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        .fillMaxWidth()
+                                        .then(if (isFullHeightScreen) Modifier.weight(1f) else Modifier),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    currentRound.leftCards.forEach { card ->
-                                        MatchingCardView(
-                                            card = card,
-                                            isEnabled = !isHandlingMismatch && !card.isMatched,
-                                            onClick = {
-                                                handleCardClick(
-                                                    cardId = card.id,
-                                                    sessionState = sessionState,
-                                                    bestTimeSeconds = bestTimeSeconds,
-                                                    soundEnabled = soundEnabled,
-                                                    onUpdateState = { sessionState = it },
-                                                    onFinish = onFinish,
-                                                    onSetTransitionMessage = { roundTransitionMessage = it },
-                                                    onSetHandlingMismatch = { isHandlingMismatch = it },
-                                                    coroutineScope = coroutineScope
-                                                )
-                                            }
-                                        )
+                                    // Left Column: English Words
+                                    Column(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .then(if (isFullHeightScreen) Modifier.fillMaxHeight() else Modifier),
+                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        currentRound.leftCards.forEach { card ->
+                                            MatchingCardView(
+                                                card = card,
+                                                isEnabled = !isHandlingMismatch && !card.isMatched,
+                                                modifier = if (isFullHeightScreen) {
+                                                    Modifier.weight(1f).fillMaxWidth()
+                                                } else {
+                                                    Modifier.height(68.dp).fillMaxWidth()
+                                                },
+                                                onClick = {
+                                                    handleCardClick(
+                                                        cardId = card.id,
+                                                        sessionState = sessionState,
+                                                        bestTimeSeconds = bestTimeSeconds,
+                                                        soundEnabled = soundEnabled,
+                                                        onUpdateState = { sessionState = it },
+                                                        onFinish = onFinish,
+                                                        onSetTransitionMessage = { roundTransitionMessage = it },
+                                                        onSetHandlingMismatch = { isHandlingMismatch = it },
+                                                        coroutineScope = coroutineScope
+                                                    )
+                                                }
+                                            )
+                                        }
+                                    }
+
+                                    // Right Column: Arabic Meanings
+                                    Column(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .then(if (isFullHeightScreen) Modifier.fillMaxHeight() else Modifier),
+                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        currentRound.rightCards.forEach { card ->
+                                            MatchingCardView(
+                                                card = card,
+                                                isEnabled = !isHandlingMismatch && !card.isMatched,
+                                                modifier = if (isFullHeightScreen) {
+                                                    Modifier.weight(1f).fillMaxWidth()
+                                                } else {
+                                                    Modifier.height(68.dp).fillMaxWidth()
+                                                },
+                                                onClick = {
+                                                    handleCardClick(
+                                                        cardId = card.id,
+                                                        sessionState = sessionState,
+                                                        bestTimeSeconds = bestTimeSeconds,
+                                                        soundEnabled = soundEnabled,
+                                                        onUpdateState = { sessionState = it },
+                                                        onFinish = onFinish,
+                                                        onSetTransitionMessage = { roundTransitionMessage = it },
+                                                        onSetHandlingMismatch = { isHandlingMismatch = it },
+                                                        coroutineScope = coroutineScope
+                                                    )
+                                                }
+                                            )
+                                        }
                                     }
                                 }
 
-                                // Right Column: Arabic Meanings
-                                Column(
+                                // Subtle bilingual footer hint
+                                BidiText(
+                                    text = bi(
+                                        "Tap matching pairs to clear the board • صل كل كلمة بمعناها الصحيح",
+                                        "صل كل كلمة بمعناها الصحيح • Tap matching pairs to clear the board"
+                                    ),
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                                    color = TextMuted,
+                                    fillMaxWidth = true,
+                                    textAlign = TextAlign.Center,
                                     modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxSize(),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    currentRound.rightCards.forEach { card ->
-                                        MatchingCardView(
-                                            card = card,
-                                            isEnabled = !isHandlingMismatch && !card.isMatched,
-                                            onClick = {
-                                                handleCardClick(
-                                                    cardId = card.id,
-                                                    sessionState = sessionState,
-                                                    bestTimeSeconds = bestTimeSeconds,
-                                                    soundEnabled = soundEnabled,
-                                                    onUpdateState = { sessionState = it },
-                                                    onFinish = onFinish,
-                                                    onSetTransitionMessage = { roundTransitionMessage = it },
-                                                    onSetHandlingMismatch = { isHandlingMismatch = it },
-                                                    coroutineScope = coroutineScope
-                                                )
-                                            }
-                                        )
-                                    }
-                                }
+                                        .padding(top = 12.dp)
+                                        .testTag("match_board_footer_hint")
+                                )
                             }
                         }
                     }
@@ -559,16 +604,17 @@ fun MatchMadnessDialog(
 private fun MatchingCardView(
     card: MatchCardItem,
     isEnabled: Boolean,
+    modifier: Modifier = Modifier
+        .fillMaxWidth()
+        .height(68.dp),
     onClick: () -> Unit
 ) {
     if (card.isMatched) {
-        // Matched cards dissolve / disabled with identical fixed height so layout never jumps
+        // Matched cards dissolve / disabled with identical height so layout never jumps
         Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(62.dp),
+            modifier = modifier,
             color = Color.Transparent,
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(14.dp)
         ) {}
         return
     }
@@ -577,7 +623,7 @@ private fun MatchingCardView(
         targetValue = when {
             card.isError -> CoralAccent.copy(alpha = 0.25f)
             card.isSelected -> GoldAccent.copy(alpha = 0.22f)
-            else -> SurfaceElevatedDark
+            else -> Color(0xFF181B24)
         },
         label = "matchCardColor"
     )
@@ -591,38 +637,42 @@ private fun MatchingCardView(
         label = "matchBorderColor"
     )
 
-    val fontSize = if (card.text.length > 16) 12.5.sp else 14.sp
+    val fontSize = when {
+        card.text.length > 18 -> 13.sp
+        !card.isEnglish -> 15.5.sp
+        else -> 14.5.sp
+    }
     val textStyle = if (!card.isEnglish) {
         ArabicTypography.bodyMedium.copy(
             fontSize = fontSize,
-            lineHeight = 16.sp,
+            lineHeight = 18.sp,
             fontWeight = if (card.isSelected) FontWeight.Bold else FontWeight.SemiBold,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            textDirection = TextDirection.Rtl
         )
     } else {
         MaterialTheme.typography.bodyMedium.copy(
             fontSize = fontSize,
-            lineHeight = 16.sp,
+            lineHeight = 18.sp,
             fontWeight = if (card.isSelected) FontWeight.Bold else FontWeight.SemiBold,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            textDirection = TextDirection.Ltr
         )
     }
 
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(62.dp)
-            .clip(RoundedCornerShape(12.dp))
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
             .clickable(enabled = isEnabled, onClick = onClick)
             .testTag(if (card.isEnglish) "match_card_en_${card.text}" else "match_card_ar_${card.id}"),
         color = cardColor,
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(if (card.isSelected || card.isError) 1.8.dp else 1.dp, borderColor)
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(if (card.isSelected || card.isError) 1.8.dp else 1.5.dp, borderColor)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 8.dp, vertical = 6.dp),
+                .padding(horizontal = 10.dp, vertical = 6.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -634,7 +684,8 @@ private fun MatchingCardView(
                     else -> TextPrimary
                 },
                 textAlign = TextAlign.Center,
-                maxLines = 2
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
