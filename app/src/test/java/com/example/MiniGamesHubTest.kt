@@ -142,7 +142,7 @@ class MiniGamesHubTest {
         assertEquals(0, wrongState.currentStreak)
         assertEquals(1, wrongState.wrongCount)
         assertEquals(1, wrongState.missedQuestions.size)
-        assertEquals("q1", wrongState.missedQuestions[0].id)
+        assertEquals("q2", wrongState.missedQuestions[0].id)
         assertFalse(wrongState.isFinished)
 
         // Lose remaining 2 hearts -> Game Over
@@ -410,6 +410,7 @@ class MiniGamesHubTest {
                 MatchMadnessDialog(
                     initialEntries = entries,
                     bestTimeSeconds = 45,
+                    enableTimerAutoTick = false,
                     onFinish = {},
                     onDismiss = {}
                 )

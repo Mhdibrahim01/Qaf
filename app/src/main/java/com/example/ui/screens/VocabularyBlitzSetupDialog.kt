@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -319,7 +321,9 @@ fun VocabularyBlitzSetupDialog(
                         ) {
                             filteredDecks.chunked(2).forEach { rowDecks ->
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(IntrinsicSize.Max),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     rowDecks.forEach { deck ->
@@ -327,7 +331,10 @@ fun VocabularyBlitzSetupDialog(
                                         DeckSelectionCard(
                                             deck = deck,
                                             isSelected = isSelected,
-                                            modifier = Modifier.weight(1f),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .fillMaxHeight()
+                                                .heightIn(min = 64.dp),
                                             onClick = {
                                                 allBooksSelected = false
                                                 selectedDecks = if (deck.id in selectedDecks) {
@@ -344,7 +351,11 @@ fun VocabularyBlitzSetupDialog(
                                         )
                                     }
                                     if (rowDecks.size == 1) {
-                                        Spacer(modifier = Modifier.weight(1f))
+                                        Spacer(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .fillMaxHeight()
+                                        )
                                     }
                                 }
                             }
@@ -520,22 +531,24 @@ fun VocabularyBlitzSetupDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .navigationBarsPadding()
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                            .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 20.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         OutlinedButton(
                             onClick = onDismiss,
                             border = BorderStroke(1.dp, BorderDark),
+                            shape = RoundedCornerShape(14.dp),
                             modifier = Modifier
-                                .weight(0.35f)
-                                .height(52.dp)
+                                .weight(0.36f)
+                                .height(50.dp)
                                 .testTag("blitz_setup_cancel_btn")
                         ) {
                             Text(
                                 text = bi("Cancel", "إلغاء"),
                                 color = TextPrimary,
-                                fontSize = 14.sp,
+                                fontSize = 14.5.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -561,9 +574,10 @@ fun VocabularyBlitzSetupDialog(
                                 disabledContainerColor = SurfaceElevatedDark,
                                 disabledContentColor = TextMuted
                             ),
+                            shape = RoundedCornerShape(14.dp),
                             modifier = Modifier
-                                .weight(0.65f)
-                                .height(52.dp)
+                                .weight(0.64f)
+                                .height(50.dp)
                                 .testTag("blitz_setup_start_btn")
                         ) {
                             Icon(
@@ -580,7 +594,7 @@ fun VocabularyBlitzSetupDialog(
                                     bi("⚡ Start 60s Challenge", "⚡ بدء التحدي (60 ثانية)")
                                 },
                                 color = if (isStartEnabled) darkTextColor else TextMuted,
-                                fontSize = 14.sp,
+                                fontSize = 14.5.sp,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -675,9 +689,9 @@ private fun DeckSelectionCard(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp)
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = deck.title,
@@ -691,6 +705,7 @@ private fun DeckSelectionCard(
                 overflow = TextOverflow.Ellipsis
             )
             if (deck.arabicSubtitle.isNotBlank()) {
+                Spacer(modifier = Modifier.height(3.dp))
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                     Text(
                         text = deck.arabicSubtitle,

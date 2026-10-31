@@ -15,8 +15,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -775,7 +778,7 @@ internal fun BlitzSummaryContent(
             )
 
             Text(
-                text = bi("60 Seconds Up! • انتهى الوقت!", "انتهى تحدي الـ 60 ثانية! ⚡"),
+                text = bi("60 Seconds Up! \u2022 \u2067انتهى الوقت!\u2069", "انتهى تحدي الـ 60 ثانية! ⚡"),
                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
                 color = TextPrimary
             )
@@ -821,32 +824,42 @@ internal fun BlitzSummaryContent(
             )
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Max),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 BlitzStatPill(
                     label = bi("Correct", "صحيحة"),
                     value = "${state.correctCount}",
                     color = EmeraldAccent,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
                 )
                 BlitzStatPill(
                     label = bi("Wrong", "خاطئة"),
                     value = "${state.wrongCount}",
                     color = CoralAccent,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
                 )
                 BlitzStatPill(
                     label = bi("Accuracy", "الدقة"),
                     value = "${state.accuracyPercent}%",
                     color = SkyAccent,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
                 )
                 BlitzStatPill(
                     label = bi("Max Combo", "السلسلة"),
                     value = "${state.maxComboStreak} 🔥",
                     color = AmberAccent,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
                 )
             }
 
@@ -1067,43 +1080,92 @@ internal fun BlitzSummaryContent(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(
                     onClick = onPlayAgain,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = GoldAccent,
-                        contentColor = BackgroundDark
+                        containerColor = Color(0xFFF5B82E),
+                        contentColor = Color(0xFF0B0D12)
                     ),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                    shape = RoundedCornerShape(14.dp),
                     modifier = Modifier
                         .weight(1.3f)
+                        .height(48.dp)
                         .testTag("blitz_play_again_btn")
                 ) {
-                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        tint = Color(0xFF0B0D12),
+                        modifier = Modifier.size(18.dp)
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(bi("Play Again", "العب مجدداً"), fontWeight = FontWeight.Bold)
+                    Text(
+                        text = bi("Play Again", "العب مجدداً"),
+                        color = Color(0xFF0B0D12),
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false
+                    )
                 }
 
                 OutlinedButton(
                     onClick = onChangeFilters,
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = SurfaceElevatedDark,
+                        contentColor = GoldAccent
+                    ),
                     border = BorderStroke(1.dp, GoldAccentBorder),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                    shape = RoundedCornerShape(14.dp),
                     modifier = Modifier
-                        .weight(1.3f)
+                        .weight(1f)
+                        .height(48.dp)
                         .testTag("blitz_change_filters_btn")
                 ) {
-                    Icon(Icons.Default.Tune, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(18.dp))
+                    Icon(
+                        imageVector = Icons.Default.Tune,
+                        contentDescription = null,
+                        tint = GoldAccent,
+                        modifier = Modifier.size(18.dp)
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(bi("Filters", "تعديل الفلاتر"), color = GoldAccent)
+                    Text(
+                        text = bi("Filters", "تعديل الفلاتر"),
+                        color = GoldAccent,
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false
+                    )
                 }
 
                 OutlinedButton(
                     onClick = onDone,
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = SurfaceElevatedDark,
+                        contentColor = TextPrimary
+                    ),
                     border = BorderStroke(1.dp, BorderDark),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                    shape = RoundedCornerShape(14.dp),
                     modifier = Modifier
-                        .weight(1f)
+                        .weight(0.85f)
+                        .height(48.dp)
                         .testTag("blitz_done_btn")
                 ) {
-                    Text(bi("Done", "إنهاء"), color = TextPrimary)
+                    Text(
+                        text = bi("Done", "إنهاء"),
+                        color = TextPrimary,
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false
+                    )
                 }
             }
         }
@@ -1118,24 +1180,35 @@ private fun BlitzStatPill(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = modifier,
+        modifier = modifier.height(70.dp),
         color = SurfaceElevatedDark,
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         border = BorderStroke(1.dp, BorderDark)
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 4.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = value,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 17.sp
+                ),
                 color = color
             )
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 11.sp
+                ),
+                color = TextSecondary,
+                maxLines = 1,
+                softWrap = false
             )
         }
     }
