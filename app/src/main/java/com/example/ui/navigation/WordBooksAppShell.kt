@@ -841,6 +841,17 @@ fun WordBooksAppShell(
                         },
                         onSpeakTts = { wordBooksViewModel.speakSentenceTts(it) },
                         onSaveProgress = wordBooksViewModel::saveGrammarProgress,
+                        onSaveCorrectionEntry = { lessonId, title, prompt, wrong, correct, expAr ->
+                            wordBooksViewModel.saveCorrectionNotebookEntry(
+                                textId = lessonId,
+                                grammarLessonId = lessonId,
+                                grammarLessonTitle = title,
+                                originalSentence = prompt,
+                                correctedSentence = correct,
+                                explanationAr = expAr,
+                                status = "not_checked"
+                            )
+                        },
                         onAskAi = wordBooksViewModel::askAiAboutLesson,
                         onExplainMistake = wordBooksViewModel::explainGrammarMistake,
                         onCheckSentence = wordBooksViewModel::checkGrammarSentence,
